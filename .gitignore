@@ -1,0 +1,27 @@
+# Ignore all files and folder then chose the ones we want to sync
+# Blacklist all files and folders
+/*
+
+# Blacklist all .pyc files
+*.pyc
+
+# Whitelist these files
+!.gitignore
+!README.md
+!Run.py
+!Instructions.odt
+!Setup.sh
+!Install_VirtualLab.sh
+!Test_VL.py
+
+# Whitelist these directories 
+!Scripts/
+!Materials/
+!Input/
+# This ensures that only the Example sub-directory will be included in the whitelist
+Input/*/*
+!Input/*/Example/
+
+
+
+

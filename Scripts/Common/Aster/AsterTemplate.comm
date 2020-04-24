@@ -1,0 +1,30 @@
+from os import walk, path, remove
+import numpy as np
+from Utilitai import partition
+import sys
+import aster
+sys.dont_write_bytecode=True
+########################################################################################################################
+
+sys.path.insert(0,path.dirname(TMP_FILE))
+Info = __import__(path.basename(path.splitext(TMP_FILE)[0]))
+Parameters = __import__(Info.PARAM_MOD)
+
+##########################################################################################################################
+
+def Materials(PropDict,*args):
+	for Mat in args:
+		PropPath = Info.MATERIAL_DIR + '/{}'.format(Mat)
+		for (rootdir, dirnames, filenames) in walk(PropPath):
+			for files in filenames:
+				name, ext = path.splitext(files)
+				fname = PropPath+'/'+files
+				PropDict['{}_{}'.format(Mat,name)] = np.fromfile(fname,dtype=float,count=-1,sep=" ")
+
+	return PropDict
+
+
+DEBUT(PAR_LOT = 'NON',LANG='EN')
+
+
+FIN()

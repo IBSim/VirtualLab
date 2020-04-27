@@ -4,7 +4,7 @@
 
 # Mesh used for analysis should be input at 'MeshName'. This mesh should eiether be in the 'Mesh' directory or 'CreateMesh' flag should be set to 'Y'
 MeshName = 'Notch1'
-CreateMesh = 'N'
+CreateMesh = 'Y'
 
 # If 'CreateMesh' is 'Y' then a mesh will be created using the below parameters
 # The Salome file to create the mesh can be found in Scripts/(Simulation)/PreProc
@@ -53,7 +53,6 @@ Materials = 'Copper'
 ############################
 ###### Post-processing #####
 ############################
-RunPostProc = 'n'
-#ParaVisFile = 'ParaVis'
+
 
 

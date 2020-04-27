@@ -48,7 +48,6 @@ LaserS = 'Gauss' #Spatial laser profile (Gauss profile or uniform profile availa
 
 ### Other BC
 ExtTemp = 20
-# HTC depends on the surface finish of the material 
 BottomHTC = 0
 TopHTC = 0
 

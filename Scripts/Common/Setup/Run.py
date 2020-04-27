@@ -16,7 +16,7 @@ class Setup():
 		     - interavtive: All outputs shown in terminal window(s)
 		     - continuous: Output written to file throughout execution
 		     - headless: Output written to file at the end of execution
-		AsterRoot: CodeAster root location. if this is not provided it is assumed it's a part of SalomeMeca
+		AsterRoot: CodeAster root location. If this is not provided it is assumed it's a part of SalomeMeca
 		'''
 
 		port = kwargs.get('port', None)
@@ -257,7 +257,6 @@ class Setup():
 		ncpus: Number of CPUs for regular CodeAster
 		Memory: Amount of memory (Gb) allocated to CodeAster
 		'''
-
 		mpi_nbcpu = kwargs.get('mpi_nbcpu',1)
 		mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
 		ncpus = kwargs.get('ncpus',1)
@@ -346,38 +345,42 @@ class Setup():
 	def PostProc(self, **kwargs):
 		'''
 		kwargs available:
+		ShowRes: Opens up all results files in Salome GUI. Boolean
 		'''
+
+		ShowRes = kwargs.get('ShowRes', False)
+
 		sys.path.insert(0, self.SIM_POSTPROC)
 
-#		for study in self.Studies.keys():
-#			if self.Studies[study]['Parameters'].RunPostProc not in ('yes','Yes','y','Y'):
-#				continue
-#			PostP = __import__(self.Studies[study]['Parameters'].PostCalcFile).main
-#			PostP(self, study)
+		# Run PostCalcFile if it is provided
+		for Name, StudyDict in self.Studies.items():
+			RunPostProc = getattr(StudyDict['Parameters'],'RunPostProc', 'N')
+			if RunPostProc not in ('yes','Yes','y','Y'): continue
 
-		ResList=[]
-		for study, studydict in self.Studies.items():
-			ResName = studydict['Parameters'].ResName
-			if type(ResName) == str: ResName = [ResName]
-			elif type(ResName) == dict: ResName=list(ResName.values())
-			elif type(ResName) == list: pass
+			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
+			if PostCalcFile:
+				PostP = __import__(PostCalcFile).main
+				PostP(self, study)
 
-			ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,studydict['ASTER_DIR']) for name in ResName]
 
-		AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
-		Script = "{}/ParaVis.py".format(self.COM_POSTPROC)
-		Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,",".join(ResList)), shell='TRUE')
-		Salome.wait()
+		# Run ParaVis file if it is provided
 
-		
-			
+		# Opens up all results in ParaVis
 
-#		TmpDirs = [studydict['TMP_CALC_DIR'] for studydict in self.Studies.values()]
-#		Script = "{}/ParaVis.py".format(self.COM_POSTPROC)
-#		Info.SalomeRun(Script, AddPath=TmpDirs, ArgDict=ArgDict)
-			
-			
-			
+		if ShowRes:
+			print("Opening .rmed files in ParaVis")
+			ResList=[]
+			for study, StudyDict in self.Studies.items():
+				ResName = StudyDict['Parameters'].ResName
+				if type(ResName) == str: ResName = [ResName]
+				elif type(ResName) == dict: ResName=list(ResName.values())
+				elif type(ResName) == list: pass
+				ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER_DIR']) for name in ResName]
+
+			AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
+			Script = "{}/ParaVisAll.py".format(self.COM_POSTPROC)
+			Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
+			Salome.wait()
 
 
 

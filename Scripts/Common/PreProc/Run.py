@@ -8,7 +8,7 @@ from SalomeFunc import GetArgs
 kwargs = GetArgs(sys.argv[1:])
 
 Parameters = __import__(kwargs['Parameters'])
-Create = __import__(Parameters.PreProcFile).Create
+Create = __import__(Parameters.MeshFile).Create
 
 Create(Parameter = Parameters, MeshFile = kwargs['MESH_FILE'])
 

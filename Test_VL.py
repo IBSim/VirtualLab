@@ -17,11 +17,11 @@ Study = Setup(STUDY_DIR, SIMULATION, STUDY_NAME, INPUTS, mode = "headless")
 # Create temporary directories and files
 Study.Create()
 
-# Create meshes.
-Study.Mesh()
+# Creates meshes and runs any other pre-procesing steps
+Study.PreProc()
 
 # Run simulation.
-Study.Aster()
+Study.Aster(ncpus=2, Memory=2)
 
 # Run post processing of results
 Study.PostProc()

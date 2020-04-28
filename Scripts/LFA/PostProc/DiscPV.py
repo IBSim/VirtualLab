@@ -4,10 +4,6 @@ import salome
 import numpy as np
 from SalomeFunc import GetArgs
 
-#salome.salome_init()
-#import salome_notebook
-#notebook = salome_notebook.NoteBook()
-
 # This function gives the ArgDict dictionary we passed to SalomeRun
 kwargs = GetArgs(sys.argv[1:])
 
@@ -26,29 +22,40 @@ from pvsimple import *
 
 # get active view
 renderView1 = GetActiveViewOrCreate('RenderView')
-# uncomment following to set a specific view size
-# renderView1.ViewSize = [1403, 591]
 
 thermalrmed = MEDReader(FileName="{}/{}.rmed".format(kwargs['ASTER_DIR'], Parameters.ResName))
 
 # show data in view
 thermalrmedDisplay = Show(thermalrmed, renderView1)
-
-# trace defaults for the display properties.
 thermalrmedDisplay.Representation = 'Surface'
+
+# current camera placement for renderView1
+camangle = 30
+camradius = 0.025
+renderView1.CameraPosition = [0, -camradius*np.cos(np.radians(camangle)), camradius*np.sin(np.radians(camangle))]
+renderView1.CameraFocalPoint = [0,0,-0.002]
+renderView1.CameraViewUp = [0,0,0]
+renderView1.CameraParallelScale = 0.000
+renderView1.Background = [1,1,1]  ### White Background
 
 # set scalar coloring
 ColorBy(thermalrmedDisplay, ('POINTS', 'resther_TEMP', 'TEMP'))
 
-# rescale color and/or opacity maps used to include current data range
-#thermalrmedDisplay.RescaleTransferFunctionToDataRange(False)
+Time = 0.008
+timesteps = np.array(thermalrmed.TimestepValues)
+TimeIx = np.argmin(abs(timesteps - Time))
 
-CBMin = 20
-CBMax = 35
-# get color transfer function/color map for 'resther_TEMP' (important one for scaling)
+animationScene1 = GetAnimationScene()
+animationScene1.StartTime = timesteps[TimeIx]
+animationScene1.GoToFirst()
+
+Temprange = thermalrmed.PointData.GetArray(1).GetRange()
+Temprange = [np.floor(Temprange[0]), np.ceil(Temprange[1])]
 resther_TEMPLUT = GetColorTransferFunction('resther_TEMP')
-#resther_TEMPLUT.RescaleTransferFunction(CBMin, CBMax)
 resther_TEMPLUT.NumberOfTableValues = 12
+resther_TEMPLUT.RescaleTransferFunction(Temprange[0], Temprange[1])
+resther_TEMPPWF = GetOpacityTransferFunction('resther_TEMP')
+resther_TEMPPWF.RescaleTransferFunction(Temprange[0], Temprange[1])
 
 ColorBar = GetScalarBar(resther_TEMPLUT, renderView1)
 BarLength = 0.7
@@ -67,47 +74,28 @@ ColorBar.TitleBold = 1
 ColorBar.LabelFontSize = FontSize
 ColorBar.LabelColor = [0,0,0]
 ColorBar.LabelBold = 1
-ColorBar.CustomLabels = list(np.linspace(CBMin,CBMax,6))
+ColorBar.CustomLabels = list(np.round(np.linspace(Temprange[0],Temprange[1],7), 2))
 ColorBar.UseCustomLabels = 1
 ColorBar.AddRangeLabels = 0
 
-# get opacity transfer function/opacity map for 'resther_TEMP'
-resther_TEMPPWF = GetOpacityTransferFunction('resther_TEMP')
-resther_TEMPPWF.RescaleTransferFunction(CBMin, CBMax)
-
-# current camera placement for renderView1
-camangle = 20
-camradius = 0.025
-
-renderView1.CameraPosition = [0, -camradius*np.cos(np.radians(camangle)), camradius*np.sin(np.radians(camangle))]
-renderView1.CameraFocalPoint = [0.0000,0, 0]
-renderView1.CameraViewUp = [0,0,0]
-renderView1.CameraParallelScale = 0.000
-renderView1.Background = [1,1,1]  ### White Background
-
-HalfT = float(kwargs['HalfT'])
-timesteps = thermalrmed.TimestepValues
-HalfIx = np.argmin(abs(np.array(timesteps) - HalfT))
-
-animationScene1 = GetAnimationScene()
-animationScene1.StartTime = timesteps[HalfIx]
-animationScene1.GoToFirst()
-thermalrmedDisplay.RescaleTransferFunctionToDataRange(False, True)
 
 SaveScreenshot("{}/Capture.png".format(kwargs['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
 Hide(thermalrmed, renderView1)
 
 clip1 = Clip(Input=thermalrmed)
 clip1.ClipType.Normal = [0.0, -1.0, 0.0]
-
 clip1Display = Show(clip1, renderView1)
-#resther_TEMPLUT.RescaleTransferFunction(CBMin, CBMax)
-#resther_TEMPPWF.RescaleTransferFunction(CBMin, CBMax)
-ColorBar = GetScalarBar(resther_TEMPLUT, renderView1)
 ColorBar.Visibility = 1
-
 SaveScreenshot("{}/ClipCapture.png".format(kwargs['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
 Hide(clip1, renderView1)
+
+thermalrmedDisplay = Show(thermalrmed, renderView1)
+ColorBy(thermalrmedDisplay, None)
+thermalrmedDisplay.Representation = 'Surface With Edges'
+thermalrmedDisplay.EdgeColor = [0.0, 0.0, 0.0]
+thermalrmedDisplay.DiffuseColor = [0.2, 0.75, 0.996078431372549]
+SaveScreenshot("{}/Mesh.png".format(kwargs['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
+Hide(thermalrmed, renderView1)
 
 calculator1 = Calculator(Input=thermalrmed)
 calculator1.ResultArrayName = 'Resulti'
@@ -131,7 +119,7 @@ renderView1.CameraPosition = [0, -0.015, 0.00125]
 renderView1.CameraFocalPoint = [0, 0, 0.00125]
 renderView1.CameraViewUp = [0.0, 0.0, 1.0]
 
-SaveScreenshot("{}/Mesh.png".format(kwargs['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
+SaveScreenshot("{}/MeshCrossSection.png".format(kwargs['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
 
 RenameSource('Thermal', thermalrmed)
 

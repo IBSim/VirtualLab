@@ -203,6 +203,7 @@ class Setup():
 		pop = [WriteDict.pop(key) for key, val in WriteDict.copy().items() if inspect.ismodule(val)]
 		with open(FileName,'w+') as f:
 			f.write("Main={}\n".format(WriteDict))
+
 	def PreProc(self, **kwargs):
 		'''
 		kwargs available:
@@ -352,26 +353,9 @@ class Setup():
 		kwargs available:
 		ShowRes: Opens up all results files in Salome GUI. Boolean
 		'''
-
 		ShowRes = kwargs.get('ShowRes', False)
 
-		sys.path.insert(0, self.SIM_POSTPROC)
-
-		# Run PostCalcFile if it is provided
-		for Name, StudyDict in self.Studies.items():
-			RunPostProc = getattr(StudyDict['Parameters'],'RunPostProc', 'N')
-			if RunPostProc not in ('yes','Yes','y','Y'): continue
-
-			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
-			if PostCalcFile:
-				PostP = __import__(PostCalcFile).main
-				PostP(self, Name)
-
-
-		# Run ParaVis file if it is provided
-
 		# Opens up all results in ParaVis
-
 		if ShowRes:
 			print("Opening .rmed files in ParaVis")
 			ResList=[]
@@ -387,7 +371,22 @@ class Setup():
 			Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
 			Salome.wait()
 
+		sys.path.insert(0, self.SIM_POSTPROC)
+		# Run PostCalcFile and ParVis file if they are provided
+		for Name, StudyDict in self.Studies.items():
+			RunPostProc = getattr(StudyDict['Parameters'],'RunPostProc', 'N')
+			if RunPostProc not in ('yes','Yes','y','Y'): continue
 
+			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
+			if PostCalcFile:
+				PostP = __import__(PostCalcFile).main
+				PostP(self, Name)
+
+			ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
+			if ParaVisFile:
+				Script = "{}/{}.py".format(self.SIM_POSTPROC, ParaVisFile)
+				ArgDict = {"Parameters":StudyDict["Parameters"].__name__, 'ASTER_DIR':StudyDict['ASTER_DIR'], 'OUTPUT_DIR':StudyDict['OUTPUT_DIR']}
+				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], ArgDict = ArgDict)
 
 	def ErrorCheck(self, Stage, data = None):
 		if Stage == 'Input':
@@ -466,11 +465,13 @@ class Setup():
 		AddPath: Additional paths that Salome will be able to import from
 		ArgDict: a dictionary of the arguments that Salome will get
 		ArgList: a list of arguments to be passed to Salome
+		GUI: Opens a new instance with GUI (useful for testing)
 		'''
 		Log = kwargs.get('Log', "")
 		AddPath = kwargs.get('AddPath',[])
 		ArgDict = kwargs.get('ArgDict', {})
 		ArgList = kwargs.get('ArgList',[])
+		GUI = kwargs.get('GUI',False)
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
@@ -482,6 +483,14 @@ class Setup():
 		# Write ArgDict and ArgList in format to pass to salome
 		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
 		Args = ",".join(ArgList + Args)
+
+
+		if GUI:
+			command = "salome {} args:{}".format(Script, Args)
+			SalomeGUI = Popen(PythonPath + command, shell='TRUE')
+			SalomeGUI.wait()
+			return
+
 
 		if not self.__port__[0]:
 			portfile = '{}/port.txt'.format(self.TMP_DIR)

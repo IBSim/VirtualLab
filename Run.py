@@ -21,7 +21,7 @@ Study.Create()
 Study.PreProc()
 
 # Run simulation.
-Study.Aster(ncpus=2, Memory=2)
+Study.Aster(ncpus=2, Memory=2, RunAster=False)
 
 # Run post processing of results
 Study.PostProc(ShowRes=False)

@@ -31,8 +31,6 @@ HoleDisc = 30 # Number of segments for hole circumference (for sub-mesh)
 ############################
 ##### Code_aster study #####
 ############################
-RunStudy = 'Y'
-
 # The CodeAster command file which can be found in Scripts/(Simulation)/Aster
 CommFile = 'Tensile'
 # Name of results file(s) which will be output by CodeAster

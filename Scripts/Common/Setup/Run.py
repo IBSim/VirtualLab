@@ -6,6 +6,7 @@ import shutil
 import time
 from subprocess import Popen, PIPE, STDOUT
 import inspect
+import copy
 	
 class Setup():
 	def __init__(self, STUDY_DIR, SIMULATION, STUDY_NAME, INPUT_DICT,**kwargs):
@@ -137,37 +138,39 @@ class Setup():
 
 		# Gather information for each study
 		self.MeshDict = {}
-		self.AsterRun = []
 		self.Studies = {}
+		MainDict = copy.deepcopy(self.__dict__)
 		for name, script in zip(StudyNames, NewScripts):
 			# Create nested dictionary for each study
-			self.Studies[name] = {}
+#			self.Studies[name] = {}
+			StudyDict = {}
 			# Define directories for each study
-			self.Studies[name]['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.STUDY_DIR, name)	
+			StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.STUDY_DIR, name)	
 			if not os.path.isdir(CALC_DIR):
 				os.makedirs(CALC_DIR)
-			self.Studies[name]['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, name)
+			StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, name)
 			if not os.path.isdir(TMP_CALC_DIR):
 				os.makedirs(TMP_CALC_DIR)
-			self.Studies[name]['ASTER_DIR'] = ASTER_DIR = "{}/Aster".format(CALC_DIR)
+			StudyDict['ASTER_DIR'] = ASTER_DIR = "{}/Aster".format(CALC_DIR)
 			if not os.path.isdir(ASTER_DIR):
 				os.makedirs(ASTER_DIR)
-			self.Studies[name]['OUTPUT_DIR'] = OUTPUT_DIR = "{}/Output".format(CALC_DIR)
+			StudyDict['OUTPUT_DIR'] = OUTPUT_DIR = "{}/Output".format(CALC_DIR)
 			if not os.path.isdir(OUTPUT_DIR):os.makedirs(OUTPUT_DIR)
 
 			# Write each Parameter script to file and import as module
 			ParaName = name
-			self.Studies[name]['PARAM_FILE'] = PARAM_FILE = '{}/{}.py'.format(TMP_CALC_DIR,ParaName)
+			StudyDict['PARAM_FILE'] = PARAM_FILE = '{}/{}.py'.format(TMP_CALC_DIR,ParaName)
 			with open(PARAM_FILE,'w+') as g, open(CALC_DIR + '/Parameters.py','w+') as f:
 				g.write(script), f.write(script)
 			sys.path.insert(0,TMP_CALC_DIR)
-			self.Studies[name]['Parameters'] = Parameters = __import__(ParaName)
+			StudyDict['Parameters'] = Parameters = __import__(ParaName)
 			sys.path.pop(0)
 
 			# Define files
-			self.Studies[name]['TMP_FILE'] = TMP_FILE = TMP_CALC_DIR + '/tmpfile.py'
-			self.Studies[name]['MESH_FILE'] = '{}/{}.med'.format(self.MESH_DIR,Parameters.MeshName)
-			self.Studies[name]['EXPORT_FILE'] = "{}/Export".format(ASTER_DIR)
+			StudyDict['TMP_DICT'] = "{}/tmpDict.py".format(TMP_CALC_DIR)
+			StudyDict['TMP_FILE'] = TMP_FILE = TMP_CALC_DIR + '/tmpfile.py'
+			StudyDict['MESH_FILE'] = '{}/{}.med'.format(self.MESH_DIR,Parameters.MeshName)
+			StudyDict['EXPORT_FILE'] = "{}/Export".format(ASTER_DIR)
 #			self.Studies[name]['LOG_FILE'] = "{}/Log".format(CALC_DIR)
 #			with open(self.Studies[name]['LOG_FILE'],'w') as f:
 #				pass
@@ -176,9 +179,13 @@ class Setup():
 			tmpfileinfo = 'SIM_SCRIPTS = "{}"\n'.format(self.SIM_SCRIPTS) + \
 			'MATERIAL_DIR = "{}"\n'.format(self.MATERIAL_DIR) + \
 			'PARAM_MOD = "{}"\n'.format(Parameters.__name__) + \
-			'CALC_DIR = "{}"\n'.format(self.Studies[name]['CALC_DIR'])
+			'CALC_DIR = "{}"\n'.format(StudyDict['CALC_DIR'])
 			with open(TMP_FILE, 'w+') as f:
 				f.write(tmpfileinfo)
+
+			self.Studies[name] = StudyDict.copy()
+			MainDict.update(StudyDict)
+			self.DictToFile(StudyDict['TMP_DICT'], WriteDict=MainDict)
 			
 			# Ensure no mesh generation is duplicated and check for errors in the dimensions
 			if Parameters.CreateMesh in ('Yes','yes','Y','y'):
@@ -188,10 +195,14 @@ class Setup():
 				self.MeshDict[Parameters.MeshName].append(name)
 
 			# Run Aster error check and add to run list
-			if Parameters.RunStudy in ('Yes','yes','Y','y'):
-				self.ErrorCheck('Aster',name)
-				self.AsterRun.append(name)
+#			if Parameters.RunStudy in ('Yes','yes','Y','y'):
+#				self.ErrorCheck('Aster',name)
 
+	def DictToFile(self, FileName, **kwargs):
+		WriteDict = kwargs.get('WriteDict',{})
+		pop = [WriteDict.pop(key) for key, val in WriteDict.copy().items() if inspect.ismodule(val)]
+		with open(FileName,'w+') as f:
+			f.write("Main={}\n".format(WriteDict))
 	def PreProc(self, **kwargs):
 		'''
 		kwargs available:
@@ -256,26 +267,26 @@ class Setup():
 		mpi_nbnoeud: Num Nodes for parallel CodeAster. Only available if code aster compiled for parallelism.
 		ncpus: Number of CPUs for regular CodeAster
 		Memory: Amount of memory (Gb) allocated to CodeAster
+		RunAster: Switch to turn on/off
 		'''
 		mpi_nbcpu = kwargs.get('mpi_nbcpu',1)
 		mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
 		ncpus = kwargs.get('ncpus',1)
 		Memory = kwargs.get('Memory',2)
+		RunAster = kwargs.get('RunAster','True')
 
-		if not self.AsterRun:
+		if not RunAster:
 			return
 
 		print('Starting Simulations')		
 		PreCond = 'export PYTHONDONTWRITEBYTECODE=1;export PYTHONPATH="{}";'.format(self.COM_SCRIPTS)
-		procs = []
-		for study in self.AsterRun:
-			studydict = self.Studies[study]	
-
+		SubProcs = {}
+		for Name, StudyDict in self.Studies.items():
 			# Copy script to tmp folder and add in tmp file location
-			commfile = '{0}/{1}.comm'.format(self.SIM_ASTER,studydict['Parameters'].CommFile)
-			tmpcommfile = '{0}/{1}.comm'.format(studydict['TMP_CALC_DIR'],studydict['Parameters'].CommFile)
+			commfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].CommFile)
+			tmpcommfile = '{0}/{1}.comm'.format(StudyDict['TMP_CALC_DIR'],StudyDict['Parameters'].CommFile)
 			with open(commfile,'r') as g, open(tmpcommfile,'w') as f:
-				f.write("TMP_FILE = '{}'\n".format(studydict['TMP_FILE']) + g.read())
+				f.write("TMP_FILE = '{}'\n".format(StudyDict['TMP_FILE']) + g.read())
 
 			# Create export file and write to file
 			exportstr = 'P actions make_etude\n' + \
@@ -286,52 +297,47 @@ class Setup():
 			'P mpi_nbnoeud {}\n'.format(mpi_nbnoeud) + \
 			'P ncpus {}\n'.format(ncpus) + \
 			'P memory_limit {!s}.0\n'.format(1024*Memory) +\
-			'F mmed {} D  20\n'.format(studydict['MESH_FILE']) + \
+			'F mmed {} D  20\n'.format(StudyDict['MESH_FILE']) + \
 			'F comm {} D  1\n'.format(tmpcommfile) + \
-			'F mess {}/AsterLog R  6\n'.format(studydict['ASTER_DIR']) + \
-			'R repe {} R  0\n'.format(studydict['ASTER_DIR'])
-			with open(studydict['EXPORT_FILE'],'w+') as e:
+			'F mess {}/AsterLog R  6\n'.format(StudyDict['ASTER_DIR']) + \
+			'R repe {} R  0\n'.format(StudyDict['ASTER_DIR'])
+			with open(StudyDict['EXPORT_FILE'],'w+') as e:
 				e.write(exportstr)
 
 			# Create different command file depending on the mode
-			errfile = '{}/Aster.txt'.format(studydict['TMP_CALC_DIR'])
+			errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
 			if self.mode == 'interactive':
-				xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(study)
-				command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_ROOT, studydict['EXPORT_FILE'], errfile)
+				xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
+				command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_ROOT, StudyDict['EXPORT_FILE'], errfile)
 			elif self.mode == 'continuous':
-				command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_ROOT, studydict['EXPORT_FILE'], studydict['ASTER_DIR'])
+				command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_ROOT, StudyDict['EXPORT_FILE'], StudyDict['ASTER_DIR'])
 			else :
-				command = "{} {} >/dev/null 2>&1".format(self.ASTER_ROOT, studydict['EXPORT_FILE'])
+				command = "{} {} >/dev/null 2>&1".format(self.ASTER_ROOT, StudyDict['EXPORT_FILE'])
 
 			# Start Aster subprocess
-			procs.append(Popen(PreCond + command , shell='TRUE'))
+			SubProcs[Name] = Popen(PreCond + command , shell='TRUE')
 
 		# Wait until all Aster subprocesses are finished before moving on
-		zipped = list(zip(self.AsterRun,procs))
 		AsterError = False
-		while zipped:
-			Fin = []
+		while SubProcs:
 			# Check to see the status of each subprocess
-			for i, info in enumerate(zipped):
-				study, subproc = info
-				if subproc.poll() is not None:
-					err = subproc.returncode
-					Fin.append(info)
+			for Name, Proc in SubProcs.copy().items():
+				Poll = Proc.poll()
+				if Poll is not None:
+					err = Poll
 					if self.mode == 'interactive':
-						with open('{}/Aster.txt'.format(self.Studies[study]['TMP_CALC_DIR']),'r') as f:
+						with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
 							err = int(f.readline())
 					elif self.mode == 'continuous':
-						os.remove('{}/ContinuousAsterLog'.format(self.Studies[study]['ASTER_DIR']))
+						os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER_DIR']))
 
 					if err != 0:
-						print("Error in simulation '{}' - Check the log file".format(study))
+						print("Error in simulation '{}' - Check the log file".format(Name))
 						AsterError = True
 					else :
-						print("Simulation '{}' completed without errors".format(study))
-					subproc.terminate()
-			# Remove subprocess that have finished from the list
-			for i in Fin:
-				zipped.remove(i)
+						print("Simulation '{}' completed without errors".format(Name))
+					SubProcs.pop(Name)
+					Proc.terminate()
 
 			# Check if subprocess has finished every 1 second
 			time.sleep(1)
@@ -340,7 +346,6 @@ class Setup():
 			self.Exit("Some simulations finished with errors")
 
 		print('Finished Simulations')
-
 
 	def PostProc(self, **kwargs):
 		'''
@@ -360,7 +365,7 @@ class Setup():
 			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
 			if PostCalcFile:
 				PostP = __import__(PostCalcFile).main
-				PostP(self, study)
+				PostP(self, Name)
 
 
 		# Run ParaVis file if it is provided

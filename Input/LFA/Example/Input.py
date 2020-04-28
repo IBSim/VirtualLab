@@ -4,7 +4,7 @@
 
 # Mesh used for analysis should be input at 'MeshName'. This mesh should eiether be in the 'Mesh' directory or 'CreateMesh' flag should be set to 'Y'
 MeshName = 'NoVoid'
-CreateMesh = 'N'
+CreateMesh = 'Y'
 
 # If 'CreateMesh' is 'Y' then a mesh will be created using the below parameters
 # The Salome file to create the mesh can be found in Scripts/(Simulation)/PreProc
@@ -26,8 +26,6 @@ HoleDisc = 20 # Number of segments for hole circumference (for sub-mesh)
 ############################
 ##### Code_aster study #####
 ############################
-RunStudy = 'N'
-
 CommFile = 'Disc_Lin'
 ResName = 'ResTher'
 
@@ -66,8 +64,6 @@ RunPostProc = 'Y'
 
 PostCalcFile = 'DiscPost'
 Rvalues = [0.1, 0.5, 1]
-
-#ParaVisFile = 
 
 
 

@@ -6,7 +6,7 @@ from SalomeFunc import GetArgs
 
 # This function gives the ArgDict dictionary we passed to SalomeRun
 kwargs = GetArgs(sys.argv[1:])
-
+StudyDict = __import__(kwargs['StudyDict']).Main
 Parameters = __import__(kwargs['Parameters'])
 
 ###
@@ -22,8 +22,9 @@ from pvsimple import *
 
 # get active view
 renderView1 = GetActiveViewOrCreate('RenderView')
+#renderView1.ViewSize = (1400,590)
 
-thermalrmed = MEDReader(FileName="{}/{}.rmed".format(kwargs['ASTER_DIR'], Parameters.ResName))
+thermalrmed = MEDReader(FileName="{}/{}.rmed".format(StudyDict['ASTER_DIR'], Parameters.ResName))
 
 # show data in view
 thermalrmedDisplay = Show(thermalrmed, renderView1)
@@ -79,14 +80,14 @@ ColorBar.UseCustomLabels = 1
 ColorBar.AddRangeLabels = 0
 
 
-SaveScreenshot("{}/Capture.png".format(kwargs['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
+SaveScreenshot("{}/Capture.png".format(StudyDict['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
 Hide(thermalrmed, renderView1)
 
 clip1 = Clip(Input=thermalrmed)
 clip1.ClipType.Normal = [0.0, -1.0, 0.0]
 clip1Display = Show(clip1, renderView1)
 ColorBar.Visibility = 1
-SaveScreenshot("{}/ClipCapture.png".format(kwargs['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
+SaveScreenshot("{}/ClipCapture.png".format(StudyDict['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
 Hide(clip1, renderView1)
 
 thermalrmedDisplay = Show(thermalrmed, renderView1)
@@ -94,7 +95,7 @@ ColorBy(thermalrmedDisplay, None)
 thermalrmedDisplay.Representation = 'Surface With Edges'
 thermalrmedDisplay.EdgeColor = [0.0, 0.0, 0.0]
 thermalrmedDisplay.DiffuseColor = [0.2, 0.75, 0.996078431372549]
-SaveScreenshot("{}/Mesh.png".format(kwargs['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
+SaveScreenshot("{}/Mesh.png".format(StudyDict['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
 Hide(thermalrmed, renderView1)
 
 calculator1 = Calculator(Input=thermalrmed)
@@ -119,7 +120,7 @@ renderView1.CameraPosition = [0, -0.015, 0.00125]
 renderView1.CameraFocalPoint = [0, 0, 0.00125]
 renderView1.CameraViewUp = [0.0, 0.0, 1.0]
 
-SaveScreenshot("{}/MeshCrossSection.png".format(kwargs['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
+SaveScreenshot("{}/MeshCrossSection.png".format(StudyDict['OUTPUT_DIR']), renderView1, ImageResolution=[1403, 591], FontScaling='Do not scale fonts')
 
 RenameSource('Thermal', thermalrmed)
 

@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
-import os
 import sys
-import importlib
 sys.dont_write_bytecode=True
+import os
 from Scripts.Common import Setup
 
-STUDY_DIR = 'Training'
-SIMULATION = 'LFA'
-STUDY_NAME = 'Example'
-INPUTS = {'Main' : 'Input', 'Parametric' : 'ParametricFile'}
+Simulation = 'Tensile'
+StudyDir = 'Example'
+StudyName = 'Test'
+Input = {'Main' : 'Input', 'Parametric' : 'ParametricFile'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
-Study = Setup(STUDY_DIR, SIMULATION, STUDY_NAME, INPUTS, mode = "interactive", port=2810)
+Study = Setup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
 
 # Create temporary directories and files
 Study.Create()
@@ -21,7 +20,7 @@ Study.Create()
 Study.PreProc()
 
 # Run simulation.
-Study.Aster(ncpus=2, Memory=2, RunAster=False)
+Study.Aster(ncpus=2, Memory=2, RunAster=True)
 
 # Run post processing of results
 Study.PostProc(ShowRes=False)

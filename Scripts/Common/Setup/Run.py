@@ -1,15 +1,17 @@
+import sys
+sys.dont_write_bytecode=True
 import datetime
 import os
-import sys
 import numpy as np
 import shutil
 import time
 from subprocess import Popen, PIPE, STDOUT
 import inspect
 import copy
+import VLconfig
 	
 class Setup():
-	def __init__(self, STUDY_DIR, SIMULATION, STUDY_NAME, INPUT_DICT,**kwargs):
+	def __init__(self, Simulation, StudyDir, StudyName, Input, **kwargs):
 		'''
 		kwargs available:
 		port: Give the port number of an open Salome instance to connect to
@@ -51,24 +53,30 @@ class Setup():
 		self.COM_ASTER = "{}/Aster".format(self.COM_SCRIPTS)
 		self.COM_POSTPROC = "{}/PostProc".format(self.COM_SCRIPTS)
 
-		self.SIM_SCRIPTS = "{}/{}".format(self.SCRIPT_DIR, SIMULATION)
+		self.SIM_SCRIPTS = "{}/{}".format(self.SCRIPT_DIR, Simulation)
 		self.SIM_PREPROC = "{}/PreProc".format(self.SIM_SCRIPTS)
 		self.SIM_ASTER = "{}/Aster".format(self.SIM_SCRIPTS)
 		self.SIM_POSTPROC = "{}/PostProc".format(self.SIM_SCRIPTS)
 
 		# Materials directory
-		self.MATERIAL_DIR = "{}/Materials".format(VL_DIR)	
+		self.MATERIAL_DIR = "{}/Materials".format(VL_DIR)
+
+		# Output directories - these is where meshes, Aster results and pre/post-processing will be stored
+		OUTPUT_DIR = getattr(VLconfig,'OutputDir',"{}/Output".format(VL_DIR))
+		OUTPUT_DIR = OUTPUT_DIR.replace('$VLDir',VL_DIR)
+		STUDY_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, StudyDir)
+		self.SIM_DIR = "{}/{}".format(STUDY_DIR, StudyName)
+		self.MESH_DIR = "{}/Meshes".format(STUDY_DIR)
 
 		### Simulation directories
-		self.STUDY_DIR = "{}/{}/{}/{}".format(VL_DIR, STUDY_DIR, SIMULATION, STUDY_NAME)
-		self.INPUT_DIR = '{}/Input/{}/{}'.format(VL_DIR, SIMULATION, STUDY_NAME)
+		self.INPUT_DIR = '{}/Input/{}/{}'.format(VL_DIR, Simulation, StudyDir)
 
 		# Create directory in /tmp
-		if STUDY_NAME == 'Testing': self.TMP_DIR = '/tmp/test'
-		else: self.TMP_DIR = '/tmp/{}_{}'.format(STUDY_DIR,(datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
+		if StudyName == 'Testing': self.TMP_DIR = '/tmp/test'
+		else: self.TMP_DIR = '/tmp/{}_{}'.format(StudyName,(datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
 
 		# Check the Input directory to ensure the the required files exist
-		self.ErrorCheck('Input', INPUT_DICT)
+		self.ErrorCheck('Input', Input)
 
 	def Create(self):
 		# Open main input file
@@ -124,50 +132,51 @@ class Setup():
 
 				NewScripts.append(''.join(studyscript))
 
+#		if not os.path.isdir(self.SIM_DIR): os.makedirs(self.SIM_DIR)
+		if not os.path.isdir(self.MESH_DIR): os.makedirs(self.MESH_DIR)
+		if not os.path.isdir(self.TMP_DIR): os.makedirs(self.TMP_DIR)
+
 #		self.GEOM_DIR = self.TMP_DIR + '/Geom' 
 #		if not os.path.exists(self.GEOM_DIR):
 #			os.makedirs(self.GEOM_DIR)
-
-		self.MESH_DIR = self.STUDY_DIR + '/Mesh'
-		if not os.path.exists(self.MESH_DIR):
-			os.makedirs(self.MESH_DIR)
 
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_PREPROC)
 		sys.path.insert(0, self.SIM_SCRIPTS)
 
+		self.VLDICT = 'VLDict'
+		self.STUDYDICT = 'StudyDict'
+
 		# Gather information for each study
+		MainDict = copy.deepcopy(self.__dict__)
+		self.DictToFile("{}/{}.py".format(self.TMP_DIR,self.VLDICT), WriteDict=MainDict)
+
 		self.MeshDict = {}
 		self.Studies = {}
-		MainDict = copy.deepcopy(self.__dict__)
 		for name, script in zip(StudyNames, NewScripts):
 			# Create nested dictionary for each study
-#			self.Studies[name] = {}
 			StudyDict = {}
+			StudyDict['Name'] = name
+
 			# Define directories for each study
-			StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.STUDY_DIR, name)	
-			if not os.path.isdir(CALC_DIR):
-				os.makedirs(CALC_DIR)
+			StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.SIM_DIR, name)	
+			if not os.path.isdir(CALC_DIR): os.makedirs(CALC_DIR)
 			StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, name)
-			if not os.path.isdir(TMP_CALC_DIR):
-				os.makedirs(TMP_CALC_DIR)
+			if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
 			StudyDict['ASTER_DIR'] = ASTER_DIR = "{}/Aster".format(CALC_DIR)
-			if not os.path.isdir(ASTER_DIR):
-				os.makedirs(ASTER_DIR)
+			if not os.path.isdir(ASTER_DIR): os.makedirs(ASTER_DIR)
 			StudyDict['OUTPUT_DIR'] = OUTPUT_DIR = "{}/Output".format(CALC_DIR)
-			if not os.path.isdir(OUTPUT_DIR):os.makedirs(OUTPUT_DIR)
+			if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
 
 			# Write each Parameter script to file and import as module
-			ParaName = name
-			StudyDict['PARAM_FILE'] = PARAM_FILE = '{}/{}.py'.format(TMP_CALC_DIR,ParaName)
-			with open(PARAM_FILE,'w+') as g, open(CALC_DIR + '/Parameters.py','w+') as f:
+			ParametersPath = '{}/{}.py'.format(TMP_CALC_DIR, name)
+			with open(ParametersPath,'w+') as g, open(CALC_DIR + '/Parameters.py','w+') as f:
 				g.write(script), f.write(script)
 			sys.path.insert(0,TMP_CALC_DIR)
-			StudyDict['Parameters'] = Parameters = __import__(ParaName)
+			StudyDict['Parameters'] = Parameters = __import__(name)
 			sys.path.pop(0)
 
 			# Define files
-			StudyDict['TMP_DICT'] = "{}/tmpDict.py".format(TMP_CALC_DIR)
 			StudyDict['TMP_FILE'] = TMP_FILE = TMP_CALC_DIR + '/tmpfile.py'
 			StudyDict['MESH_FILE'] = '{}/{}.med'.format(self.MESH_DIR,Parameters.MeshName)
 			StudyDict['EXPORT_FILE'] = "{}/Export".format(ASTER_DIR)
@@ -183,9 +192,9 @@ class Setup():
 			with open(TMP_FILE, 'w+') as f:
 				f.write(tmpfileinfo)
 
+			MergeDict = {**MainDict, **StudyDict} #Merge together these two dictionaries to get all necessary information in one place
+			self.DictToFile("{}/{}.py".format(TMP_CALC_DIR, self.STUDYDICT), WriteDict=MergeDict)
 			self.Studies[name] = StudyDict.copy()
-			MainDict.update(StudyDict)
-			self.DictToFile(StudyDict['TMP_DICT'], WriteDict=MainDict)
 			
 			# Ensure no mesh generation is duplicated and check for errors in the dimensions
 			if Parameters.CreateMesh in ('Yes','yes','Y','y'):
@@ -200,9 +209,10 @@ class Setup():
 
 	def DictToFile(self, FileName, **kwargs):
 		WriteDict = kwargs.get('WriteDict',{})
-		pop = [WriteDict.pop(key) for key, val in WriteDict.copy().items() if inspect.ismodule(val)]
+		WriteDictCP = WriteDict.copy()
+		pop = [WriteDictCP.pop(key) for key, val in WriteDict.items() if inspect.ismodule(val)]
 		with open(FileName,'w+') as f:
-			f.write("Main={}\n".format(WriteDict))
+			f.write("Main={}\n".format(WriteDictCP))
 
 	def PreProc(self, **kwargs):
 		'''
@@ -248,7 +258,7 @@ class Setup():
 				studydict = self.Studies[study]
 				AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
 				Script = "{}/{}.py".format(self.SIM_PREPROC, studydict['Parameters'].MeshFile)
-				Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,studydict['PARAM_FILE']), shell='TRUE')
+				Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,StudyDict['Parameters'].__file__), shell='TRUE')
 				Salome.wait()
 
 				self.Cleanup()
@@ -385,7 +395,7 @@ class Setup():
 			ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
 			if ParaVisFile:
 				Script = "{}/{}.py".format(self.SIM_POSTPROC, ParaVisFile)
-				ArgDict = {"Parameters":StudyDict["Parameters"].__name__, 'ASTER_DIR':StudyDict['ASTER_DIR'], 'OUTPUT_DIR':StudyDict['OUTPUT_DIR']}
+				ArgDict = {"Parameters":StudyDict["Parameters"].__name__, 'StudyDict':self.STUDYDICT}
 				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], ArgDict = ArgDict)
 
 	def ErrorCheck(self, Stage, data = None):

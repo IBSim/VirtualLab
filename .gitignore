@@ -13,7 +13,9 @@
 !Setup.sh
 !Install_VirtualLab.sh
 !Test_VL.py
+!Test_VL_Parametric.py
 !VLconfig.py
+!CreateParamFile.py
 
 # Whitelist these directories 
 !Scripts/

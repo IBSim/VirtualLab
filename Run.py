@@ -6,12 +6,12 @@ import os
 from Scripts.Common import Setup
 
 Simulation = 'Tensile'
-StudyDir = 'Example'
-StudyName = 'Test'
-Input = {'Main' : 'Input', 'Parametric' : 'ParametricFile'}
+StudyDir = 'Testing'
+StudyName = 'NewParametric'
+Input = {'Main' : 'Input', 'Single' : 'EM_load'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
-Study = Setup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
+Study = Setup(Simulation, StudyDir, StudyName, Input, mode = "interactive", port=2810)
 
 # Create temporary directories and files
 Study.Create()
@@ -20,11 +20,11 @@ Study.Create()
 Study.PreProc()
 
 # Run simulation.
-Study.Aster(ncpus=2, Memory=2, RunAster=True)
+Study.Aster(ncpus=2, Memory=2, RunAster=False)
 
 # Run post processing of results
 Study.PostProc(ShowRes=False)
 
 # Remove tmp folders
-Study.Cleanup()
+#Study.Cleanup()
 

@@ -118,12 +118,11 @@ def BCinfo(meshname,**kwargs):
 		return None, None, None
 
 	NNodes = len(mesht.cn)
-	Nodelist = []
 	Nodal = np.zeros((NNodes),dtype = float)
 
 	for element in ElemID:
 		Nodes = mesht.co[element]
-		Nodelist = Nodelist + list(Nodes)
+		Nodelist = list(Nodes)
 
 		num = len(Nodes)
 		if  num == 3:

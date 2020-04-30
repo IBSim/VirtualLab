@@ -16,6 +16,7 @@ def htc(water,
         verbose = False):
 
     T_onb = BR.get_T_onb(water,geometry)
+#    print(T_onb)
     if T_wall <= T_onb:
 	# Use Seider-Tate
         h = ST.htc(water,geometry,T_wall,strictness='verbose')

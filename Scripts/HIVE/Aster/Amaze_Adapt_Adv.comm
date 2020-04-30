@@ -44,39 +44,7 @@ Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model, ),
 	                      TOUT='OUI'),
 	             	      MAILLAGE=mesh)
 
-mesht = partition.MAIL_PY()
-mesht.FromAster(mesh)
-print(dir(mesht))
-NNodes = len(mesht.cn)
-EMdat = np.fromfile('{}/ERMES_Node.dat'.format(os.path.dirname(TMP_FILE)),dtype=float,count=-1,sep=" ")
-EMdat = EMdat.reshape((NNodes+1,len(EMdat)//(NNodes+1)))
-Temps, JouleHeat = EMdat[0,:], EMdat[1:,:]
 
-count = 0
-ld = [None]
-meshlist, Load_EM = [], []
-for grp in Parameters.Materials.keys():
-	for i, ElNum in enumerate(mesht.gma.get(grp)):
-		Connect = mesht.co[ElNum]
-		JHelem = np.sum(JouleHeat[Connect,:],axis=0)/4
-
-		ld[count] = DEFI_CONSTANTE(VALE=JHelem[0])
-
-		meshlist.append(_F(GROUP_MA=(grp), NOM='M{}'.format(ElNum), NUME_FIN=i+1, NUME_INIT=i+1))
-		Load_EM.append((_F(GROUP_MA=('M{}'.format(ElNum), ),SOUR=ld[count])))
-
-		ld.append(None)
-		count = count+1
-
-DEFI_GROUP(reuse=mesh,
-	   MAILLAGE=mesh,
-	   CREA_GROUP_MA=meshlist)
-
-EMI = AFFE_CHAR_THER_F(SOURCE = Load_EM, MODELE=Thermod)
-
-
-
-'''
 ##### Define functions for NL material properties and assign materials to parts #####
 DictMat = AsterFunc.MaterialProps(Info.MATERIAL_DIR,Parameters.Materials.values())
 
@@ -137,16 +105,19 @@ PipeArea,PipeFaceNodes = AsterFunc.BCinfo(mesh,Group = 'PipeFace')[0:2]
 ### BC for coil heating
 
 ## Uniform heatflux
-
-#UniFlux = DEFI_CONSTANTE(VALE=1e5)
-#EMI = AFFE_CHAR_THER_F(FLUX_REP=_F(FLUN=UniFlux, GROUP_MA=('CoilFace', )),MODELE=Thermod)
-		  
+'''
+UniFlux = DEFI_CONSTANTE(VALE=1e5)
+EMI = AFFE_CHAR_THER_F(FLUX_REP=_F(FLUN=UniFlux, GROUP_MA=('CoilFace', )),MODELE=Thermod)
+'''		  
 ## EM loads using ERMES
 
+scaling = 1e6
+#EMloads, Elem_EM, EMdata = AsterFunc.EMloading(mesh, '{}/EM.dat'.format(os.path.dirname(TMP_FILE)), Parameters.Materials.keys(), scaling, Tol=10000)
 
-
-
+EMTemps, JouleHeat = EMdata[0,:], EMdata[1:,:]
 EMI = AFFE_CHAR_THER_F(SOUR_NL = EMloads, MODELE=Thermod)
+
+CoilVol,CoilNodes = AsterFunc.BCinfo(mesh,Elements = Elem_EM)[0:2]
 
 Loading = (_F(CHARGE=EMI),_F(CHARGE=PipeHTC))
 
@@ -171,8 +142,17 @@ if Parameters.ImportRes not in ('Yes','Y','yes','y'):
 	field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
 	resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
 
-	if Parameters.CheckFirst == 0:FinIx = TotStep
-	else :FinIx = min(Parameters.CheckFirst,TotStep)
+	### Calculate the power going in to the sample initially
+#	PipePower = np.sum(PipeArea)*np.interp(Parameters.InitTemp,PipeFluxdat[0::2],PipeFluxdat[1::2])
+#	CoilPower = np.dot(EMvals(CoilNodes,Parameters.InitTemp,EMTemps,scaling*JouleHeat),CoilVol)
+#	PowerIn = PipePower + CoilPower 
+#	print('Power input: {:.4f} (Pipe:{:.4f}, Coil:{:.4f})'.format(PowerIn,PipePower,CoilPower))
+#	Convergence = np.array([0,0,PowerIn])
+
+	if Parameters.CheckFirst == 0:
+		FinIx = TotStep
+	else :
+		FinIx = min(Parameters.CheckFirst,TotStep)
 
 ### Import starting temperature profile from results
 else:
@@ -202,15 +182,31 @@ else:
 	else :
 		FinIx = min(ImportIndex + Parameters.CheckFirst,TotStep)
 
+#	PrevConv = np.fromfile(Info.DATA_DIR + '/Convergence.dat',dtype=float,count=-1,sep=' ')
+#	PrevConv = np.reshape(PrevConv,(len(PrevConv)/4,4))
+#	Convergence = (PrevConv[PrevConv[:,1]<=ImportIndex])
+
 
 ### Create list of timesteps and list of steps to save
 timestp1 = DEFI_LIST_REEL(VALE=timearr)
 Storing = DEFI_LIST_REEL(VALE=timearr[::Parameters.ResStore])
 
-# Start  thermal analysis
 AdaptSteps = AsterFunc.AdaptThermal(resther,timestp1,Loading,Thermat,Thermod,Parameters.Theta,Parameters.Solver,Storing = Storing, MaxIter=MaxIter,EndIndex = FinIx)
 
-# continue thermal analysis
+#DiffTemp, CurrTemp = TempChange(resther)
+#MaxChange = max(abs(DiffTemp))
+
+
+### Calculate the power going in to the sample after some time
+#PipePower = np.dot(np.interp(CurrTemp[PipeFaceNodes],PipeFluxdat[0::2],PipeFluxdat[1::2]),PipeArea)
+#CoilPower = np.dot(EMvals(CoilNodes,CurrTemp[CoilNodes],EMTemps,scaling*JouleHeat),CoilVol)
+#PowerIn = PipePower + CoilPower 
+#Indic = np.array([AdaptSteps[-1],MaxChange,PowerIn])
+#Convergence = np.vstack((Convergence,Indic))
+#print('Max temperature change: {}'.format(MaxChange))
+#print('Power input: {:.4f} (Pipe:{:.4f}, Coil:{:.4f})'.format(PowerIn,PipePower,CoilPower))
+
+
 while FinIx < TotStep: 
 	if Parameters.CheckEvery == 0:
 		FinIx = TotStep
@@ -220,8 +216,20 @@ while FinIx < TotStep:
 	newSteps = AsterFunc.AdaptThermal(resther,timestp1,Loading,Thermat,Thermod,Parameters.Theta,Parameters.Solver,Storing = Storing, MaxIter=MaxIter,EndIndex = FinIx)
 	AdaptSteps = np.concatenate((AdaptSteps,newSteps[1:]))
 
+#	DiffTemp, CurrTemp = TempChange(resther)
+#	MaxChange = max(abs(DiffTemp))
+
+#	### Calculate the power going in to the sample after some time
+#	PipePower = np.dot(np.interp(CurrTemp[PipeFaceNodes],PipeFluxdat[0::2],PipeFluxdat[1::2]),PipeArea)
+#	CoilPower = np.dot(EMvals(CoilNodes,CurrTemp[CoilNodes],EMTemps,scaling*JouleHeat),CoilVol)	
+#	PowerIn = PipePower + CoilPower 
+#	Indic = np.array([AdaptSteps[-1],MaxChange,PowerIn])
+#	Convergence = np.vstack((Convergence,Indic))
+#	print('Max temperature change: {}'.format(MaxChange))
+#	print('Power input: {:.4f} (Pipe:{:.4f}, Coil:{:.4f})'.format(PowerIn,PipePower,CoilPower))
+
 np.savetxt('./REPE_OUT/TimeSteps.dat', timearr, fmt = '%.6f', delimiter = '   ')
 DEFI_FICHIER(FICHIER='./REPE_OUT/ResTher.rmed', TYPE='BINARY', UNITE=80)
 IMPR_RESU(RESU=_F(RESULTAT=resther), UNITE=80)
-'''
+
 FIN()

@@ -224,15 +224,19 @@ def Create(**kwargs):
 	smesh.SetName(NETGEN_2D_Parameters_2, 'NETGEN 2D Parameters_2')
 	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
 
-	## This next part takes this mesh and adds in a coil and vacuum around it and then runs the  code.
-	print('Using sample mesh information to create mesh for ERMES')
-	from ERMES.EMChamber import CreateEMMesh
-	SampleMesh, ERMESMesh = CreateEMMesh(Mesh_1, Parameter)
-	smesh.SetName(SampleMesh, 'Sample')
-	smesh.SetName(ERMESMesh, 'xERMES')
-	if MeshFile:
-		SalomeFunc.MeshExport(SampleMesh,MeshFile)
-		SalomeFunc.MeshExport(ERMESMesh,MeshFile, Overwrite = 0)	
+	if Parameter.RunEM == 'N/A':
+		Mesh_1.Compute()
+		SalomeFunc.MeshExport(Mesh_1,MeshFile)
+	else :
+		## This next part takes this mesh and adds in a coil and vacuum around it and then runs the  code.
+		print('Using sample mesh information to create mesh for ERMES')
+		from ERMES.EMChamber import CreateEMMesh
+		SampleMesh, ERMESMesh = CreateEMMesh(Mesh_1, Parameter)
+		smesh.SetName(SampleMesh, 'Sample')
+		smesh.SetName(ERMESMesh, 'xERMES')
+		if MeshFile:
+			SalomeFunc.MeshExport(SampleMesh,MeshFile)
+			SalomeFunc.MeshExport(ERMESMesh,MeshFile, Overwrite = 0)	
 
 	globals().update(locals()) ### This adds all variables created in this fucntion
 

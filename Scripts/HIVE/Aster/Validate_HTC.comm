@@ -1,91 +1,17 @@
-from os import walk, path, remove
-import numpy as np
-from Utilitai import partition
 import sys
-import aster
 sys.dont_write_bytecode=True
+import os
+import numpy as np
+import aster
+import AsterFunc
+
 ########################################################################################################################
 
-sys.path.insert(0,path.dirname(TMP_FILE))
-Info = __import__(path.basename(path.splitext(TMP_FILE)[0]))
+sys.path.insert(0,os.path.dirname(TMP_FILE))
+Info = __import__(os.path.basename(os.path.splitext(TMP_FILE)[0]))
 Parameters = __import__(Info.PARAM_MOD)
 
 ##########################################################################################################################
-
-global timearr
-
-def BCinfo(**kwargs):
-	mesht = partition.MAIL_PY()
-	mesht.FromAster('mesh')
-
-	if 'Group' in kwargs.keys():
-		ElemID = mesht.gma.get(kwargs['Group'])
-	elif 'Elements' in kwargs.keys():
-		ElemID = kwargs['Elements']
-	else:
-		print('No group or element list have been provided')
-
-	NNodes = len(mesht.cn)
-	Nodelist = []
-	Nodal = np.zeros((NNodes),dtype = float)
-
-	for element in ElemID:
-		Nodes = mesht.co[element]
-		Nodelist = Nodelist + list(Nodes)
-
-		num = len(Nodes)
-		if  num == 3:
-			coor1 = np.array(mesht.cn[Nodes[0]])
-			coor2 = np.array(mesht.cn[Nodes[1]])
-			coor3 = np.array(mesht.cn[Nodes[2]])
-			measure = 0.5*np.linalg.norm(np.cross(coor2-coor1,coor3-coor1))
-
-		elif num == 4:
-			coor1 = np.array(mesht.cn[Nodes[0]])
-			coor2 = np.array(mesht.cn[Nodes[1]])
-			coor3 = np.array(mesht.cn[Nodes[2]])
-			coor4 = np.array(mesht.cn[Nodes[3]])
-			measure = 1/float(6)*abs(np.dot(np.cross(coor2-coor1,coor3-coor1),coor4 - coor1))
-
-
-		for node in Nodes:
-			Nodal[node] = Nodal[node] + measure/num
-
-
-	Nodal2 = Nodal[Nodal!=0] ## Remove zero rows
-	NodeID = sorted(set(Nodelist))
-	return Nodal2, NodeID, ElemID
-
-def Materials(PropDict,parts):
-	for comp in parts:
-		Mat = getattr(Parameters,'{}Material'.format(comp))
-		PropPath = Info.MATERIAL_DIR + '/{}'.format(Mat)
-		for (rootdir, dirnames, filenames) in walk(PropPath):
-			for files in filenames:
-				name, ext = path.splitext(files)
-				fname = PropPath+'/'+files
-				data = np.fromfile(fname,dtype=float,count=-1,sep=" ")
-				
-				if len(data) == 2:
-					data = np.append(data,[data[0]+1,data[1]])
-				PropDict['{}_{}'.format(Mat,name)] = data
-
-		### Uses Rho & CP to make distribution for RhoCP
-		minval = min(min(PropDict["{}_Rho".format(Mat)][0::2]),min(PropDict["{}_Cp".format(Mat)][0::2]))
-		maxval = max(max(PropDict["{}_Rho".format(Mat)][0::2]),max(PropDict["{}_Cp".format(Mat)][0::2]))
-		if minval == maxval:
-			funcx = np.array([minval])
-		else:
-			funcx = np.linspace(minval,maxval,100)
-		funcy = np.interp(funcx,PropDict["{}_Rho".format(Mat)][0::2],PropDict["{}_Rho".format(Mat)][1::2])*\
-		np.interp(funcx,PropDict["{}_Cp".format(Mat)][0::2],PropDict["{}_Cp".format(Mat)][1::2])
-		RCP = [None]*(len(funcx)*2)
-		RCP[::2] = funcx
-		RCP[1::2] = funcy
-		PropDict['{}_RCP'.format(Mat)] = RCP
-
-	return PropDict
-
 
 DEBUT(PAR_LOT = 'NON',LANG='EN')
 
@@ -97,19 +23,17 @@ Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model, ),
 	                      TOUT='OUI'),
 	             	      MAILLAGE=mesh)
 
-
 ##### Define functions for NL material properties and assign materials to parts #####
-DictMat = Materials({},Parameters.SampleGroups)
+DictMat = AsterFunc.MaterialProps(Info.MATERIAL_DIR,Parameters.Materials.values())
 
 BlockRCP = DEFI_FONCTION(NOM_PARA='TEMP',
 	               PROL_DROITE='CONSTANT',
 	               PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat["{}_RCP".format(Parameters.BlockMaterial)])
+	               VALE=DictMat[Parameters.Materials['Block']]["RhoCp"])
 BlockLAM = DEFI_FONCTION(NOM_PARA='TEMP',
 	               PROL_DROITE='CONSTANT',
 		       PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat["{}_Lambda".format(Parameters.BlockMaterial)])
-
+	               VALE=DictMat[Parameters.Materials['Block']]["Lambda"])
 #BlockLAM = DEFI_CONSTANTE(VALE=394)
 #BlockRCP = DEFI_CONSTANTE(VALE=344600)
 BlockMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA=BlockLAM, RHO_CP=BlockRCP))
@@ -117,12 +41,11 @@ BlockMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA=BlockLAM, RHO_CP=BlockRCP))
 PipeRCP = DEFI_FONCTION(NOM_PARA='TEMP',
 	               PROL_DROITE='CONSTANT',
 	               PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat["{}_RCP".format(Parameters.PipeMaterial)])
+	               VALE=DictMat[Parameters.Materials['Pipe']]["RhoCp"])
 PipeLAM = DEFI_FONCTION(NOM_PARA='TEMP',
 	               PROL_DROITE='CONSTANT',
 		       PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat["{}_Lambda".format(Parameters.PipeMaterial)])
-
+	               VALE=DictMat[Parameters.Materials['Pipe']]["Lambda"])
 #PipeLAM = DEFI_CONSTANTE(VALE=394)
 #PipeRCP = DEFI_CONSTANTE(VALE=344600)
 PipeMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA=PipeLAM, RHO_CP=PipeRCP))
@@ -130,12 +53,11 @@ PipeMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA=PipeLAM, RHO_CP=PipeRCP))
 TileRCP = DEFI_FONCTION(NOM_PARA='TEMP',
 	               PROL_DROITE='CONSTANT',
 	               PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat["{}_RCP".format(Parameters.TileMaterial)])
+	               VALE=DictMat[Parameters.Materials['Tile']]["RhoCp"])
 TileLAM = DEFI_FONCTION(NOM_PARA='TEMP',
 	               PROL_DROITE='CONSTANT',
 		       PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat["{}_Lambda".format(Parameters.TileMaterial)])
-
+	               VALE=DictMat[Parameters.Materials['Tile']]["Lambda"])
 #TileLAM = DEFI_CONSTANTE(VALE=163.3)
 #TileRCP = DEFI_CONSTANTE(VALE=2502500)
 TileMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA=TileLAM, RHO_CP=TileRCP))
@@ -152,15 +74,14 @@ EMI = AFFE_CHAR_THER_F(FLUX_REP=_F(FLUN=UniFlux, GROUP_MA=('CoilFace', )),
 
 ##### Create list of time steps #####
 fintime, TotStep, start = 0, 0, 0
-timearr = np.array([start])
+timelist = [np.array([start])]
 for tup in Parameters.dt:
 	dt, Nstep = tup
-	TotStep = TotStep + Nstep
-	fintime = fintime + dt*Nstep
-	timearr = np.concatenate((timearr,np.linspace(start,fintime,Nstep+1)[1:]))
+	TotStep += Nstep
+	fintime += dt*Nstep
+	timelist.append(np.linspace(start+dt,fintime,Nstep))
 	start = fintime
-timearrOrig = timearr
-
+timearr = timearrOrig = np.concatenate(timelist)
 
 timestp1 = DEFI_LIST_REEL(VALE=timearr)
 Storing = DEFI_LIST_REEL(VALE=timearr[::Parameters.ResStore])
@@ -187,11 +108,12 @@ res_f = THER_NON_LINE(ARCHIVAGE=_F(LIST_INST=Storing),
 		PARM_THETA=Parameters.Theta,
 		SOLVEUR=_F(METHODE=Parameters.Solver))
 
-DEFI_FICHIER(FICHIER='./REPE_OUT/ResTher_f.rmed', UNITE=80)
+DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName[0]), UNITE=80)
 IMPR_RESU(RESU=_F(RESULTAT=res_f), UNITE=80)
+#IMPR_RESU(RESU=_F(RESULTAT=res_f, NOM_CHAM = 'TEMP', NOM_CHAM_MED= 'test'), UNITE=80)
 
-Temp_f = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(res_f.LIST_VARI_ACCES()['NUME_ORDRE'])[-1], OPERATION='EXTR', RESULTAT=res_f, TYPE_CHAM='NOEU_TEMP_R')
-NTemp_f = np.array(Temp_f.EXTR_COMP().valeurs)
+#Temp_f = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(res_f.LIST_VARI_ACCES()['NUME_ORDRE'])[-1], OPERATION='EXTR', RESULTAT=res_f, TYPE_CHAM='NOEU_TEMP_R')
+#NTemp_f = np.array(Temp_f.EXTR_COMP().valeurs)
 
 ### Heat Transfer BC
 HT = DEFI_CONSTANTE(VALE=h)
@@ -208,13 +130,13 @@ res_e = THER_NON_LINE(ARCHIVAGE=_F(LIST_INST=Storing),
 		PARM_THETA=Parameters.Theta,
 		SOLVEUR=_F(METHODE=Parameters.Solver))
 
-DEFI_FICHIER(FICHIER='./REPE_OUT/ResTher_e.rmed',TYPE='BINARY', UNITE=81)
+DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName[1]),TYPE='BINARY', UNITE=81)
 IMPR_RESU(RESU=_F(RESULTAT=res_e), UNITE=81)
 
-Temp_e = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(res_e.LIST_VARI_ACCES()['NUME_ORDRE'])[-1], OPERATION='EXTR', RESULTAT=res_e, TYPE_CHAM='NOEU_TEMP_R')
-NTemp_e = np.array(Temp_e.EXTR_COMP().valeurs)
+#Temp_e = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(res_e.LIST_VARI_ACCES()['NUME_ORDRE'])[-1], OPERATION='EXTR', RESULTAT=res_e, TYPE_CHAM='NOEU_TEMP_R')
+#NTemp_e = np.array(Temp_e.EXTR_COMP().valeurs)
 
-Diff = NTemp_f - NTemp_e
-print('Max Temperature Difference is {} at node {}'.format(max(Diff),np.argmax(Diff)))
+#Diff = NTemp_f - NTemp_e
+#print('Max Temperature Difference is {} at node {}'.format(max(Diff),np.argmax(Diff)))
 
 FIN()

@@ -8,7 +8,6 @@ import time
 from subprocess import Popen, PIPE, STDOUT
 import inspect
 import copy
-import VLconfig
 	
 class Setup():
 	def __init__(self, Simulation, StudyDir, StudyName, Input, **kwargs):
@@ -25,6 +24,7 @@ class Setup():
 		port = kwargs.get('port', None)
 		mode = kwargs.get('mode', 'headless')
 		AsterRoot = kwargs.get('AsterRoot', None)
+		ConfigFile = kwargs.get('ConfigFile','VLconfig') 
 
 		# If port is provided it assumes an open instance of salome exists on that port and will shell in to it
 		# The second value in the list dictates whether or not to kill the salome instance at the end of the process
@@ -40,6 +40,8 @@ class Setup():
 		else:
 			SMDir = os.path.dirname(os.path.dirname(shutil.which("salome")))
 			self.ASTER_ROOT = "{}/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir)
+
+		VLconfig = __import__(ConfigFile)
 
 		# Get the path to the top level directory, VL_DIR
 		frame = inspect.stack()[1]

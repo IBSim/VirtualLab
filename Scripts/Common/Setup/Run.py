@@ -29,8 +29,7 @@ class Setup():
 
 		# If port is provided it assumes an open instance of salome exists on that port and will shell in to it
 		# The second value in the list dictates whether or not to kill the salome instance at the end of the process
-		if port: self.__port__ = [port, False]
-		else : self.__port__ = [None, True]
+		self.__port__ = [port, False]
 
 		# Set running mode	
 		self.mode = mode
@@ -595,7 +594,7 @@ class Setup():
 			
 			### Get port number from file
 			with open(portfile,'r') as f:
-				self.__port__[0] = int(f.readline())
+				self.__port__ = [int(f.readline()), True]
 
 		command = "salome shell -p{!s} {} args:{}".format(self.__port__[0], Script, Args)
 		if self.mode != 'interactive':

@@ -6,13 +6,8 @@ from Utilitai import partition
 import AsterFunc
 import aster
 sys.dont_write_bytecode=True
-########################################################################################################################
-
-sys.path.insert(0,path.dirname(TMP_FILE))
-Info = __import__(path.basename(path.splitext(TMP_FILE)[0]))
-Parameters = __import__(Info.PARAM_MOD)
-
-##########################################################################################################################
+import Parameters
+import PathVL
 
 DEBUT(PAR_LOT = 'NON',LANG='EN')
 
@@ -26,7 +21,7 @@ model = AFFE_MODELE(AFFE=_F(MODELISATION=('3D', ),
                     MAILLAGE=mesh)
 
 ##### Create dictionary of material properties and assign materials to parts #####
-DictMat = AsterFunc.MaterialProps(Info.MATERIAL_DIR, Parameters.Materials)
+DictMat = AsterFunc.MaterialProps(PathVL.MATERIAL_DIR, Parameters.Materials)
 
 Mat = DEFI_MATERIAU(ELAS=_F(E=DictMat[Parameters.Materials]["Youngs"][1],
                             NU=DictMat[Parameters.Materials]["PoisRat"][1]))
@@ -48,21 +43,13 @@ Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DX=0.0, GROUP_MA=('Constrain', )),
 		       DDL_IMPO=(_F(DY=0.0, DZ=0.0, GROUP_NO=('Constrain3', )), _F(DY=0.0, GROUP_NO=('Constrain2', ))),
                        MODELE=model)
 
-if Parameters.LoadingType in ('All','all','Both','both'):
-	Force, Disp = True, True
-elif Parameters.LoadingType in ('Force','force'):
-	Force, Disp = True, False
-elif Parameters.LoadingType in ('Displacement','displacement','Disp','disp'):
-	Force, Disp = False, True
-else :
-	Force, Disp = False, False
-
 # Constant Force simulation
+Force = Parameters.Load.get('Force', None)
 if Force:
 	# Use Area to correct the force applied (CodeAster treats it as a pressure so we divide by the area)
 	LoadFace = AsterFunc.BCinfo(mesh, Group = 'Load')[0]
 	LoadArea = sum(LoadFace)
-	CorrForce = Parameters.Force/LoadArea
+	CorrForce = Force/LoadArea
 
 	Force = AFFE_CHAR_MECA(FORCE_FACE=_F(FX=CorrForce, GROUP_MA='Load'),
 			       MODELE=model)
@@ -82,10 +69,10 @@ if Force:
 	DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName[0]), UNITE=80)
 	IMPR_RESU(RESU=_F(RESULTAT=resFrc), UNITE=80)
 
-
 # Constant Displacement simulation
-if Disp:
-	Disp = AFFE_CHAR_MECA(FACE_IMPO=_F(DX=Parameters.Disp, GROUP_MA='Load'),
+Displacement = Parameters.Load.get('Displacement', None)
+if Displacement:
+	Disp = AFFE_CHAR_MECA(FACE_IMPO=_F(DX=Displacement, GROUP_MA='Load'),
 		              MODELE=model)
 
 	Loading = (_F(CHARGE=Fix321), _F(CHARGE=Disp))

@@ -8,6 +8,7 @@ import time
 from subprocess import Popen, PIPE, STDOUT
 import inspect
 import copy
+from types import SimpleNamespace as Namespace
 	
 class Setup():
 	def __init__(self, Simulation, StudyDir, StudyName, Input, **kwargs):
@@ -70,17 +71,104 @@ class Setup():
 		self.SIM_DIR = "{}/{}".format(STUDY_DIR, StudyName)
 		self.MESH_DIR = "{}/Meshes".format(STUDY_DIR)
 
-		### Simulation directories
-		self.INPUT_DIR = '{}/Input/{}/{}'.format(VL_DIR, Simulation, StudyDir)
+		### Input dictionary
+		self.Input = Input
+		self.Input['INPUT_DIR'] = '{}/Input/{}/{}'.format(VL_DIR, Simulation, StudyDir)
 
 		# Create directory in /tmp
-		if StudyName == 'Testing': self.TMP_DIR = '/tmp/test'
+		if StudyDir == 'Testing': self.TMP_DIR = '/tmp/test'
 		else: self.TMP_DIR = '/tmp/{}_{}'.format(StudyName,(datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
 
 		# Check the Input directory to ensure the the required files exist
-		self.ErrorCheck('Input', Input)
+		self.ErrorCheck('Input')
 
 	def Create(self):
+
+
+
+		if not os.path.isdir(self.SIM_DIR): os.makedirs(self.SIM_DIR)
+		if not os.path.isdir(self.MESH_DIR): os.makedirs(self.MESH_DIR)
+		if not os.path.isdir(self.TMP_DIR): os.makedirs(self.TMP_DIR)
+		self.GEOM_DIR = '{}/Geom'.format(self.TMP_DIR) 
+		if not os.path.isdir(self.GEOM_DIR): os.makedirs(self.GEOM_DIR)
+
+		MainDict = copy.deepcopy(self.__dict__)
+
+		sys.path.insert(0, self.Input['INPUT_DIR'])
+		Main = __import__(self.Input['Main'])
+
+		# Create Mesh parameter files
+		MainMesh = getattr(Main, 'Mesh', None)
+		if 'Parametric' in self.Input:
+			Parametric = __import__(self.Input['Parametric'])
+			ParaMesh = getattr(Parametric, 'Mesh', None)
+			MeshNames = getattr(ParaMesh,'Name',[])
+		else: 
+			MeshNames = [MainMesh.Name]
+			ParaMesh = None
+		MeshDict = {Name:[] for Name in MeshNames}
+		for VarName, Value in MainMesh.__dict__.items():
+			NewVals = getattr(ParaMesh, VarName, False)
+			for i, MeshName in enumerate(MeshNames):
+				Val = Value if NewVals==False else NewVals[i]
+				if type(Val) == str: Val = "'{}'".format(Val)
+				MeshDict[MeshName].append("{} = {}\n".format(VarName, Val))
+		self.MeshList = []
+		for Name, ParaList in MeshDict.items():
+			self.MeshList.append(Name)				
+			Meshstr = ''.join(ParaList)
+			with open('{}/{}.py'.format(self.GEOM_DIR, Name),'w+') as f:
+				f.write(Meshstr)
+
+
+		# Create Simulation parameter files
+		MainAster = getattr(Main, 'Aster', None)
+		if 'Parametric' in self.Input:
+#			Parametric = __import__(self.Input['Parametric'])
+			ParaAster = getattr(Parametric, 'Aster', None)
+			SimNames = getattr(ParaAster,'SimName',[])
+		else: 
+			SimNames = [MainAster.SimName]
+			ParaAster = None
+
+		AsterDict = {SimName:{} for SimName in SimNames}
+		for VarName, Value in MainAster.__dict__.items():
+			NewVals = getattr(ParaAster, VarName, False)
+			for i, SimName in enumerate(SimNames):
+				Val = Value if NewVals==False else NewVals[i]
+				if type(Val) == str: Val = "'{}'".format(Val)
+				AsterDict[SimName][VarName] = Val
+
+		self.Studies = {}
+		for SimName, ParaDict in AsterDict.items():
+			StudyDict = {}
+			StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, SimName)
+			if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
+			StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.SIM_DIR, SimName)	
+			if not os.path.isdir(CALC_DIR): os.makedirs(CALC_DIR)
+			StudyDict['ASTER_DIR'] = ASTER_DIR = "{}/Aster".format(CALC_DIR)
+			if not os.path.isdir(ASTER_DIR): os.makedirs(ASTER_DIR)
+			StudyDict['OUTPUT_DIR'] = OUTPUT_DIR = "{}/Output".format(CALC_DIR)
+			if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
+
+			#Merge together Main and Study dict and write to file for salome/CodeAster to import
+			MergeDict = {**MainDict, **StudyDict} 
+			self.WriteModule("{}/PathVL.py".format(TMP_CALC_DIR), MergeDict)
+
+			ParaList = ["{} = {}\n".format(VarName, Val) for VarName, Val in ParaDict.items()]
+			Asterstr = ''.join(ParaList)
+			with open('{}/Parameters.py'.format(TMP_CALC_DIR),'w+') as f, open('{}/Parameters.py'.format(CALC_DIR),'w+') as g:
+				f.write(Asterstr), g.write(Asterstr)
+
+			Parameters = Namespace()
+			Parameters.__dict__.update(ParaDict)
+			StudyDict['Parameters'] = Parameters
+
+			self.Studies[SimName] = StudyDict.copy()
+		
+
+		'''
+
 		# Open main input file
 		with open(self.INPUT[0],'r') as g:
 			MainScript = g.readlines()
@@ -134,13 +222,6 @@ class Setup():
 
 				NewScripts.append(''.join(studyscript))
 
-#		if not os.path.isdir(self.SIM_DIR): os.makedirs(self.SIM_DIR)
-		if not os.path.isdir(self.MESH_DIR): os.makedirs(self.MESH_DIR)
-		if not os.path.isdir(self.TMP_DIR): os.makedirs(self.TMP_DIR)
-
-#		self.GEOM_DIR = self.TMP_DIR + '/Geom' 
-#		if not os.path.exists(self.GEOM_DIR):
-#			os.makedirs(self.GEOM_DIR)
 
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_PREPROC)
@@ -152,6 +233,8 @@ class Setup():
 		# Gather information for each study
 		MainDict = copy.deepcopy(self.__dict__)
 		self.DictToFile("{}/{}.py".format(self.TMP_DIR,self.VLDICT), WriteDict=MainDict)
+
+
 
 		self.MeshDict = {}
 		self.Studies = {}
@@ -208,22 +291,30 @@ class Setup():
 			# Run Aster error check and add to run list
 #			if Parameters.RunStudy in ('Yes','yes','Y','y'):
 #				self.ErrorCheck('Aster',name)
+		'''
 
-	def DictToFile(self, FileName, **kwargs):
-		WriteDict = kwargs.get('WriteDict',{})
-		WriteDictCP = WriteDict.copy()
-		pop = [WriteDictCP.pop(key) for key, val in WriteDict.items() if inspect.ismodule(val)]
-		with open(FileName,'w+') as f:
-			f.write("Main={}\n".format(WriteDictCP))
+	def WriteModule(self, FileName, Dictionary, **kwargs):
+		Write = kwargs.get('Write','New')
+		if Write == 'New':
+			PathList = []
+			for VarName, Val in Dictionary.items():
+				if type(Val)==str: Val = "'{}'".format(Val)
+				PathList.append("{} = {}\n".format(VarName, Val))
+			Pathstr = ''.join(PathList)
+			with open(FileName,'w+') as f:
+				f.write(Pathstr)
 
-	def PreProc(self, **kwargs):
+
+	def Mesh(self, **kwargs):
 		'''
 		kwargs available:
 		MeshCheck: input a meshname and it will open this mesh in the GUI
+		RunMesh: Boolean to dictate whether or not to create meshes
 		'''
 		MeshCheck = kwargs.get('MeshCheck', None)
+		RunMesh = kwargs.get('RunMesh', True)
 
-		if self.MeshDict and not MeshCheck:
+		if RunMesh:
 			print('Starting Meshing\n')
 			MeshLog = "{}/Log".format(self.MESH_DIR)
 			if self.mode != 'interactive':				
@@ -232,46 +323,42 @@ class Setup():
 			# Script which is used to import the necessary mesh function
 			PreProcScript = '{}/Run.py'.format(self.COM_PREPROC)
 
-			for meshname, studynames in self.MeshDict.items():
-				ParaName = self.Studies[studynames[0]]['Parameters'].__name__
-				MeshExport = self.Studies[studynames[0]]['MESH_FILE']
-
-				MeshStart = "Meshing '{}'".format(meshname)
+			for mesh in self.MeshList:
+				MeshStart = "Meshing '{}'".format(mesh)
 				print(MeshStart)
 				if self.mode != 'interactive': 
 					with open(MeshLog,'a') as f: f.write(MeshStart)
-
-				ArgDict = {"Parameters":ParaName, "MESH_FILE":MeshExport}
-				AddPath = [self.SIM_PREPROC, self.Studies[studynames[0]]['TMP_CALC_DIR']]
+				ArgDict = {"Parameters":mesh, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, mesh)}
+				AddPath = [self.SIM_PREPROC, self.GEOM_DIR]
 				self.SalomeRun(PreProcScript, AddPath=AddPath, ArgDict=ArgDict, Log = MeshLog)
 
-				MeshFin = "'{}' meshed".format(meshname)
+				MeshFin = "'{}' meshed".format(mesh)
 				print(MeshFin)
 				if self.mode != 'interactive': 
 					with open(MeshLog,'a') as f: f.write(MeshFin)
 
 			print('Meshing completed\n')
 			with open(MeshLog,'a') as f: f.write('Meshing completed\n')
+		
+#		elif self.MeshDict and MeshCheck:
+#			if MeshCheck in self.MeshDict:
+#				print('### Meshing {} in GUI'.format(MeshCheck))
+#				study = self.MeshDict[MeshCheck][0]
+#				studydict = self.Studies[study]
+#				AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
+#				Script = "{}/{}.py".format(self.SIM_PREPROC, studydict['Parameters'].MeshFile)
+#				Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,StudyDict['Parameters'].__file__), shell='TRUE')
+#				Salome.wait()
 
-		elif self.MeshDict and MeshCheck:
-			if MeshCheck in self.MeshDict:
-				print('### Meshing {} in GUI'.format(MeshCheck))
-				study = self.MeshDict[MeshCheck][0]
-				studydict = self.Studies[study]
-				AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
-				Script = "{}/{}.py".format(self.SIM_PREPROC, studydict['Parameters'].MeshFile)
-				Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,StudyDict['Parameters'].__file__), shell='TRUE')
-				Salome.wait()
-
-				self.Cleanup()
-				sys.exit()
-			else :
-				self.Exit("Mesh '{}' not listed as one of the meshes which will be ceated".format(str(MeshCheck)))
+#				self.Cleanup()
+#				sys.exit()
+#			else :
+#				self.Exit("Mesh '{}' not listed as one of the meshes which will be ceated".format(str(MeshCheck)))
 	
-		# Runs any other pre processing work which must be in the __add file	
-		if os.path.isfile('{}/__add__.py'.format(self.SIM_PREPROC)):
-			from __add__ import Add
-			Add(self)
+#		# Runs any other pre processing work which must be in the __add file	
+#		if os.path.isfile('{}/__add__.py'.format(self.SIM_PREPROC)):
+#			from __add__ import Add
+#			Add(self)
 
 	def Aster(self, **kwargs):
 		'''
@@ -291,15 +378,18 @@ class Setup():
 		if not RunAster:
 			return
 
-		print('Starting Simulations')		
-		PreCond = 'export PYTHONDONTWRITEBYTECODE=1;export PYTHONPATH="{}";'.format(self.COM_SCRIPTS)
+		print('Starting Simulations')
 		SubProcs = {}
 		for Name, StudyDict in self.Studies.items():
+			AddPath = [self.COM_SCRIPTS, self.TMP_DIR, StudyDict['TMP_CALC_DIR']]
+			PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
+			PreCond = PythonPath + ["export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
+			PreCond = ''.join(PreCond)
+			
 			# Copy script to tmp folder and add in tmp file location
 			commfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].CommFile)
-			tmpcommfile = '{0}/{1}.comm'.format(StudyDict['TMP_CALC_DIR'],StudyDict['Parameters'].CommFile)
-			with open(commfile,'r') as g, open(tmpcommfile,'w') as f:
-				f.write("TMP_FILE = '{}'\n".format(StudyDict['TMP_FILE']) + g.read())
+			meshfile = "{}/{}.med".format(self.MESH_DIR,StudyDict['Parameters'].Mesh)
+			exportfile = "{}/Export".format(StudyDict['ASTER_DIR'])
 
 			# Create export file and write to file
 			exportstr = 'P actions make_etude\n' + \
@@ -310,22 +400,22 @@ class Setup():
 			'P mpi_nbnoeud {}\n'.format(mpi_nbnoeud) + \
 			'P ncpus {}\n'.format(ncpus) + \
 			'P memory_limit {!s}.0\n'.format(1024*Memory) +\
-			'F mmed {} D  20\n'.format(StudyDict['MESH_FILE']) + \
-			'F comm {} D  1\n'.format(tmpcommfile) + \
+			'F mmed {} D  20\n'.format(meshfile) + \
+			'F comm {} D  1\n'.format(commfile) + \
 			'F mess {}/AsterLog R  6\n'.format(StudyDict['ASTER_DIR']) + \
 			'R repe {} R  0\n'.format(StudyDict['ASTER_DIR'])
-			with open(StudyDict['EXPORT_FILE'],'w+') as e:
+			with open(exportfile,'w+') as e:
 				e.write(exportstr)
 
 			# Create different command file depending on the mode
 			errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
 			if self.mode == 'interactive':
 				xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
-				command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_ROOT, StudyDict['EXPORT_FILE'], errfile)
+				command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_ROOT, exportfile, errfile)
 			elif self.mode == 'continuous':
-				command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_ROOT, StudyDict['EXPORT_FILE'], StudyDict['ASTER_DIR'])
+				command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_ROOT, exportfile, StudyDict['ASTER_DIR'])
 			else :
-				command = "{} {} >/dev/null 2>&1".format(self.ASTER_ROOT, StudyDict['EXPORT_FILE'])
+				command = "{} {} >/dev/null 2>&1".format(self.ASTER_ROOT, exportfile)
 
 			# Start Aster subprocess
 			SubProcs[Name] = Popen(PreCond + command , shell='TRUE')
@@ -339,10 +429,10 @@ class Setup():
 				if Poll is not None:
 					err = Poll
 					if self.mode == 'interactive':
-						with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
+						with open('{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR']),'r') as f:
 							err = int(f.readline())
 					elif self.mode == 'continuous':
-						os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER_DIR']))
+						os.remove('{}/ContinuousAsterLog'.format(StudyDict['ASTER_DIR']))
 
 					if err != 0:
 						print("Error in simulation '{}' - Check the log file".format(Name))
@@ -355,9 +445,7 @@ class Setup():
 			# Check if subprocess has finished every 1 second
 			time.sleep(1)
 
-		if AsterError:
-			self.Exit("Some simulations finished with errors")
-
+		if AsterError: self.Exit("Some simulations finished with errors")
 		print('Finished Simulations')
 
 	def PostProc(self, **kwargs):
@@ -375,7 +463,6 @@ class Setup():
 				ResName = StudyDict['Parameters'].ResName
 				if type(ResName) == str: ResName = [ResName]
 				elif type(ResName) == dict: ResName=list(ResName.values())
-				elif type(ResName) == list: pass
 				ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER_DIR']) for name in ResName]
 
 			AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
@@ -402,32 +489,23 @@ class Setup():
 
 	def ErrorCheck(self, Stage, data = None):
 		if Stage == 'Input':
-			# Here the data variable is the input dictionary
 			# Check if the Input directory exists
-			if not os.path.isdir(self.INPUT_DIR):
-				self.Exit("Directory {0} not in {1} \n".format(os.path.basename(self.INPUT_DIR),os.path.dirname(self.INPUT_DIR)))
+			if not os.path.isdir(self.Input['INPUT_DIR']):
+				self.Exit("Directory {0} does not exist\n".format(self.Input['INPUT_DIR']))
 
 			# Check 'Main' is supplied in the dictionary and that the file exists
-			if 'Main' in data.keys():
-				Mainfile = '{}/{}.py'.format(self.INPUT_DIR, data['Main'])
+			if 'Main' in self.Input:
+				Mainfile = '{}/{}.py'.format(self.Input['INPUT_DIR'], self.Input['Main'])
 				if not os.path.exists(Mainfile):
-					self.Exit("The 'Main' file '{}' supplied not found in the Input directory\n".format(data['Main']))
-				self.INPUT = [Mainfile]	
+					self.Exit("'Main' input file '{}' not in Input directory {}\n".format(self.Input['Main'],self.Input['INPUT_DIR']))
 			else :
 				self.Exit("The key 'Main' has not been supplied in the input dictionary")
 							
-			if 'Parametric' in data.keys():
-				parafile = '{}/{}.py'.format(self.INPUT_DIR, data['Parametric'])
+			if 'Parametric' in self.Input:
+				parafile = '{}/{}.py'.format(self.Input['INPUT_DIR'], self.Input['Parametric'])
 				if not os.path.exists(parafile):
-					self.Exit("The 'Parametric' file '{}' supplied not found in the Input directory\n".format(data['Parametric']))
-				self.INPUT.append(parafile)
-				self.StudyType = 'Parametric'
+					self.Exit("'Parametric' input file '{}' not in Input directory {}\n".format(self.Input['Parametric'],self.Input['INPUT_DIR']))
 
-			elif 'Single' in data.keys():
-				self.INPUT.append(data['Single'])
-				self.StudyType = 'Single'
-			else :
-				self.Exit("Neither Parametric or Single supplied as a key in the input directory")
 
 		if Stage == 'MeshCreate':
 			# Here the data variable is the name of the studies

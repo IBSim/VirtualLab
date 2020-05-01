@@ -200,7 +200,7 @@ def Create(**kwargs):
 	NETGEN_3D_Parameters_1.SetFineness( 3 )
 	NETGEN_3D_Parameters_1.SetMinSize( Parameter.Length3D*0.5 )
 
-	smesh.SetName(Mesh_1.GetMesh(), Parameter.MeshName)
+	smesh.SetName(Mesh_1.GetMesh(), Parameter.Name)
 	smesh.SetName(Regular_1D_1.GetAlgorithm(), 'Regular_1D_1')
 	smesh.SetName(NETGEN_2D_1.GetAlgorithm(), 'NETGEN 2D_1')
 	smesh.SetName(NETGEN_3D_1.GetAlgorithm(), 'NETGEN 3D_1')

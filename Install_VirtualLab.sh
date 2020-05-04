@@ -36,8 +36,9 @@ sudo -u ${SUDO_USER:-$USER} git init
 #git clone https://gitlab.com/ibsim/virtuallab.git
 # Only download src with no history
 sudo -u ${SUDO_USER:-$USER} git pull --depth 1 git@gitlab.com:ibsim/virtuallab.git
-# Must use git clone if planning to commit changes
-#sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git
+# Must use git clone if planning to commit changes.
+# Can comment out 'git init' above if using this.
+#sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git .
 
 # Change permissions on setup and run scripts
 chmod 755 Setup.sh
@@ -53,4 +54,4 @@ cd ~/VirtualLab
 ./Test_VL.py
 # Need to add test to check results
 # Remove test files created by SU
-rm -r ~/VirtualLab/Training/
+#rm -r ~/VirtualLab/Training/

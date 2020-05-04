@@ -9,8 +9,8 @@ SALOMEVER='salome_meca-2019.0.3-1-universal'
 SALOMEBIN='appli_V2019.0.3_universal'
 
 # Standard update
-sudo apt update
-sudo apt upgrade
+sudo apt update -y
+sudo apt upgrade -y
 sudo apt install -y build-essential
 
 # Install python and required packages

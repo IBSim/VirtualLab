@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 sys.dont_write_bytecode=True
-import os
-from Scripts.Common import Setup
+
+from Scripts.Common import VLSetup
 
 Simulation = 'Tensile'
 StudyDir = 'Example'
 StudyName = 'Training_AutoParam'
-Input = {'Main' : 'Input', 'Parametric' : 'ParametricFile_Test'}
+Input = {'Main' : 'Input', 'Parametric' : 'ParametricFile'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
-Study = Setup(Simulation, StudyDir, StudyName, Input, mode = "continuous", port=2810)
+VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "continuous", port=2810)
 
 # Create temporary directories and files
-Study.Create()
+VirtualLab.Create()
 
-# Creates meshes and runs any other pre-procesing steps
-Study.PreProc()
+# Creates meshes
+VirtualLab.Mesh()
 
-# Run simulation.
-Study.Aster(ncpus=2, Memory=2)
-
-# Run post processing of results
-Study.PostProc()
+# Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
+VirtualLab.Aster(ncpus=2, Memory=2)
+VirtualLab.PostProc(ShowRes=False)
 
 # Remove tmp folders
-Study.Cleanup()
+VirtualLab.Cleanup()

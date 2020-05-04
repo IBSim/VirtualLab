@@ -2,29 +2,26 @@
 
 import sys
 sys.dont_write_bytecode=True
-import os
-from Scripts.Common import Setup
+from Scripts.Common import VLSetup
 
-Simulation = 'Tensile'
+Simulation = 'LFA'
 StudyDir = 'Example'
 StudyName = 'Training'
 Input = {'Main' : 'Input', 'Parametric' : 'ParametricFile'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
-Study = Setup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
+VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
 
 # Create temporary directories and files
-Study.Create()
+VirtualLab.Create(RunMesh = True, RunAster=True)
 
-# Creates meshes and runs any other pre-procesing steps
-Study.Mesh(RunMesh = True)
+# Creates meshes
+VirtualLab.Mesh()
 
-# Run simulation.
-Study.Aster(ncpus=2, Memory=2, RunAster=True)
-
-# Run post processing of results
-Study.PostProc(ShowRes=True)
+# Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
+VirtualLab.Aster(ncpus=2, Memory=2)
+VirtualLab.PostProc(ShowRes=False)
 
 # Remove tmp folders
-Study.Cleanup()
+VirtualLab.Cleanup()
 

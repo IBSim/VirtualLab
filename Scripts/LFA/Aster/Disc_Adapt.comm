@@ -1,21 +1,13 @@
-import os
 import sys
+sys.dont_write_bytecode=True
+import os
 import numpy as np
 import time as tm
-import shutil
-
 from Utilitai import partition
+
 import AsterFunc
-import aster
-
-sys.dont_write_bytecode=True
-########################################################################################################################
-
-sys.path.insert(0,os.path.dirname(TMP_FILE))
-Info = __import__(os.path.basename(os.path.splitext(TMP_FILE)[0]))
-Parameters = __import__(Info.PARAM_MOD)
-
-##########################################################################################################################
+import Parameters
+import PathVL
 
 def GaussProfile(x,y,sigma):
 	z = (1/(2*pi*sigma**2))*np.exp(-(x**2+y**2)/(2*sigma**2))
@@ -38,9 +30,8 @@ Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model, ),
 	                      TOUT='OUI'),
 	             	      MAILLAGE=mesh)
 
-
 ##### Define functions for NL material properties and assign materials to parts #####
-DictMat = AsterFunc.MaterialProps(Info.MATERIAL_DIR, Parameters.Materials.values())
+DictMat = AsterFunc.MaterialProps(PathVL.MATERIAL_DIR, Parameters.Materials.values())
 # Top Material
 TopRCP = DEFI_FONCTION(NOM_PARA='TEMP',
 	               PROL_DROITE='CONSTANT',
@@ -79,7 +70,7 @@ timearr = timearrOrig = np.concatenate(timelist)
 ##### Create BCs #####
 
 ## Laser Temporal Profile
-Lsrdat = np.fromfile('{}/Laser/{}.dat'.format(Info.SIM_SCRIPTS, Parameters.LaserT),dtype=float,count=-1,sep=" ")
+Lsrdat = np.fromfile('{}/Laser/{}.dat'.format(PathVL.SIM_SCRIPTS, Parameters.LaserT),dtype=float,count=-1,sep=" ")
 LsrProf = DEFI_FONCTION(NOM_PARA='INST',
 		       PROL_DROITE='CONSTANT',
 	               PROL_GAUCHE='CONSTANT',
@@ -90,21 +81,18 @@ LaserArea = np.trapz(flaser, x=xlaser)
 
 ## Laser Spatial Profile
 TopArea,TopNodes = AsterFunc.BCinfo(mesh,Group = 'Top_Face')[0:2]
-E_exp = Parameters.Energy
+
 if Parameters.LaserS == 'Uniform':
-	Fn = E_exp/(sum(TopArea)*LaserArea)
+	Fn = Parameters.Energy/(sum(TopArea)*LaserArea)
 	FluxProf = DEFI_CONSTANTE(VALE=Fn)
-
-
 elif Parameters.LaserS in ('Gauss','gauss'):
 	sigma = 0.005/(-2*np.log(1-0.1))**0.5 ### This value of sigma ensures a 10% reduction 5mm away from centre
-	Glist = []
-	for node in TopNodes:
-		x,y = mesht.cn[node][0:2]
-		Glist.append(GaussProfile(x,y,sigma))
-	SumLoad = np.dot(TopArea,Glist)
-	# Find value Fn which scales Gaussian profile to ensure correct energy input
-	Fn = E_exp/(SumLoad*LaserArea)
+	Coors = mesht.cn[TopNodes]
+	x, y  = Coors[:,0], Coors[:,1]
+	Gauss = GaussProfile(x,y,sigma)
+	SumLoad = np.dot(TopArea, Gauss)
+	Fn = Parameters.Energy/(SumLoad*LaserArea) ### Value Fn scales Gaussian profileto ensure correct energy input
+
 	FluxProf = FORMULE(VALE='Fn*GaussProfile(X,Y,sigma)',
 		       NOM_PARA=('X', 'Y'),sigma=sigma,Fn=Fn,GaussProfile=GaussProfile)
 
@@ -132,7 +120,7 @@ if Parameters.ImportRes not in ('Yes','Y','yes','y'):
 
 ### Import starting temperature profile from results
 else:	
-	DEFI_FICHIER(FICHIER=Info.RESULTS_DIR + '/ResTher.rmed', UNITE=40)		
+	DEFI_FICHIER(FICHIER=PathVL.RESULTS_DIR + '/ResTher.rmed', UNITE=40)		
 	resther = LIRE_RESU(FORMAT='MED',
 			    FORMAT_MED=_F(NOM_CHAM='TEMP',
 			    NOM_RESU='resther'),
@@ -143,8 +131,8 @@ else:
 	StartTime = (resther.LIST_VARI_ACCES()['INST'])[-1]
 	NewIndex = np.argmin(abs(timearr - StartTime))
 
-	if os.path.isfile(Info.DATA_DIR + '/TimeSteps.dat'):
-		PrevTime = np.fromfile(Info.DATA_DIR + '/TimeSteps.dat',dtype=float,count=-1,sep=' ')
+	if os.path.isfile(PathVL.DATA_DIR + '/TimeSteps.dat'):
+		PrevTime = np.fromfile(PathVL.DATA_DIR + '/TimeSteps.dat',dtype=float,count=-1,sep=' ')
 		ImportIndex = np.argmin(abs(PrevTime - StartTime))
 		timearr = np.concatenate((PrevTime[0:ImportIndex+1],timearr[NewIndex+1:]))
 	else:
@@ -155,9 +143,11 @@ else:
 
 MaxIter = getattr(Parameters, 'MaxIter', 10)
 LPend = getattr(Parameters, 'Lpend', xlaser[-1])
-
 LPindex = np.argmin(abs(timearr - LPend))
-Store = np.concatenate((timearr[:LPindex+1:Parameters.Store1],timearr[LPindex+Parameters.Store2::Parameters.Store2]))
+
+LaserStore = timearr[:LPindex+1:Parameters.Storing['Laser']]
+PostLaserStore = timearr[LPindex+Parameters.Storing['PostLaser']::Parameters.Storing['PostLaser']]
+Store = np.concatenate((LaserStore,PostLaserStore))
 timestp = DEFI_LIST_REEL(VALE=timearr)
 Storing = DEFI_LIST_REEL(VALE=Store)
 

@@ -1,11 +1,10 @@
-from os import walk, path, remove
-import numpy as np
 import sys
+sys.dont_write_bytecode=True
+import numpy as np
 import time
 from Utilitai import partition
+
 import AsterFunc
-import aster
-sys.dont_write_bytecode=True
 import Parameters
 import PathVL
 

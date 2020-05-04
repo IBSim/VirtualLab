@@ -1,69 +1,64 @@
+from types import SimpleNamespace as Namespace
+
 ##########################
-##### Pre-processing #####
+######## Meshing #########
 ##########################
+Mesh = Namespace()
+Mesh.Name = 'NoVoid'
+Mesh.File = 'Disc'
+# Geometric parameters (all units in metres)
+Mesh.Radius = 0.0063 # Radius of disk
+Mesh.HeightB = 0.00125 # Height of bottom part of disk
+Mesh.HeightT = 0.00125 # Height of top part of disk
+Mesh.VoidCentre = (0,0) # Void centre relative to centre of disk - (0, 0) is at the centre
+Mesh.VoidRadius = 0.000 # Radius of void
+Mesh.VoidHeight = 0.0000 # Height of Void. Positive/negative number gives a void in the top/bottom disk respectively
+# Parameters to generate mesh
+Mesh.Length1D = 0.0005
+Mesh.Length2D = 0.0005  
+Mesh.Length3D = 0.0005 
+Mesh.HoleDisc = 20 # Number of segments for hole circumference (for sub-mesh)
 
-# Mesh used for analysis should be input at 'MeshName'. This mesh should eiether be in the 'Mesh' directory or 'CreateMesh' flag should be set to 'Y'
-MeshName = 'NoVoid'
-CreateMesh = 'Y'
+##########################
+####### Simulation #######
+##########################
+Sim = Namespace()
+Sim.Name = 'Single'
 
-# If 'CreateMesh' is 'Y' then a mesh will be created using the below parameters
-# The Salome file to create the mesh can be found in Scripts/(Simulation)/PreProc
-MeshFile = 'Disc'
-### Geometric parameters (all units in metres)
-Radius = 0.0063 # Radius of disk
-HeightB = 0.00125 # Height of bottom part of disk
-HeightT = 0.00125 # Height of top part of disk
-VoidCentre = (0,0) # Void centre relative to centre of disk - (0, 0) is at the centre
-VoidRadius = 0.000 # Radius of void
-VoidHeight = 0.0000 # Height of Void. Positive/negative number gives a void in the top/bottom disk respectively
+#############
+## Pre-Sim ##
+#############
 
-### Mesh Parameters
-Length1D = 0.0005
-Length2D = 0.0005  
-Length3D = 0.0005 
-HoleDisc = 20 # Number of segments for hole circumference (for sub-mesh)
+#############
+### Aster ###
+#############
+Sim.CommFile = 'Disc_Lin'
+Sim.Mesh = 'NoVoid'
+Sim.Model = '3D'
+Sim.Solver = 'MUMPS'
+Sim.ResName = 'ResTher'
+# Material type(s) for analysis, the properties of which can be found in the 'Materials' directory
+Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
+# Initial Conditions - Need either an initial temperature or a results file to import
+Sim.InitTemp = 20
+Sim.ImportRes = 'n'
+# Laser profile
+Sim.Energy = 5.32468714
+Sim.LaserT= 'Trim' #Temporal profile (see Scripts/LFA/Laser for all options)
+Sim.LaserS = 'Gauss' #Spatial profile (Gauss profile or uniform profile available)
+# Boundary Condtions
+Sim.ExtTemp = 20
+Sim.BottomHTC = 0
+Sim.TopHTC = 0
+# Time-stepping and temporal discretisation
+Sim.dt = [(0.00004,20), (0.0005,100)]
+Sim.Theta = 0.5
+Sim.Storing = {'Laser':1, 'PostLaser':2}
 
-############################
-##### Code_aster study #####
-############################
-CommFile = 'Disc_Lin'
-ResName = 'ResTher'
-
-Model = '3D'
-Solver = 'MUMPS'
-
-### Materials
-Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
-
-### IC - Need either an initial temperature or a results file to import
-ImportRes = 'n'
-InitTemp = 20
-
-### Laser
-Energy = 5.32468714
-LaserT= 'Trim' #Temporal laser profile (see Scripts/LFA/Laser for all options)
-LaserS = 'Gauss' #Spatial laser profile (Gauss profile or uniform profile available)
-
-### Other BC
-ExtTemp = 20
-BottomHTC = 0
-TopHTC = 0
-
-### Time-stepping and temporal discretisation
-dt = [(0.00004,20), (0.0005,100)]
-
-Theta = 0.5
-Store1 = 1 ### When Laser is on
-Store2 = 2 ### When Laser is off
-
-
-############################
-###### Post-processing #####
-############################
-RunPostProc = 'Y'
-PostCalcFile = 'DiscPost'
-Rvalues = [0.1, 0.5, 1]
-
-ParaVisFile = 'DiscPV'
-
+#############
+## Post-Sim #
+#############
+Sim.PostCalcFile = 'DiscPost'
+Sim.Rvalues = [0.1, 0.5, 1]
+Sim.ParaVisFile = 'DiscPV'
 

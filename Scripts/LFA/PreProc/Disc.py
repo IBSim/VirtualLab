@@ -141,7 +141,7 @@ def Create(**kwargs):
 	smesh.SetName(NETGEN_2D_Parameters_1, 'NETGEN 2D Parameters_1')
 	smesh.SetName(Local_Length_1, 'Local Length_1')
 	smesh.SetName(NETGEN_3D_Parameters_1, 'NETGEN 3D Parameters_1')
-	smesh.SetName(Mesh_1, Parameter.MeshName)
+	smesh.SetName(Mesh_1, Parameter.Name)
 
 	## Add groups
 	Mesh_Top_Ext = Mesh_1.GroupOnGeom(DiskT,'Top',SMESH.VOLUME)
@@ -206,17 +206,16 @@ class TestDimensions():
 		self.MeshName = 'Test'
 
 
-def error(Parameters):
+def GeomError(Parameters):
 	''' This function is imported in during the Setup to pick up any errors which will occur for the given geometrical dimension. i.e. impossible dimensions '''
 
 	message = None
 	if Parameters.VoidHeight >= Parameters.HeightT:
-		message = 'Error: Void height too large ({})'.format(Parameters.MeshName)
+		message = 'Void height too large'
 	if Parameters.VoidRadius >= Parameters.Radius:
-		message = 'Error: Void radius too large ({})'.format(Parameters.MeshName)
+		message = 'Void radius too large'
 	if (Parameters.VoidHeight == 0 and  Parameters.VoidRadius !=0) or (Parameters.VoidHeight != 0 and  Parameters.VoidRadius ==0):
-		message = 'Error: The height and radius of the void must both be zero or non-zero ({})'.format(Parameters.MeshName)
-
+		message = 'The height and radius of the void must both be zero or non-zero'
 	return message
 
 if __name__ == '__main__':

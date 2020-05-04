@@ -39,19 +39,6 @@ def MeshInfo(Meshpath,outfile):
 	g.write(string)
 	g.close()
 
-def MeshExportOld(Mesh,Meshfile):
-
-	NbNodes = Mesh.NbNodes()
-	NbElems = Mesh.NbElements()
-	NbEdges = Mesh.NbEdges()
-	NbFaces = Mesh.NbFaces()
-	NbVolumes = Mesh.NbVolumes()
-
-	print ("Mesh has {} nodes and {} elements ({} Volumes, {} faces and {} edges)\n".format(NbNodes,NbElems,NbVolumes,NbFaces,NbEdges))
-
-	Mesh.ExportMED( Meshfile, 0, SMESH.MED_V2_2, 1, None ,1)
-	print ("Mesh successfully exported to {0}\n".format(Meshfile))
-
 def MeshExport(Mesh,Meshfile, **kwargs):
 	Overwrite = kwargs.get('Overwrite',1)
 
@@ -60,10 +47,12 @@ def MeshExport(Mesh,Meshfile, **kwargs):
 	NbEdges = Mesh.NbEdges()
 	NbFaces = Mesh.NbFaces()
 	NbVolumes = Mesh.NbVolumes()
-	print ("Mesh has {} nodes and {} elements ({} Volumes, {} faces and {} edges)\n".format(NbNodes,NbElems,NbVolumes,NbFaces,NbEdges))
-
-	Mesh.ExportMED( Meshfile, auto_groups=0, minor=40, overwrite=Overwrite,meshPart=None,autoDimension=1)
-	print ("Mesh successfully exported to {0}\n".format(Meshfile))
+	err = Mesh.ExportMED( Meshfile, auto_groups=0, minor=40, overwrite=Overwrite,meshPart=None,autoDimension=1)
+	if not err:
+		print ("Mesh has {} nodes and {} elements ({} Volumes, {} faces and {} edges)".format(NbNodes,NbElems,NbVolumes,NbFaces,NbEdges))
+		print ("Mesh successfully exported to {0}".format(Meshfile))
+	else:
+		print("Error in Exporting mesh")
 
 def ObjIndex(NewGeom, OldGeom, OldIndex, Tol=1e-9, Strict=True):
 	### This functions finds the index of a shape in a new geometry which was was created from a preious geometry

@@ -259,20 +259,20 @@ def Create(**kwargs):
 	globals().update(locals())
 
 
-def error(Parameters):
+def GeomError(Parameters):
 	''' This function is imported in during the Setup to pick up any errors which will occur for the given geometrical dimension. i.e. impossible dimensions '''
 
 	message = None
 	if Parameters.HandleWidth > (Parameters.GaugeWidth + 2*Parameters.TransRad):
-		message = 'Error: Handle width too wide for given gauge width and arc radius ({})'.format(Parameters.MeshName)
-	if (Parameters.Rad_a == 0 and Parameters.Rad_b !=0) or (Parameters.Rad_a != 0 and Parameters.Rad_b ==0) : 
-		message = 'Error: Both Parameter.Rad_a and Parameter.Rad_b must both be zero or non-zero ({})'.format(Parameters.MeshName)
+		message = 'Handle width too wide for given gauge width and arc radius'
+	if (Parameters.Rad_a == 0 and Parameters.Rad_b !=0) or (Parameters.Rad_a != 0 and Parameters.Rad_b ==0): 
+		message = 'Both Parameter.Rad_a and Parameter.Rad_b must both be zero or non-zero'
 	if (Parameters.Rad_a < 0 or Parameters.Rad_b < 0): 
-		message = 'Error: Radii must be positive ({})'.format(Parameters.MeshName)
+		message = 'Radii must be positive'
 	if abs(Parameters.HoleCentre[1]) + 2*Parameters.Rad_b >= Parameters.GaugeWidth/2:
-		message = 'Error: Hole not entirely in testpiece ({})'.format(Parameters.MeshName)
+		message = 'Hole not entirely in testpiece'
 	if abs(Parameters.HoleCentre[0]) + 2*Parameters.Rad_a >= Parameters.GaugeLength/2:
-		message = 'Error: Hole not entirely in gauge ({})'.format(Parameters.MeshName)
+		message = 'Hole not entirely in gauge'
 	
 	return message
 

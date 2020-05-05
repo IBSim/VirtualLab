@@ -8,6 +8,9 @@ SALOMEVER='salome_meca-2019.0.3-1-universal'
 # Version number in unpacked directory
 SALOMEBIN='appli_V2019.0.3_universal'
 
+# This should be in VLconfig
+VL_DIR="$HOME/VirtualLab"
+
 # Standard update
 sudo apt update -y
 sudo apt upgrade -y
@@ -18,6 +21,10 @@ sudo apt install -y python3
 sudo apt install -y python3-pip
 sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py
 sudo -u ${SUDO_USER:-$USER} pip3 install iapws
+
+# Add $VL_DIR to $PYTHONPATH in python env and current shell
+sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.bashrc
+export PYTHONPATH=$PYTHONPATH$VL_DIR
 
 # Install salome related libs
 sudo ubuntu-drivers autoinstall

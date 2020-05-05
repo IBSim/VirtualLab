@@ -12,6 +12,9 @@ SALOMEVER='salome_meca-2019.0.3-1-universal'
 # Version number in unpacked directory
 SALOMEBIN='appli_V2019.0.3_universal'
 
+# This should be in VLconfig
+VL_DIR="$HOME/VirtualLab"
+
 # Standard update
 sudo apt update -y
 sudo apt upgrade -y
@@ -53,6 +56,13 @@ sudo apt install -y python3-pip
 #sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py iapws
 sudo -u ${SUDO_USER:-$USER} pip3 install fpdf
 #sudo -u ${SUDO_USER:-$USER} pip3 install fpdf2
+
+# Add $VL_DIR to $PYTHONPATH in Conda env and current shell
+PYV=`python -V`
+PYV2=${PYV#* }
+PYV=${PYV2%.*}
+sudo -u ${SUDO_USER:-$USER} echo $VL_DIR >> $HOME/anaconda3/envs/$CONDAENV/lib/python$PYV/site-packages/VirtualLab.pth
+export PYTHONPATH=$PYTHONPATH$VL_DIR
 
 # Install salome related libs
 sudo ubuntu-drivers autoinstall

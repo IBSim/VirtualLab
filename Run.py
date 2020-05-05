@@ -4,7 +4,7 @@ import sys
 sys.dont_write_bytecode=True
 from Scripts.Common import VLSetup
 
-Simulation = 'LFA'
+Simulation = 'Tensile'
 StudyDir = 'Example'
 StudyName = 'Training'
 Input = {'Main' : 'Input', 'Parametric' : 'ParametricFile'}

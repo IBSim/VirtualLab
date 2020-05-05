@@ -11,8 +11,19 @@ Mesh.Rad_b = [0.001,0.0005]
 ##########################
 ####### Simulation #######
 ##########################
-Aster = Namespace()
-Aster.SimName = ['Parametric1', 'Parametric2']
-Aster.Mesh = ['Notch2', 'Notch3']
+Sim = Namespace()
+Sim.Name = ['Parametric1', 'Parametric2']
+#############
+## Pre-Sim ##
+#############
+
+#############
+### Aster ###
+#############
+Sim.Mesh = ['Notch2', 'Notch3']
+
+#############
+## Post-Sim #
+#############
 
 

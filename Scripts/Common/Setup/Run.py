@@ -22,6 +22,7 @@ class VLSetup():
 		     - continuous: Output written to file throughout execution
 		     - headless: Output written to file at the end of execution
 		AsterRoot: CodeAster root location. If this is not provided it is assumed it's a part of SalomeMeca
+		VL_exe: Give the executable within VL_DIR to test that VL is in PATHS
 		'''
 
 		port = kwargs.get('port', None)

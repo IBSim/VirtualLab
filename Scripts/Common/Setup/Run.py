@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 sys.dont_write_bytecode=True
 import datetime
@@ -26,6 +28,7 @@ class VLSetup():
 		mode = kwargs.get('mode', 'headless')
 		AsterRoot = kwargs.get('AsterRoot', None)
 		ConfigFile = kwargs.get('ConfigFile','VLconfig') 
+		VL_exe = kwargs.get('VL_exe','Test_VL.py')
 
 		# If port is provided it assumes an open instance of salome exists on that port and will shell in to it
 		# The second value in the list dictates whether or not to kill the salome instance at the end of the process
@@ -45,7 +48,19 @@ class VLSetup():
 
 		# Get the path to the top level directory, VL_DIR
 		frame = inspect.stack()[1]
-		VL_DIR = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
+		pwd = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
+		# Include these lines to execute VL_RunFile from anywhere.
+		# To succeed, VL_DIR must be in PATH and VL_exe must be executable.
+		if os.path.isdir(pwd+"/Scripts") == False:
+			if shutil.which(VL_exe) == None:
+				print("Can't find VirtualLab in PATH, exiting.")
+				exit()
+			else:
+				print("VirtualLab found in PATH.")
+				VL_DIR = os.path.dirname(shutil.which(VL_exe))
+		else:
+			print("Currently running from VL_DIR")
+			VL_DIR = pwd
 
 		# Initiate variables and run some checks
 		### Script directories

@@ -23,10 +23,27 @@ if [ -d "$DIR" ]; then
   # Take action if $DIR exists. #
   echo "Skipping mkdir as ${DIR} already exists"
   source ~/VirtualLab/.VLprofile
+
+  if grep -q '/home/'$USER'/VirtualLab' ~/.bashrc; then
+    echo "VirtualLab is already in PATH"
+  else
+    # Adding VirtualLab to PATH
+    echo "Adding VirtualLab to PATH"
+    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="/home/'$USER'/VirtualLab:$PATH"'  >> ~/.bashrc
+    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="/home/'$USER'/VirtualLab:$PATH"'  >> ~/VirtualLab/.VLprofile
+    export PATH="/home/'$USER'/VirtualLab:$PATH"
+  fi
+
 else
   ###  Control will jump here if $DIR does NOT exist ###
   echo "Creating ${DIR} directory"
   sudo -u ${SUDO_USER:-$USER} mkdir ${DIR}
+
+  # Adding VirtualLab to PATH
+  echo "Adding VirtualLab to PATH"
+  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="/home/'$USER'/VirtualLab:$PATH"'  >> ~/.bashrc
+  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="/home/'$USER'/VirtualLab:$PATH"'  >> ~/VirtualLab/.VLprofile
+  export PATH="/home/$USER/VirtualLab:$PATH"
 fi
 
 # Download latest VirtualLab code

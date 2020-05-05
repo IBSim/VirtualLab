@@ -11,6 +11,7 @@
 !Run.py
 !Instructions.odt
 !Setup.sh
+!Setup_wConda.sh
 !Install_VirtualLab.sh
 !Test_VL.py
 !Test_VL_Parametric.py

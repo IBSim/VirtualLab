@@ -3,6 +3,70 @@
 VL_DIR_NAME="VirtualLab"
 VL_DIR="$HOME/$VL_DIR_NAME"
 
+usage() {
+  echo
+  echo "Usage:"
+  echo " $0 [ -P {y/c/n} ] [ -S {y/n} ]"
+  echo
+  echo "A script to install VirtualLab and its dependencies."
+  echo
+  echo "Options:"
+  echo "   '-P y' Install python using local installation"
+  echo "   '-P c' Install python using conda envrionment"
+  echo "   '-P n' Do not install python"
+  echo "   '-S y' Install Salome-Meca"
+  echo "   '-P n' Do not install Salome-Meca"
+  echo
+  echo "Default behaviour is to not install -P or -S."
+}
+exit_abnormal() {
+  usage
+  exit 1
+}
+while getopts ":h" options; do
+   case "${options}" in
+      h) # display Help
+         exit_abnormal
+         ;;
+   esac
+done
+while getopts ":P:S:" options; do 
+  case "${options}" in
+    P)
+      PYTHON_INST=${OPTARG}
+      if [ "$PYTHON_INST" == "y" ]; then
+        echo "Python will be installed/updated and configured as part of VirtualLab install."
+      elif [ "$PYTHON_INST" == "c" ]; then
+        echo "Conda will be installed/updated and configured as part of VirtualLab install."
+      elif [ "$PYTHON_INST" == "n" ]; then
+        echo "Python will not be installed or configured during setup, please do this manually."
+      else
+        echo "Error: Invalid option argument $PYTHON_INST" >&2
+        exit_abnormal
+      fi
+      ;;
+    S)
+      SALOME_INST=${OPTARG}
+      if [ "$SALOME_INST" == "y" ]; then
+        echo "Salome-Meca will be installed and configured as part of VirtualLab install."
+      elif [ "$SALOME_INST" == "n" ]; then
+        echo "Salome-Meca will not be installed or configured during setup, please do this manually."
+      else
+        echo "Error: Invalid option argument $PYTHON_INST" >&2
+        exit_abnormal
+      fi
+      ;;
+    :)  # If expected argument omitted:
+      echo "Error: Option -${OPTARG} requires an argument."
+      exit_abnormal
+      ;;
+    *)  # If unknown (any other) option:
+      echo "Error: Invalid option -$OPTARG" >&2
+      exit_abnormal
+      ;;
+  esac
+done
+
 # Standard update
 sudo apt update -y
 sudo apt upgrade -y
@@ -62,9 +126,23 @@ fi
 #chmod 755 Test_VL.py
 
 # Run initial VirtualLab setup (including salome install)
-source Scripts/Install/Install_python.sh
+if [ "$PYTHON_INST" == "y" ]; then
+  echo "Installing python"
+  source Scripts/Install/Install_python.sh -C n
+elif [ "$PYTHON_INST" == "c" ]; then
+  echo "Installing conda"
+  source Scripts/Install/Install_python.sh -C y
+else
+  echo "Skipping python installation"
+fi
+
 cd $VL_DIR
-source Scripts/Install/Install_Salome.sh
+if [ "$SALOME_INST" == "y" ]; then
+  echo "Installing salome"
+  source Scripts/Install/Install_Salome.sh
+else
+  echo "Skipping salome installation"
+fi
 
 # Currently can only run test as SU (therefore output files protected)
 #sudo -u ubuntu python3 Test_VL.py

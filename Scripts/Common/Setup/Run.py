@@ -22,14 +22,12 @@ class VLSetup():
 		     - continuous: Output written to file throughout execution
 		     - headless: Output written to file at the end of execution
 		AsterRoot: CodeAster root location. If this is not provided it is assumed it's a part of SalomeMeca
-		VL_exe: Give the executable within VL_DIR to test that VL is in PATHS
 		'''
 
 		port = kwargs.get('port', None)
 		mode = kwargs.get('mode', 'headless')
 		AsterRoot = kwargs.get('AsterRoot', None)
 		ConfigFile = kwargs.get('ConfigFile','VLconfig') 
-		VL_exe = kwargs.get('VL_exe','Test_VL.py')
 
 		# If port is provided it assumes an open instance of salome exists on that port and will shell in to it
 		# The second value in the list dictates whether or not to kill the salome instance at the end of the process
@@ -48,21 +46,10 @@ class VLSetup():
 		VLconfig = __import__(ConfigFile)
 
 		# Get the path to the top level directory, VL_DIR
-		frame = inspect.stack()[1]
+		frame = inspect.stack()[1]		
 		pwd = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
-		# Include these lines to execute VL_RunFile from anywhere.
-		# To succeed, VL_DIR must be in PATH and VL_exe must be executable.
-		if os.path.isdir(pwd+"/Scripts") == False:
-			if shutil.which(VL_exe) == None:
-				print("Can't find VirtualLab in PATH, exiting.")
-				exit()
-			else:
-				print("VirtualLab found in PATH.")
-				VL_DIR = os.path.dirname(shutil.which(VL_exe))
-		else:
-			print("Currently running from VL_DIR")
-			VL_DIR = pwd
-
+		VL_DIR=getattr(VLconfig,"VL_DIR",pwd)
+		
 		# Initiate variables and run some checks
 		### Script directories
 		self.SCRIPT_DIR = "{}/Scripts".format(VL_DIR)
@@ -79,7 +66,7 @@ class VLSetup():
 		# Materials directory
 		self.MATERIAL_DIR = "{}/Materials".format(VL_DIR)
 
-		# Output directories - these is where meshes, Aster results and pre/post-processing will be stored
+		# Output directories - these are where meshes, Aster results and pre/post-processing will be stored
 		OUTPUT_DIR = getattr(VLconfig,'OutputDir',"{}/Output".format(VL_DIR))
 		OUTPUT_DIR = OUTPUT_DIR.replace('$VLDir',VL_DIR)
 		STUDY_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, StudyDir)

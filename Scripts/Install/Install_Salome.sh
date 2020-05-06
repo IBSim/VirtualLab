@@ -13,23 +13,9 @@ sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential
 
-# Install python and required packages
-sudo apt install -y python3
-sudo apt install -y python3-pip
-sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py
-sudo -u ${SUDO_USER:-$USER} pip3 install iapws
-
 # Install salome related libs
 sudo ubuntu-drivers autoinstall
-sudo apt install -y libcanberra-gtk-module libcanberra-gtk3-module
-sudo apt install -y net-tools
-sudo apt install -y xterm
-sudo apt install -y libopenblas-dev
-sudo apt install -y tcl8.5
-sudo apt install -y tk8.5
-sudo apt install -y gfortran
-sudo apt install -y libgfortran3
-sudo apt install -y python-tk
+sudo apt install -y libcanberra-gtk-module libcanberra-gtk3-module net-tools xterm libopenblas-dev tcl8.5 tk8.5 gfortran libgfortran3 python-tk
 
 # Test to check if salome already exists in current shell's PATH
 if hash salome 2>/dev/null; then
@@ -48,10 +34,13 @@ else
     source <(grep "$SALOMEDIR/$SALOMEBIN" ~/.bashrc)
   else
     # Otherwise download and install
-    echo "Salome not found in PATH or .bashrc"
-    echo "Proceeding to download and unpack salome in /home/$USER"
     cd ~
-    sudo -u ${SUDO_USER:-$USER} wget https://www.code-aster.org/FICHIERS/"$SALOMEVER".tgz
+    echo "Salome not found in PATH or .bashrc"
+      if test ! -f "$SALOMEVER".tgz; then
+        echo "Proceeding to download salome in /home/$USER"
+        sudo -u ${SUDO_USER:-$USER} wget https://www.code-aster.org/FICHIERS/"$SALOMEVER".tgz
+      fi
+    echo "Proceeding to unpack salome in /home/$USER"
     sudo -u ${SUDO_USER:-$USER} tar xvf "$SALOMEVER".tgz
     echo "Installing salome in $SALOMEDIR"
     echo -e "$SALOMEDIR\nN" | sudo ./"$SALOMEVER".run
@@ -74,3 +63,4 @@ else
     fi
   fi
 fi
+

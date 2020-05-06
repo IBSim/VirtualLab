@@ -16,6 +16,6 @@ sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py
 sudo -u ${SUDO_USER:-$USER} pip3 install iapws
 
 # Add $VL_DIR to $PYTHONPATH in python env and current shell
-sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.bashrc
+sudo -u ${SUDO_USER:-$USER} echo 'export PYTHONPATH=$PYTHONPATH'$VL_DIR''  >> ~/.bashrc
 export PYTHONPATH=$PYTHONPATH$VL_DIR
 

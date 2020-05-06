@@ -34,10 +34,13 @@ else
     source <(grep "$SALOMEDIR/$SALOMEBIN" ~/.bashrc)
   else
     # Otherwise download and install
-    echo "Salome not found in PATH or .bashrc"
-    echo "Proceeding to download and unpack salome in /home/$USER"
     cd ~
-    sudo -u ${SUDO_USER:-$USER} wget https://www.code-aster.org/FICHIERS/"$SALOMEVER".tgz
+    echo "Salome not found in PATH or .bashrc"
+      if test ! -f "$SALOMEVER".tgz; then
+        echo "Proceeding to download salome in /home/$USER"
+        sudo -u ${SUDO_USER:-$USER} wget https://www.code-aster.org/FICHIERS/"$SALOMEVER".tgz
+      fi
+    echo "Proceeding to unpack salome in /home/$USER"
     sudo -u ${SUDO_USER:-$USER} tar xvf "$SALOMEVER".tgz
     echo "Installing salome in $SALOMEDIR"
     echo -e "$SALOMEDIR\nN" | sudo ./"$SALOMEVER".run

@@ -63,8 +63,8 @@ fi
 
 # Run initial VirtualLab setup (including salome install)
 source Scripts/Install/Setup.sh
-#cd $VL_DIR
-#source Install_Salome.sh
+cd $VL_DIR
+source Scripts/Install/Install_Salome.sh
 
 # Currently can only run test as SU (therefore output files protected)
 #sudo -u ubuntu python3 Test_VL.py

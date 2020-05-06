@@ -62,7 +62,7 @@ fi
 #chmod 755 Test_VL.py
 
 # Run initial VirtualLab setup (including salome install)
-source Scripts/Install/Setup.sh
+source Scripts/Install/Install_python.sh
 cd $VL_DIR
 source Scripts/Install/Install_Salome.sh
 

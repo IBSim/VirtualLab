@@ -24,26 +24,19 @@ if [ -d "$VL_DIR" ]; then
   # Take action if $VL_DIR exists. #
   echo "Skipping mkdir as ${VL_DIR} already exists"
   source $VL_DIR/.VLprofile
-
-  if grep -q $VL_DIR ~/.bashrc; then
-    echo "VirtualLab is already in PATH"
-  else
-    # Adding VirtualLab to PATH
-    echo "Adding VirtualLab to PATH"
-    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.bashrc
-    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> $VL_DIR/.VLprofile
-    export PATH="'$VL_DIR':$PATH"
-  fi
-
 else
   ###  Control will jump here if $VL_DIR does NOT exist ###
   echo "Creating ${VL_DIR} directory"
   sudo -u ${SUDO_USER:-$USER} mkdir ${VL_DIR}
+fi
 
+if grep -q $VL_DIR ~/.bashrc; then
+  echo "VirtualLab is already in PATH"
+else
   # Adding VirtualLab to PATH
   echo "Adding VirtualLab to PATH"
   sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.bashrc
-  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> $VL_DIR/.VLprofile
+#  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> $VL_DIR/.VLprofile
   export PATH="'$VL_DIR':$PATH"
 fi
 
@@ -56,22 +49,25 @@ cd $VL_DIR
 #sudo -u ${SUDO_USER:-$USER} git pull --depth 1 git@gitlab.com:ibsim/virtuallab.git
 # Must use git clone if planning to commit changes.
 # Can comment out 'git init' above if using this.
-sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git .
+if test -d ".git"; then
+  sudo -u ${SUDO_USER:-$USER} git pull git@gitlab.com:ibsim/virtuallab.git
+else
+  sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git .
+fi
 
 # Change permissions on setup and run scripts
 #chmod 755 Setup.sh
 #chmod 755 Test_VL.py
 
 # Run initial VirtualLab setup (including salome install)
-source Setup.sh
-cd $VL_DIR
-source Install_Salome.sh
+#source Setup.sh
+#cd $VL_DIR
+#source Install_Salome.sh
 
 # Currently can only run test as SU (therefore output files protected)
 #sudo -u ubuntu python3 Test_VL.py
 #sudo -u ${SUDO_USER:-$USER} ./Test_VL.py
-Test_VL.py
+#Test_VL.py
 # Need to add test to check results
 # Remove test files created by SU
 #rm -r ~/VirtualLab/Training/
-

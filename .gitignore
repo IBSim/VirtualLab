@@ -13,6 +13,7 @@
 !Setup.sh
 !Setup_wConda.sh
 !Install_VirtualLab.sh
+!Install_Salome.sh
 !Test_VL.py
 !Test_VL_Parametric.py
 !VLconfig.py

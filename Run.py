@@ -7,20 +7,20 @@ from Scripts.Common import VLSetup
 Simulation = 'Tensile'
 StudyDir = 'Example'
 StudyName = 'Training'
-Input = {'Main' : 'Input', 'Parametric' : 'ParametricFile'}
+Input = {'Main' : 'Input'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
 VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
 
 # Create temporary directories and files
-VirtualLab.Create(RunMesh = True, RunAster=True)
+VirtualLab.Create()
 
 # Creates meshes
 VirtualLab.Mesh()
 
 # Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
-VirtualLab.Aster(ncpus=2, Memory=2)
-VirtualLab.PostProc(ShowRes=False)
+VirtualLab.Aster()
+VirtualLab.PostProc(ShowRes=True)
 
 # Remove tmp folders
 VirtualLab.Cleanup()

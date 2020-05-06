@@ -13,7 +13,6 @@ Mesh.VoidHeight = [0, 0.0003]
 ##########################
 Sim = Namespace()
 Sim.Name = ['SimNoVoid','SimVoid']
-
 #############
 ## Pre-Sim ##
 #############

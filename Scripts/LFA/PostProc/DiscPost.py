@@ -5,6 +5,9 @@ import sys
 from VLFunctions import MeshInfo, MaterialProperty
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from fpdf import FPDF
+import scipy.ndimage
+
 
 def KCalc(halfT, l, rho, Cp):
 	alpha=(0.1388*(l**2))/halfT
@@ -12,9 +15,9 @@ def KCalc(halfT, l, rho, Cp):
 	return k, alpha
 
 def main(Info, study):
-	studydict = Info.Studies[study]
+	StudyDict = Info.Studies[study]
 
-	ResFile = '{}/{}.rmed'.format(studydict['ASTER_DIR'], studydict['Parameters'].ResName)
+	ResFile = '{}/{}.rmed'.format(StudyDict['ASTER_DIR'], StudyDict['Parameters'].ResName)
 	# Get mesh information from the results file
 	meshdata = MeshInfo(ResFile)
 
@@ -52,7 +55,7 @@ def main(Info, study):
 #	print(Radius, Height, VoidRadius, VoidHeight)
 
 	# Create plots of temperature v time on the bottom surface
-	Rvalues = getattr(studydict['Parameters'], 'Rvalues', None)
+	Rvalues = getattr(StudyDict['Parameters'], 'Rvalues', None)
 	if Rvalues:
 		Rplot = True
 		Rvalues = sorted(Rvalues, reverse = True)
@@ -88,7 +91,7 @@ def main(Info, study):
 	plt.xlabel('Time',fontsize = 20)
 	plt.ylabel('Temperature',fontsize = 20)
 	plt.plot(Time, AvTemp)
-	plt.savefig("{}/BaseTemp.png".format(studydict['OUTPUT_DIR']), bbox_inches='tight')
+	plt.savefig("{}/BaseTemp.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
 	plt.close()
 
 	# Plot temp v time for rfactor bottom surface
@@ -101,25 +104,25 @@ def main(Info, study):
 		for Rdata, Rval in zip(np.transpose(R), Rvalues):
 			plt.plot(Time, Rdata, label = 'R = {}'.format(Rval))
 		plt.legend(loc='upper left')
-		plt.savefig("{}/Rplot.png".format(studydict['OUTPUT_DIR']), bbox_inches='tight')
+		plt.savefig("{}/Rplot.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
 		plt.close()
 
 	# Half Rise time of sample
 	HalfTime = np.interp(0.5*(AvTemp[0] + AvTemp[-1]), AvTemp, Time)
 
 	# Check thermal conductivity if there's no void and it's all the same material
-	Materials = list(set(studydict['Parameters'].Materials.values()))	
+	Materials = list(set(StudyDict['Parameters'].Materials.values()))	
 	if len(Materials) == 1:
 		matpath = "{}/{}".format(Info.MATERIAL_DIR, Materials[0])
 		Rhodat = np.fromfile('{}/Rho.dat'.format(matpath),dtype=float,count=-1,sep=" ")
 		Cpdat = np.fromfile('{}/Cp.dat'.format(matpath),dtype=float,count=-1,sep=" ")
-		Rho = MaterialProperty(Rhodat,studydict['Parameters'].InitTemp)
-		Cp = MaterialProperty(Cpdat,studydict['Parameters'].InitTemp)
+		Rho = MaterialProperty(Rhodat,StudyDict['Parameters'].InitTemp)
+		Cp = MaterialProperty(Cpdat,StudyDict['Parameters'].InitTemp)
 		# Check thermal conductivity if there's no void
 		if VoidHeight == 0:
 			CalcLambda, CalcAlpha = KCalc(HalfTime, Height, Rho, Cp)	
 			Lambdadat = np.fromfile('{}/Lambda.dat'.format(matpath),dtype=float,count=-1,sep=" ")
-			Lambda = MaterialProperty(Lambdadat,studydict['Parameters'].InitTemp)
+			Lambda = MaterialProperty(Lambdadat,StudyDict['Parameters'].InitTemp)
 
 			print("Thermal conductivity (at initial temperature) used for study: {}".format(Lambda))
 			print("Back calculated thermal conductivity using average temperature on base of disk: {}\n".format(CalcLambda))
@@ -127,17 +130,17 @@ def main(Info, study):
 			print("Back calculation of the thermal conductivity is impossible due to void\n")
 
 		# Check if temperature increase is correct
-		if studydict['Parameters'].TopHTC == studydict['Parameters'].BottomHTC == 0:
+		if StudyDict['Parameters'].TopHTC == StudyDict['Parameters'].BottomHTC == 0:
 			ActdT = AvTemp[-1] - AvTemp[0]
 			vol = Radius**2*np.pi*Height - VoidRadius**2*np.pi*VoidHeight
-			ExpdT = studydict['Parameters'].Energy/(vol*Rho*Cp)
+			ExpdT = StudyDict['Parameters'].Energy/(vol*Rho*Cp)
 			print("Anticipated temperature increase from energy input: {}".format(ActdT))
 			print("Measured temperature increase from simulation: {}\n".format(ExpdT))
 		else :
 			print("Cannot measure temperature change due to BC")
 
 	# Get plot of flux over top surface
-	if studydict['Parameters'].LaserS in ('Gauss', 'gauss'):
+	if StudyDict['Parameters'].LaserS in ('Gauss', 'gauss'):
 		sigma = 0.005/(-2*np.log(1-0.1))**0.5
 		Res = [np.array([0.0, 0.0]) for i in range(Top_Face.NbNodes)]
 		for face in Top_Face.Connect:
@@ -157,7 +160,7 @@ def main(Info, study):
 		print("Exact volume under multivariate Gaussian distribution is: {}".format(ExactMGD))
 		print("The volume due to the spatial discretisation (mesh fineness) is: {}\n".format(AprxMGD))
 
-	elif studydict['Parameters'].LaserS == 'Uniform':
+	elif StudyDict['Parameters'].LaserS == 'Uniform':
 		Res = np.zeros((Top_Face.NbNodes,1))
 		for face in Top_Face.Connect:
 			FaceIx = np.where(np.in1d(Top_Face.Nodes, face))[0]
@@ -175,18 +178,24 @@ def main(Info, study):
 	im2 = ax2.scatter(TopCoor[:,0], TopCoor[:,1], c=Res[:,1], cmap=cmap)
 	ax1.axis('off')
 	ax2.axis('off')
-	plt.savefig("{}/FluxDist.png".format(studydict['OUTPUT_DIR']), bbox_inches='tight')
+	plt.savefig("{}/FluxDist.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
 	plt.close()
 
 	# Accuracy of temporal discretisation for laser pulse
-	Lsrdat = np.fromfile('{}/Laser/{}.dat'.format(Info.SIM_SCRIPTS, studydict['Parameters'].LaserT),dtype=float,count=-1,sep=" ")
+	Lsrdat = np.fromfile('{}/Laser/{}.dat'.format(Info.SIM_SCRIPTS, StudyDict['Parameters'].LaserT),dtype=float,count=-1,sep=" ")
 	xp, fp = Lsrdat[::2], Lsrdat[1::2]
-	TimeSteps = np.fromfile('{}/TimeSteps.dat'.format(studydict['ASTER_DIR']),dtype=float,count=-1,sep=" ")
+	TimeSteps = np.fromfile('{}/TimeSteps.dat'.format(StudyDict['ASTER_DIR']),dtype=float,count=-1,sep=" ")
 	TimeSteps = TimeSteps[TimeSteps <= xp[-1]]
 	ExactLaser = np.trapz(fp, xp)
 	AprxLaser = np.trapz(np.interp(TimeSteps,xp,fp), TimeSteps) 
 	print("Exact area under the laser pulse curve is: {}".format(ExactLaser))
 	print("The area due to temporal discretisation (timestep size) is: {}\n".format(AprxLaser))
+
+
+
+
+
+
 
 
 

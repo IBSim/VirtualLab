@@ -14,17 +14,16 @@ Mesh.VoidCentre = (0,0) # Void centre relative to centre of disk - (0, 0) is at 
 Mesh.VoidRadius = 0.000 # Radius of void
 Mesh.VoidHeight = 0.0000 # Height of Void. Positive/negative number gives a void in the top/bottom disk respectively
 # Parameters to generate mesh
-Mesh.Length1D = 0.0005
-Mesh.Length2D = 0.0005  
-Mesh.Length3D = 0.0005 
-Mesh.HoleDisc = 20 # Number of segments for hole circumference (for sub-mesh)
+Mesh.Length1D = 0.0003
+Mesh.Length2D = 0.0003  
+Mesh.Length3D = 0.0003 
+Mesh.HoleDisc = 30 # Number of segments for hole circumference (for sub-mesh)
 
 ##########################
 ####### Simulation #######
 ##########################
 Sim = Namespace()
 Sim.Name = 'Single'
-
 #############
 ## Pre-Sim ##
 #############

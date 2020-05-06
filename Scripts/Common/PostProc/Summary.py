@@ -49,26 +49,7 @@ def title(Text,fontsize,length):
 	pdf.cell(length, fontsize*Factor, Text, ShowBox, 1, 'A')
 	pdf.ln(2)
 
-def makePDF(TMP_FILE):
-##############################################################################
-	f = open(TMP_FILE,'a+')
-	Info = f.readlines()
-	f.close()
-	Dic = {}
-	for line in Info:
-		data = line.split()
-		Dic[data[0][:-1]] = data[1]
-
-	OUTPUT_DIR = Dic['OUTPUT_DIR']
-	CALC_DIR = Dic['CALC_DIR']
-	MESH_FILE = Dic['MESH_FILE']
-	MATERIAL_DIR = Dic['MATERIAL_DIR']
-	PARAM_MOD = Dic['PARAM_MOD']
-
-	Param = __import__(PARAM_MOD)
-#	Geom_name = Param.GeomName
-
-################################################################################
+def makePDF(Info):
 	#### Data
 	f = open(os.path.splitext(MESH_FILE)[0] + '.dat','r+')
 	PreProc = f.readlines()

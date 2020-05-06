@@ -101,22 +101,22 @@ class VLSetup():
 		'''
 		kwargs available:
 		RunMesh: Boolean to dictate whether or not to create meshes
-		RunAster: Boolean to dictate whether or not to run CodeAster
+		RunSim: Boolean to dictate whether or not to run CodeAster
 		'''
 		RunMesh = kwargs.get('RunMesh', True)
-		RunAster = kwargs.get('RunAster','True')
+		RunSim = kwargs.get('RunSim','True')
+
+		sys.path.insert(0, self.COM_SCRIPTS)
 
 		sys.path.insert(0, self.Input['INPUT_DIR'])
 		Main = __import__(self.Input['Main'])
+		Parametric = self.Input.get('Parametric', None)
+		if Parametric: Parametric = __import__(Parametric)
 
 #		if not os.path.isdir(self.TMP_DIR): os.makedirs(self.TMP_DIR)
 		MainDict = copy.deepcopy(self.__dict__)
 		MainMesh = getattr(Main, 'Mesh', None)
 		MainSim = getattr(Main, 'Sim', None)
-
-		if 'Parametric' in self.Input: Parametric = __import__(self.Input['Parametric'])
-		else : Parametric = None
-
 		self.MeshList = []
 		self.Studies = {}
 		# Create Mesh parameter files if they are required
@@ -142,7 +142,7 @@ class VLSetup():
 				self.MeshList.append(MeshName)
 
 		# Create Simulation parameter files
-		if RunAster and MainSim:
+		if RunSim and MainSim:
 			if not os.path.exists(self.ASTER_ROOT):
 				self.Exit("CodeAster location invalid")
 
@@ -161,16 +161,15 @@ class VLSetup():
 			for SimName, ParaDict in SimDict.items():
 				self.ErrorCheck('Simulation',SimDict=ParaDict)
 				StudyDict = {}
-				# Create simulation related directories
+				# Define simulation related directories
 				StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, SimName)
+				StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.SIM_DIR, SimName)
+				StudyDict['PRE_DIR'] = "{}/PreAster".format(CALC_DIR)
+				StudyDict['ASTER_DIR'] = "{}/Aster".format(CALC_DIR)
+				StudyDict['POST_DIR'] = "{}/PostAster".format(CALC_DIR)
+
 				if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
-				StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.SIM_DIR, SimName)	
 				if not os.path.isdir(CALC_DIR): os.makedirs(CALC_DIR)
-				# Can leave these parts until later
-				StudyDict['ASTER_DIR'] = ASTER_DIR = "{}/Aster".format(CALC_DIR)
-				if not os.path.isdir(ASTER_DIR): os.makedirs(ASTER_DIR)
-				StudyDict['OUTPUT_DIR'] = OUTPUT_DIR = "{}/Output".format(CALC_DIR)
-				if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
 
 				#Merge together Main and Study dict and write to file for salome/CodeAster to import
 				MergeDict = {**MainDict, **StudyDict} 
@@ -252,6 +251,9 @@ class VLSetup():
 #			from __add__ import Add
 #			Add(self)
 
+	def PreAster(self):
+		pass
+
 	def Aster(self, **kwargs):
 		'''
 		kwargs
@@ -259,17 +261,22 @@ class VLSetup():
 		mpi_nbnoeud: Num Nodes for parallel CodeAster. Only available if code aster compiled for parallelism.
 		ncpus: Number of CPUs for regular CodeAster
 		Memory: Amount of memory (Gb) allocated to CodeAster
+		RunAster: Boolean to decide whether to run this part
 		'''
 		mpi_nbcpu = kwargs.get('mpi_nbcpu',1)
 		mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
 		ncpus = kwargs.get('ncpus',1)
 		Memory = kwargs.get('Memory',2)
+		RunAster = kwargs.get('RunAster', True)
 
 		if not self.Studies: return
+		if not RunAster: return
 
 		print('\nStarting Simulations\n')
 		SubProcs = {}
 		for Name, StudyDict in self.Studies.items():
+			if not os.path.isdir(StudyDict['ASTER_DIR']): os.makedirs(StudyDict['ASTER_DIR'])
+
 			AddPath = [self.COM_SCRIPTS, self.TMP_DIR, StudyDict['TMP_CALC_DIR']]
 			PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
 			PreCond = PythonPath + ["export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
@@ -337,14 +344,17 @@ class VLSetup():
 		if AsterError: self.Exit("Some simulations finished with errors")
 		print('\nFinished Simulations')
 
-	def PostProc(self, **kwargs):
+	def PostAster(self, **kwargs):
 		'''
 		kwargs available:
 		ShowRes: Opens up all results files in Salome GUI. Boolean
+		RunPost: Boolean to decide whether or not to run this part
 		'''
 		ShowRes = kwargs.get('ShowRes', False)
+		RunPost = kwargs.get('RunPost', True)
 
 		if not self.Studies: return
+		if not RunPost: return
 
 		# Opens up all results in ParaVis
 		if ShowRes:
@@ -360,23 +370,29 @@ class VLSetup():
 			Script = "{}/ParaVisAll.py".format(self.COM_POSTPROC)
 			Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
 			Salome.wait()
+			return
 
 		sys.path.insert(0, self.SIM_POSTPROC)
 		# Run PostCalcFile and ParVis file if they are provided
+		print('\nStarting Post-processing\n')
 		for Name, StudyDict in self.Studies.items():
-			RunPostProc = getattr(StudyDict['Parameters'],'RunPostProc', 'N')
-			if RunPostProc not in ('yes','Yes','y','Y'): continue
 
 			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
-			if PostCalcFile:
-				PostP = __import__(PostCalcFile).main
-				PostP(self, Name)
-
 			ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
-			if ParaVisFile:
-				Script = "{}/{}.py".format(self.SIM_POSTPROC, ParaVisFile)
-				ArgDict = {"Parameters":StudyDict["Parameters"].__name__, 'StudyDict':self.STUDYDICT}
-				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], ArgDict = ArgDict)
+			if not (PostCalcFile or ParaVisFile): continue
+
+			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
+#			if ParaVisFile:
+#				Script = "{}/{}.py".format(self.SIM_POSTPROC, ParaVisFile)
+#				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'])
+
+			if PostCalcFile:
+				PostCalc = __import__(PostCalcFile)
+				PostCalc.main(self, Name)
+
+
+
+		print('\nFinished Post-processing\n')
 
 	def ErrorCheck(self, Stage, **kwargs):
 		if Stage == 'Input':

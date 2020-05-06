@@ -20,7 +20,7 @@ VirtualLab.Mesh()
 
 # Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
 VirtualLab.Aster()
-VirtualLab.PostProc(ShowRes=True)
+VirtualLab.PostAster(ShowRes=True)
 
 # Remove tmp folders
 VirtualLab.Cleanup()

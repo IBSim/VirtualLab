@@ -5,7 +5,8 @@ CONDAVER='Anaconda3-2020.02-Linux-x86_64.sh'
 CONDAENV='VirtualLab'
 
 # This should be in VLconfig
-VL_DIR="$HOME/VirtualLab"
+VL_DIR_NAME="VirtualLab"
+VL_DIR="$HOME/$VL_DIR_NAME"
 
 # Standard update
 sudo apt update -y

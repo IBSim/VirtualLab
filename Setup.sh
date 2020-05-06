@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # This should be in VLconfig
-VL_DIR="$HOME/VirtualLab"
+VL_DIR_NAME="VirtualLab"
+VL_DIR="$HOME/$VL_DIR_NAME"
 
 # Standard update
 sudo apt update -y

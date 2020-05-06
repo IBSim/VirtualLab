@@ -17,6 +17,8 @@ sudo apt install -y git
 #chmod -R 0700 ~/.ssh
 #echo 'Host gitlab.com' >> ~/.ssh/config
 #echo '    StrictHostKeyChecking no' >> ~/.ssh/config
+#git config --global user.email "you@example.com"
+#git config --global user.name "Your Name"
 
 # Check if VirtualLab directory exists in $HOME
 cd ~
@@ -60,7 +62,7 @@ fi
 #chmod 755 Test_VL.py
 
 # Run initial VirtualLab setup (including salome install)
-#source Setup.sh
+source Scripts/Install/Setup.sh
 #cd $VL_DIR
 #source Install_Salome.sh
 

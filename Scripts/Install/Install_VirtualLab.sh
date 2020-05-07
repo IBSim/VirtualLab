@@ -15,7 +15,7 @@ usage() {
   echo "   '-P c' Install python using conda envrionment"
   echo "   '-P n' Do not install python"
   echo "   '-S y' Install Salome-Meca"
-  echo "   '-P n' Do not install Salome-Meca"
+  echo "   '-S n' Do not install Salome-Meca"
   echo
   echo "Default behaviour is to not install -P or -S."
 }
@@ -23,14 +23,7 @@ exit_abnormal() {
   usage
   exit 1
 }
-while getopts ":h" options; do
-   case "${options}" in
-      h) # display Help
-         exit_abnormal
-         ;;
-   esac
-done
-while getopts ":P:S:" options; do 
+while getopts ":P:S:h" options; do 
   case "${options}" in
     P)
       PYTHON_INST=${OPTARG}
@@ -55,6 +48,9 @@ while getopts ":P:S:" options; do
         echo "Error: Invalid option argument $PYTHON_INST" >&2
         exit_abnormal
       fi
+      ;;
+    h)  # display Help
+      exit_abnormal
       ;;
     :)  # If expected argument omitted:
       echo "Error: Option -${OPTARG} requires an argument."
@@ -89,7 +85,7 @@ cd ~
 if [ -d "$VL_DIR" ]; then
   # Take action if $VL_DIR exists. #
   echo "Skipping mkdir as ${VL_DIR} already exists"
-  source $VL_DIR/.VLprofile
+  #source $VL_DIR/.VLprofile
 else
   ###  Control will jump here if $VL_DIR does NOT exist ###
   echo "Creating ${VL_DIR} directory"
@@ -121,6 +117,7 @@ else
   sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git .
 fi
 
+source VLconfig.py
 # Change permissions on setup and run scripts
 #chmod 755 Setup.sh
 #chmod 755 Test_VL.py

@@ -1,14 +1,19 @@
 #!/bin/bash
 
-# This should be in VLconfig
-VL_DIR_NAME="VirtualLab"
-VL_DIR="$HOME/$VL_DIR_NAME"
+### Default values to be replaced by VLconfig
+#VL_DIR_NAME="VirtualLab"
+#VL_DIR="$HOME/$VL_DIR_NAME"
 
-# Variables for conda
-CONDAVER='Anaconda3-2020.02-Linux-x86_64.sh'
+### Variables for conda
+### $CONDAVER should now be read from VLconfig.py
+### This will not work for all cases, but does from Install_VirtualLab.sh
+### Need to code more robustly
+#CONDAVER='Anaconda3-2020.02-Linux-x86_64.sh'
 CONDAENV=$VL_DIR_NAME
+### By default don't install conda unless triggered by flag
 CONDA_INST="n"
 
+### Get flags to install python locally or in conda env.
 usage() {
   echo "Usage: $0 [ -C {y/n} ]" 1>&2 
 }
@@ -55,6 +60,7 @@ if [ "$CONDA_INST" == "n" ]; then
   # Add $VL_DIR to $PYTHONPATH in python env and current shell
   if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR ~/.bashrc; then
     echo "Reference to VirtualLab PYTHONPATH found in .bashrc"
+    echo "Therefore, not adding again."
   else
     echo "Adding $VL_DIR to PYTHONPATH"
     sudo -u ${SUDO_USER:-$USER} echo 'export PYTHONPATH=$PYTHONPATH'$VL_DIR''  >> ~/.bashrc
@@ -112,4 +118,3 @@ else
   exit
 fi
 
-exit 0

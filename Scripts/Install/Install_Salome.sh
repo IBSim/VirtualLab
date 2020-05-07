@@ -1,12 +1,17 @@
 #!/bin/bash
 
-# Variables for salome
-# Installation location
-SALOMEDIR='/opt/SalomeMeca'
-# Version number in download filename
-SALOMEVER='salome_meca-2019.0.3-1-universal'
-# Version number in unpacked directory
-SALOMEBIN='appli_V2019.0.3_universal'
+### Default values to be replaced by VLconfig
+#VL_DIR_NAME="VirtualLab"
+#VL_DIR="$HOME/$VL_DIR_NAME"
+
+### Variables for salome
+### These should now be read from VLconfig.py
+### Installation location
+#SALOMEDIR='/opt/SalomeMeca'
+### Version number in download filename
+#SALOMEVER='salome_meca-2019.0.3-1-universal'
+### Version number in unpacked directory
+#SALOMEBIN='appli_V2019.0.3_universal'
 
 # Standard update
 sudo apt update -y
@@ -26,12 +31,12 @@ else
   # Do more checks
   echo "Salome does not exist in this shell's environment PATH"
   # Search for reference to salome in .bashrc
-  if grep -q "$SALOMEDIR/$SALOMEBIN" ~/.bashrc; then
+  if grep -q "$SALOMEDIR/appli_$SALOMEBIN" ~/.bashrc; then
     echo "Reference to Salome PATH found in .bashrc"
-    echo "Assuming Salome is installed"
-    echo "Skipping Salome installation"
+    echo "Assuming salome is installed"
+    echo "Skipping salome installation"
     # Execute output from grep to try and add to shell's PATH
-    source <(grep "$SALOMEDIR/$SALOMEBIN" ~/.bashrc)
+    source <(grep "$SALOMEDIR/appli_$SALOMEBIN" ~/.bashrc)
   else
     # Otherwise download and install
     cd ~
@@ -46,9 +51,9 @@ else
     echo -e "$SALOMEDIR\nN" | sudo ./"$SALOMEVER".run
     # Add to PATH
     echo "Adding salome to PATH"
-    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOMEDIR'/'$SALOMEBIN':$PATH"'  >> ~/.bashrc
-    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOMEDIR'/'$SALOMEBIN':$PATH"'  >> ~/VirtualLab/.VLprofile
-    export PATH="$SALOMEDIR"/"$SALOMEBIN:$PATH"
+    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOMEDIR'/appli_'$SALOMEBIN':$PATH"'  >> ~/.bashrc
+    #sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOMEDIR'/'$SALOMEBIN':$PATH"'  >> ~/VirtualLab/.VLprofile
+    export PATH="$SALOMEDIR"/appli_"$SALOMEBIN:$PATH"
     
     # Test to check if adding to path worked
     if hash salome 2>/dev/null; then

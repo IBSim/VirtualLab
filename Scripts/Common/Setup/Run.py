@@ -36,19 +36,22 @@ class VLSetup():
 		# Set running mode	
 		self.mode = mode
 
+		VLconfig = __import__(ConfigFile)
+
 		# Get AsterRoot from SalomeMeca location if AsterRoot not provided as kwarg
 		if AsterRoot: 
 			self.ASTER_ROOT = AsterRoot
 		else:
 			SMDir = os.path.dirname(os.path.dirname(shutil.which("salome")))
-			self.ASTER_ROOT = "{}/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir)
-
-		VLconfig = __import__(ConfigFile)
-
+			#self.ASTER_ROOT = "{}/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir)
+			SALOMEBIN=getattr(VLconfig,"SALOMEBIN")
+			self.ASTER_ROOT = SMDir+"/"+SALOMEBIN+"/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir)
+		
 		# Get the path to the top level directory, VL_DIR
 		frame = inspect.stack()[1]		
 		pwd = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
-		VL_DIR=getattr(VLconfig,"VL_DIR",pwd)
+		VL_DIR_NAME=getattr(VLconfig,"VL_DIR_NAME")
+		VL_DIR=eval(getattr(VLconfig,"VL_DIR_py",pwd))
 		
 		# Initiate variables and run some checks
 		### Script directories

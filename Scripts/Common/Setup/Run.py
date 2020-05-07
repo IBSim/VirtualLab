@@ -21,12 +21,9 @@ class VLSetup():
 		     - interavtive: All outputs shown in terminal window(s)
 		     - continuous: Output written to file throughout execution
 		     - headless: Output written to file at the end of execution
-		AsterRoot: CodeAster root location. If this is not provided it is assumed it's a part of SalomeMeca
 		'''
-
 		port = kwargs.get('port', None)
 		mode = kwargs.get('mode', 'headless')
-		AsterRoot = kwargs.get('AsterRoot', None)
 		ConfigFile = kwargs.get('ConfigFile','VLconfig') 
 
 		# If port is provided it assumes an open instance of salome exists on that port and will shell in to it
@@ -36,25 +33,55 @@ class VLSetup():
 		# Set running mode	
 		self.mode = mode
 
+		# import VLconfig file
 		VLconfig = __import__(ConfigFile)
 
-		# Get AsterRoot from SalomeMeca location if AsterRoot not provided as kwarg
-		if AsterRoot: 
-			self.ASTER_ROOT = AsterRoot
+		# Get VL_dir from VLconfig if it's included else use the directory the runfile is found in
+		frame = inspect.stack()[1]		
+		Rundir = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
+#		VL_DIR=getattr(VLconfig,"VL_DIR_py",Rundir)
+
+		VL_DIR = getattr(VLconfig, "VL_DIR", Rundir)
+		if VL_DIR.startswith('$HOME'): VL_DIR = VL_DIR.replace('$HOME', os.path.expanduser('~'))
+		elif VL_DIR.startswith('~'): VL_DIR = VL_DIR.replace('~', os.path.expanduser('~'))
+
+
+		# Define directories for VL
+		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored
+		configOutput = getattr(VLconfig,'OutputDir', '')
+		if configOutput:
+			if configOutput.startswith('/'): OUTPUT_DIR = configOutput
+			elif configOutput.startswith('$VLDir'): OUTPUT_DIR = configOutput.replace('$VLDir',VL_DIR)
+			else: OUTPUT_DIR = "{}/{}".format(VL_DIR, configOutput)		
+		else : OUTPUT_DIR = "{}/Output".format(VL_DIR)
+
+		# Material directory
+		configMaterial = getattr(VLconfig,'MaterialDir', '')
+		if configMaterial:
+			if configMaterial.startswith('/'): MATERIAL_DIR = configMaterial
+			elif configMaterial.startswith('$VLDir'): MATERIAL_DIR = configMaterial.replace('$VLDir',VL_DIR)
+			else: MATERIAL_DIR = "{}/{}".format(VL_DIR, configMaterial)		
+		else : MATERIAL_DIR = "{}/Materials".format(VL_DIR)
+
+		# Input directory
+		configInput = getattr(VLconfig,'InputDir', '')
+		if configInput:
+			if configInput.startswith('/'): INPUT_DIR = configInput
+			elif configInput.startswith('$VLDir'): INPUT_DIR = configInput.replace('$VLDir',VL_DIR)
+			else: INPUT_DIR = "{}/{}".format(VL_DIR, configInput)		
+		else : INPUT_DIR = "{}/Input".format(VL_DIR)
+
+
+		if hasattr(VLconfig, 'ASTER_ROOT'): 
+			self.ASTER_ROOT = VLconfig.ASTER_ROOT
 		else:
 			SMDir = os.path.dirname(os.path.dirname(shutil.which("salome")))
-			#self.ASTER_ROOT = "{}/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir)
-			SALOMEBIN=getattr(VLconfig,"SALOMEBIN")
-			self.ASTER_ROOT = SMDir+"/"+SALOMEBIN+"/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir)
+#			SALOMEBIN=getattr(VLconfig,"SALOMEBIN")
+			self.ASTER_ROOT = "{}/{}/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir, VLconfig.SALOMEBIN)
+
 		
-		# Get the path to the top level directory, VL_DIR
-		frame = inspect.stack()[1]		
-		pwd = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
-		VL_DIR_NAME=getattr(VLconfig,"VL_DIR_NAME")
-		VL_DIR=eval(getattr(VLconfig,"VL_DIR_py",pwd))
-		
-		# Initiate variables and run some checks
-		### Script directories
+		# Define variables and run some checks
+		# Script directories
 		self.SCRIPT_DIR = "{}/Scripts".format(VL_DIR)
 		self.COM_SCRIPTS = "{}/Common".format(self.SCRIPT_DIR)
 		self.COM_PREPROC = "{}/PreProc".format(self.COM_SCRIPTS)
@@ -67,25 +94,23 @@ class VLSetup():
 		self.SIM_POSTPROC = "{}/PostProc".format(self.SIM_SCRIPTS)
 
 		# Materials directory
-		self.MATERIAL_DIR = "{}/Materials".format(VL_DIR)
+		self.MATERIAL_DIR = MATERIAL_DIR
 
-		# Output directories - these are where meshes, Aster results and pre/post-processing will be stored
-		OUTPUT_DIR = getattr(VLconfig,'OutputDir',"{}/Output".format(VL_DIR))
-		OUTPUT_DIR = OUTPUT_DIR.replace('$VLDir',VL_DIR)
+		# Output directory
 		STUDY_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, StudyDir)
 		self.SIM_DIR = "{}/{}".format(STUDY_DIR, StudyName)
 		self.MESH_DIR = "{}/Meshes".format(STUDY_DIR)
 
-		### Input dictionary
+		# Add path to Input directory
 		self.Input = Input
-		self.Input['INPUT_DIR'] = '{}/Input/{}/{}'.format(VL_DIR, Simulation, StudyDir)
+		self.Input['Directory'] = '{}/{}/{}'.format(INPUT_DIR, Simulation, StudyDir)
 
 		# Create directory in /tmp
 		if StudyDir == 'Testing': self.TMP_DIR = '/tmp/test'
 		else: self.TMP_DIR = '/tmp/{}_{}'.format(StudyName,(datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
 
 		# Check the Input directory to ensure the the required files exist
-		self.ErrorCheck('Input')
+		self.ErrorCheck('__init__')
 
 	def Create(self, **kwargs):
 		'''
@@ -98,8 +123,8 @@ class VLSetup():
 
 		sys.path.insert(0, self.COM_SCRIPTS)
 
-		sys.path.insert(0, self.Input['INPUT_DIR'])
-		Main = __import__(self.Input['Main'])
+		sys.path.insert(0, self.Input['Directory'])
+		Main = __import__(self.Input['Parameters'])
 		Parametric = self.Input.get('Parametric', None)
 		if Parametric: Parametric = __import__(Parametric)
 
@@ -385,20 +410,20 @@ class VLSetup():
 		print('\nFinished Post-processing\n')
 
 	def ErrorCheck(self, Stage, **kwargs):
-		if Stage == 'Input':
+		if Stage == '__init__':
 			# Check if the Input directory exists
-			if not os.path.isdir(self.Input['INPUT_DIR']):
-				self.Exit("Directory {0} does not exist\n".format(self.Input['INPUT_DIR']))
-			# Check 'Main' is supplied in the dictionary and that the file exists
-			Main = self.Input.get('Main', '')
-			if Main and not os.path.exists('{}/{}.py'.format(self.Input['INPUT_DIR'], Main)):
-				self.Exit("'Main' input file '{}' not in Input directory {}\n".format(self.Input['Main'],self.Input['INPUT_DIR']))
-			elif not Main :
-				self.Exit("The key 'Main' has not been supplied in the input dictionary")
+			if not os.path.isdir(self.Input['Directory']):
+				self.Exit("Directory {0} does not exist\n".format(self.Input['Directory']))
+			# Check 'Parameters' is supplied in the dictionary and that the file exists
+			Parameters = self.Input.get('Parameters', '')
+			if Parameters and not os.path.exists('{}/{}.py'.format(self.Input['Directory'], Parameters)):
+				self.Exit("'Parameters' input file '{}' not in Input directory {}\n".format(Parameters, self.Input['Directory']))
+			elif not Parameters :
+				self.Exit("The key 'Parameters' has not been supplied in the input dictionary")
 			# Check that the parametric file exists if it is supplied
 			Parametric = self.Input.get('Parametric','')		
-			if Parametric and not os.path.exists('{}/{}.py'.format(self.Input['INPUT_DIR'], Parametric)):
-				self.Exit("'Parametric' input file '{}' not in Input directory {}\n".format(Parametric,self.Input['INPUT_DIR']))
+			if Parametric and not os.path.exists('{}/{}.py'.format(self.Input['Directory'], Parametric)):
+				self.Exit("'Parametric' input file '{}' not in Input directory {}\n".format(Parametric,self.Input['Directory']))
 
 		if Stage == 'Mesh':
 			MeshDict = kwargs.get('MeshDict')

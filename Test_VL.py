@@ -9,7 +9,7 @@ from Scripts.Common import VLSetup
 Simulation = 'Tensile'
 StudyDir = 'Example'
 StudyName = 'Training'
-Input = {'Main' : 'Input', 'Single' : 'SingleStudy'}
+Input = {'Parameters' : 'Input', 'Single' : 'SingleStudy'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
 VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "headless")

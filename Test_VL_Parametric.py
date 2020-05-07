@@ -9,7 +9,7 @@ from Scripts.Common import VLSetup
 Simulation = 'Tensile'
 StudyDir = 'Example'
 StudyName = 'Training_AutoParam'
-Input = {'Main' : 'Input', 'Parametric' : 'ParametricFile'}
+Input = {'Parameters' : 'Input', 'Parametric' : 'ParametricFile'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
 VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "continuous", port=2810)

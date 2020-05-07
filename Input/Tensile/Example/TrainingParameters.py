@@ -5,7 +5,7 @@ from types import SimpleNamespace as Namespace
 ##########################
 Mesh = Namespace()
 Mesh.Name = 'Notch1'
-Mesh.File = 'Testpiece'
+Mesh.File = 'DogBone'
 # Geometric parameters (all units in metres)
 Mesh.Thickness = 0.003
 Mesh.HandleWidth = 0.024

@@ -12,9 +12,14 @@
 ### top directory.
 ### If left commented it is only possible to run from $VL_DIR
 #VL_DIR = "/PATH/TO/VirtualLab/HERE"
-VL_DIR_NAME="VirtualLab"
-VL_DIR_py="os.path.expanduser('~')+'/'+VL_DIR_NAME"
-VL_DIR_bsh="$HOME/$VL_DIR_NAME"
+#VL_DIR_NAME="VirtualLab"
+##VL_DIR_py="os.path.expanduser('~')+'/'+VL_DIR_NAME"
+#VL_DIR_py="~/{}".format(VL_DIR_NAME)
+#VL_DIR_bsh="$HOME/$VL_DIR_NAME"
+
+##### VL_DIR Rhydian
+#VL_DIR="/home/rhydian/Documents/Scripts/Simulation/VirtualLab"
+VL_DIR="$HOME/Documents/Scripts/Simulation/VirtualLab"
 
 ### Version of conda to download and install with
 ### wget https://repo.anaconda.com/archive/"$CONDAVER"
@@ -30,7 +35,7 @@ SALOMEBIN='V2019.0.3_universal'
 
 ### PATH to various directories required as in/out for VirtualLab.
 ### If left commented default behaviour is to locate in $VL_DIR
-#InputDir = ""
+#InputDir = "InputNew"
 #MaterialsDir = ""
 #RunFilesDir = ""
-OutputDir="$VLDir/Output"
+#OutputDir="$VLDir/Output"

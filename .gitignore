@@ -11,12 +11,11 @@
 !Run.py
 !Instructions.odt
 !Setup.sh
-!Setup_wConda.sh
-!Install_VirtualLab.sh
-!Install_Salome.sh
 !Test_VL.py
 !Test_VL_Parametric.py
-!VLconfig.py
+!VLconfig.sh
+!SetupConfig.sh
+!.1EU3DDeS1Zu57zby
 !CreateParamFile.py
 
 # Whitelist these directories 

@@ -9,7 +9,7 @@ from Scripts.Common import VLSetup
 Simulation = 'Tensile'
 StudyDir = 'Example'
 StudyName = 'Training'
-Input = {'Parameters' : 'Input', 'Single' : 'SingleStudy'}
+Input = {'Parameters' : 'TrainingParameters', 'Single' : 'SingleStudy'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
 VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "headless")
@@ -22,7 +22,7 @@ VirtualLab.Mesh()
 
 # Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
 VirtualLab.Aster(ncpus=2, Memory=2)
-VirtualLab.PostProc(ShowRes=False)
+VirtualLab.PostAster(ShowRes=False)
 
 # Remove tmp folders
 VirtualLab.Cleanup()

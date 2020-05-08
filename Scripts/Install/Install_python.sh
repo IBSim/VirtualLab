@@ -5,10 +5,10 @@
 #VL_DIR="$HOME/$VL_DIR_NAME"
 
 ### Variables for conda
-### $CONDAVER should now be read from VLconfig.py
+### $CONDA_VER should now be read from VLconfig.py
 ### This will not work for all cases, but does from Install_VirtualLab.sh
 ### Need to code more robustly
-#CONDAVER='Anaconda3-2020.02-Linux-x86_64.sh'
+#CONDA_VER='Anaconda3-2020.02-Linux-x86_64.sh'
 CONDAENV=$VL_DIR_NAME
 ### By default don't install conda unless triggered by flag
 CONDA_INST="n"
@@ -73,8 +73,9 @@ elif [ "$CONDA_INST" == "y" ]; then
   # Download conda
   cd ~
   current_dir=$(pwd)
-  wget https://repo.anaconda.com/archive/"$CONDAVER"
-  bash $CONDAVER -b -p $HOME/anaconda3
+  echo "https://repo.anaconda.com/archive/"$CONDA_VER""
+  wget https://repo.anaconda.com/archive/"$CONDA_VER"
+  bash $CONDA_VER -b -p $HOME/anaconda3
   export PATH=$current_dir/anaconda3/bin:$PATH
   source ~/.bashrc
   # Test conda

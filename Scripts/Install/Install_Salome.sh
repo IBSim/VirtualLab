@@ -7,11 +7,11 @@
 ### Variables for salome
 ### These should now be read from VLconfig.py
 ### Installation location
-#SALOMEDIR='/opt/SalomeMeca'
+#SALOME_DIR='/opt/SalomeMeca'
 ### Version number in download filename
-#SALOMEVER='salome_meca-2019.0.3-1-universal'
+#SALOME_VER='salome_meca-2019.0.3-1-universal'
 ### Version number in unpacked directory
-#SALOMEBIN='appli_V2019.0.3_universal'
+#SALOME_BIN='appli_V2019.0.3_universal'
 
 # Standard update
 sudo apt update -y
@@ -31,29 +31,29 @@ else
   # Do more checks
   echo "Salome does not exist in this shell's environment PATH"
   # Search for reference to salome in .bashrc
-  if grep -q "$SALOMEDIR/appli_$SALOMEBIN" ~/.bashrc; then
+  if grep -q "$SALOME_DIR/appli_$SALOME_BIN" ~/.bashrc; then
     echo "Reference to Salome PATH found in .bashrc"
     echo "Assuming salome is installed"
     echo "Skipping salome installation"
     # Execute output from grep to try and add to shell's PATH
-    source <(grep "$SALOMEDIR/appli_$SALOMEBIN" ~/.bashrc)
+    source <(grep "$SALOME_DIR/appli_$SALOME_BIN" ~/.bashrc)
   else
     # Otherwise download and install
     cd ~
     echo "Salome not found in PATH or .bashrc"
-      if test ! -f "$SALOMEVER".tgz; then
+      if test ! -f "$SALOME_VER".tgz; then
         echo "Proceeding to download salome in /home/$USER"
-        sudo -u ${SUDO_USER:-$USER} wget https://www.code-aster.org/FICHIERS/"$SALOMEVER".tgz
+        sudo -u ${SUDO_USER:-$USER} wget https://www.code-aster.org/FICHIERS/"$SALOME_VER".tgz
       fi
     echo "Proceeding to unpack salome in /home/$USER"
-    sudo -u ${SUDO_USER:-$USER} tar xvf "$SALOMEVER".tgz
-    echo "Installing salome in $SALOMEDIR"
-    echo -e "$SALOMEDIR\nN" | sudo ./"$SALOMEVER".run
+    sudo -u ${SUDO_USER:-$USER} tar xvf "$SALOME_VER".tgz
+    echo "Installing salome in $SALOME_DIR"
+    echo -e "$SALOME_DIR\nN" | sudo ./"$SALOME_VER".run
     # Add to PATH
     echo "Adding salome to PATH"
-    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOMEDIR'/appli_'$SALOMEBIN':$PATH"'  >> ~/.bashrc
-    #sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOMEDIR'/'$SALOMEBIN':$PATH"'  >> ~/VirtualLab/.VLprofile
-    export PATH="$SALOMEDIR"/appli_"$SALOMEBIN:$PATH"
+    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/appli_'$SALOME_BIN':$PATH"'  >> ~/.bashrc
+    #sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/'$SALOME_BIN':$PATH"'  >> ~/VirtualLab/.VLprofile
+    export PATH="$SALOME_DIR"/appli_"$SALOME_BIN:$PATH"
     
     # Test to check if adding to path worked
     if hash salome 2>/dev/null; then

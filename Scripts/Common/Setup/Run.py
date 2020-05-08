@@ -10,6 +10,7 @@ import time
 from subprocess import Popen, PIPE, STDOUT
 import inspect
 import copy
+import imp
 from types import SimpleNamespace as Namespace
 	
 class VLSetup():
@@ -26,8 +27,10 @@ class VLSetup():
 		mode = kwargs.get('mode', 'headless')
 		ConfigFile = kwargs.get('ConfigFile','VLconfig') 
 
-		# If port is provided it assumes an open instance of salome exists on that port and will shell in to it
-		# The second value in the list dictates whether or not to kill the salome instance at the end of the process
+		# If port is provided it assumes an open instance of salome 
+		# exists on that port and will shell in to it.
+		# The second value in the list dictates whether or not to kill 
+		# the salome instance at the end of the process.
 		self.__port__ = [port, False]
 
 		# Set running mode	
@@ -35,8 +38,10 @@ class VLSetup():
 
 		# import VLconfig file
 		VLconfig = __import__(ConfigFile)
+		#VLconfig = imp.load_source('VLconfig', "/home/ubuntu/VirtualLab/VLconfig")
 
-		# Get VL_dir from VLconfig if it's included else use the directory the runfile is found in
+		# Get VL_dir from VLconfig if it's included else use the 
+		# directory the runfile is found in.
 		frame = inspect.stack()[1]		
 		Rundir = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
 #		VL_DIR=getattr(VLconfig,"VL_DIR_py",Rundir)
@@ -47,7 +52,8 @@ class VLSetup():
 
 
 		# Define directories for VL
-		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored
+		# Output directory - this is where meshes, Aster results and 
+		# pre/post-processing will be stored.
 		configOutput = getattr(VLconfig,'OutputDir', '')
 		if configOutput:
 			if configOutput.startswith('/'): OUTPUT_DIR = configOutput
@@ -71,13 +77,13 @@ class VLSetup():
 			else: INPUT_DIR = "{}/{}".format(VL_DIR, configInput)		
 		else : INPUT_DIR = "{}/Input".format(VL_DIR)
 
-
-		if hasattr(VLconfig, 'ASTER_ROOT'): 
-			self.ASTER_ROOT = VLconfig.ASTER_ROOT
+		# Code_Aster directory
+		if hasattr(VLconfig, 'ASTERDIR'): 
+			self.ASTER_ROOT = VLconfig.ASTERDIR
 		else:
 			SMDir = os.path.dirname(os.path.dirname(shutil.which("salome")))
-#			SALOMEBIN=getattr(VLconfig,"SALOMEBIN")
-			self.ASTER_ROOT = "{}/{}/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir, VLconfig.SALOMEBIN)
+#			SALOME_BIN=getattr(VLconfig,"SALOME_BIN")
+			self.ASTER_ROOT = "{}/{}/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir, VLconfig.SALOME_BIN)
 
 		
 		# Define variables and run some checks

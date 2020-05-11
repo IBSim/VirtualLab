@@ -49,16 +49,23 @@ var=(
 ### location where VirtualLab is installed.
 ###
 ### Find hidden file with long random string in VirtualLab's top direcory.
-VL_find=$(find / -iname ".1EU3DDeS1Zu57zby" 2>/dev/null -printf '%h\n')
-if test -z $VL_find; then
-  # VirtualLab doesn't already exist on the system.
-  VL_DIR_NAME=$VL_DIR_NAME_DEFAULT
-  VL_DIR=$VL_DIR_DEFAULT
-else
-  # VirtualLab found to already exist on the system.
-  VL_DIR_NAME="$(basename "$VL_find")"
-  VL_DIR="$(dirname "$VL_find")/$VL_DIR_NAME"
-fi
+
+# Wedi cuddio y rhan yma i neud y proses mwy cloi
+
+#VL_find=$(find / -iname ".1EU3DDeS1Zu57zby" 2>/dev/null -printf '%h\n')
+#if test -z $VL_find; then
+#  # VirtualLab doesn't already exist on the system.
+#  VL_DIR_NAME=$VL_DIR_NAME_DEFAULT
+#  VL_DIR=$VL_DIR_DEFAULT
+#else
+#  # VirtualLab found to already exist on the system.
+#  VL_DIR_NAME="$(basename "$VL_find")"
+#  VL_DIR="$(dirname "$VL_find")/$VL_DIR_NAME"
+#fi
+
+VL_DIR_NAME="VirtualLab"
+VL_DIR="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+#VL_DIR="/home/rhydian/Documents/Scripts/Simulation/VirtualLab"
 
 ### Version of conda to download and install with
 ### wget https://repo.anaconda.com/archive/"$CONDA_VER"
@@ -103,8 +110,9 @@ ASTER_DIR=$ASTER_DIR_DEFAULT
 
 ### PATH to various directories required as in/out for VirtualLab.
 ### If left commented default behaviour is to locate in $VL_DIR
-InputDir=$InputDir_DEFAULT
-MaterialsDir=$MaterialsDir_DEFAULT
-RunFilesDir=$RunFilesDir_DEFAULT
-OutputDir=$OutputDir_DEFAULT
+
+InputDir="$VL_DIR/Input"
+MaterialsDir="$VL_DIR/Materials"
+RunFilesDir="$VL_DIR/RunFiles"
+OutputDir="$VL_DIR/Output"
 TEMP_DIR=$TEMP_DIR_DEFAULT

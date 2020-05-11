@@ -14,8 +14,8 @@ def KCalc(halfT, l, rho, Cp):
 	k=alpha*Cp*rho
 	return k, alpha
 
-def main(Info, study):
-	StudyDict = Info.Studies[study]
+def main(Info, StudyDict):
+#	StudyDict = Info.Studies[study]
 
 	ResFile = '{}/{}.rmed'.format(StudyDict['ASTER_DIR'], StudyDict['Parameters'].ResName)
 	# Get mesh information from the results file
@@ -119,25 +119,30 @@ def main(Info, study):
 		Rho = MaterialProperty(Rhodat,StudyDict['Parameters'].InitTemp)
 		Cp = MaterialProperty(Cpdat,StudyDict['Parameters'].InitTemp)
 		# Check thermal conductivity if there's no void
+		print("### Thermal conductivity validation ###")
 		if VoidHeight == 0:
 			CalcLambda, CalcAlpha = KCalc(HalfTime, Height, Rho, Cp)	
 			Lambdadat = np.fromfile('{}/Lambda.dat'.format(matpath),dtype=float,count=-1,sep=" ")
 			Lambda = MaterialProperty(Lambdadat,StudyDict['Parameters'].InitTemp)
-
-			print("Thermal conductivity (at initial temperature) used for study: {}".format(Lambda))
-			print("Back calculated thermal conductivity using average temperature on base of disk: {}\n".format(CalcLambda))
+			print("Thermal conductivity of material ({}) used for simulation: {}W/mK".format(Materials, Lambda))
+			print("Back calculated thermal conductivity: {} W/mK".format(CalcLambda))
+			print("Error: {}%".format(100*abs(1-CalcLambda/Lambda)))
 		else:
-			print("Back calculation of the thermal conductivity is impossible due to void\n")
+			print("Back calculation of the thermal conductivity is impossible due to void")
+		print('#######################################\n')
 
+		print("### Temperature increase validation ###")
 		# Check if temperature increase is correct
 		if StudyDict['Parameters'].TopHTC == StudyDict['Parameters'].BottomHTC == 0:
 			ActdT = AvTemp[-1] - AvTemp[0]
 			vol = Radius**2*np.pi*Height - VoidRadius**2*np.pi*VoidHeight
 			ExpdT = StudyDict['Parameters'].Energy/(vol*Rho*Cp)
-			print("Anticipated temperature increase from energy input: {}".format(ActdT))
-			print("Measured temperature increase from simulation: {}\n".format(ExpdT))
+			print("Anticipated temperature increase from energy input: {}{}C".format(ActdT, u'\N{DEGREE SIGN}'))
+			print("Measured temperature increase from simulation: {}{}C\n".format(ExpdT, u'\N{DEGREE SIGN}'))
+			print("Error: {}%".format(100*abs(1-ActdT/ExpdT)))
 		else :
 			print("Cannot measure temperature change due to BC")
+		print('#######################################\n')
 
 	# Get plot of flux over top surface
 	if StudyDict['Parameters'].LaserS in ('Gauss', 'gauss'):
@@ -157,8 +162,11 @@ def main(Info, study):
 		Res[:,1] = Res[:,0]/Res[:,1]
 		ExactMGD = 1 - np.exp(-0.5*(Radius/sigma)**2)
 		AprxMGD =  sum(Res[:,0])
-		print("Exact volume under multivariate Gaussian distribution is: {}".format(ExactMGD))
-		print("The volume due to the spatial discretisation (mesh fineness) is: {}\n".format(AprxMGD))
+		print("### Accuracy of Gaussian profile ###")
+		print("Exact volume under multivariate Gaussian distribution: {}".format(ExactMGD))
+		print("The volume due to the spatial discretisation: {}\n".format(AprxMGD))
+		print("Error: {}%".format(100*abs(1-ExactMGD/AprxMGD)))
+		print("####################################\n")
 
 	elif StudyDict['Parameters'].LaserS == 'Uniform':
 		Res = np.zeros((Top_Face.NbNodes,1))
@@ -188,8 +196,11 @@ def main(Info, study):
 	TimeSteps = TimeSteps[TimeSteps <= xp[-1]]
 	ExactLaser = np.trapz(fp, xp)
 	AprxLaser = np.trapz(np.interp(TimeSteps,xp,fp), TimeSteps) 
+	print("### Accuracy of Laser profile ###")
 	print("Exact area under the laser pulse curve is: {}".format(ExactLaser))
-	print("The area due to temporal discretisation (timestep size) is: {}\n".format(AprxLaser))
+	print("The area due to temporal discretisation (timestep size) is: {}".format(AprxLaser))
+	print("Error: {}%".format(100*abs(1-ExactLaser/AprxLaser)))
+	print("#################################\n")
 
 
 

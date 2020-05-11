@@ -12,6 +12,7 @@ import inspect
 import copy
 import imp
 from types import SimpleNamespace as Namespace
+import tempfile
 	
 class VLSetup():
 	def __init__(self, Simulation, StudyDir, StudyName, Input, **kwargs):
@@ -36,14 +37,23 @@ class VLSetup():
 		# Set running mode	
 		self.mode = mode
 
+		frame = inspect.stack()[1]		
+		Rundir = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
+
+		tmpfile = tempfile.mkstemp(suffix='.py')[1]
+		SP = Popen("bash {}/SetupConfig.sh {}".format(Rundir, tmpfile), shell='TRUE')
+		SP.wait()
+		sys.path.insert(0, os.path.dirname(tmpfile))
+		VLconfig = __import__(os.path.basename(tmpfile)[:-3])
+		sys.path.pop(0)
+
 		# import VLconfig file
-		VLconfig = __import__(ConfigFile)
+#		VLconfig = __import__(ConfigFile)
 		#VLconfig = imp.load_source('VLconfig', "/home/ubuntu/VirtualLab/VLconfig")
 
 		# Get VL_dir from VLconfig if it's included else use the 
 		# directory the runfile is found in.
-		frame = inspect.stack()[1]		
-		Rundir = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
+
 #		VL_DIR=getattr(VLconfig,"VL_DIR_py",Rundir)
 
 		VL_DIR = getattr(VLconfig, "VL_DIR", Rundir)
@@ -365,6 +375,7 @@ class VLSetup():
 		if AsterError: self.Exit("Some simulations finished with errors")
 		print('\nFinished Simulations')
 
+
 	def PostAster(self, **kwargs):
 		'''
 		kwargs available:
@@ -402,16 +413,22 @@ class VLSetup():
 			ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
 			if not (PostCalcFile or ParaVisFile): continue
 
+			print("Post-procesing for {}".format(Name)) 
 			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
-#			if ParaVisFile:
-#				Script = "{}/{}.py".format(self.SIM_POSTPROC, ParaVisFile)
-#				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'])
+
+			if ParaVisFile:
+				Script = "{}/{}.py".format(self.SIM_POSTPROC, ParaVisFile)
+				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'])
+
 
 			if PostCalcFile:
 				PostCalc = __import__(PostCalcFile)
-				PostCalc.main(self, Name)
-
-
+				if self.mode == 'interactive':
+					PostCalc.main(self, StudyDict)
+				else:
+					with open("{}/log.txt".format(StudyDict['POST_DIR']), 'w') as f:
+						with contextlib.redirect_stdout(f):
+							PostCalc.main(self, StudyDict)
 
 		print('\nFinished Post-processing\n')
 

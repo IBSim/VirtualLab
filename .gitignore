@@ -26,6 +26,7 @@
 # This ensures that only the Example sub-directory will be included in the whitelist
 Input/*/*
 !Input/*/Example/
+!Input/*/.dev/
 
 
 

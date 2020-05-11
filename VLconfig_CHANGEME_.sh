@@ -106,13 +106,14 @@ else
 fi
 
 ### Code_Aster installation location
+# Ishe neud update gyda hwn i adlewyrchu ble ma SalomeMeca wedi cal i ffindo
 ASTER_DIR=$ASTER_DIR_DEFAULT
 
 ### PATH to various directories required as in/out for VirtualLab.
 ### If left commented default behaviour is to locate in $VL_DIR
-
-InputDir="$VL_DIR/Input"
-MaterialsDir="$VL_DIR/Materials"
-RunFilesDir="$VL_DIR/RunFiles"
-OutputDir="$VL_DIR/Output"
+# Wedi newid rhein - o's eisiau InputDir_DEFAULT ar y top? ne ydy ysgrifennu nhw fanhyn yn digon?
+InputDir=$InputDir_DEFAULT
+MaterialsDir=$MaterialsDir_DEFAULT
+RunFilesDir=$RunFilesDir_DEFAULT
+OutputDir=$OutputDir_DEFAULT
 TEMP_DIR=$TEMP_DIR_DEFAULT

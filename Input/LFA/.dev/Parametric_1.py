@@ -5,6 +5,7 @@ from types import SimpleNamespace as Namespace
 ##########################
 Mesh = Namespace()
 Mesh.Name = ['NoVoid','Void']
+Mesh.Run = ['Y','N']
 Mesh.VoidRadius = [0, 0.001]
 Mesh.VoidHeight = [0, 0.0003]
 
@@ -12,7 +13,7 @@ Mesh.VoidHeight = [0, 0.0003]
 ####### Simulation #######
 ##########################
 Sim = Namespace()
-Sim.Name = ['SimNoVoid','SimVoid']
+Sim.Name = ['SimNoVoid','SimVoid1','SimVoid2']
 #############
 ## Pre-Sim ##
 #############
@@ -20,7 +21,8 @@ Sim.Name = ['SimNoVoid','SimVoid']
 #############
 ### Aster ###
 #############
-Sim.Mesh = ['NoVoid','Void']
+Sim.Mesh = ['NoVoid','Void', 'Void']
+Sim.LaserS = ['Gauss', 'Gauss', 'Uniform']
 
 #############
 ## Post-Sim #

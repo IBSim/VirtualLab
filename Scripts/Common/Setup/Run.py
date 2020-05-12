@@ -150,8 +150,12 @@ class VLSetup():
 					Val = Value if NewVals==False else NewVals[i]
 					MeshDict[MeshName][VarName] = Val
 
+			if hasattr(ParaMesh,'Run'):
+				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag in ('Y','y')]
+
 			sys.path.insert(0, self.SIM_PREPROC)
-			for MeshName, ParaDict in MeshDict.items():
+			for MeshName in MeshNames:
+				ParaDict=MeshDict[MeshName]
 				self.ErrorCheck('Mesh',MeshDict=ParaDict)
 				self.WriteModule("{}/{}.py".format(self.GEOM_DIR, MeshName), ParaDict)
 				self.MeshList.append(MeshName)

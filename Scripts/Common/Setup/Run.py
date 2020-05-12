@@ -175,15 +175,25 @@ class VLSetup():
 
 			ParaSim = getattr(Parametric, 'Sim', None)
 			SimNames = getattr(ParaSim, 'Name', [MainSim.Name])
+			NumSims = len(SimNames)
 
 			SimDict = {SimName:{} for SimName in SimNames}
 			for VarName, Value in MainSim.__dict__.items():
 				NewVals = getattr(ParaSim, VarName, False)
+				# Check the number of NewVals is correct
+				NumVals = len(NewVals) if NewVals else NumSims
+				if NumVals!=NumSims: self.Exit("Number of entries for 'Sim.{}' not equal to number of simulations".format(VarName))
+
 				for i, SimName in enumerate(SimNames):
 					Val = Value if NewVals==False else NewVals[i]
 					SimDict[SimName][VarName] = Val
 
-			for SimName, ParaDict in SimDict.items():
+			if hasattr(ParaSim,'Run'):
+				if len(ParaSim.Run)!=NumSims: self.Exit("Number of entries for variable 'Sim.Run' not equal to number of simulations")
+				SimNames = [sim for sim, flag in zip(SimNames, ParaSim.Run) if flag in ('Y','y')]
+
+			for SimName in SimNames:
+				ParaDict = SimDict[SimName]
 				self.ErrorCheck('Simulation',SimDict=ParaDict)
 				StudyDict = {}
 				# Define simulation related directories

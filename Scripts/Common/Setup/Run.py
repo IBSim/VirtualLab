@@ -224,7 +224,7 @@ class VLSetup():
 			print('### Starting Meshing ###\n')
 			# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
 			MeshLog = "{}/Log".format(self.MESH_DIR)
-			self.SalomeRun(None, SalomeInit=True, Log=MeshLog)
+			self.SalomeRun(None, SalomeInit=True, OutLog=MeshLog)
 					
 			# Script which is used to import the necessary mesh function
 			PreProcScript = '{}/Run.py'.format(self.COM_PREPROC)
@@ -235,7 +235,7 @@ class VLSetup():
 				IndMeshLog = "{}/Log".format(self.GEOM_DIR)
 				ArgDict = {"Parameters":mesh, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, mesh)}
 				AddPath = [self.SIM_PREPROC, self.GEOM_DIR]
-				self.SalomeRun(PreProcScript, AddPath=AddPath, ArgDict=ArgDict, Log=IndMeshLog)
+				self.SalomeRun(PreProcScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
 
 				IndMeshData = "{}/{}.txt".format(self.MESH_DIR, mesh)
 				with open(IndMeshData,"w") as g:
@@ -398,20 +398,24 @@ class VLSetup():
 		# Run PostCalcFile and ParVis file if they are provided
 		print('### Starting Post-processing ###\n')
 		for Name, StudyDict in self.Studies.items():
-
-			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
 			ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
-			if not (PostCalcFile or ParaVisFile): continue
+			if not ParaVisFile: continue
 
-			print("Post-procesing for '{}' started".format(Name)) 
+			print("ParaVis for '{}'".format(Name)) 
 			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
 
 			if ParaVisFile:
 				Script = "{}/{}.py".format(self.SIM_POSTPROC, ParaVisFile)
 				PVlog = "{}/PVlog.txt".format(StudyDict['POST_DIR'])
-				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], Log=PVlog)
+				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], OutLog=PVlog, )
+				print("")
 
+		for Name, StudyDict in self.Studies.items():
+			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
+			if not PostCalcFile : continue
 
+			print("PostCalc for '{}'\n".format(Name)) 
+			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
 			if PostCalcFile:
 				PostCalc = __import__(PostCalcFile)
 				if self.mode == 'interactive':
@@ -420,8 +424,6 @@ class VLSetup():
 					with open("{}/log.txt".format(StudyDict['POST_DIR']), 'w') as f:
 						with contextlib.redirect_stdout(f):
 							PostCalc.main(self, StudyDict)
-
-			print("Post-procesing for '{}' completed".format(Name)) 
 
 		print('\n### Post-processing Completed ###')
 
@@ -484,7 +486,8 @@ class VLSetup():
 		GUI: Opens a new instance with GUI (useful for testing)
 		Init: Creates a new Salome instance in terminal mode
 		'''
-		Log = kwargs.get('Log', "")
+		OutLog = kwargs.get('OutLog', "")
+		ErrLog = kwargs.get('ErrLog', OutLog) 
 		AddPath = kwargs.get('AddPath',[])
 		ArgDict = kwargs.get('ArgDict', {})
 		ArgList = kwargs.get('ArgList',[])
@@ -530,7 +533,7 @@ class VLSetup():
 
 		command = "salome shell -p{!s} {} args:{}".format(self.__port__[0], Script, Args)
 		if self.mode != 'interactive':
-			command += " > {} 2>&1".format(Log)
+			command += " 2>{} 1>{}".format(ErrLog, OutLog)
 
 		Salome = Popen(PythonPath + command, shell='TRUE')
 		Salome.wait()

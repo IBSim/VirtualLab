@@ -7,10 +7,10 @@ from Scripts.Common import VLSetup
 Simulation = 'LFA'
 StudyDir = 'Example'
 StudyName = 'Training'
-Input = {'Parameters' : 'TrainingParameters'}
+Input = {'Parameters' : 'TrainingParameters', 'Parametric':'Parametric_1'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
-VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "headless")
+VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
 
 # Create temporary directories and files
 VirtualLab.Create(RunSim=True, RunMesh=False)

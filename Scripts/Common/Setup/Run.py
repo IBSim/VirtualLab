@@ -142,15 +142,21 @@ class VLSetup():
 
 			ParaMesh = getattr(Parametric, 'Mesh', None)
 			MeshNames = getattr(ParaMesh, 'Name', [MainMesh.Name])
+			NumMeshes = len(MeshNames)
 
 			MeshDict = {MeshName:{} for MeshName in MeshNames}
 			for VarName, Value in MainMesh.__dict__.items():
 				NewVals = getattr(ParaMesh, VarName, False)
+				# Check the number of NewVals is correct
+				NumVals = len(NewVals) if NewVals else NumMeshes
+				if NumVals != NumMeshes: self.Exit("Number of entries for 'Mesh.{}' not equal to number of meshes".format(VarName))
+
 				for i, MeshName in enumerate(MeshNames):
 					Val = Value if NewVals==False else NewVals[i]
 					MeshDict[MeshName][VarName] = Val
 
 			if hasattr(ParaMesh,'Run'):
+				if len(ParaMesh.Run)!=NumMeshes: self.Exit("Number of entries for variable 'Mesh.Run' not equal to number of meshes")
 				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag in ('Y','y')]
 
 			sys.path.insert(0, self.SIM_PREPROC)

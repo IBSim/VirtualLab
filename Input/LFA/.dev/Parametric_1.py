@@ -5,7 +5,7 @@ from types import SimpleNamespace as Namespace
 ##########################
 Mesh = Namespace()
 Mesh.Name = ['NoVoid','Void']
-Mesh.Run = ['Y','N']
+Mesh.Run = ['Y','N','Y']
 Mesh.VoidRadius = [0, 0.001]
 Mesh.VoidHeight = [0, 0.0003]
 

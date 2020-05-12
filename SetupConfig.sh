@@ -1,7 +1,8 @@
 #!/bin/bash
-configfile=$1
+configfile_sh=$1
+configfile_py=$2
 
-source VLconfig.sh
+source $configfile_sh
 
 #FILE="VLconfig.py"
 #if test -f "$FILE"; then
@@ -9,6 +10,6 @@ source VLconfig.sh
 #fi
 
 for i in ${!var[@]}; do
-  echo ${var[$i]}'="'"${!var[i]}"'"' >> $configfile
+  echo ${var[$i]}'="'"${!var[i]}"'"' >> $configfile_py
 done
 

@@ -13,6 +13,7 @@ import copy
 import imp
 from types import SimpleNamespace as Namespace
 import tempfile
+import contextlib
 	
 class VLSetup():
 	def __init__(self, Simulation, StudyDir, StudyName, Input, **kwargs):
@@ -38,69 +39,51 @@ class VLSetup():
 		self.mode = mode
 
 		frame = inspect.stack()[1]		
-		Rundir = os.path.dirname(os.path.realpath(frame[0].f_code.co_filename))
+		RunFile = os.path.realpath(frame[0].f_code.co_filename)
+		TWD = os.path.dirname(os.path.dirname(RunFile)) #TopWorkingDirectory
+		TWD = os.path.dirname(RunFile) #TopWorkingDirectory
 
+		ConfigPath = "{}/{}.sh".format(TWD, ConfigFile)
+		if not os.path.isfile(ConfigPath):
+			sys.exit('Config file {} not defined in top directory {}'.format(ConfigFile, TWD))
+
+		SetupConfig = "{}/SetupConfig.sh".format(TWD)
 		tmpfile = tempfile.mkstemp(suffix='.py')[1]
-		SP = Popen("bash {}/SetupConfig.sh {}".format(Rundir, tmpfile), shell='TRUE')
+		SP = Popen("bash {} {} {}".format(SetupConfig, ConfigPath, tmpfile), shell='TRUE')
 		SP.wait()
+		sys.path.insert(0, os.path.dirname(tmpfile))
+		VLconfig = __import__(os.path.basename(tmpfile)[:-3])
+		sys.path.pop(0)
 
 #		string = '''source VLconfig.sh;for i in ${!var[@]};do echo ${var[$i]}'="'"${!var[i]}"'"' '''+'''>>{};done'''.format(tmpfile)
 #		SP1 = Popen(string,shell='TRUE',executable="/bin/bash")
 #		SP1.wait()
 
-		sys.path.insert(0, os.path.dirname(tmpfile))
-		VLconfig = __import__(os.path.basename(tmpfile)[:-3])
-		sys.path.pop(0)
+#		VL_DIR = getattr(VLconfig, "VL_DIR", Rundir)
+		VL_DIR = TWD
 
-		# import VLconfig file
-#		VLconfig = __import__(ConfigFile)
-		#VLconfig = imp.load_source('VLconfig', "/home/ubuntu/VirtualLab/VLconfig")
-
-		# Get VL_dir from VLconfig if it's included else use the 
-		# directory the runfile is found in.
-
-#		VL_DIR=getattr(VLconfig,"VL_DIR_py",Rundir)
-
-		VL_DIR = getattr(VLconfig, "VL_DIR", Rundir)
-		if VL_DIR.startswith('$HOME'): VL_DIR = VL_DIR.replace('$HOME', os.path.expanduser('~'))
-		elif VL_DIR.startswith('~'): VL_DIR = VL_DIR.replace('~', os.path.expanduser('~'))
-
-
-		# Define directories for VL
-		# Output directory - this is where meshes, Aster results and 
-		# pre/post-processing will be stored.
-		configOutput = getattr(VLconfig,'OutputDir', '')
-		if configOutput:
-			if configOutput.startswith('/'): OUTPUT_DIR = configOutput
-			elif configOutput.startswith('$VLDir'): OUTPUT_DIR = configOutput.replace('$VLDir',VL_DIR)
-			else: OUTPUT_DIR = "{}/{}".format(VL_DIR, configOutput)		
-		else : OUTPUT_DIR = "{}/Output".format(VL_DIR)
+		### Define directories for VL from config file. If directory name doesn't start with '/'
+		### it will be created relative to the TWD 
+		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored.	
+		OUTPUT_DIR = getattr(VLconfig,'OutputDir', "{}/Output".format(VL_DIR))
+		if not OUTPUT_DIR.startswith('/'): OUTPUT_DIR="{}/{}".format(VL_DIR,OUTPUT_DIR)
 
 		# Material directory
-		configMaterial = getattr(VLconfig,'MaterialDir', '')
-		if configMaterial:
-			if configMaterial.startswith('/'): MATERIAL_DIR = configMaterial
-			elif configMaterial.startswith('$VLDir'): MATERIAL_DIR = configMaterial.replace('$VLDir',VL_DIR)
-			else: MATERIAL_DIR = "{}/{}".format(VL_DIR, configMaterial)		
-		else : MATERIAL_DIR = "{}/Materials".format(VL_DIR)
+		MATERIAL_DIR = getattr(VLconfig,'MaterialDir', "{}/Materials".format(VL_DIR))
+		if not MATERIAL_DIR.startswith('/'): MATERIAL_DIR="{}/{}".format(VL_DIR,MATERIAL_DIR)
 
 		# Input directory
-		configInput = getattr(VLconfig,'InputDir', '')
-		if configInput:
-			if configInput.startswith('/'): INPUT_DIR = configInput
-			elif configInput.startswith('$VLDir'): INPUT_DIR = configInput.replace('$VLDir',VL_DIR)
-			else: INPUT_DIR = "{}/{}".format(VL_DIR, configInput)		
-		else : INPUT_DIR = "{}/Input".format(VL_DIR)
+		INPUT_DIR = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
+		if not INPUT_DIR.startswith('/'): INPUT_DIR = "{}/{}".format(VL_DIR,INPUT_DIR)
 
 		# Code_Aster directory
-		if hasattr(VLconfig, 'ASTERDIR'): 
-			self.ASTER_ROOT = VLconfig.ASTERDIR
-		else:
-			SMDir = os.path.dirname(os.path.dirname(shutil.which("salome")))
-#			SALOME_BIN=getattr(VLconfig,"SALOME_BIN")
-			self.ASTER_ROOT = "{}/{}/tools/Code_aster_frontend-20190/bin/as_run".format(SMDir, VLconfig.SALOME_BIN)
+		self.ASTER_DIR = VLconfig.ASTER_DIR
 
-		
+		# tmp directory
+		TEMP_DIR = getattr(VLconfig,'TEMP_DIR',"/tmp")
+		if StudyDir == 'Testing': self.TMP_DIR = "{}/Testing".format(TEMP_DIR)
+		else: self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, StudyDir, (datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
+
 		# Define variables and run some checks
 		# Script directories
 		self.SCRIPT_DIR = "{}/Scripts".format(VL_DIR)
@@ -125,10 +108,6 @@ class VLSetup():
 		# Add path to Input directory
 		self.Input = Input
 		self.Input['Directory'] = '{}/{}/{}'.format(INPUT_DIR, Simulation, StudyDir)
-
-		# Create directory in /tmp
-		if StudyDir == 'Testing': self.TMP_DIR = '/tmp/test'
-		else: self.TMP_DIR = '/tmp/{}_{}'.format(StudyName,(datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
 
 		# Check the Input directory to ensure the the required files exist
 		self.ErrorCheck('__init__')
@@ -179,7 +158,7 @@ class VLSetup():
 
 		# Create Simulation parameter files
 		if RunSim and MainSim:
-			if not os.path.exists(self.ASTER_ROOT):
+			if not os.path.exists(self.ASTER_DIR):
 				self.Exit("CodeAster location invalid")
 
 			if not os.path.isdir(self.SIM_DIR): os.makedirs(self.SIM_DIR)
@@ -242,30 +221,35 @@ class VLSetup():
 
 		MeshList = getattr(self,'MeshList', None)
 		if MeshList:
-			print('Starting Meshing\n')
+			print('### Starting Meshing ###\n')
+			# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
 			MeshLog = "{}/Log".format(self.MESH_DIR)
-			if self.mode != 'interactive':				
-				with open(MeshLog,'w') as f: f.write('Starting Meshing\n')
+			self.SalomeRun(None, SalomeInit=True, Log=MeshLog)
 					
 			# Script which is used to import the necessary mesh function
 			PreProcScript = '{}/Run.py'.format(self.COM_PREPROC)
 
 			for mesh in self.MeshList:
-				MeshStart = "Meshing '{}'".format(mesh)
-				print(MeshStart)
-				if self.mode != 'interactive': 
-					with open(MeshLog,'a') as f: f.write(MeshStart)
+				print("Starting mesh '{}'".format(mesh))
+
+				IndMeshLog = "{}/Log".format(self.GEOM_DIR)
 				ArgDict = {"Parameters":mesh, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, mesh)}
 				AddPath = [self.SIM_PREPROC, self.GEOM_DIR]
-				self.SalomeRun(PreProcScript, AddPath=AddPath, ArgDict=ArgDict, Log = MeshLog)
+				self.SalomeRun(PreProcScript, AddPath=AddPath, ArgDict=ArgDict, Log=IndMeshLog)
 
-				MeshFin = "Finished meshing '{}'\n".format(mesh)
-				print(MeshFin)
-				if self.mode != 'interactive': 
-					with open(MeshLog,'a') as f: f.write(MeshFin)
+				IndMeshData = "{}/{}.txt".format(self.MESH_DIR, mesh)
+				with open(IndMeshData,"w") as g:
+					with open("{}/{}.py".format(self.GEOM_DIR,mesh),'r') as MeshData:
+						g.write(MeshData.read())
+					if self.mode != 'interactive': 
+						with open(IndMeshLog,'r') as rIndMeshLog:
+							g.write('\n### Meshing log ###\n'+rIndMeshLog.read())				
 
-			print('Meshing completed')
-			with open(MeshLog,'a') as f: f.write('Meshing completed\n')
+				if self.mode == 'interactive': print("Completed mesh '{}'\n".format(mesh))
+				else : print("Completed mesh '{}'. See '{}' for log\n".format(mesh,IndMeshData))
+
+			print('### Meshing Completed ###\n')
+
 		
 #		elif self.MeshDict and MeshCheck:
 #			if MeshCheck in self.MeshDict:
@@ -308,7 +292,7 @@ class VLSetup():
 		if not self.Studies: return
 		if not RunAster: return
 
-		print('\nStarting Simulations\n')
+		print('### Starting Simulations ###\n')
 		SubProcs = {}
 		for Name, StudyDict in self.Studies.items():
 			if not os.path.isdir(StudyDict['ASTER_DIR']): os.makedirs(StudyDict['ASTER_DIR'])
@@ -343,14 +327,15 @@ class VLSetup():
 			errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
 			if self.mode == 'interactive':
 				xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
-				command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_ROOT, exportfile, errfile)
+				command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
 			elif self.mode == 'continuous':
-				command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_ROOT, exportfile, StudyDict['ASTER_DIR'])
+				command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER_DIR'])
 			else :
-				command = "{} {} >/dev/null 2>&1".format(self.ASTER_ROOT, exportfile)
+				command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
 
 			# Start Aster subprocess
 			SubProcs[Name] = Popen(PreCond + command , shell='TRUE')
+			print("Simulation '{}' started".format(Name))
 
 		# Wait until all Aster subprocesses are finished before moving on
 		AsterError = False
@@ -378,7 +363,7 @@ class VLSetup():
 			time.sleep(1)
 
 		if AsterError: self.Exit("Some simulations finished with errors")
-		print('\nFinished Simulations')
+		print('\n### Simulations Completed ###\n')
 
 
 	def PostAster(self, **kwargs):
@@ -411,19 +396,20 @@ class VLSetup():
 
 		sys.path.insert(0, self.SIM_POSTPROC)
 		# Run PostCalcFile and ParVis file if they are provided
-		print('\nStarting Post-processing\n')
+		print('### Starting Post-processing ###\n')
 		for Name, StudyDict in self.Studies.items():
 
 			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
 			ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
 			if not (PostCalcFile or ParaVisFile): continue
 
-			print("Post-procesing for {}".format(Name)) 
+			print("Post-procesing for '{}' started".format(Name)) 
 			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
 
 			if ParaVisFile:
 				Script = "{}/{}.py".format(self.SIM_POSTPROC, ParaVisFile)
-				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'])
+				PVlog = "{}/PVlog.txt".format(StudyDict['POST_DIR'])
+				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], Log=PVlog)
 
 
 			if PostCalcFile:
@@ -435,7 +421,9 @@ class VLSetup():
 						with contextlib.redirect_stdout(f):
 							PostCalc.main(self, StudyDict)
 
-		print('\nFinished Post-processing\n')
+			print("Post-procesing for '{}' completed".format(Name)) 
+
+		print('\n### Post-processing Completed ###')
 
 	def ErrorCheck(self, Stage, **kwargs):
 		if Stage == '__init__':
@@ -494,12 +482,14 @@ class VLSetup():
 		ArgDict: a dictionary of the arguments that Salome will get
 		ArgList: a list of arguments to be passed to Salome
 		GUI: Opens a new instance with GUI (useful for testing)
+		Init: Creates a new Salome instance in terminal mode
 		'''
 		Log = kwargs.get('Log', "")
 		AddPath = kwargs.get('AddPath',[])
 		ArgDict = kwargs.get('ArgDict', {})
 		ArgList = kwargs.get('ArgList',[])
-		GUI = kwargs.get('GUI',False)
+		SalomeGUI = kwargs.get('SalomeGUI',False)
+		SalomeInit = kwargs.get('SalomeInit',False)
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
@@ -512,11 +502,10 @@ class VLSetup():
 		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
 		Args = ",".join(ArgList + Args)
 
-
-		if GUI:
+		if SalomeGUI:
 			command = "salome {} args:{}".format(Script, Args)
-			SalomeGUI = Popen(PythonPath + command, shell='TRUE')
-			SalomeGUI.wait()
+			GUI = Popen(PythonPath + command, shell='TRUE')
+			GUI.wait()
 			return
 
 
@@ -525,19 +514,23 @@ class VLSetup():
 			command = 'salome -t --ns-port-log {}'.format(portfile)
 
 			if self.mode != 'interactive':
-				command += " >> {} 2>&1".format(Log)
+				command += " > {} 2>&1".format(Log)
 
 			Salome = Popen(command, shell='TRUE')
 			Salome.wait()
 			self.CheckProc(Salome,'Salome instance has not been created')
+			print("")
 			
 			### Get port number from file
 			with open(portfile,'r') as f:
 				self.__port__ = [int(f.readline()), True]
 
+		# Return here if SalomeInit as we only want to initiate Salome, not run anything
+		if SalomeInit: return
+
 		command = "salome shell -p{!s} {} args:{}".format(self.__port__[0], Script, Args)
 		if self.mode != 'interactive':
-			command += " >> {} 2>&1".format(Log)
+			command += " > {} 2>&1".format(Log)
 
 		Salome = Popen(PythonPath + command, shell='TRUE')
 		Salome.wait()

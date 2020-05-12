@@ -11,8 +11,6 @@
 !Run.py
 !Instructions.odt
 !Setup.sh
-!Test_VL.py
-!Test_VL_Parametric.py
 !VLconfig_CHANGEME_.sh
 !SetupConfig.sh
 !.1EU3DDeS1Zu57zby
@@ -21,12 +19,18 @@
 # Whitelist these directories 
 !Scripts/
 !Materials/
+# Ensure that only the Example and .dev sub-directory will be included in the whitelist
 !Input/
-!RunFiles
-# This ensures that only the Example sub-directory will be included in the whitelist
 Input/*/*
 !Input/*/Example/
 !Input/*/.dev/
+
+# Ensure that only some Run files will be included in the RunFiles directory
+!RunFiles/
+RunFiles/*
+!RunFiles/Run.py
+!RunFiles/Test_VL.py
+!RunFiles/Test_VL_Parametric.py
 
 
 

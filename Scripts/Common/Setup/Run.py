@@ -43,6 +43,11 @@ class VLSetup():
 		tmpfile = tempfile.mkstemp(suffix='.py')[1]
 		SP = Popen("bash {}/SetupConfig.sh {}".format(Rundir, tmpfile), shell='TRUE')
 		SP.wait()
+
+#		string = '''source VLconfig.sh;for i in ${!var[@]};do echo ${var[$i]}'="'"${!var[i]}"'"' '''+'''>>{};done'''.format(tmpfile)
+#		SP1 = Popen(string,shell='TRUE',executable="/bin/bash")
+#		SP1.wait()
+
 		sys.path.insert(0, os.path.dirname(tmpfile))
 		VLconfig = __import__(os.path.basename(tmpfile)[:-3])
 		sys.path.pop(0)

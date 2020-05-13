@@ -135,7 +135,7 @@ else:
 	TotStep = len(timearr) - 1
 
 MaxIter = getattr(Parameters, 'MaxIter', 10)
-LPend = getattr(Parameters, 'Lpend', xlaser[-1])
+LPend = getattr(Parameters, 'LaserEnd', xlaser[-1])
 LPindex = np.argmin(abs(timearr - LPend))
 
 LaserStore = timearr[:LPindex+1:Parameters.Storing['Laser']]

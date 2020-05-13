@@ -92,6 +92,7 @@ def main(Info, StudyDict):
 	plt.ylabel('Temperature',fontsize = 20)
 	plt.plot(Time, AvTemp)
 	plt.savefig("{}/BaseTemp.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
+	print("Created plot BaseTemp.png\n")
 	plt.close()
 
 	# Plot temp v time for rfactor bottom surface
@@ -105,6 +106,7 @@ def main(Info, StudyDict):
 			plt.plot(Time, Rdata, label = 'R = {}'.format(Rval))
 		plt.legend(loc='upper left')
 		plt.savefig("{}/Rplot.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
+		print("Created plot Rplot.png\n")
 		plt.close()
 
 	# Half Rise time of sample
@@ -176,7 +178,7 @@ def main(Info, StudyDict):
 			area = 0.5*np.linalg.norm(np.cross(Coords[1] - Coords[0], Coords[2] - Coords[0]))
 			Res[FaceIx] += area/3
 
-		Res = np.hstack((np.ones((Top_Face.NbNodes,1)), Res))
+		Res = np.hstack(( Res, np.ones((Top_Face.NbNodes,1))))
 
 	cmap=cm.coolwarm
 	fig = plt.figure(figsize = (10,5))
@@ -187,6 +189,7 @@ def main(Info, StudyDict):
 	ax1.axis('off')
 	ax2.axis('off')
 	plt.savefig("{}/FluxDist.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
+	print("Created plot FluxDist.png")
 	plt.close()
 
 	# Accuracy of temporal discretisation for laser pulse
@@ -202,6 +205,17 @@ def main(Info, StudyDict):
 	print("Error: {}%".format(100*abs(1-ExactLaser/AprxLaser)))
 	print("#################################\n")
 
+	# Plot of Laser pulse used
+	Laser = np.fromfile('{}/Laser/{}.dat'.format(Info.SIM_SCRIPTS,StudyDict['Parameters'].LaserT),dtype=float,count=-1,sep=" ")
+	xLaser = Laser[::2]
+	yLaser = Laser[1::2]
+	fig = plt.figure(figsize = (10,5))
+	plt.xlabel('Time',fontsize = 20)
+	plt.ylabel('Laser Pulse\n Factor',fontsize = 20)	
+	plt.plot(xLaser, yLaser)
+	plt.savefig("{}/LaserProfile.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
+	print("Created plot LaserProfile.png")
+	plt.close()
 
 
 

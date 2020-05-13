@@ -45,6 +45,7 @@ Sim.ImportRes = 'n'
 Sim.Energy = 5.32468714
 Sim.LaserT= 'Trim' #Temporal profile (see Scripts/LFA/Laser for all options)
 Sim.LaserS = 'Gauss' #Spatial profile (Gauss profile or uniform profile available)
+Sim.LaserEnd = 0.0008 # If this is not supplied the final time in the LaserT file will be used
 # Boundary Condtions
 Sim.ExtTemp = 20
 Sim.BottomHTC = 0
@@ -59,5 +60,5 @@ Sim.Storing = {'Laser':1, 'PostLaser':2}
 #############
 Sim.PostCalcFile = 'DiscPost'
 Sim.Rvalues = [0.1, 0.5, 1]
-Sim.ParaVisFile = 'DiscPV'
+#Sim.ParaVisFile = 'DiscPV'
 

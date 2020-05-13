@@ -10,10 +10,9 @@ import time
 from subprocess import Popen, PIPE, STDOUT
 import inspect
 import copy
-import imp
 from types import SimpleNamespace as Namespace
-import tempfile
 import contextlib
+import VLconfig
 	
 class VLSetup():
 	def __init__(self, Simulation, StudyDir, StudyName, Input, **kwargs):
@@ -40,27 +39,10 @@ class VLSetup():
 
 		frame = inspect.stack()[1]		
 		RunFile = os.path.realpath(frame[0].f_code.co_filename)
-		TWD = os.path.dirname(os.path.dirname(RunFile)) #TopWorkingDirectory
-		TWD = os.path.dirname(RunFile) #TopWorkingDirectory
 
-		ConfigPath = "{}/{}.sh".format(TWD, ConfigFile)
-		if not os.path.isfile(ConfigPath):
-			sys.exit('Config file {} not defined in top directory {}'.format(ConfigFile, TWD))
+		VL_DIR = VLconfig.VL_DIR
 
-		SetupConfig = "{}/SetupConfig.sh".format(TWD)
-		tmpfile = tempfile.mkstemp(suffix='.py')[1]
-		SP = Popen("bash {} {} {}".format(SetupConfig, ConfigPath, tmpfile), shell='TRUE')
-		SP.wait()
-		sys.path.insert(0, os.path.dirname(tmpfile))
-		VLconfig = __import__(os.path.basename(tmpfile)[:-3])
-		sys.path.pop(0)
-
-#		string = '''source VLconfig.sh;for i in ${!var[@]};do echo ${var[$i]}'="'"${!var[i]}"'"' '''+'''>>{};done'''.format(tmpfile)
-#		SP1 = Popen(string,shell='TRUE',executable="/bin/bash")
-#		SP1.wait()
-
-#		VL_DIR = getattr(VLconfig, "VL_DIR", Rundir)
-		VL_DIR = TWD
+		if VL_DIR != sys.path[0]: sys.path.pop(0)
 
 		### Define directories for VL from config file. If directory name doesn't start with '/'
 		### it will be created relative to the TWD 

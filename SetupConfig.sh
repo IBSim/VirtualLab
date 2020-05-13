@@ -1,15 +1,8 @@
 #!/bin/bash
-configfile_sh=$1
-configfile_py=$2
+source VLconfig.sh
 
-source $configfile_sh
-
-#FILE="VLconfig.py"
-#if test -f "$FILE"; then
-#    rm $FILE
-#fi
-
+echo "#!/usr/bin/env python3" > VLconfig.py
 for i in ${!var[@]}; do
-  echo ${var[$i]}'="'"${!var[i]}"'"' >> $configfile_py
+  echo ${var[$i]}'="'"${!var[i]}"'"' >> VLconfig.py
 done
 

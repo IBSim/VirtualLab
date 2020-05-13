@@ -63,9 +63,12 @@ var=(
 #  VL_DIR="$(dirname "$VL_find")/$VL_DIR_NAME"
 #fi
 
-VL_DIR_NAME="VirtualLab"
-VL_DIR="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-#VL_DIR="/home/rhydian/Documents/Scripts/Simulation/VirtualLab"
+Dir="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+VL_DIR=$(dirname "$Dir")
+VL_DIR_NAME=$(basename "$Dir")
+echo $VL_DIR
+echo $VL_DIR_NAME
+
 
 ### Version of conda to download and install with
 ### wget https://repo.anaconda.com/archive/"$CONDA_VER"
@@ -106,12 +109,10 @@ else
 fi
 
 ### Code_Aster installation location
-# Ishe neud update gyda hwn i adlewyrchu ble ma SalomeMeca wedi cal i ffindo
 ASTER_DIR=$ASTER_DIR_DEFAULT
 
 ### PATH to various directories required as in/out for VirtualLab.
 ### If left commented default behaviour is to locate in $VL_DIR
-# Wedi newid rhein - o's eisiau InputDir_DEFAULT ar y top? ne ydy ysgrifennu nhw fanhyn yn digon?
 InputDir=$InputDir_DEFAULT
 MaterialsDir=$MaterialsDir_DEFAULT
 RunFilesDir=$RunFilesDir_DEFAULT

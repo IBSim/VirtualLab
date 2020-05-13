@@ -84,10 +84,12 @@ sudo apt install -y git
 cd ~
 if [ -d "$VL_DIR" ]; then
   # Take action if $VL_DIR exists. #
+  echo
   echo "Skipping mkdir as ${VL_DIR} already exists"
   #source $VL_DIR/.VLprofile
 else
   ###  Control will jump here if $VL_DIR does NOT exist ###
+  echo
   echo "Creating ${VL_DIR} directory"
   sudo -u ${SUDO_USER:-$USER} mkdir ${VL_DIR}
 fi
@@ -102,15 +104,15 @@ else
   export PATH="'$VL_DIR':$PATH"
 fi
 
-# Download latest VirtualLab code
+### Download latest VirtualLab code
 cd $VL_DIR
 #sudo -u ${SUDO_USER:-$USER} git init
 #sudo -u ${SUDO_USER:-$USER} git pull git@gitlab.com:ibsim/virtuallab.git
 #git clone https://gitlab.com/ibsim/virtuallab.git
-# Only download src with no history
+### Only download src with no history
 #sudo -u ${SUDO_USER:-$USER} git pull --depth 1 git@gitlab.com:ibsim/virtuallab.git
-# Must use git clone if planning to commit changes.
-# Can comment out 'git init' above if using this.
+### Must use git clone if planning to commit changes.
+### Can comment out 'git init' above if using this.
 if test -d ".git"; then
   sudo -u ${SUDO_USER:-$USER} git pull git@gitlab.com:ibsim/virtuallab.git
 else
@@ -127,7 +129,7 @@ if [ "$PYTHON_INST" == "y" ]; then
   echo "Installing python"
   source Scripts/Install/Install_python.sh -C n
 elif [ "$PYTHON_INST" == "c" ]; then
-  echo "Installing conda"
+  echo "Installing/configuring conda"
   source Scripts/Install/Install_python.sh -C y
 else
   echo "Skipping python installation"
@@ -139,6 +141,7 @@ if [ "$SALOME_INST" == "y" ]; then
   source Scripts/Install/Install_Salome.sh
 else
   echo "Skipping salome installation"
+  echo
 fi
 
 # Currently can only run test as SU (therefore output files protected)

@@ -127,10 +127,10 @@ source VLconfig.py
 # Run initial VirtualLab setup (including salome install)
 if [ "$PYTHON_INST" == "y" ]; then
   echo "Installing python"
-  source Scripts/Install/Install_python.sh -C n
+  source Scripts/Install/Install_python.sh
 elif [ "$PYTHON_INST" == "c" ]; then
   echo "Installing/configuring conda"
-  source Scripts/Install/Install_python.sh -C y
+  source Scripts/Install/Install_python.sh
 else
   echo "Skipping python installation"
 fi

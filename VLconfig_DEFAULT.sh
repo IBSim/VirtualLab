@@ -63,9 +63,8 @@ var=(
 #  VL_DIR="$(dirname "$VL_find")/$VL_DIR_NAME"
 #fi
 
-Dir="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-VL_DIR=$(dirname "$Dir")
-VL_DIR_NAME=$(basename "$Dir")
+VL_DIR="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+VL_DIR_NAME=$(basename "$VL_DIR")
 
 ### Version of conda to download and install with
 ### wget https://repo.anaconda.com/archive/"$CONDA_VER"

@@ -119,6 +119,7 @@ else
   sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git .
 fi
 
+sudo -u ${SUDO_USER:-$USER} ./SetupConfig.sh
 source VLconfig.py
 # Change permissions on setup and run scripts
 #chmod 755 Setup.sh

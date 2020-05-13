@@ -42,10 +42,10 @@ else
     cd ~
     echo "Salome not found in PATH or .bashrc"
       if test ! -f "$SALOME_VER".tgz; then
-        echo "Proceeding to download salome in /home/$USER"
+        sudo -u ${SUDO_USER:-$USER} echo "Proceeding to download salome in /home/$USER"
         sudo -u ${SUDO_USER:-$USER} wget https://www.code-aster.org/FICHIERS/"$SALOME_VER".tgz
       fi
-    echo "Proceeding to unpack salome in /home/$USER"
+    sudo -u ${SUDO_USER:-$USER} echo "Proceeding to unpack salome in /home/$USER"
     sudo -u ${SUDO_USER:-$USER} tar xvf "$SALOME_VER".tgz
     echo "Installing salome in $SALOME_DIR"
     echo -e "$SALOME_DIR\nN" | sudo ./"$SALOME_VER".run

@@ -16,18 +16,19 @@ Simulation = 'LFA'
 StudyDir = 'Example'
 StudyName = 'Training'
 Input = {'Parameters' : 'TrainingParameters', 'Parametric':'Parametric_1'}
+Input = {'Parameters' : 'TrainingParameters'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
 VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
 
 # Create temporary directories and files
-VirtualLab.Create(RunSim=True, RunMesh=False)
+VirtualLab.Create(RunSim=True, RunMesh=True)
 
 # Creates meshes
 VirtualLab.Mesh()
 
 # Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
-VirtualLab.Aster(RunAster=False)
+VirtualLab.Aster(RunAster=True)
 VirtualLab.PostAster(ShowRes=False)
 
 # Remove tmp folders

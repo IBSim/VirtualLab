@@ -26,7 +26,6 @@ class VLSetup():
 		'''
 		port = kwargs.get('port', None)
 		mode = kwargs.get('mode', 'headless')
-		ConfigFile = kwargs.get('ConfigFile','VLconfig') 
 
 		# If port is provided it assumes an open instance of salome 
 		# exists on that port and will shell in to it.
@@ -201,7 +200,6 @@ class VLSetup():
 
 				# Add StudyDict to Studies dictionary
 				self.Studies[SimName] = StudyDict.copy()
-
 
 	def WriteModule(self, FileName, Dictionary, **kwargs):
 		Write = kwargs.get('Write','New')
@@ -481,14 +479,15 @@ class VLSetup():
 	def SalomeRun(self, Script, **kwargs):
 		'''
 		kwargs available:
-		Log: The log file you want to write information to
+		OutLog: The log file you want to write stdout to (default is /dev/null)
+		ErrLog: The log file you want to write stderr to (default is OutLog)
 		AddPath: Additional paths that Salome will be able to import from
 		ArgDict: a dictionary of the arguments that Salome will get
 		ArgList: a list of arguments to be passed to Salome
 		GUI: Opens a new instance with GUI (useful for testing)
 		Init: Creates a new Salome instance in terminal mode
 		'''
-		OutLog = kwargs.get('OutLog', "")
+		OutLog = kwargs.get('OutLog', "/dev/null")
 		ErrLog = kwargs.get('ErrLog', OutLog) 
 		AddPath = kwargs.get('AddPath',[])
 		ArgDict = kwargs.get('ArgDict', {})
@@ -519,7 +518,7 @@ class VLSetup():
 			command = 'salome -t --ns-port-log {}'.format(portfile)
 
 			if self.mode != 'interactive':
-				command += " > {} 2>&1".format(Log)
+				command += " > {} 2>&1".format(OutLog)
 
 			Salome = Popen(command, shell='TRUE')
 			Salome.wait()

@@ -22,7 +22,7 @@ Input = {'Parameters' : 'TrainingParameters'}
 VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
 
 # Create temporary directories and files
-VirtualLab.Create(RunSim=True, RunMesh=True)
+VirtualLab.Create(RunSim=True, RunMesh=False)
 
 # Creates meshes
 VirtualLab.Mesh()

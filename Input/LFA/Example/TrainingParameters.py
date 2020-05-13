@@ -17,7 +17,7 @@ Mesh.VoidHeight = 0.0000 # Height of Void. Positive/negative number gives a void
 Mesh.Length1D = 0.0003
 Mesh.Length2D = 0.0003  
 Mesh.Length3D = 0.0003 
-Mesh.HoleDisc = 30 # Number of segments for hole circumference (for sub-mesh)
+Mesh.HoleDisc = 30 # Number of segments for void circumference (unnecessary if no void)
 
 ##########################
 ####### Simulation #######
@@ -37,7 +37,7 @@ Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
 Sim.ResName = 'Thermal'
 # Material type(s) for analysis, the properties of which can be found in the 'Materials' directory
-Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
+Sim.Materials = {'Top':'Copper', 'Bottom':'Copper'}
 # Initial Conditions - Need either an initial temperature or a results file to import
 Sim.InitTemp = 20
 Sim.ImportRes = 'n'
@@ -59,6 +59,6 @@ Sim.Storing = {'Laser':1, 'PostLaser':2}
 ## Post-Sim #
 #############
 Sim.PostCalcFile = 'DiscPost'
-Sim.Rvalues = [0.1, 0.5, 1]
-#Sim.ParaVisFile = 'DiscPV'
+Sim.Rvalues = [0.1, 0.5]
+Sim.ParaVisFile = 'DiscPV'
 

@@ -192,6 +192,7 @@ def Create(**kwargs):
 
 class TestDimensions():
 	def __init__(self):
+		self.Name = 'TestMesh'
 		self.Radius = 0.0063
 		self.HeightB = 0.00125
 		self.HeightT = 0.00125

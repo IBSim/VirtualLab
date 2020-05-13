@@ -11,9 +11,8 @@
 !Run.py
 !Instructions.odt
 !Setup.sh
-!VLconfig_CHANGEME_.sh
+!VLconfig_DEFAULT.sh
 !SetupConfig.sh
-!.1EU3DDeS1Zu57zby
 !CreateParamFile.py
 
 # Whitelist these directories 

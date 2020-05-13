@@ -66,9 +66,6 @@ var=(
 Dir="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 VL_DIR=$(dirname "$Dir")
 VL_DIR_NAME=$(basename "$Dir")
-echo $VL_DIR
-echo $VL_DIR_NAME
-
 
 ### Version of conda to download and install with
 ### wget https://repo.anaconda.com/archive/"$CONDA_VER"
@@ -102,19 +99,20 @@ else
     ### Salome not found on system.
     echo "Salome not in path or in /opt, using default values."
     ### Salome installation location
-    SALOME_DIR=$SALOME_DIR_DEFAULT
+    SALOME_DIR=$(readlink -m $SALOME_DIR_DEFAULT)
     ### Salome version number in unpacked directory
     SALOME_BIN=$SALOME_BIN_DEFAULT
   fi
 fi
 
 ### Code_Aster installation location
-ASTER_DIR=$ASTER_DIR_DEFAULT
+ASTER_DIR=$(readlink -m $ASTER_DIR_DEFAULT)
 
 ### PATH to various directories required as in/out for VirtualLab.
 ### If left commented default behaviour is to locate in $VL_DIR
-InputDir=$InputDir_DEFAULT
-MaterialsDir=$MaterialsDir_DEFAULT
-RunFilesDir=$RunFilesDir_DEFAULT
-OutputDir=$OutputDir_DEFAULT
-TEMP_DIR=$TEMP_DIR_DEFAULT
+InputDir=$(readlink -m $InputDir_DEFAULT)
+MaterialsDir=$(readlink -m $MaterialsDir_DEFAULT)
+RunFilesDir=$(readlink -m $RunFilesDir_DEFAULT)
+OutputDir=$(readlink -m $OutputDir_DEFAULT)
+TEMP_DIR=$(readlink -m $TEMP_DIR_DEFAULT)
+

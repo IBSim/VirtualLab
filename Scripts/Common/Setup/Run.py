@@ -20,12 +20,12 @@ class VLSetup():
 		kwargs available:
 		port: Give the port number of an open Salome instance to connect to
 		mode: 3 options available:
-		     - interavtive: All outputs shown in terminal window(s)
-		     - continuous: Output written to file throughout execution
-		     - headless: Output written to file at the end of execution
+		     - Interactive: All outputs shown in terminal window(s)
+		     - Continuous: Output written to file throughout execution
+		     - Headless: Output written to file at the end of execution
 		'''
 		port = kwargs.get('port', None)
-		mode = kwargs.get('mode', 'headless')
+		mode = kwargs.get('mode', 'Headless')
 
 		# If port is provided it assumes an open instance of salome 
 		# exists on that port and will shell in to it.
@@ -33,8 +33,13 @@ class VLSetup():
 		# the salome instance at the end of the process.
 		self.__port__ = [port, False]
 
-		# Set running mode	
-		self.mode = mode
+		# Set running mode
+		if mode in ('i', 'I', 'interactive', 'Interactive'): mode = 'Interactive'
+		elif mode in ('c', 'C', 'continuous', 'Continuous'): mode = 'Continuous'
+		elif mode in ('h', 'H', 'headless', 'Headless'): mode = 'Headless'
+		if mode in ('Interactive','Continuous','Headless'): self.mode = mode
+		else : self.Exit("kwarg 'mode' is not in 'Interactive','Continuous' or 'Headless'")	
+		
 
 		frame = inspect.stack()[1]		
 		RunFile = os.path.realpath(frame[0].f_code.co_filename)
@@ -237,11 +242,11 @@ class VLSetup():
 				with open(IndMeshData,"w") as g:
 					with open("{}/{}.py".format(self.GEOM_DIR,mesh),'r') as MeshData:
 						g.write(MeshData.read())
-					if self.mode != 'interactive': 
+					if self.mode != 'Interactive': 
 						with open(IndMeshLog,'r') as rIndMeshLog:
 							g.write('\n### Meshing log ###\n'+rIndMeshLog.read())				
 
-				if self.mode == 'interactive': print("Completed mesh '{}'\n".format(mesh))
+				if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(mesh))
 				else : print("Completed mesh '{}'. See '{}' for log\n".format(mesh,IndMeshData))
 
 			print('### Meshing Completed ###\n')
@@ -321,10 +326,10 @@ class VLSetup():
 
 			# Create different command file depending on the mode
 			errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
-			if self.mode == 'interactive':
+			if self.mode == 'Interactive':
 				xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
 				command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
-			elif self.mode == 'continuous':
+			elif self.mode == 'Continuous':
 				command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER_DIR'])
 			else :
 				command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
@@ -340,12 +345,13 @@ class VLSetup():
 			for Name, Proc in SubProcs.copy().items():
 				Poll = Proc.poll()
 				if Poll is not None:
+					
 					err = Poll
-					if self.mode == 'interactive':
-						with open('{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR']),'r') as f:
+					if self.mode == 'Interactive':
+						with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
 							err = int(f.readline())
-					elif self.mode == 'continuous':
-						os.remove('{}/ContinuousAsterLog'.format(StudyDict['ASTER_DIR']))
+					elif self.mode == 'Continuous':
+						os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER_DIR']))
 
 					if err != 0:
 						print("Error in simulation '{}' - Check the log file".format(Name))
@@ -414,7 +420,7 @@ class VLSetup():
 			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
 			if PostCalcFile:
 				PostCalc = __import__(PostCalcFile)
-				if self.mode == 'interactive':
+				if self.mode == 'Interactive':
 					PostCalc.main(self, StudyDict)
 				else:
 					with open("{}/log.txt".format(StudyDict['POST_DIR']), 'w') as f:
@@ -513,7 +519,7 @@ class VLSetup():
 			portfile = '{}/port.txt'.format(self.TMP_DIR)
 			command = 'salome -t --ns-port-log {}'.format(portfile)
 
-			if self.mode != 'interactive':
+			if self.mode != 'Interactive':
 				command += " > {} 2>&1".format(OutLog)
 
 			Salome = Popen(command, shell='TRUE')
@@ -529,7 +535,7 @@ class VLSetup():
 		if SalomeInit: return
 
 		command = "salome shell -p{!s} {} args:{}".format(self.__port__[0], Script, Args)
-		if self.mode != 'interactive':
+		if self.mode != 'Interactive':
 			command += " 2>{} 1>{}".format(ErrLog, OutLog)
 
 		Salome = Popen(PythonPath + command, shell='TRUE')

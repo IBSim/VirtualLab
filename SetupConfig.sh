@@ -1,4 +1,5 @@
 #!/bin/bash
+if [ -f ~/.profile ]; then source ~/.profile; fi
 
 CONFIG_FNAME=VLconfig_DEFAULT.sh
 usage() {

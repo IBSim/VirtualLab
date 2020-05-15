@@ -1,4 +1,5 @@
 #!/bin/bash
+if [ -f ~/.profile ]; then source ~/.profile; fi
 
 ### Default values to be replaced by VLconfig
 #VL_DIR_NAME="VirtualLab"
@@ -30,17 +31,17 @@ if hash salome 2>/dev/null; then
 else
   # Do more checks
   echo "Salome does not exist in this shell's environment PATH"
-  # Search for reference to salome in .bashrc
-  if grep -q "$SALOME_DIR/appli_$SALOME_BIN" ~/.bashrc; then
-    echo "Reference to Salome PATH found in .bashrc"
+  # Search for reference to salome in ~/.profile
+  if grep -q "$SALOME_DIR/appli_$SALOME_BIN" ~/.profile; then
+    echo "Reference to Salome PATH found in .profile"
     echo "Assuming salome is installed"
     echo "Skipping salome installation"
     # Execute output from grep to try and add to shell's PATH
-    source <(grep "$SALOME_DIR/appli_$SALOME_BIN" ~/.bashrc)
+    source <(grep "$SALOME_DIR/appli_$SALOME_BIN" ~/.profile)
   else
     # Otherwise download and install
     cd ~
-    echo "Salome not found in PATH or .bashrc"
+    echo "Salome not found in PATH or ~/.profile"
       if test ! -f "$SALOME_VER".tgz; then
         sudo -u ${SUDO_USER:-$USER} echo "Proceeding to download salome in /home/$USER"
         sudo -u ${SUDO_USER:-$USER} wget https://www.code-aster.org/FICHIERS/"$SALOME_VER".tgz
@@ -51,9 +52,16 @@ else
     echo -e "$SALOME_DIR\nN" | sudo ./"$SALOME_VER".run
     # Add to PATH
     echo "Adding salome to PATH"
-    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/appli_'$SALOME_BIN':$PATH"'  >> ~/.bashrc
+    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/appli_'$SALOME_BIN':$PATH"'  >> ~/.profile
     #sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/'$SALOME_BIN':$PATH"'  >> ~/VirtualLab/.VLprofile
     export PATH="$SALOME_DIR"/appli_"$SALOME_BIN:$PATH"
+    
+    # ~/.bashrc doesn't get read by subshells in ubuntu.
+    # Workaround: store additions to env PATH in ~/.profile & source in bashrc.
+    STRING_TMP="if [ -f ~/.profile ]; then source ~/.profile; fi"
+    if [[ ! $(grep -F "$STRING_TMP" ~/.bashrc | grep -F -v "#$STRING") ]]; then 
+      echo $STRING_TMP >> ~/.bashrc
+    fi
     
     # Test to check if adding to path worked
     if hash salome 2>/dev/null; then

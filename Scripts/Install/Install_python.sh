@@ -10,7 +10,8 @@ if [ -f ~/.profile ]; then source ~/.profile; fi
 ### This will not work for all cases, but does from Install_VirtualLab.sh
 ### Need to code more robustly
 #CONDA_VER='Anaconda3-2020.02-Linux-x86_64.sh'
-CONDAENV=$VL_DIR_NAME
+#CONDAENV=$VL_DIR_NAME
+CONDAENV=$(basename "$VL_DIR")
 ### By default don't install conda unless triggered by flag
 CONDA_INST="n"
 

@@ -2,8 +2,8 @@
 if [ -f ~/.profile ]; then source ~/.profile; fi
 echo
 
-VL_DIR_NAME="VirtualLab"
-VL_DIR="$HOME/$VL_DIR_NAME"
+### Default location to install VirtualLab if no flag.
+VL_DIR="$HOME/VirtualLab"
 
 usage() {
   echo
@@ -33,7 +33,6 @@ while getopts ":d:P:S:h" options; do
   case "${options}" in
     d)
       VL_DIR=$(readlink -m ${OPTARG})
-      VL_DIR_NAME=$(basename "$VL_DIR")
       echo "VirtualLab will be installed in '$VL_DIR'."
       ;;
     P)
@@ -64,15 +63,9 @@ while getopts ":d:P:S:h" options; do
           exit_abnormal
         fi
         SALOME_INST=${array[0]}
-        #echo "$SALOME_INST"
         STRING_TMP="${array[1]}"
-        #echo "1. "$STRING_TMP
         STRING_TMP=${STRING_TMP/'~'/$HOME}
-        #echo "2. "$STRING_TMP
-        #echo "3. "$(readlink -m $STRING_TMP)
         SALOME_DIR=$(readlink -m $STRING_TMP)
-        #echo "4. "$SALOME_DIR
-        #echo "${array[1]}"
         echo "Salome-Meca will be installed in '$SALOME_DIR' and configured as part of VirtualLab install."
       elif [ "$SALOME_INST" == "n" ]; then
         echo "Salome-Meca will not be installed or configured during setup, please do this manually."
@@ -81,20 +74,20 @@ while getopts ":d:P:S:h" options; do
         exit_abnormal
       fi
       ;;
-    h)  # display Help
+    h)  ### display Help
       exit_abnormal
       ;;
-    :)  # If expected argument omitted:
+    :)  ### If expected argument omitted:
       echo "Error: Option -${OPTARG} requires an argument."
       exit_abnormal
       ;;
-    *)  # If unknown (any other) option:
+    *)  ### If unknown (any other) option:
       echo "Error: Invalid option -$OPTARG" >&2
       exit_abnormal
       ;;
   esac
 done
-
+### Check that no additional args were given that weren't caught.
 shift $(($OPTIND - 1))
 if [[ $@ ]]; then
   echo
@@ -104,15 +97,14 @@ if [[ $@ ]]; then
 fi
 
 #: <<'END'
-# Standard update
+### Standard update
 sudo apt update -y
 sudo apt upgrade -y
 
-# Install git
+### Install git
 sudo apt install -y git
-#sudo apt-get install -y curl openssh-server ca-certificates 
 
-# Temp solution to avoid prompt while sourcecode is closed-source during alpha phase
+### Temp solution to avoid prompt while sourcecode is closed-source during alpha phase
 #sudo cp -r /media/Shared/ssh/.ssh .
 #sudo chown -R $USER ~/.ssh
 #chmod -R 0700 ~/.ssh
@@ -121,32 +113,31 @@ sudo apt install -y git
 #git config --global user.email "you@example.com"
 #git config --global user.name "Your Name"
 
-# Check if VirtualLab directory exists in $HOME
+### Check if VirtualLab directory exists in $HOME
 cd ~
 if [ -d "$VL_DIR" ]; then
-  # Take action if $VL_DIR exists. #
+  #### If $VL_DIR exists don't do anything.
   echo
   echo "Skipping mkdir as ${VL_DIR} already exists."
-  #source $VL_DIR/.VLprofile
 else
-  ###  Control will jump here if $VL_DIR does NOT exist ###
+  ### If not, create $VL_DIR
   echo
   echo "Creating ${VL_DIR} directory."
   sudo -u ${SUDO_USER:-$USER} mkdir ${VL_DIR}
 fi
 
+### Check if VirtualLab is in PATH
 if [[ $PATH =~ $VL_DIR ]]; then
   echo "VirtualLab is already in PATH."
 else
-  # Adding VirtualLab to PATH
+  ### If not, add VirtualLab to PATH
   echo "Adding VirtualLab to PATH."
   sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.profile
-#  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> $VL_DIR/.VLprofile
   export PATH="'$VL_DIR':$PATH"
 fi
 
-# ~/.bashrc doesn't get read by subshells in ubuntu.
-# Workaround: store additions to env PATH in ~/.profile & source in bashrc.
+### ~/.bashrc doesn't get read by subshells in ubuntu.
+### Workaround: store additions to env PATH in ~/.profile & source in bashrc.
 STRING_TMP="if [ -f ~/.profile ]; then source ~/.profile; fi"
 if [[ ! $(grep -F "$STRING_TMP" ~/.bashrc | grep -F -v "#$STRING") ]]; then 
   echo $STRING_TMP >> ~/.bashrc
@@ -154,27 +145,21 @@ fi
 
 ### Download latest VirtualLab code
 cd $VL_DIR
-#sudo -u ${SUDO_USER:-$USER} git init
-#sudo -u ${SUDO_USER:-$USER} git pull git@gitlab.com:ibsim/virtuallab.git
-#git clone https://gitlab.com/ibsim/virtuallab.git
 ### Only download src with no history
 #sudo -u ${SUDO_USER:-$USER} git pull --depth 1 git@gitlab.com:ibsim/virtuallab.git
 ### Must use git clone if planning to commit changes.
-### Can comment out 'git init' above if using this.
 if test -d ".git"; then
   sudo -u ${SUDO_USER:-$USER} git pull git@gitlab.com:ibsim/virtuallab.git
 else
   sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git .
 fi
 
+### Run initial VirtualLab setup
 echo
 sudo -u ${SUDO_USER:-$USER} ./SetupConfig.sh
 source VLconfig.py
-# Change permissions on setup and run scripts
-#chmod 755 Setup.sh
-#chmod 755 Test_VL.py
 
-# Run initial VirtualLab setup (including salome install)
+### Install/configure python/conda if flagged
 if [ "$PYTHON_INST" == "y" ]; then
   echo "Installing python"
   source Scripts/Install/Install_python.sh
@@ -185,6 +170,7 @@ else
   echo "Skipping python installation"
 fi
 
+### Install salome if flagged
 cd $VL_DIR
 if [ "$SALOME_INST" == "y" ]; then
   echo "Installing salome"
@@ -194,16 +180,15 @@ else
   echo
 fi
 
-# Currently can only run test as SU (therefore output files protected)
+### Currently can only run test as SU (therefore output files protected)
 #sudo -u ubuntu python3 Test_VL.py
 #sudo -u ${SUDO_USER:-$USER} ./Test_VL.py
 #Test_VL.py
-# Need to add test to check results
-# Remove test files created by SU
+### Need to add test to check results
+### Remove test files created by SU
 #rm -r ~/VirtualLab/Training/
 #END
 echo
 echo "Finished installing and configuting VirtualLab."
 echo
-
 

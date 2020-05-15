@@ -1,10 +1,14 @@
 #!/bin/bash
 if [ -f ~/.profile ]; then source ~/.profile; fi
+
+echo
+echo "Starting installation of VirtualLab."
 echo
 
 ### Default location to install VirtualLab if no flag.
 VL_DIR="$HOME/VirtualLab"
-
+SKIP=n
+#echo "InstVL1 $VL_DIR"
 usage() {
   echo
   echo "Usage:"
@@ -20,6 +24,7 @@ usage() {
   echo "   '-S \"y <path>\"' Install Salome-Meca at <path> location"
   echo "   '-S y' Install Salome-Meca at defauly location /opt/SalomeMeca"
   echo "   '-S n' Do not install Salome-Meca"
+  echo "   '-y' Skip install confirmation dialogue."
   echo
   echo "Default behaviour is to not install python or salome."
   echo "Default install locations are: VirtualLab in the user's home directory,"
@@ -29,7 +34,7 @@ exit_abnormal() {
   usage
   exit 1
 }
-while getopts ":d:P:S:h" options; do 
+while getopts ":d:P:S:yh" options; do 
   case "${options}" in
     d)
       VL_DIR=$(readlink -m ${OPTARG})
@@ -52,13 +57,13 @@ while getopts ":d:P:S:h" options; do
       SALOME_INST=${OPTARG}
       if [[ "$SALOME_INST" == "y" ]]; then
         echo "Salome-Meca will be installed in the default directory and configured as part of VirtualLab install."
-      elif [[ "$SALOME_INST" == *"y"* ]]; then
+      elif [[ "$SALOME_INST" == "y"* ]]; then
         set -f # disable glob
 	IFS=' ' # split on space characters
         array=($OPTARG) # use the split+glob operator
-        if [[ ${#array[@]} > 2 ]]; then
+        if [[ ! ${#array[@]} == 2 ]]; then
           echo "The number of arguments entered for option -S is ${#array[@]}."
-          echo "The max. number expected is 2, i.e. [-S \"{y/n} <path>\"]"
+          echo "The number expected is 2, i.e. [-S \"y <path>\"]"
           echo "or [-S {y/n}] if no path is specified."
           exit_abnormal
         fi
@@ -70,9 +75,12 @@ while getopts ":d:P:S:h" options; do
       elif [ "$SALOME_INST" == "n" ]; then
         echo "Salome-Meca will not be installed or configured during setup, please do this manually."
       else
-        echo "Error: Invalid option argument $PYTHON_INST" >&2
+        echo "Error: Invalid option argument $SALOME_INST" >&2
         exit_abnormal
       fi
+      ;;
+    y)  ### Skip install confirmation dialogue.
+      SKIP=y
       ;;
     h)  ### display Help
       exit_abnormal
@@ -96,13 +104,25 @@ if [[ $@ ]]; then
   exit_abnormal
 fi
 
+### Double check with user that they're happy to continue.
+### This is skippable with -y flag.
+if [[ ! "$SKIP" =~ "y" ]]; then
+  read -r -p "Are you sure? [y/n] " response
+  if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    echo "Make it so!"
+  else
+    echo "Exiting VirtualLab installation/configuration."
+    exit
+  fi
+fi
+
 #: <<'END'
 ### Standard update
-sudo apt update -y
-sudo apt upgrade -y
+#sudo apt update -y
+#sudo apt upgrade -y
 
 ### Install git
-sudo apt install -y git
+#sudo apt install -y git
 
 ### Temp solution to avoid prompt while sourcecode is closed-source during alpha phase
 #sudo cp -r /media/Shared/ssh/.ssh .
@@ -132,7 +152,7 @@ if [[ $PATH =~ $VL_DIR ]]; then
 else
   ### If not, add VirtualLab to PATH
   echo "Adding VirtualLab to PATH."
-  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.profile
+#  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.profile
   export PATH="'$VL_DIR':$PATH"
 fi
 
@@ -144,6 +164,7 @@ if [[ ! $(grep -F "$STRING_TMP" ~/.bashrc | grep -F -v "#$STRING") ]]; then
 fi
 
 ### Download latest VirtualLab code
+#echo "InstVL2 $VL_DIR"
 cd $VL_DIR
 ### Only download src with no history
 #sudo -u ${SUDO_USER:-$USER} git pull --depth 1 git@gitlab.com:ibsim/virtuallab.git
@@ -153,12 +174,20 @@ if test -d ".git"; then
 else
   sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git .
 fi
-
+#END
 ### Run initial VirtualLab setup
 echo
-sudo -u ${SUDO_USER:-$USER} ./SetupConfig.sh
-source VLconfig.py
+#echo "InstVL3 $VL_DIR"
+#echo $(pwd)
+###TEMP###
+#cd $HOME/VirtualLab
+###TEMP###
+source "$VL_DIR/SetupConfig.sh"
+#./SetupConfig.sh
+#sudo -u ${SUDO_USER:-$USER} ./SetupConfig.sh
+source "$VL_DIR/VLconfig.py"
 
+#: <<'END'
 ### Install/configure python/conda if flagged
 if [ "$PYTHON_INST" == "y" ]; then
   echo "Installing python"

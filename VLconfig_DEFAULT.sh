@@ -20,7 +20,8 @@ OutputDir_DEFAULT="$VL_DIR_DEFAULT/Output"
 TEMP_DIR_DEFAULT="/tmp"
 ### END OF DEFAULTS ###
 #######################
-
+echo '$VL_DIR_DEFAULT/Input = '"$VL_DIR_DEFAULT/Input"
+echo "InputDir_DEFAULT = "$InputDir_DEFAULT
 ### This is a list of the variables to be exported from this file.
 ### Add any additional variables to this list to be sourced by SetupConfig.
 var=(
@@ -39,6 +40,7 @@ var=(
 
 ### Locate PATH to VirtualLab directory to enable running VirtualLab from
 ### locations other than the source top directory.
+#echo "VLconf $VL_DIR"
 VL_DIR="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 ### Version of conda to download and install with
@@ -71,22 +73,42 @@ else
     SALOME_BIN=${SALOME_TMP#"$prefix"}; #echo "${SALOME_BIN}"
   else
     ### Salome not found on system.
-    echo "Salome not in path or in /opt, using default values."
-    ### Salome installation location
-    SALOME_DIR=$(readlink -m $SALOME_DIR_DEFAULT)
+    if [[ "$SALOME_INST" =~ 'y' ]] & [[ ! -z "$SALOME_DIR" ]]; then
+      echo "Salome not in env path or in /opt, it will be installed in '$SALOME_DIR'."
+    else
+      echo "Salome not in env path or in /opt, using default values."
+      ### Salome installation location
+      SALOME_DIR=$(readlink -m $SALOME_DIR_DEFAULT)
+    fi
     ### Salome version number in unpacked directory
     SALOME_BIN=$SALOME_BIN_DEFAULT
   fi
 fi
-
 ### Code_Aster installation location
 ASTER_DIR=$(readlink -m $ASTER_DIR_DEFAULT)
 
 ### PATH to various directories required as in/out for VirtualLab.
-### If left commented default behaviour is to locate in $VL_DIR
+### Default behaviour is to locate in $VL_DIR.
+#echo '$InputDir_DEFAULT = '$InputDir_DEFAULT
+#echo '$InputDir = '$InputDir
+
+#STRING_TMP=$InputDir_DEFAULT
+#STRING_TMP=${STRING_TMP/'$VL_DIR_DEFAULT/'/''}
+#echo '$STRING_TMP = '$STRING_TMP
+#InputDir=$(readlink -m $STRING_TMP)
+
+#InputDir=$(readlink -m $InputDir_DEFAULT)
+#echo "dirname = "$(dirname "$InputDir")
+#echo "dirnamex2 = "$(dirname "$(dirname "$InputDir")")
+#echo "basename = "$(basename "$InputDir")
+#echo "path = "$(dirname "$(dirname "$InputDir")")"/"$(basename "$InputDir")
+
 InputDir=$(readlink -m $InputDir_DEFAULT)
 MaterialsDir=$(readlink -m $MaterialsDir_DEFAULT)
 RunFilesDir=$(readlink -m $RunFilesDir_DEFAULT)
 OutputDir=$(readlink -m $OutputDir_DEFAULT)
 TEMP_DIR=$(readlink -m $TEMP_DIR_DEFAULT)
+
+#echo '$InputDir_DEFAULT = '$InputDir_DEFAULT
+#echo '$InputDir = '$InputDir
 

@@ -40,6 +40,7 @@ while getopts ":f:h" options; do
   esac
 done
 
+echo $CONFIG_FNAME
 source $CONFIG_FNAME
 
 echo "#!/usr/bin/env python3" > VLconfig.py

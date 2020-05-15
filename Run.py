@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import sys
-import os
+from os.path import dirname, abspath
 sys.dont_write_bytecode=True
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common import VLSetup
 
 #try: from Scripts.Common import VLSetup
@@ -12,7 +11,7 @@ from Scripts.Common import VLSetup
 #	sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 #	from Scripts.Common import VLSetup		
 
-Simulation = 'LFA'
+Simulation = 'Tensile'
 StudyDir = 'Example'
 StudyName = 'Training'
 Input = {'Parameters' : 'TrainingParameters', 'Parametric':'Parametric_1'}
@@ -22,7 +21,7 @@ Input = {'Parameters' : 'TrainingParameters'}
 VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
 
 # Create temporary directories and files
-VirtualLab.Create(RunSim=True, RunMesh=False)
+VirtualLab.Create(RunSim=False, RunMesh=True)
 
 # Creates meshes
 VirtualLab.Mesh()

@@ -41,21 +41,18 @@ class VLSetup():
 
 		VL_DIR = VLconfig.VL_DIR
 
-		if VL_DIR != sys.path[0]: sys.path.pop(0)
+		if VL_DIR != sys.path[-1]: sys.path.pop(-1)
 
 		### Define directories for VL from config file. If directory name doesn't start with '/'
 		### it will be created relative to the TWD 
 		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored.	
 		OUTPUT_DIR = getattr(VLconfig,'OutputDir', "{}/Output".format(VL_DIR))
-		if not OUTPUT_DIR.startswith('/'): OUTPUT_DIR="{}/{}".format(VL_DIR,OUTPUT_DIR)
 
 		# Material directory
 		MATERIAL_DIR = getattr(VLconfig,'MaterialDir', "{}/Materials".format(VL_DIR))
-		if not MATERIAL_DIR.startswith('/'): MATERIAL_DIR="{}/{}".format(VL_DIR,MATERIAL_DIR)
 
 		# Input directory
 		INPUT_DIR = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
-		if not INPUT_DIR.startswith('/'): INPUT_DIR = "{}/{}".format(VL_DIR,INPUT_DIR)
 
 		# Code_Aster directory
 		self.ASTER_DIR = VLconfig.ASTER_DIR
@@ -109,7 +106,6 @@ class VLSetup():
 		Parametric = self.Input.get('Parametric', None)
 		if Parametric: Parametric = __import__(Parametric)
 
-#		if not os.path.isdir(self.TMP_DIR): os.makedirs(self.TMP_DIR)
 		MainDict = copy.deepcopy(self.__dict__)
 		MainMesh = getattr(Main, 'Mesh', None)
 		MainSim = getattr(Main, 'Sim', None)

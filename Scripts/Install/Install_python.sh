@@ -1,16 +1,17 @@
 #!/bin/bash
 if [ -f ~/.profile ]; then source ~/.profile; fi
 
-### Default values to be replaced by VLconfig
-#VL_DIR_NAME="VirtualLab"
-#VL_DIR="$HOME/$VL_DIR_NAME"
+#########################
+### This script is used to install/configure python/conda and its dependencies.
+### It first attempts to detect whether it is already installed.
+### For VirtualLab, the default config values are as below.
+### These can be changed in $VL_DIR/VLconfig_DEFAULT.sh if needed.
+### CONDA_VER='Anaconda3-2020.02-Linux-x86_64.sh'
+### CONDAENV=$VL_DIR_NAME
+#########################
 
-### Variables for conda
-### $CONDA_VER should now be read from VLconfig.py
-### This will not work for all cases, but does from Install_VirtualLab.sh
-### Need to code more robustly
-#CONDA_VER='Anaconda3-2020.02-Linux-x86_64.sh'
-#CONDAENV=$VL_DIR_NAME
+### If configuring conda, use the name of the directory where VirtualLab is
+### installed as the name of the conda environment. By default this is 'VirtualLab'.
 CONDAENV=$(basename "$VL_DIR")
 ### By default don't install conda unless triggered by flag
 CONDA_INST="n"
@@ -35,7 +36,7 @@ exit_abnormal() {
 }
 while getopts ":P:" options; do 
   case "${options}" in
-    P) # If P option triggered
+    P) ### If P option triggered
       PYTHON_INST=${OPTARG}
       if [ "$PYTHON_INST" == "y" ]; then
         echo "Python will be installed/updated and configured as part of VirtualLab install."
@@ -48,30 +49,30 @@ while getopts ":P:" options; do
         exit_abnormal
       fi
       ;;
-    :)  # If expected argument omitted:
+    :)  ### If expected argument omitted:
       echo "Error: Option -${OPTARG} requires an argument."
       exit_abnormal
       ;;
-    *)  # If unknown (any other) option:
+    *)  ### If unknown (any other) option:
       echo "Error: Invalid option -$OPTARG" >&2
       exit_abnormal
       ;;
   esac
 done
 
-# Standard update
+### Standard update
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential
 
 if [ "$PYTHON_INST" == "y" ]; then
-  # Install python and required packages
+  ### Install python and required packages
   sudo apt install -y python3
   sudo apt install -y python3-pip
   sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py
   sudo -u ${SUDO_USER:-$USER} pip3 install iapws
 
-  # Add $VL_DIR to $PYTHONPATH in python env and current shell
+  ### Add $VL_DIR to $PYTHONPATH in python env and current shell
   if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR ~/.profile; then
     echo "Reference to VirtualLab PYTHONPATH found in ~/.profile"
     echo "Therefore, not adding again."
@@ -80,27 +81,27 @@ if [ "$PYTHON_INST" == "y" ]; then
     sudo -u ${SUDO_USER:-$USER} echo 'export PYTHONPATH=$PYTHONPATH'$VL_DIR''  >> ~/.profile
     export PYTHONPATH=$PYTHONPATH$VL_DIR
     
-    # ~/.bashrc doesn't get read by subshells in ubuntu.
-    # Workaround: store additions to env PATH in ~/.profile & source in bashrc.
+    ### ~/.bashrc doesn't get read by subshells in ubuntu.
+    ### Workaround: store additions to env PATH in ~/.profile & source in bashrc.
     STRING_TMP="if [ -f ~/.profile ]; then source ~/.profile; fi"
     if [[ ! $(grep -F "$STRING_TMP" ~/.bashrc | grep -F -v "#$STRING") ]]; then 
       echo $STRING_TMP >> ~/.bashrc
     fi
   fi
 elif [ "$PYTHON_INST" == "c" ]; then
-  # Install conda dependencies
+  ### Install conda dependencies
   sudo apt install -y libgl1-mesa-glx libegl1-mesa libxrandr2 libxss1 libxcursor1 libxcomposite1 libasound2 libxi6 libxtst6
 
   eval "$($HOME/anaconda3/bin/conda shell.bash hook)"
 
-  # Test to check if conda already exists in current shell's PATH
+  ### Test to check if conda already exists in current shell's PATH
   if hash conda 2>/dev/null; then
-    # If exists, do nothing
+    ### If exists, do nothing
     echo
     echo "Conda is already installed."
     echo "Skipping conda installation."
   else
-    # Otherwise download and install conda
+    ### Otherwise download and install conda
     echo
     cd ~
     if test ! -f "$CONDA_VER"; then
@@ -114,11 +115,11 @@ elif [ "$PYTHON_INST" == "c" ]; then
     conda init
     export PATH=$HOME/anaconda3/bin:$PATH
     source ~/.profile
-    # Test conda
+    ### Test conda
     if hash conda 2>/dev/null; then
       echo "Conda succesfully installed"
       echo
-      # rm download if installed
+      ### rm download if installed
     else
       echo "There has been a problem installing Conda"
       echo "Check error messages, try to rectify then rerun this script"
@@ -132,19 +133,19 @@ elif [ "$PYTHON_INST" == "c" ]; then
     conda create -n $CONDAENV python -y
   fi
   
-  # Install conda packages
+  ### Install conda packages
   conda activate $CONDAENV
   conda config --append channels conda-forge
   conda install -y numpy scipy matplotlib pillow h5py iapws
 
-  # Install python and required packages
+  ### Install python and required packages
   sudo apt install -y python3-pip
   sudo -u ${SUDO_USER:-$USER} pip3 install fpdf
   #sudo -u ${SUDO_USER:-$USER} pip3 install fpdf2
   echo "Finished creating Conda env $CONDAENV"
   echo
 
-  # Add $VL_DIR to $PYTHONPATH in Conda env and current shell
+  ### Add $VL_DIR to $PYTHONPATH in Conda env and current shell
   PYV=`python -V`
   PYV2=${PYV#* }
   PYV=${PYV2%.*}

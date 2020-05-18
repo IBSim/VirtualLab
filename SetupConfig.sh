@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ -f ~/.profile ]; then source ~/.profile; fi
 
-#echo 'SC1 $SALOME_DIR = '$SALOME_DIR
+cd $VL_DIR
 CONFIG_FNAME=VLconfig_DEFAULT.sh
 usage() {
   echo
@@ -48,11 +48,15 @@ if [[ $@ ]]; then
   echo "Remaining arguments: \"$@\"."
   exit_abnormal
 fi
-#echo 'SC2 $SALOME_DIR = '$SALOME_DIR
+
+### Run VLconfig bash script
 source $CONFIG_FNAME
-#echo 'SC3 $SALOME_DIR = '$SALOME_DIR
-echo "#!/usr/bin/env python3" > VLconfig.py
+
+### Output list of config values to VLconfig python file
+echo "Creating VLconfig.py in $VL_DIR."
+echo "#!/usr/bin/env python3" > $VL_DIR/VLconfig.py
 for i in ${!var[@]}; do
-  echo ${var[$i]}'="'"${!var[i]}"'"' >> VLconfig.py
+  echo ${var[$i]}'="'"${!var[i]}"'"' >> $VL_DIR/VLconfig.py
 done
+echo
 

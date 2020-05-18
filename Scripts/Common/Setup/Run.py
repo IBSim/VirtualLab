@@ -238,7 +238,7 @@ class VLSetup():
 			Salome.wait()
 
 			self.Cleanup()
-			sys.exit()		
+			sys.exit()
 		elif MeshCheck and MeshCheck not in MeshList:
 			self.Exit("MeshCheck '{}' is not in the list of meshes to be created. Meshes to be created are {}".format(MeshCheck, MeshList))
 
@@ -530,8 +530,9 @@ class VLSetup():
 
 
 		if not self.__port__[0]:
+			# Cd to TMP_DIR to avoid test.out file created in VL
 			portfile = '{}/port.txt'.format(self.TMP_DIR)
-			command = 'salome -t --ns-port-log {}'.format(portfile)
+			command = 'cd {};salome -t --ns-port-log {}'.format(self.TMP_DIR,portfile)
 
 			if self.mode != 'Interactive':
 				command += " > {} 2>&1".format(OutLog)

@@ -103,7 +103,7 @@ def Test():
 
 
 def HIVE():
-	dirname = '/home/rhydian/Documents/Scripts/Simulation/virtuallab/Scripts/HIVE/Coils'
+	dirname = '/home/rhydian/Documents/Scripts/Simulation/VirtualLab/Scripts/HIVE/Coils'
 	Coil = geompy.ImportSTEP("{}/HIVE_COIL.stp".format(dirname), False, True)
 	geompy.addToStudy(Coil,'Coil')
 

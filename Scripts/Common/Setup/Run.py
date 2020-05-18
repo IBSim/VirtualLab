@@ -217,10 +217,17 @@ class VLSetup():
 		'''
 		kwargs available:
 		MeshCheck: input a meshname and it will open this mesh in the GUI
+		ShowMesh: Opens up the meshes in the GUI. Boolean
 		'''
 		MeshCheck = kwargs.get('MeshCheck', None)
+		ShowMesh = kwargs.get('ShowMesh', False)
 
 		MeshList = getattr(self,'MeshList', None)
+
+
+
+
+
 		if MeshList:
 			print('### Starting Meshing ###\n')
 			# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
@@ -250,6 +257,13 @@ class VLSetup():
 				else : print("Completed mesh '{}'. See '{}' for log\n".format(mesh,IndMeshData))
 
 			print('### Meshing Completed ###\n')
+
+			if ShowMesh:
+				print("Opening mesh files in Salome")
+				MeshList = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshList]
+				Script = "{}/MeshAll.py".format(self.COM_PREPROC)
+				Salome = Popen('salome {} args:{} '.format(Script,",".join(MeshList)), shell='TRUE')
+				Salome.wait()
 
 		
 #		elif self.MeshDict and MeshCheck:

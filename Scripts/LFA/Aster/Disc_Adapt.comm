@@ -57,15 +57,26 @@ Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TopMat, GROUP_MA='Top'),_F(MATER=BotMat, 
 	                MAILLAGE=mesh)
 
 ##### Create list of time steps #####
-fintime, TotStep, start = 0, 0, 0
-timelist = [np.array([start])]
-for tup in Parameters.dt:
-	dt, Nstep = tup
-	TotStep += Nstep
-	fintime += dt*Nstep
-	timelist.append(np.linspace(start+dt,fintime,Nstep))
+start = 0
+timelist, savelist = [], []
+for i, tup in enumerate(Parameters.dt):
+	if len(tup) == 3: dt, Nstep, save = tup
+	else :dt, Nstep, save = tup[0],tup[1], 1
+
+	fintime = start + dt*Nstep
+	timesteps = np.linspace(start,fintime,Nstep+1).tolist()
+
+	if i == 0: 
+		timelist.append(timesteps)
+		savelist.append(timesteps[::save])
+	else: 
+		timelist.append(timesteps[1:])
+		savelist.append(timesteps[save::save])
+
 	start = fintime
+
 timearr = timearrOrig = np.concatenate(timelist)
+savearr = np.concatenate(savelist)
 
 ##### Create BCs #####
 
@@ -145,11 +156,8 @@ MaxIter = getattr(Parameters, 'MaxIter', 10)
 LPend = getattr(Parameters, 'LaserEnd', xlaser[-1])
 LPindex = np.argmin(abs(timearr - LPend))
 
-LaserStore = timearr[:LPindex+1:Parameters.Storing['Laser']]
-PostLaserStore = timearr[LPindex+Parameters.Storing['PostLaser']::Parameters.Storing['PostLaser']]
-Store = np.concatenate((LaserStore,PostLaserStore))
 timestp = DEFI_LIST_REEL(VALE=timearr)
-Storing = DEFI_LIST_REEL(VALE=Store)
+Storing = DEFI_LIST_REEL(VALE=savearr)
 
 ### LaserOn
 if  StartTime < LPend:

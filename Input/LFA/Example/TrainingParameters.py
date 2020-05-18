@@ -45,15 +45,13 @@ Sim.ImportRes = 'n'
 Sim.Energy = 5.32468714
 Sim.LaserT= 'Trim' #Temporal profile (see Scripts/LFA/Laser for all options)
 Sim.LaserS = 'Gauss' #Spatial profile (Gauss profile or uniform profile available)
-Sim.LaserEnd = 0.0008 # If this is not supplied the final time in the LaserT file will be used
 # Boundary Condtions
 Sim.ExtTemp = 20
 Sim.BottomHTC = 0
 Sim.TopHTC = 0
 # Time-stepping and temporal discretisation
-Sim.dt = [(0.00004,20), (0.0005,100)]
+Sim.dt = [(0.00002,20,1), (0.0005,100,2)]
 Sim.Theta = 0.5
-Sim.Storing = {'Laser':1, 'PostLaser':2}
 
 #############
 ## Post-Sim #

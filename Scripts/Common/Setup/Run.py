@@ -396,7 +396,7 @@ class VLSetup():
 
 		# Opens up all results in ParaVis
 		if ShowRes:
-			print("Opening .rmed files in ParaVis")
+			print("### Opening .rmed files in ParaVis ###\n")
 			ResList=[]
 			for study, StudyDict in self.Studies.items():
 				ResName = StudyDict['Parameters'].ResName
@@ -430,7 +430,7 @@ class VLSetup():
 			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
 			if not PostCalcFile : continue
 
-			print("PostCalc for '{}'\n".format(Name)) 
+			print("## PostCalc for '{}' ##\n".format(Name)) 
 			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
 			if PostCalcFile:
 				PostCalc = __import__(PostCalcFile)

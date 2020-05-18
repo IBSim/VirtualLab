@@ -50,9 +50,8 @@ Sim.ExtTemp = 20
 Sim.BottomHTC = 0
 Sim.TopHTC = 0
 # Time-stepping and temporal discretisation
-Sim.dt = [(0.00004,20), (0.0005,100)]
+Sim.dt = [(0.00002,20,1), (0.0005,100,2)]
 Sim.Theta = 0.5
-Sim.Storing = {'Laser':1, 'PostLaser':2}
 
 #############
 ## Post-Sim #

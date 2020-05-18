@@ -51,15 +51,26 @@ Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TopMat, GROUP_MA='Top'),_F(MATER=BotMat, 
 	                MAILLAGE=mesh)
 
 ##### Create list of time steps #####
-fintime, TotStep, start = 0, 0, 0
-timelist = [np.array([start])]
-for tup in Parameters.dt:
-	dt, Nstep = tup
-	TotStep += Nstep
-	fintime += dt*Nstep
-	timelist.append(np.linspace(start+dt,fintime,Nstep))
+start = 0
+timelist, savelist = [], []
+for i, tup in enumerate(Parameters.dt):
+	if len(tup) == 3: dt, Nstep, save = tup
+	else :dt, Nstep, save = tup[0],tup[1], 1
+
+	fintime = start + dt*Nstep
+	timesteps = np.linspace(start,fintime,Nstep+1).tolist()
+
+	if i == 0: 
+		timelist.append(timesteps)
+		savelist.append(timesteps[::save])
+	else: 
+		timelist.append(timesteps[1:])
+		savelist.append(timesteps[save::save])
+
 	start = fintime
+
 timearr = timearrOrig = np.concatenate(timelist)
+savearr = np.concatenate(savelist)
 
 ##### Create BCs #####
 
@@ -129,20 +140,17 @@ else:
 		PrevTime = np.fromfile(PathVL.DATA_DIR + '/TimeSteps.dat',dtype=float,count=-1,sep=' ')
 		ImportIndex = np.argmin(abs(PrevTime - StartTime))
 		timearr = np.concatenate((PrevTime[0:ImportIndex+1],timearr[NewIndex+1:]))
+		savearr=timearr
 	else:
 		ImportIndex = 0
 		timearr = timearr[NewIndex:]
-	TotStep = len(timearr) - 1
 
 MaxIter = getattr(Parameters, 'MaxIter', 10)
 LPend = getattr(Parameters, 'LaserEnd', xlaser[-1])
 LPindex = np.argmin(abs(timearr - LPend))
 
-LaserStore = timearr[:LPindex+1:Parameters.Storing['Laser']]
-PostLaserStore = timearr[LPindex+Parameters.Storing['PostLaser']::Parameters.Storing['PostLaser']]
-Store = np.concatenate((LaserStore,PostLaserStore))
 timestp = DEFI_LIST_REEL(VALE=timearr)
-Storing = DEFI_LIST_REEL(VALE=Store)
+Storing = DEFI_LIST_REEL(VALE=savearr)
 
 ### LaserOn
 if  StartTime < LPend:
@@ -157,7 +165,6 @@ if  StartTime < LPend:
 				SOLVEUR=_F(METHODE=Parameters.Solver),
 				RESULTAT=resther)
 
-
 ### Laser Off
 if fintime > LPend:
 	resther = THER_LINEAIRE(reuse=resther,
@@ -165,7 +172,7 @@ if fintime > LPend:
 				CHAM_MATER=Thermat,
 				ETAT_INIT=_F(EVOL_THER=resther),
 				EXCIT=Loading2,
-				INCREMENT=_F(NUME_INST_FIN=TotStep, LIST_INST=timestp),
+				INCREMENT=_F(LIST_INST=timestp),
 				MODELE=Thermod,
 				PARM_THETA=Parameters.Theta,
 				SOLVEUR=_F(METHODE=Parameters.Solver),
@@ -176,6 +183,5 @@ if fintime > LPend:
 np.savetxt('./REPE_OUT/TimeSteps.dat', timearr, fmt = '%.6f', delimiter = '   ')
 DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName), UNITE=81)
 IMPR_RESU(RESU=_F(RESULTAT=resther), UNITE=81)
-
 
 FIN()

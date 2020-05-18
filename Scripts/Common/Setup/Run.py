@@ -223,63 +223,63 @@ class VLSetup():
 		ShowMesh = kwargs.get('ShowMesh', False)
 
 		MeshList = getattr(self,'MeshList', None)
+		if not MeshList: return
+
+		# MeshCheck routine which allows you to mesh in the GUI (Used for debugging).
+		# The script will terminate after this routine
+		if MeshCheck and MeshCheck in MeshList:
+			print('### Meshing {} in GUI ###\n'.format(MeshCheck))
+			sys.path.insert(0, self.GEOM_DIR)
+			MeshParameters = __import__(MeshCheck)
+
+			AddPath = "PYTHONPATH={}:{}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
+			Script = "{}/{}.py".format(self.SIM_PREPROC, MeshParameters.File)
+			Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,MeshParameters.__file__), shell='TRUE')
+			Salome.wait()
+
+			self.Cleanup()
+			sys.exit()		
+		elif MeshCheck and MeshCheck not in MeshList:
+			self.Exit("MeshCheck '{}' is not in the list of meshes to be created. Meshes to be created are {}".format(MeshCheck, MeshList))
 
 
 
+		print('### Starting Meshing ###\n')
+		# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
+		MeshLog = "{}/Log".format(self.MESH_DIR)
+		self.SalomeRun(None, SalomeInit=True, OutLog=MeshLog)
+				
+		# Script which is used to import the necessary mesh function
+		PreProcScript = '{}/Run.py'.format(self.COM_PREPROC)
+		for mesh in self.MeshList:
+			print("Starting mesh '{}'".format(mesh))
 
+			IndMeshLog = "{}/Log".format(self.GEOM_DIR)
+			ArgDict = {"Parameters":mesh, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, mesh)}
+			AddPath = [self.SIM_PREPROC, self.GEOM_DIR]
+			self.SalomeRun(PreProcScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
 
-		if MeshList:
-			print('### Starting Meshing ###\n')
-			# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
-			MeshLog = "{}/Log".format(self.MESH_DIR)
-			self.SalomeRun(None, SalomeInit=True, OutLog=MeshLog)
-					
-			# Script which is used to import the necessary mesh function
-			PreProcScript = '{}/Run.py'.format(self.COM_PREPROC)
+			IndMeshData = "{}/{}.txt".format(self.MESH_DIR, mesh)
+			with open(IndMeshData,"w") as g:
+				with open("{}/{}.py".format(self.GEOM_DIR,mesh),'r') as MeshData:
+					g.write(MeshData.read())
+				if self.mode != 'Interactive': 
+					with open(IndMeshLog,'r') as rIndMeshLog:
+						g.write('\n### Meshing log ###\n'+rIndMeshLog.read())				
 
-			for mesh in self.MeshList:
-				print("Starting mesh '{}'".format(mesh))
+			if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(mesh))
+			else : print("Completed mesh '{}'. See '{}' for log\n".format(mesh,IndMeshData))
 
-				IndMeshLog = "{}/Log".format(self.GEOM_DIR)
-				ArgDict = {"Parameters":mesh, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, mesh)}
-				AddPath = [self.SIM_PREPROC, self.GEOM_DIR]
-				self.SalomeRun(PreProcScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
+		print('### Meshing Completed ###\n')
+		if ShowMesh:
+			print("Opening mesh files in Salome")
+			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshList]
+			Salome = Popen('salome {}/MeshAll.py args:{} '.format(self.COM_PREPROC,",".join(MeshPaths)), shell='TRUE')
+			Salome.wait()
 
-				IndMeshData = "{}/{}.txt".format(self.MESH_DIR, mesh)
-				with open(IndMeshData,"w") as g:
-					with open("{}/{}.py".format(self.GEOM_DIR,mesh),'r') as MeshData:
-						g.write(MeshData.read())
-					if self.mode != 'Interactive': 
-						with open(IndMeshLog,'r') as rIndMeshLog:
-							g.write('\n### Meshing log ###\n'+rIndMeshLog.read())				
+			self.Cleanup()
+			sys.exit()
 
-				if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(mesh))
-				else : print("Completed mesh '{}'. See '{}' for log\n".format(mesh,IndMeshData))
-
-			print('### Meshing Completed ###\n')
-
-			if ShowMesh:
-				print("Opening mesh files in Salome")
-				MeshList = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshList]
-				Script = "{}/MeshAll.py".format(self.COM_PREPROC)
-				Salome = Popen('salome {} args:{} '.format(Script,",".join(MeshList)), shell='TRUE')
-				Salome.wait()
-
-		
-#		elif self.MeshDict and MeshCheck:
-#			if MeshCheck in self.MeshDict:
-#				print('### Meshing {} in GUI'.format(MeshCheck))
-#				study = self.MeshDict[MeshCheck][0]
-#				studydict = self.Studies[study]
-#				AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
-#				Script = "{}/{}.py".format(self.SIM_PREPROC, studydict['Parameters'].MeshFile)
-#				Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,StudyDict['Parameters'].__file__), shell='TRUE')
-#				Salome.wait()
-
-#				self.Cleanup()
-#				sys.exit()
-#			else :
-#				self.Exit("Mesh '{}' not listed as one of the meshes which will be ceated".format(str(MeshCheck)))
 	
 #		# Runs any other pre processing work which must be in the __add file	
 #		if os.path.isfile('{}/__add__.py'.format(self.SIM_PREPROC)):

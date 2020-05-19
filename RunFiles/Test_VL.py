@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 
 import sys
-import os
+from os.path import dirname, abspath
 sys.dont_write_bytecode=True
-
-try: from Scripts.Common import VLSetup
-except ModuleNotFoundError: 
-	sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-	from Scripts.Common import VLSetup
+sys.path.append(dirname(dirname(abspath(__file__))))
+from Scripts.Common import VLSetup
 
 Simulation = 'Tensile'
 StudyDir = 'Example'

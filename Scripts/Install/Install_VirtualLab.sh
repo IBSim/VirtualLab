@@ -188,6 +188,9 @@ echo
 source "$VL_DIR/SetupConfig.sh"
 #./SetupConfig.sh
 #sudo -u ${SUDO_USER:-$USER} ./SetupConfig.sh
+
+sudo chown $(basename "$HOME") $VL_DIR/VLconfig.py
+chmod 0755 $VL_DIR/VLconfig.py
 source "$VL_DIR/VLconfig.py"
 
 #: <<'END'

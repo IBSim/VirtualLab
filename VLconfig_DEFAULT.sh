@@ -63,8 +63,13 @@ done
 
 ### Locate PATH to VirtualLab directory to enable running VirtualLab from
 ### locations other than the source top directory.
-#echo "VLconf $VL_DIR"
-VL_DIR="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+VL_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 
 ### Checks whether $VL_DIR_DEFAULT is used in any variables.
 ### If so and $VL_DIR is different, will replace string.

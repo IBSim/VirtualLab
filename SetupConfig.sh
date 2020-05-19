@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ -f ~/.profile ]; then source ~/.profile; fi
+if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
 
 cd $VL_DIR
 CONFIG_FNAME=VLconfig_DEFAULT.sh

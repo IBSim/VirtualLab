@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ -f ~/.profile ]; then source ~/.profile; fi
+if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
 
 #########################
 ### This script is used to install Salome-Meca and its dependencies.
@@ -31,18 +31,18 @@ if hash salome 2>/dev/null; then
 else
   ### Do more checks
   echo "Salome does not exist in this shell's environment PATH"
-  ### Search for reference to salome in ~/.profile
+  ### Search for reference to salome in ~/.VLprofile
   STRING_TMP="$SALOME_DIR/appli_$SALOME_BIN"
-  if [[ $(grep -q "$STRING_TMP" ~/.profile | grep -F -v "#") ]]; then
-    echo "Reference to Salome PATH found in .profile"
+  if [[ $(grep -q "$STRING_TMP" ~/.VLprofile | grep -F -v "#") ]]; then
+    echo "Reference to Salome PATH found in .VLprofile"
     echo "Assuming salome is installed"
     echo "Skipping salome installation"
     ### Execute output from grep to try and add to shell's PATH
-    source <(grep "STRING_TMP" ~/.profile)
+    source <(grep "STRING_TMP" ~/.VLprofile)
   else
     ### Otherwise download and install
     cd ~
-    echo "Salome not found in PATH or ~/.profile"
+    echo "Salome not found in PATH or ~/.VLprofile"
       if test ! -f "$SALOME_VER".tgz; then
         sudo -u ${SUDO_USER:-$USER} echo "Proceeding to download salome in /home/$USER"
         sudo -u ${SUDO_USER:-$USER} wget https://www.code-aster.org/FICHIERS/"$SALOME_VER".tgz
@@ -53,12 +53,12 @@ else
     echo -e "$SALOME_DIR\nN" | sudo ./"$SALOME_VER".run
     ### Add to PATH
     echo "Adding salome to PATH"
-    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/appli_'$SALOME_BIN':$PATH"'  >> ~/.profile
+    sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/appli_'$SALOME_BIN':$PATH"'  >> ~/.VLprofile
     export PATH="$SALOME_DIR"/appli_"$SALOME_BIN:$PATH"
     
     ### ~/.bashrc doesn't get read by subshells in ubuntu.
-    ### Workaround: store additions to env PATH in ~/.profile & source in bashrc.
-    STRING_TMP="if [ -f ~/.profile ]; then source ~/.profile; fi"
+    ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
+    STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
     if [[ ! $(grep -F "$STRING_TMP" ~/.bashrc | grep -F -v "#$STRING") ]]; then 
       echo $STRING_TMP >> ~/.bashrc
     fi

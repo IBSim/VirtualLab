@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ -f ~/.profile ]; then source ~/.profile; fi
+if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
 
 #########################
 ### This script is used to install/configure python/conda and its dependencies.
@@ -73,17 +73,17 @@ if [ "$PYTHON_INST" == "y" ]; then
   sudo -u ${SUDO_USER:-$USER} pip3 install iapws
 
   ### Add $VL_DIR to $PYTHONPATH in python env and current shell
-  if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR ~/.profile; then
-    echo "Reference to VirtualLab PYTHONPATH found in ~/.profile"
+  if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR ~/.VLprofile; then
+    echo "Reference to VirtualLab PYTHONPATH found in ~/.VLprofile"
     echo "Therefore, not adding again."
   else
     echo "Adding $VL_DIR to PYTHONPATH"
-    sudo -u ${SUDO_USER:-$USER} echo 'export PYTHONPATH=$PYTHONPATH'$VL_DIR''  >> ~/.profile
+    sudo -u ${SUDO_USER:-$USER} echo 'export PYTHONPATH=$PYTHONPATH'$VL_DIR''  >> ~/.VLprofile
     export PYTHONPATH=$PYTHONPATH$VL_DIR
     
     ### ~/.bashrc doesn't get read by subshells in ubuntu.
-    ### Workaround: store additions to env PATH in ~/.profile & source in bashrc.
-    STRING_TMP="if [ -f ~/.profile ]; then source ~/.profile; fi"
+    ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
+    STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
     if [[ ! $(grep -F "$STRING_TMP" ~/.bashrc | grep -F -v "#$STRING") ]]; then 
       echo $STRING_TMP >> ~/.bashrc
     fi
@@ -114,7 +114,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
     eval "$($HOME/anaconda3/bin/conda shell.bash hook)"
     conda init
     export PATH=$HOME/anaconda3/bin:$PATH
-    source ~/.profile
+    source ~/.VLprofile
     ### Test conda
     if hash conda 2>/dev/null; then
       echo "Conda succesfully installed"

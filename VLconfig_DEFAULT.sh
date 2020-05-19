@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ -f ~/.profile ]; then source ~/.profile; fi
+if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
 
 #########################
 ### START OF DEFAULTS ###

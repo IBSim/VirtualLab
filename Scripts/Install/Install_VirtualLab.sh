@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ -f ~/.profile ]; then source ~/.profile; fi
+if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
 
 echo
 echo "Starting installation of VirtualLab."
@@ -161,13 +161,13 @@ if [[ $PATH =~ $VL_DIR ]]; then
 else
   ### If not, add VirtualLab to PATH
   echo "Adding VirtualLab to PATH."
-  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.profile
-  export PATH="'$VL_DIR':$PATH"
+  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.VLprofile
+  export PATH="$VL_DIR:$PATH"
 fi
 
 ### ~/.bashrc doesn't get read by subshells in ubuntu.
-### Workaround: store additions to env PATH in ~/.profile & source in bashrc.
-STRING_TMP="if [ -f ~/.profile ]; then source ~/.profile; fi"
+### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
+STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
 if [[ ! $(grep -F "$STRING_TMP" ~/.bashrc | grep -F -v "#$STRING") ]]; then 
   echo $STRING_TMP >> ~/.bashrc
 fi

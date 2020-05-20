@@ -71,14 +71,16 @@ class VLSetup():
 		# Script directories
 		self.SCRIPT_DIR = "{}/Scripts".format(VL_DIR)
 		self.COM_SCRIPTS = "{}/Common".format(self.SCRIPT_DIR)
-		self.COM_PREPROC = "{}/PreProc".format(self.COM_SCRIPTS)
+		self.COM_MESH = "{}/Mesh".format(self.COM_SCRIPTS)
+#		self.COM_PREPROC = "{}/PreProc".format(self.COM_SCRIPTS)
 		self.COM_ASTER = "{}/Aster".format(self.COM_SCRIPTS)
-		self.COM_POSTPROC = "{}/PostProc".format(self.COM_SCRIPTS)
+		self.COM_POSTASTER = "{}/PostAster".format(self.COM_SCRIPTS)
 
 		self.SIM_SCRIPTS = "{}/{}".format(self.SCRIPT_DIR, Simulation)
+		self.SIM_MESH = "{}/Mesh".format(self.SIM_SCRIPTS)
 		self.SIM_PREPROC = "{}/PreProc".format(self.SIM_SCRIPTS)
 		self.SIM_ASTER = "{}/Aster".format(self.SIM_SCRIPTS)
-		self.SIM_POSTPROC = "{}/PostProc".format(self.SIM_SCRIPTS)
+		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
 
 		# Materials directory
 		self.MATERIAL_DIR = MATERIAL_DIR
@@ -141,7 +143,7 @@ class VLSetup():
 				if len(ParaMesh.Run)!=NumMeshes: self.Exit("Number of entries for variable 'Mesh.Run' not equal to number of meshes")
 				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag in ('Y','y')]
 
-			sys.path.insert(0, self.SIM_PREPROC)
+			sys.path.insert(0, self.SIM_MESH)
 			for MeshName in MeshNames:
 				ParaDict=MeshDict[MeshName]
 				self.ErrorCheck('Mesh',MeshDict=ParaDict)
@@ -233,7 +235,7 @@ class VLSetup():
 			MeshParameters = __import__(MeshCheck)
 
 			AddPath = "PYTHONPATH={}:{}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
-			Script = "{}/{}.py".format(self.SIM_PREPROC, MeshParameters.File)
+			Script = "{}/{}.py".format(self.SIM_MESH, MeshParameters.File)
 			Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,MeshParameters.__file__), shell='TRUE')
 			Salome.wait()
 
@@ -242,21 +244,19 @@ class VLSetup():
 		elif MeshCheck and MeshCheck not in MeshList:
 			self.Exit("MeshCheck '{}' is not in the list of meshes to be created. Meshes to be created are {}".format(MeshCheck, MeshList))
 
-
-
 		print('### Starting Meshing ###\n')
 		# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
 		MeshLog = "{}/Log".format(self.MESH_DIR)
 		self.SalomeRun(None, SalomeInit=True, OutLog=MeshLog)
 				
 		# Script which is used to import the necessary mesh function
-		PreProcScript = '{}/Run.py'.format(self.COM_PREPROC)
+		PreProcScript = '{}/Run.py'.format(self.COM_MESH)
 		for mesh in self.MeshList:
 			print("Starting mesh '{}'".format(mesh))
 
 			IndMeshLog = "{}/Log".format(self.GEOM_DIR)
 			ArgDict = {"Parameters":mesh, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, mesh)}
-			AddPath = [self.SIM_PREPROC, self.GEOM_DIR]
+			AddPath = [self.SIM_MESH, self.GEOM_DIR]
 			self.SalomeRun(PreProcScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
 
 			IndMeshData = "{}/{}.txt".format(self.MESH_DIR, mesh)
@@ -274,7 +274,7 @@ class VLSetup():
 		if ShowMesh:
 			print("Opening mesh files in Salome")
 			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshList]
-			Salome = Popen('salome {}/MeshAll.py args:{} '.format(self.COM_PREPROC,",".join(MeshPaths)), shell='TRUE')
+			Salome = Popen('salome {}/MeshAll.py args:{} '.format(self.COM_MESH,",".join(MeshPaths)), shell='TRUE')
 			Salome.wait()
 
 			self.Cleanup()
@@ -405,12 +405,12 @@ class VLSetup():
 				ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER_DIR']) for name in ResName]
 
 			AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
-			Script = "{}/ParaVisAll.py".format(self.COM_POSTPROC)
+			Script = "{}/ParaVisAll.py".format(self.COM_POSTASTER)
 			Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
 			Salome.wait()
 			return
 
-		sys.path.insert(0, self.SIM_POSTPROC)
+		sys.path.insert(0, self.SIM_POSTASTER)
 		# Run PostCalcFile and ParVis file if they are provided
 		print('### Starting Post-processing ###\n')
 		for Name, StudyDict in self.Studies.items():
@@ -421,7 +421,7 @@ class VLSetup():
 			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
 
 			if ParaVisFile:
-				Script = "{}/{}.py".format(self.SIM_POSTPROC, ParaVisFile)
+				Script = "{}/{}.py".format(self.SIM_POSTASTER, ParaVisFile)
 				PVlog = "{}/PVlog.txt".format(StudyDict['POST_DIR'])
 				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], OutLog=PVlog, )
 				print("")
@@ -461,7 +461,7 @@ class VLSetup():
 
 		if Stage == 'Mesh':
 			MeshDict = kwargs.get('MeshDict')
-			if os.path.exists('{}/{}.py'.format(self.SIM_PREPROC,MeshDict['File'])):
+			if os.path.exists('{}/{}.py'.format(self.SIM_MESH,MeshDict['File'])):
 				MeshFile = __import__(MeshDict['File'])
 				ErrorFunc = getattr(MeshFile, 'GeomError', None)
 				if ErrorFunc:
@@ -471,7 +471,7 @@ class VLSetup():
 				else : err = None
 				if err: self.Exit("GeomError in '{}' - {}".format(MeshDict['Name'], err))
 			else:
-				self.Exit("Mesh file '{}' does not exist in {}".format(MeshDict['File'], self.SIM_PREPROC))
+				self.Exit("Mesh file '{}' does not exist in {}".format(MeshDict['File'], self.SIM_MESH))
 
 		if Stage == 'Simulation':
 			SimDict = kwargs.get('SimDict')

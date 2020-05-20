@@ -200,7 +200,7 @@ def Create(**kwargs):
 	## Sub-Mesh 2 - Refinement on Tile
 	Regular_1D_2 = Mesh_1.Segment(geom=GrpTile)
 	Sub_mesh_2 = Regular_1D_2.GetSubMesh()
-	Local_Length_2 = Regular_1D_2.LocalLength(Parameter.Sub2_1D,None,1e-07)
+	Local_Length_2 = Regular_1D_2.LocalLength(Parameter.SubTile,None,1e-07)
 	NETGEN_2D_2 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpTile)
 	NETGEN_2D_Parameters_2 = NETGEN_2D_2.Parameters()
 	NETGEN_2D_Parameters_2.SetOptimize( 1 )
@@ -209,15 +209,15 @@ def Create(**kwargs):
 	NETGEN_2D_Parameters_2.SetChordalErrorEnabled( 0 )
 	NETGEN_2D_Parameters_2.SetUseSurfaceCurvature( 1 )
 	NETGEN_2D_Parameters_2.SetQuadAllowed( 0 )
-	NETGEN_2D_Parameters_2.SetMaxSize( Parameter.Sub2_1D )
-	NETGEN_2D_Parameters_2.SetMinSize( Parameter.Sub2_1D )
+	NETGEN_2D_Parameters_2.SetMaxSize( Parameter.SubTile )
+	NETGEN_2D_Parameters_2.SetMinSize( Parameter.SubTile )
 
 	NETGEN_3D_2 = Mesh_1.Tetrahedron(geom=GrpTile)
 	NETGEN_3D_Parameters_2 = NETGEN_3D_2.Parameters()
 	NETGEN_3D_Parameters_2.SetOptimize( 1 )
 	NETGEN_3D_Parameters_2.SetFineness( 3 )
-	NETGEN_3D_Parameters_2.SetMaxSize( Parameter.Sub2_1D )
-	NETGEN_3D_Parameters_2.SetMinSize( Parameter.Sub2_1D )
+	NETGEN_3D_Parameters_2.SetMaxSize( Parameter.SubTile )
+	NETGEN_3D_Parameters_2.SetMinSize( Parameter.SubTile )
 
 	smesh.SetName(Sub_mesh_2, 'Sub-mesh_2')
 	smesh.SetName(Local_Length_2, 'Local Length_2')
@@ -238,7 +238,7 @@ def Create(**kwargs):
 			SalomeFunc.MeshExport(SampleMesh,MeshFile)
 			SalomeFunc.MeshExport(ERMESMesh,MeshFile, Overwrite = 0)	
 
-	globals().update(locals()) ### This adds all variables created in this fucntion
+	globals().update(locals()) ### This adds all variables created in this function
 
 class TestDimensions():
 	def __init__(self):
@@ -263,7 +263,7 @@ class TestDimensions():
 		self.Length2D = 0.005
 		self.Length3D = 0.005
 		self.CircDisc = 20
-		self.Sub2_1D = 0.003
+		self.SubTile = 0.003
 	
 		self.CoilType = 'Test'
 		self.CoilDisp = [0, 0, 0.005]

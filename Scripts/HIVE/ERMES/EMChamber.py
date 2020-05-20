@@ -210,12 +210,12 @@ def CreateEMMesh(objMesh,Parameter):
 			mesh1D = ERMES.Segment(geom=Geom)
 			ERMES.AddHypothesis(Param1D, geom=Geom)
 
-		Param2D = SampleMesh.MainMesh.get('NETGEN_2D_ONLY', None)
+		Param2D = sm.get('NETGEN_2D_ONLY', None)
 		if Param2D:
 			mesh2D = ERMES.Triangle(algo=smeshBuilder.NETGEN_2D,geom=Geom)
 			ERMES.AddHypothesis(Param2D, geom=Geom)
 
-		Param3D = SampleMesh.MainMesh.get('NETGEN_3D', None)
+		Param3D = sm.get('NETGEN_3D', None)
 		if Param3D:
 			mesh3D = ERMES.Tetrahedron(geom=Geom)
 			ERMES.AddHypothesis(Param3D, geom=Geom)

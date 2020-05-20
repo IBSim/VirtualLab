@@ -224,7 +224,7 @@ def Create(**kwargs):
 	smesh.SetName(NETGEN_2D_Parameters_2, 'NETGEN 2D Parameters_2')
 	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
 
-	if Parameter.RunEM == 'N/A':
+	if Parameter.CoilType==None:
 		Mesh_1.Compute()
 		SalomeFunc.MeshExport(Mesh_1,MeshFile)
 	else :

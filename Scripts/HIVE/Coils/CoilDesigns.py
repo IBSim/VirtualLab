@@ -6,6 +6,7 @@ import  SMESH
 import salome_version
 import SalomeFunc
 import numpy as np
+from subprocess import Popen
 
 if salome_version.getVersions()[0] < 9:
 	import salome
@@ -103,7 +104,7 @@ def Test():
 
 
 def HIVE():
-	dirname = '/home/rhydian/Documents/Scripts/Simulation/VirtualLab/Scripts/HIVE/Coils'
+	dirname = os.path.dirname(__file__)
 	Coil = geompy.ImportSTEP("{}/HIVE_COIL.stp".format(dirname), False, True)
 	geompy.addToStudy(Coil,'Coil')
 
@@ -156,8 +157,16 @@ def HIVE():
 	return CoilMesh
 
 
-if __name__ == "__main__":
-	Mesh = HIVE()
+#if __name__ == "__main__":
+#	__SalomeExe__ = True if sys.argv[1]=='__SalomeExe__' else False
+#	print(__SalomeExe__)
+#	if __SalomeExe__: pass
+#	else:
+#		Run = Popen("PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;salome {} args:__SalomeExe__".format(os.path.dirname(__file__), __file__))
+#		Run.wait()
+
+
+
 
 
 

@@ -230,7 +230,7 @@ def Create(**kwargs):
 	else :
 		## This next part takes this mesh and adds in a coil and vacuum around it and then runs the  code.
 		print('Using sample mesh information to create mesh for ERMES')
-		from ERMES.EMChamber import CreateEMMesh
+		from EM.EMChamber import CreateEMMesh
 		SampleMesh, ERMESMesh = CreateEMMesh(Mesh_1, Parameter)
 		smesh.SetName(SampleMesh, 'Sample')
 		smesh.SetName(ERMESMesh, 'xERMES')

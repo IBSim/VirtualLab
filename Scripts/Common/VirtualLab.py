@@ -71,10 +71,10 @@ class VLSetup():
 		# Script directories
 		self.SCRIPT_DIR = "{}/Scripts".format(VL_DIR)
 		self.COM_SCRIPTS = "{}/Common".format(self.SCRIPT_DIR)
-		self.COM_MESH = "{}/Mesh".format(self.COM_SCRIPTS)
-#		self.COM_PREPROC = "{}/PreProc".format(self.COM_SCRIPTS)
-		self.COM_ASTER = "{}/Aster".format(self.COM_SCRIPTS)
-		self.COM_POSTASTER = "{}/PostAster".format(self.COM_SCRIPTS)
+#		self.COM_MESH = "{}/Mesh".format(self.COM_SCRIPTS)
+##		self.COM_PREPROC = "{}/PreProc".format(self.COM_SCRIPTS)
+#		self.COM_ASTER = "{}/Aster".format(self.COM_SCRIPTS)
+#		self.COM_POSTASTER = "{}/PostAster".format(self.COM_SCRIPTS)
 
 		self.SIM_SCRIPTS = "{}/{}".format(self.SCRIPT_DIR, Simulation)
 		self.SIM_MESH = "{}/Mesh".format(self.SIM_SCRIPTS)
@@ -250,14 +250,14 @@ class VLSetup():
 		self.SalomeRun(None, SalomeInit=True, OutLog=MeshLog)
 				
 		# Script which is used to import the necessary mesh function
-		PreProcScript = '{}/Run.py'.format(self.COM_MESH)
+		MeshScript = '{}/MeshRun.py'.format(self.COM_SCRIPTS)
 		for mesh in self.MeshList:
 			print("Starting mesh '{}'".format(mesh))
 
 			IndMeshLog = "{}/Log".format(self.GEOM_DIR)
 			ArgDict = {"Parameters":mesh, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, mesh)}
 			AddPath = [self.SIM_MESH, self.GEOM_DIR]
-			self.SalomeRun(PreProcScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
+			self.SalomeRun(MeshScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
 
 			IndMeshData = "{}/{}.txt".format(self.MESH_DIR, mesh)
 			with open(IndMeshData,"w") as g:
@@ -274,7 +274,7 @@ class VLSetup():
 		if ShowMesh:
 			print("Opening mesh files in Salome")
 			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshList]
-			Salome = Popen('salome {}/MeshAll.py args:{} '.format(self.COM_MESH,",".join(MeshPaths)), shell='TRUE')
+			Salome = Popen('salome {}/ShowMesh.py args:{} '.format(self.COM_SCRIPTS,",".join(MeshPaths)), shell='TRUE')
 			Salome.wait()
 
 			self.Cleanup()
@@ -405,7 +405,7 @@ class VLSetup():
 				ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER_DIR']) for name in ResName]
 
 			AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
-			Script = "{}/ParaVisAll.py".format(self.COM_POSTASTER)
+			Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
 			Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
 			Salome.wait()
 			return

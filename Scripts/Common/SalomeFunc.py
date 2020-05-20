@@ -41,16 +41,10 @@ def MeshInfo(Meshpath,outfile):
 
 def MeshExport(Mesh,Meshfile, **kwargs):
 	Overwrite = kwargs.get('Overwrite',1)
-
-	NbNodes = Mesh.NbNodes()
-	NbElems = Mesh.NbElements()
-	NbEdges = Mesh.NbEdges()
-	NbFaces = Mesh.NbFaces()
-	NbVolumes = Mesh.NbVolumes()
 	err = Mesh.ExportMED( Meshfile, auto_groups=0, minor=40, overwrite=Overwrite,meshPart=None,autoDimension=1)
 	if not err:
-		print ("Mesh has {} nodes and {} elements ({} Volumes, {} faces and {} edges)".format(NbNodes,NbElems,NbVolumes,NbFaces,NbEdges))
-		print ("Mesh successfully exported to {0}".format(Meshfile))
+		print("Nodes: {}\nVolumes: {}\nSurfaces: {}\nEdges: {}".format(Mesh.NbNodes(),Mesh.NbVolumes(),Mesh.NbFaces(),Mesh.NbEdges()))
+		print ("Mesh '{}' successfully exported to file {}".format(Mesh.GetName(), Meshfile))
 	else:
 		print("Error in Exporting mesh")
 

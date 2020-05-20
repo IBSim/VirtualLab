@@ -25,7 +25,7 @@ Mesh.Length3D = 0.005
 Mesh.CircDisc = 20 # Number of segments for pipe circumference
 Mesh.Sub2_1D = 0.001 # Mesh fineness on tile 
 
-Mesh.CoilType = 'Test'
+Mesh.CoilType = None
 Mesh.CoilDisp = [0, 0, 0.002]
 
 ##########################

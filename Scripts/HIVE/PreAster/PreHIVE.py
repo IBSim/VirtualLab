@@ -5,60 +5,52 @@ sys.dont_write_bytecode=True
 import numpy as np
 import h5py
 from subprocess import Popen
-import VLFunctions
+from VLFunctions import MeshInfo
 import matplotlib.pyplot as plt
 import time
 
 def GetHTC(Info):
-	for study, StudyDict in Info.Studies.items():
-		if StudyDict['Parameters'].CreateHTC in ('N/A',None):
-			pass	
+	for Name, StudyDict in Info.Studies.items():
+		CreateHTC = getattr(StudyDict['Parameters'], 'CreateHTC', True)
+
+		if CreateHTC == None: continue
 		# Create a new set of HTC values
-		elif StudyDict['Parameters'].CreateHTC in ('Yes','yes','Y','y'):
-#			from HHFtools.classes import Geometry, Coolant
-#			from HHFtools.htccorrelations import htc_ITER
+		if CreateHTC:
 			from HTC.Coolant import Properties as ClProp
 			from HTC.Pipe import PipeGeom
 			from HTC.ITER import htc as htc_ITER
 
-			if StudyDict['Parameters'].PipeGeom == "smooth tube":
-				Diameter, Length = StudyDict['Parameters'].PipeDiam, StudyDict['Parameters'].PipeLength
-				testpiece = PipeGeom(shape="smooth tube", pipediameter=Diameter, length=Length)
+			Pipedict = StudyDict['Parameters'].Pipe
+			Pipe = PipeGeom(shape=Pipedict['Type'], pipediameter=Pipedict['Diameter'], length=Pipedict['Length'])
 
-			FluidT_K = StudyDict['Parameters'].FluidT + 273
-			fluid = ClProp(T=FluidT_K, P=StudyDict['Parameters'].FluidP, velocity=StudyDict['Parameters'].FluidV)
-#			print(fluid.T_sat)
+			Cooldict = StudyDict['Parameters'].Coolant
+			Coolant = ClProp(T=Cooldict['Temperature']+273, P=Cooldict['Pressure'], velocity=Cooldict['Velocity'])
+
 			# Starting WallTemp and increment between temperatures to check
 			WallTemp, incr = 5, 5
 			HTC = []
-#			print(fluid.__dict__)
 			while True:
 #				print(WallTemp)
-				WallTemp_K = WallTemp + 273
-				h = htc_ITER(fluid, testpiece, WallTemp_K)
+				h = htc_ITER(Coolant, Pipe, WallTemp + 273)
 				if h == 0: break
 				HTC.append([WallTemp, h])
 				WallTemp += incr
 
 			HTC = np.array(HTC)
-			np.savetxt(Info.Studies[study]['OUTPUT_DIR'] + '/HTC.dat',HTC,fmt = '%.2f %.8f')
-			np.savetxt(Info.Studies[study]['TMP_CALC_DIR'] + '/HTC.dat',HTC,fmt = '%.2f %.8f')
+			np.savetxt("{}/HTC.dat".format(StudyDict['PREASTER_DIR']), HTC, fmt = '%.2f %.8f')
+			np.savetxt("{}/HTC.dat".format(StudyDict['TMP_CALC_DIR']), HTC, fmt = '%.2f %.8f')
 
 			import matplotlib.pyplot as plt
 			plt.plot(HTC[:,0],HTC[:,1])
-			plt.savefig(Info.Studies[study]['OUTPUT_DIR'] + '/PipeHTC.png',bbox_inches='tight')
+			plt.savefig("{}/PipeHTC.png".format(StudyDict['PREASTER_DIR']), bbox_inches='tight')
 			plt.close()
 
 		### Use previous HTC values
-		elif os.path.isfile(Info.Studies[study]['OUTPUT_DIR'] + '/HTC.dat'):
-			shutil.copy("{}/HTC.dat".format(StudyDict['OUTPUT_DIR']), StudyDict['TMP_CALC_DIR'])
-#			HTC = np.fromfile(Info.Studies[study]['OUTPUT_DIR'] + '/HTC.dat',dtype=float, count=-1, sep=" ")
-#			HTC = HTC.reshape((len(HTC)//3,3))
-#			np.savetxt(Info.Studies[study]['TMP_CALC_DIR'] + '/HTC.dat',HTC[:,[0,2]],fmt = '%.2f %.8f')
+		elif os.path.isfile("{}/HTC.dat".format(StudyDict['PREASTER_DIR'])):
+			shutil.copy("{}/HTC.dat".format(StudyDict['PREASTER_DIR']), StudyDict['TMP_CALC_DIR'])
 
 		### Exit due to errors
-		else:
-			Info.Exit('No HTC.dat file found in OUTPUT_DIR and CreateHTC not set to "Y"')
+		else: Info.Exit("CreateHTC not 'True' and {} contains no HTC.dat file".format(StudyDict['PREASTER_DIR']))
 
 
 #def ErmesRun(Info,study,NNodes):
@@ -127,8 +119,8 @@ def SetupERMES(Info, StudyDict, **kwargs):
 	check = kwargs.get('check', False)
 
 	Temperatures = [20]
-
-	ERMESMesh = VLFunctions.MeshInfo(StudyDict['MESH_FILE'], meshname='xERMES')
+	MeshFile = "{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh)
+	ERMESMesh = MeshInfo(MeshFile, meshname='xERMES')
 	CoilSurface = ERMESMesh.GroupInfo('CoilSurface')
 	SampleSurface = ERMESMesh.GroupInfo('SampleSurface')
 
@@ -147,6 +139,7 @@ def SetupERMES(Info, StudyDict, **kwargs):
 	strNodes.insert(0,"// List of nodes\n")
 	strNodes = "".join(strNodes)
 
+	ERMESdict = StudyDict['Parameters'].ERMES
 	# Electrostatic part
 	Stat01 = "// Setting problem\n" + \
 	"ProblemType = Static;\n" + \
@@ -160,7 +153,7 @@ def SetupERMES(Info, StudyDict, **kwargs):
 	"ProblemType = IMPJOFF;\n" + \
 	"ProblemType = 8pr;\n" + \
 	"ProblemType = LE;\n" + \
-	"ProblemFrequency = {};\n".format(StudyDict['Parameters'].Frequency*2*np.pi) + \
+	"ProblemFrequency = {};\n".format(ERMESdict['Frequency']*2*np.pi) + \
 	"ProblemType = CheckConsistency;\n"
 
 	EMlist = ['Vacuum','Coil'] + sorted(StudyDict['Parameters'].Materials.keys())
@@ -205,7 +198,7 @@ def SetupERMES(Info, StudyDict, **kwargs):
 	"ProblemType = IMPJON;\n" + \
 	"ProblemType = 8pr;\n" + \
 	"ProblemType = LE;\n" + \
-	"ProblemFrequency = {};\n".format(StudyDict['Parameters'].Frequency*2*np.pi) + \
+	"ProblemFrequency = {};\n".format(ERMESdict['Frequency']*2*np.pi) + \
 	"ProblemType = CheckConsistency;\n"
 
 	WaveBC = ["// Creating High order nodes\n","ProblemType = CreateHONodes;\n","// Making contact elements\n", \
@@ -361,7 +354,7 @@ def SetupERMES(Info, StudyDict, **kwargs):
 	ERMES_run = Popen(Ermesstr, shell = 'TRUE')
 	ERMES_run.wait()
 
-	SampleMesh = VLFunctions.MeshInfo(StudyDict['MESH_FILE'], meshname='Sample')
+	SampleMesh = MeshInfo(MeshFile, meshname='Sample')
 
 	JH_NL = [] # NonLinear JouleHeating
 	for Temp in Temperatures:
@@ -394,7 +387,7 @@ def SetupERMES(Info, StudyDict, **kwargs):
 			print('intSurf|J|: {:.6e}'.format(intJ))
 			print('intSurf|J|^2: {:.6e}'.format(intJsq))
 
-		ScaleFactor = (StudyDict['Parameters'].Current/intJ)
+		ScaleFactor = (ERMESdict['Current']/intJ)
 
 
 
@@ -402,27 +395,30 @@ def SetupERMES(Info, StudyDict, **kwargs):
 		JH_NL.append(np.array(JHres)*ScaleFactor**2)
 
 	JH_Node = np.transpose(JH_NL)
-	
-	Nodes = list(range(1,SampleMesh.NbNodes+1))
-	Coor = SampleMesh.GetNodeXYZ(Nodes)
-	dataEM = np.hstack((Coor,JH_Node))
-	SumVol = 0
-	JH_Elem, Watts = [], []
-	for grp in StudyDict['Parameters'].Materials.keys():
-		grpinfo = SampleMesh.GroupInfo(grp)
-		for Nodes in grpinfo.Connect:
-			data = dataEM[Nodes-1,:]
-			Coors, EM = data[:,:3], data[:,3:]
-			ElSum = (np.sum(EM,axis=0)/4)
-			JH_Elem.append(ElSum)
-			vol = abs(np.dot(np.cross(Coors[1,:]-Coors[0,:],Coors[2,:]-Coors[0,:]),Coors[3,:]-Coors[0,:]))/float(6)
-			SumVol += vol
-			Watts.append(vol*ElSum)
+#	
+#	Nodes = list(range(1,SampleMesh.NbNodes+1))
+#	Coor = SampleMesh.GetNodeXYZ(Nodes)
+#	dataEM = np.hstack((Coor,JH_Node))
+#	SumVol = 0
+#	JH_Elem, Watts = [], []
+#	for grp in StudyDict['Parameters'].Materials.keys():
+#		grpinfo = SampleMesh.GroupInfo(grp)
+#		for Nodes in grpinfo.Connect:
+#			data = dataEM[Nodes-1,:]
+#			Coors, EM = data[:,:3], data[:,3:]
+#			ElSum = (np.sum(EM,axis=0)/4)
+#			JH_Elem.append(ElSum)
+#			vol = abs(np.dot(np.cross(Coors[1,:]-Coors[0,:],Coors[2,:]-Coors[0,:]),Coors[3,:]-Coors[0,:]))/float(6)
+#			SumVol += vol
+#			Watts.append(vol*ElSum)
 
-	JH_Elem.insert(0,np.array(Temperatures))
+#	JH_Elem.insert(0,np.array(Temperatures))
+#	JH_Node = np.vstack((np.array(Temperatures), JH_Node))
+
+#	return JH_Node, JH_Elem
+
 	JH_Node = np.vstack((np.array(Temperatures), JH_Node))
-
-	return JH_Node, JH_Elem
+	return JH_Node
 
 
 
@@ -430,26 +426,23 @@ def ERMES(Info):
 	currdir = os.path.dirname(os.path.realpath(__file__))
 	ERMESlist = []
 
-	for study, StudyDict in Info.Studies.items():
-		Results = []
+	for Name, StudyDict in Info.Studies.items():
+		RunERMES = getattr(StudyDict['Parameters'], 'RunERMES', True)
 
-		if StudyDict['Parameters'].RunEM in ('N/A',None):
-			continue
+		if RunERMES == None: continue
 
 		EMtype = 'Node'
 		if EMtype == 'Elem': ERMESfname = 'ERMES_Elem.dat'
 		else : ERMESfname = 'ERMES_Node.dat'
-
-		
-		EMpath = '{}/{}'.format(StudyDict['OUTPUT_DIR'], ERMESfname)
-		if StudyDict['Parameters'].RunEM in ('Yes','yes','Y','y'):
+		EMpath = '{}/{}'.format(StudyDict['PREASTER_DIR'], ERMESfname)
+		if RunERMES:
 			### Create a new set of ERMES results
-			JH_Node, JH_Elem = SetupERMES(Info, StudyDict)
-			np.savetxt('{}/{}'.format(StudyDict['OUTPUT_DIR'], 'ERMES_Elem.dat'), JH_Elem, fmt = '%.10f', delimiter = '   ')
-			np.savetxt('{}/{}'.format(StudyDict['OUTPUT_DIR'], 'ERMES_Node.dat'), JH_Node, fmt = '%.10f', delimiter = '   ')
+			JH_Node = SetupERMES(Info, StudyDict)
+#			np.savetxt('{}/{}'.format(StudyDict['PREASTER_DIR'], 'ERMES_Elem.dat'), JH_Elem, fmt = '%.10f', delimiter = '   ')
+			np.savetxt('{}/{}'.format(StudyDict['PREASTER_DIR'], 'ERMES_Node.dat'), JH_Node, fmt = '%.10f', delimiter = '   ')
 
 		elif os.path.isfile(EMpath):
-			SampleMesh = VLFunctions.MeshInfo(StudyDict['MESH_FILE'], meshname='Sample')
+			SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample')
 			EM = np.fromfile(EMpath, dtype=float, count=-1, sep=" ")
 			if EMtype == 'Elem': NumCol = EM.shape[0]/(SampleMesh.NbVolumes+1)
 			else : NumCol = EM.shape[0]/(SampleMesh.NbNodes+1)
@@ -457,7 +450,6 @@ def ERMES(Info):
 				Info.Exit("EM.dat file doesn't match with current mesh")
 		else :
 			Info.Exit('No EM.dat file found in OUTPUT_DIR and change RunEM not set to "yes"')
-
 
 		shutil.copy(EMpath, StudyDict['TMP_CALC_DIR'])
 
@@ -604,7 +596,7 @@ def ERMES(Info):
 #			Info.Exit('No EM.dat file found in DATA_DIR and change RunEM not set to "yes"')
 
 
-def Add(Info):
+def main(Info):
 	GetHTC(Info)
 	ERMES(Info)
 

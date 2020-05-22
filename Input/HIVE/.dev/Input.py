@@ -37,19 +37,15 @@ Sim.Name = 'Single'
 #############
 ## Pre-Sim ##
 #############
-## ERMES solver is used to creat BC for induction heating
-Sim.RunEM = 'N'
+Sim.PreSimFile = "PreHIVE"
+# HTC between coolant and pipe (need Coolant and Pipe properties)
+Sim.CreateHTC = False
+Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
+Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 
-Sim.Frequency = 1e4
-Sim.Current = 10 #Current in the coil
-Sim.NProc = 2
-
-## HTC between cooland and pipe
-Sim.CreateHTC = 'N' 
-Sim.PipeGeom = 'smooth tube'
-Sim.FluidT = 20 #Celcius
-Sim.FluidP = 1 #MPa
-Sim.FluidV = 10 #m/s
+# ERMES solver is used to creat BC for induction heating
+Sim.RunERMES = False
+Sim.ERMES = {'Frequency':1e4,'Current':100,'NbProc':2}
 
 #############
 ### Aster ###
@@ -69,10 +65,9 @@ Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation
 Sim.Theta = 0.5
-Sim.dt = [(0.001,10)] #timestep size and number of steps
-Sim.ResStore = 3 #How often should results be stored
-Sim.CheckFirst = 3
-Sim.CheckEvery = 3 #If this is smaller than ResStore then ResStore will be used
+Sim.dt = [(0.001,100,1)] #timestep size and number of steps
+#Sim.CheckFirst = 3
+#Sim.CheckEvery = 3 #If this is smaller than ResStore then ResStore will be used
 
 #############
 ## Post-Sim #

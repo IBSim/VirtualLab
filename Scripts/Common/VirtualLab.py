@@ -64,21 +64,17 @@ class VLSetup():
 
 		# tmp directory
 		TEMP_DIR = getattr(VLconfig,'TEMP_DIR',"/tmp")
-		if StudyDir == 'Testing': self.TMP_DIR = "{}/Testing".format(TEMP_DIR)
+		if StudyDir == '.dev': self.TMP_DIR = "{}/dev".format(TEMP_DIR)
 		else: self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, StudyDir, (datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
 
 		# Define variables and run some checks
 		# Script directories
 		self.SCRIPT_DIR = "{}/Scripts".format(VL_DIR)
 		self.COM_SCRIPTS = "{}/Common".format(self.SCRIPT_DIR)
-#		self.COM_MESH = "{}/Mesh".format(self.COM_SCRIPTS)
-##		self.COM_PREPROC = "{}/PreProc".format(self.COM_SCRIPTS)
-#		self.COM_ASTER = "{}/Aster".format(self.COM_SCRIPTS)
-#		self.COM_POSTASTER = "{}/PostAster".format(self.COM_SCRIPTS)
-
 		self.SIM_SCRIPTS = "{}/{}".format(self.SCRIPT_DIR, Simulation)
+
 		self.SIM_MESH = "{}/Mesh".format(self.SIM_SCRIPTS)
-		self.SIM_PREPROC = "{}/PreProc".format(self.SIM_SCRIPTS)
+		self.SIM_PREASTER = "{}/PreAster".format(self.SIM_SCRIPTS)
 		self.SIM_ASTER = "{}/Aster".format(self.SIM_SCRIPTS)
 		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
 
@@ -107,6 +103,7 @@ class VLSetup():
 		RunSim = kwargs.get('RunSim','True')
 
 		sys.path.insert(0, self.COM_SCRIPTS)
+		sys.path.insert(0, self.SIM_SCRIPTS)
 
 		sys.path.insert(0, self.Input['Directory'])
 		Main = __import__(self.Input['Parameters'])
@@ -183,9 +180,9 @@ class VLSetup():
 				# Define simulation related directories
 				StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, SimName)
 				StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.SIM_DIR, SimName)
-				StudyDict['PRE_DIR'] = "{}/PreAster".format(CALC_DIR)
+				StudyDict['PREASTER_DIR'] = "{}/PreAster".format(CALC_DIR)
 				StudyDict['ASTER_DIR'] = "{}/Aster".format(CALC_DIR)
-				StudyDict['POST_DIR'] = "{}/PostAster".format(CALC_DIR)
+				StudyDict['POSTASTER_DIR'] = "{}/PostAster".format(CALC_DIR)
 
 				if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
 				if not os.path.isdir(CALC_DIR): os.makedirs(CALC_DIR)
@@ -280,14 +277,16 @@ class VLSetup():
 			self.Cleanup()
 			sys.exit()
 
-	
-#		# Runs any other pre processing work which must be in the __add file	
-#		if os.path.isfile('{}/__add__.py'.format(self.SIM_PREPROC)):
-#			from __add__ import Add
-#			Add(self)
-
 	def PreAster(self):
-		pass
+		sys.path.insert(0, self.SIM_PREASTER)
+		for Name, StudyDict in self.Studies.items():
+			PreSimFile = getattr(StudyDict['Parameters'],'PreSimFile', None)
+			if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
+			if not os.path.isdir(StudyDict['PREASTER_DIR']): os.makedirs(StudyDict['PREASTER_DIR'])
+			PreSim = __import__(StudyDict['Parameters'].PreSimFile)
+			PreSim.main(self)
+			
+
 
 	def Aster(self, **kwargs):
 		'''
@@ -418,11 +417,11 @@ class VLSetup():
 			if not ParaVisFile: continue
 
 			print("ParaVis for '{}'".format(Name)) 
-			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
+			if not os.path.isdir(StudyDict['POSTASTER_DIR']): os.makedirs(StudyDict['POSTASTER_DIR'])
 
 			if ParaVisFile:
 				Script = "{}/{}.py".format(self.SIM_POSTASTER, ParaVisFile)
-				PVlog = "{}/PVlog.txt".format(StudyDict['POST_DIR'])
+				PVlog = "{}/PVlog.txt".format(StudyDict['POSTASTER_DIR'])
 				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], OutLog=PVlog, )
 				print("")
 
@@ -431,13 +430,13 @@ class VLSetup():
 			if not PostCalcFile : continue
 
 			print("## PostCalc for '{}' ##\n".format(Name)) 
-			if not os.path.isdir(StudyDict['POST_DIR']): os.makedirs(StudyDict['POST_DIR'])
+			if not os.path.isdir(StudyDict['POSTASTER_DIR']): os.makedirs(StudyDict['POSTASTER_DIR'])
 			if PostCalcFile:
 				PostCalc = __import__(PostCalcFile)
 				if self.mode == 'Interactive':
 					PostCalc.main(self, StudyDict)
 				else:
-					with open("{}/log.txt".format(StudyDict['POST_DIR']), 'w') as f:
+					with open("{}/log.txt".format(StudyDict['POSTASTER_DIR']), 'w') as f:
 						with contextlib.redirect_stdout(f):
 							PostCalc.main(self, StudyDict)
 
@@ -462,6 +461,8 @@ class VLSetup():
 		if Stage == 'Mesh':
 			MeshDict = kwargs.get('MeshDict')
 			if os.path.exists('{}/{}.py'.format(self.SIM_MESH,MeshDict['File'])):
+				## import Mesh
+				## MeshFile = getattr(Mesh, MeshDict['File'])
 				MeshFile = __import__(MeshDict['File'])
 				ErrorFunc = getattr(MeshFile, 'GeomError', None)
 				if ErrorFunc:

@@ -86,7 +86,7 @@ def CreateEMMesh(objMesh,Parameter):
 
 
 	### Importing coil design and moving to the desired location
-	from Coils import CoilDesigns
+	from EM import CoilDesigns
 	CoilFnc = getattr(CoilDesigns, Parameter.CoilType)
 	CoilMesh = GetMesh(CoilFnc())
 

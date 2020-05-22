@@ -4,7 +4,7 @@ import sys
 from os.path import dirname, abspath
 sys.dont_write_bytecode=True
 sys.path.append(dirname(dirname(abspath(__file__))))
-from Scripts.Common import VLSetup
+from Scripts.Common.VirtualLab import VLSetup
 
 #try: from Scripts.Common import VLSetup
 #except ModuleNotFoundError: 

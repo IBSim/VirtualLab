@@ -17,8 +17,6 @@ else :
 	geompy = geomBuilder.New()
 	smesh = smeshBuilder.New()
 
-
-
 O = geompy.MakeVertex(0, 0, 0)
 OX = geompy.MakeVectorDXDYDZ(1, 0, 0)
 OY = geompy.MakeVectorDXDYDZ(0, 1, 0)

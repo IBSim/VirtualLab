@@ -1,12 +1,15 @@
 #!/bin/bash
-if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
+USER_HOME=$(eval echo ~${SUDO_USER})
+#sudo -s eval 'echo ${SUDO_USER}'
+if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
 echo
 echo "Starting installation of VirtualLab."
 echo
 
+#: <<'END'
 ### Default location to install VirtualLab if no flag.
-VL_DIR="$HOME/VirtualLab"
+VL_DIR="$USER_HOME/VirtualLab"
 SKIP=n
 PYTHON_INST="n"
 SALOME_INST="n"
@@ -35,6 +38,11 @@ exit_abnormal() {
   usage
   exit 1
 }
+if [[ $EUID -ne 0 ]]; then
+   echo "This installation script must be run as root"
+   echo 'Re-run with "sudo ./Install_VirtualLab.sh {options}".'
+   exit_abnormal
+fi
 while getopts ":d:P:S:yh" options; do 
   case "${options}" in
     d)
@@ -104,6 +112,7 @@ if [ "$SALOME_INST" == "n" ]; then
   echo " - Salome-Meca will not be installed or configured during setup,"
   echo "please do this manually."
 fi
+echo
 ### Check that no additional args were given that weren't caught.
 shift $(($OPTIND - 1))
 if [[ $@ ]]; then
@@ -143,7 +152,7 @@ sudo apt install -y git
 #git config --global user.name "Your Name"
 
 ### Check if VirtualLab directory exists in $HOME
-cd ~
+cd $USER_HOME
 if [ -d "$VL_DIR" ]; then
   #### If $VL_DIR exists don't do anything.
   echo
@@ -155,21 +164,29 @@ else
   sudo -u ${SUDO_USER:-$USER} mkdir ${VL_DIR}
 fi
 
+if [ -f "$USER_HOME/.VLprofile" ]; then
+  sudo chown ${SUDO_USER} $USER_HOME/.VLprofile
+  sudo chgrp ${SUDO_USER} $USER_HOME/.VLprofile
+fi
 ### Check if VirtualLab is in PATH
 if [[ $PATH =~ $VL_DIR ]]; then
   echo "VirtualLab is already in PATH."
 else
   ### If not, add VirtualLab to PATH
   echo "Adding VirtualLab to PATH."
-  sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$VL_DIR':$PATH"'  >> ~/.VLprofile
+  
+  sudo -u ${SUDO_USER:-$USER} echo 'if [[ ! $PATH =~ "'$VL_DIR'" ]]; then' >> $USER_HOME/.VLprofile
+  sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR':$PATH"'  >> $USER_HOME/.VLprofile
+  sudo -u ${SUDO_USER:-$USER} echo 'fi'  >> $USER_HOME/.VLprofile
+  
   export PATH="$VL_DIR:$PATH"
 fi
 
 ### ~/.bashrc doesn't get read by subshells in ubuntu.
 ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
 STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
-if [[ ! $(grep -F "$STRING_TMP" ~/.bashrc | grep -F -v "#$STRING") ]]; then 
-  echo $STRING_TMP >> ~/.bashrc
+if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then 
+  echo $STRING_TMP >> $USER_HOME/.bashrc
 fi
 
 ### Download latest VirtualLab code
@@ -189,7 +206,8 @@ source "$VL_DIR/SetupConfig.sh"
 #./SetupConfig.sh
 #sudo -u ${SUDO_USER:-$USER} ./SetupConfig.sh
 
-sudo chown $(basename "$HOME") $VL_DIR/VLconfig.py
+#sudo chown $(basename "${SUDO_USER}") $VL_DIR/VLconfig.py
+sudo chown ${SUDO_USER} $VL_DIR/VLconfig.py
 chmod 0755 $VL_DIR/VLconfig.py
 source "$VL_DIR/VLconfig.py"
 
@@ -205,6 +223,7 @@ else
   echo "Skipping python installation"
 fi
 
+echo
 ### Install salome if flagged
 if [ "$SALOME_INST" == "y" ]; then
   echo "Installing salome"
@@ -224,4 +243,4 @@ fi
 echo
 echo "Finished installing and configuting VirtualLab."
 echo
-
+#END

@@ -1,5 +1,7 @@
 #!/bin/bash
-if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
+USER_HOME=$(eval echo ~${SUDO_USER})
+if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
+
 
 #########################
 ### This script is used to install/configure python/conda and its dependencies.
@@ -73,26 +75,26 @@ if [ "$PYTHON_INST" == "y" ]; then
   sudo -u ${SUDO_USER:-$USER} pip3 install iapws
 
   ### Add $VL_DIR to $PYTHONPATH in python env and current shell
-  if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR ~/.VLprofile; then
+  if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR $USER_HOME/.VLprofile; then
     echo "Reference to VirtualLab PYTHONPATH found in ~/.VLprofile"
     echo "Therefore, not adding again."
   else
     echo "Adding $VL_DIR to PYTHONPATH"
-    sudo -u ${SUDO_USER:-$USER} echo 'export PYTHONPATH=$PYTHONPATH'$VL_DIR''  >> ~/.VLprofile
+    sudo -u ${SUDO_USER:-$USER} echo 'export PYTHONPATH=$PYTHONPATH'$VL_DIR''  >> $USER_HOME/.VLprofile
     export PYTHONPATH=$PYTHONPATH$VL_DIR
     
     ### ~/.bashrc doesn't get read by subshells in ubuntu.
     ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
     STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
-    if [[ ! $(grep -F "$STRING_TMP" ~/.bashrc | grep -F -v "#$STRING") ]]; then 
-      echo $STRING_TMP >> ~/.bashrc
+    if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then 
+      echo $STRING_TMP >> $USER_HOME/.bashrc
     fi
   fi
 elif [ "$PYTHON_INST" == "c" ]; then
   ### Install conda dependencies
   sudo apt install -y libgl1-mesa-glx libegl1-mesa libxrandr2 libxss1 libxcursor1 libxcomposite1 libasound2 libxi6 libxtst6
 
-  eval "$($HOME/anaconda3/bin/conda shell.bash hook)"
+  eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"
 
   ### Test to check if conda already exists in current shell's PATH
   if hash conda 2>/dev/null; then
@@ -103,18 +105,19 @@ elif [ "$PYTHON_INST" == "c" ]; then
   else
     ### Otherwise download and install conda
     echo
-    cd ~
+    cd $USER_HOME
     if test ! -f "$CONDA_VER"; then
-      echo "Proceeding to download conda in $HOME"
+      echo "Proceeding to download conda in $USER_HOME"
       echo "Downloading https://repo.anaconda.com/archive/"$CONDA_VER""
       sudo -u ${SUDO_USER:-$USER} wget https://repo.anaconda.com/archive/"$CONDA_VER"
     fi
-    echo "Proceeding to install conda in $HOME/anaconda3"
-    sudo -u ${SUDO_USER:-$USER} bash $CONDA_VER -b -p $HOME/anaconda3
-    eval "$($HOME/anaconda3/bin/conda shell.bash hook)"
+    echo "Proceeding to install conda in $USER_HOME/anaconda3"
+    sudo -u ${SUDO_USER:-$USER} bash $CONDA_VER -b -p $USER_HOME/anaconda3
+    eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"
     conda init
-    export PATH=$HOME/anaconda3/bin:$PATH
-    source ~/.VLprofile
+    sudo -s -u ${SUDO_USER} source $VL_DIR/Scripts/Install/conda_init.sh
+    export PATH=$USER_HOME/anaconda3/bin:$PATH
+    source $USER_HOME/.VLprofile
     ### Test conda
     if hash conda 2>/dev/null; then
       echo "Conda succesfully installed"
@@ -127,10 +130,20 @@ elif [ "$PYTHON_INST" == "c" ]; then
     fi
     #conda --version
   fi
-
-  if test ! -d "$HOME/anaconda3/envs/$CONDAENV"; then
+  conda update -n base -c defaults conda -y
+  if test ! -d "$USER_HOME/anaconda3/envs/$CONDAENV"; then
     echo "Creating Conda env $CONDAENV"
     conda create -n $CONDAENV python -y
+  fi
+  
+  OS_v=$(eval lsb_release -r -s)
+  if [[ $OS_v == "20.04" ]]; then
+    if test ! -d "$USER_HOME/anaconda3/envs/python2"; then
+      echo "OS is Ubuntu $OS_v, which doesn't have python2 installed as default."
+      echo "A python2 environment is also being created to install Salome_Meca."
+      echo "Creating Conda end python2."
+      conda create -n python2 python=2.7 -y
+    fi
   fi
   
   ### Install conda packages
@@ -149,7 +162,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   PYV=`python -V`
   PYV2=${PYV#* }
   PYV=${PYV2%.*}
-  PATH_FILE=$HOME/anaconda3/envs/$CONDAENV/lib/python$PYV/site-packages/$CONDAENV.pth
+  PATH_FILE=$USER_HOME/anaconda3/envs/$CONDAENV/lib/python$PYV/site-packages/$CONDAENV.pth
   if test -f "$PATH_FILE"; then
     echo "VirtualLab PYTHONPATH found in Conda env."
     echo

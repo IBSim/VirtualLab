@@ -1,5 +1,6 @@
 #!/bin/bash
-if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
+USER_HOME=$(eval echo ~${SUDO_USER})
+if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
 #########################
 ### START OF DEFAULTS ###
@@ -95,6 +96,7 @@ SALOME_VER=$SALOME_VER_DEFAULT
 
 ### Test to check if salome already exists in current shell's PATH.
 prefix='appli_'
+
 if hash salome 2>/dev/null; then
   ### If exists, find PATHs
   if [[ $v == "ON" ]]; then echo "Salome exists in PATH, using values based on that."; fi

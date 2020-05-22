@@ -1,7 +1,7 @@
 #!/bin/bash
-if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
+USER_HOME=$(eval echo ~${SUDO_USER})
+if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
-#cd $VL_DIR
 CONFIG_FNAME=VLconfig_DEFAULT.sh
 usage() {
   echo

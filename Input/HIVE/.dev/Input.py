@@ -35,7 +35,7 @@ Sim = Namespace()
 Sim.Name = 'Single'
 
 #############
-## Pre-Sim ##
+## PreAster #
 #############
 Sim.PreSimFile = "PreHIVE"
 # HTC between coolant and pipe (need Coolant and Pipe properties)
@@ -60,16 +60,16 @@ Sim.Solver = 'MUMPS'
 Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
 
 ### IC - Need either an initial temperature or a results file to import
-Sim.ImportRes = 'n'
+Sim.ImportRes = False
 Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation
 Sim.Theta = 0.5
-Sim.dt = [(0.001,100,1)] #timestep size and number of steps
+Sim.dt = [(0.001,1,1)] #timestep size and number of steps
 #Sim.CheckFirst = 3
 #Sim.CheckEvery = 3 #If this is smaller than ResStore then ResStore will be used
 
 #############
-## Post-Sim #
+# PostAster #
 #############
 

@@ -113,8 +113,8 @@ class VLSetup():
 		MainDict = copy.deepcopy(self.__dict__)
 		MainMesh = getattr(Main, 'Mesh', None)
 		MainSim = getattr(Main, 'Sim', None)
-		self.MeshList = []
-		self.Studies = {}
+
+
 		# Create Mesh parameter files if they are required
 		if RunMesh and MainMesh:
 			if not os.path.isdir(self.MESH_DIR): os.makedirs(self.MESH_DIR)
@@ -141,6 +141,7 @@ class VLSetup():
 				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag in ('Y','y')]
 
 			sys.path.insert(0, self.SIM_MESH)
+			self.MeshList = []
 			for MeshName in MeshNames:
 				ParaDict=MeshDict[MeshName]
 				self.ErrorCheck('Mesh',MeshDict=ParaDict)
@@ -173,6 +174,7 @@ class VLSetup():
 				if len(ParaSim.Run)!=NumSims: self.Exit("Number of entries for variable 'Sim.Run' not equal to number of simulations")
 				SimNames = [sim for sim, flag in zip(SimNames, ParaSim.Run) if flag in ('Y','y')]
 
+			self.Studies = {}
 			for SimName in SimNames:
 				ParaDict = SimDict[SimName]
 				self.ErrorCheck('Simulation',SimDict=ParaDict)
@@ -201,18 +203,10 @@ class VLSetup():
 				# Add StudyDict to Studies dictionary
 				self.Studies[SimName] = StudyDict.copy()
 
-	def WriteModule(self, FileName, Dictionary, **kwargs):
-		Write = kwargs.get('Write','New')
-		if Write == 'New':
-			PathList = []
-			for VarName, Val in Dictionary.items():
-				if type(Val)==str: Val = "'{}'".format(Val)
-				PathList.append("{} = {}\n".format(VarName, Val))
-			Pathstr = ''.join(PathList)
-			with open(FileName,'w+') as f:
-				f.write(Pathstr)
-
 	def Mesh(self, **kwargs):
+		if not hasattr(self, 'MeshList'): return
+
+
 		'''
 		kwargs available:
 		MeshCheck: input a meshname and it will open this mesh in the GUI
@@ -222,7 +216,6 @@ class VLSetup():
 		ShowMesh = kwargs.get('ShowMesh', False)
 
 		MeshList = getattr(self,'MeshList', None)
-		if not MeshList: return
 
 		# MeshCheck routine which allows you to mesh in the GUI (Used for debugging).
 		# The script will terminate after this routine
@@ -277,161 +270,161 @@ class VLSetup():
 			self.Cleanup()
 			sys.exit()
 
-	def PreAster(self):
-		sys.path.insert(0, self.SIM_PREASTER)
-		for Name, StudyDict in self.Studies.items():
-			PreSimFile = getattr(StudyDict['Parameters'],'PreSimFile', None)
-			if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
-			if not os.path.isdir(StudyDict['PREASTER_DIR']): os.makedirs(StudyDict['PREASTER_DIR'])
-			PreSim = __import__(StudyDict['Parameters'].PreSimFile)
-			PreSim.main(self)
-			
+	def Sim(self, **kwargs):
+		if not hasattr(self,'Studies'): return
 
-
-	def Aster(self, **kwargs):
 		'''
 		kwargs
+		### PreAster kwargs ###
+		RunPreAster: Run PreAster calculations. Boolean
+
+		### Aster kwargs ###
+		RunAster: Run CodeAster. Boolean
 		mpi_nbcpu: Num CPUs for parallel CodeAster. Only available if code aster compiled for parallelism.
 		mpi_nbnoeud: Num Nodes for parallel CodeAster. Only available if code aster compiled for parallelism.
 		ncpus: Number of CPUs for regular CodeAster
-		Memory: Amount of memory (Gb) allocated to CodeAster
-		RunAster: Boolean to decide whether to run this part
-		'''
-		mpi_nbcpu = kwargs.get('mpi_nbcpu',1)
-		mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
-		ncpus = kwargs.get('ncpus',1)
-		Memory = kwargs.get('Memory',2)
-		RunAster = kwargs.get('RunAster', True)
+		memory: Amount of memory (Gb) allocated to CodeAster
 
-		if not self.Studies: return
-		if not RunAster: return
-
-		print('### Starting Simulations ###\n')
-		SubProcs = {}
-		for Name, StudyDict in self.Studies.items():
-			if not os.path.isdir(StudyDict['ASTER_DIR']): os.makedirs(StudyDict['ASTER_DIR'])
-
-			AddPath = [self.COM_SCRIPTS, self.TMP_DIR, StudyDict['TMP_CALC_DIR']]
-			PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
-			PreCond = PythonPath + ["export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
-			PreCond = ''.join(PreCond)
-			
-			# Copy script to tmp folder and add in tmp file location
-			commfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].CommFile)
-			meshfile = "{}/{}.med".format(self.MESH_DIR,StudyDict['Parameters'].Mesh)
-			exportfile = "{}/Export".format(StudyDict['ASTER_DIR'])
-
-			# Create export file and write to file
-			exportstr = 'P actions make_etude\n' + \
-			'P mode batch\n' + \
-			'P version stable\n' + \
-			'P time_limit 9999\n' + \
-			'P mpi_nbcpu {}\n'.format(mpi_nbcpu) + \
-			'P mpi_nbnoeud {}\n'.format(mpi_nbnoeud) + \
-			'P ncpus {}\n'.format(ncpus) + \
-			'P memory_limit {!s}.0\n'.format(1024*Memory) +\
-			'F mmed {} D  20\n'.format(meshfile) + \
-			'F comm {} D  1\n'.format(commfile) + \
-			'F mess {}/AsterLog R  6\n'.format(StudyDict['ASTER_DIR']) + \
-			'R repe {} R  0\n'.format(StudyDict['ASTER_DIR'])
-			with open(exportfile,'w+') as e:
-				e.write(exportstr)
-
-			# Create different command file depending on the mode
-			errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
-			if self.mode == 'Interactive':
-				xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
-				command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
-			elif self.mode == 'Continuous':
-				command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER_DIR'])
-			else :
-				command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
-
-			# Start Aster subprocess
-			SubProcs[Name] = Popen(PreCond + command , shell='TRUE')
-			print("Simulation '{}' started".format(Name))
-
-		# Wait until all Aster subprocesses are finished before moving on
-		AsterError = False
-		while SubProcs:
-			# Check to see the status of each subprocess
-			for Name, Proc in SubProcs.copy().items():
-				Poll = Proc.poll()
-				if Poll is not None:
-					
-					err = Poll
-					if self.mode == 'Interactive':
-						with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
-							err = int(f.readline())
-					elif self.mode == 'Continuous':
-						os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER_DIR']))
-
-					if err != 0:
-						print("Error in simulation '{}' - Check the log file".format(Name))
-						AsterError = True
-					else :
-						print("Simulation '{}' completed without errors".format(Name))
-					SubProcs.pop(Name)
-					Proc.terminate()
-
-			# Check if subprocess has finished every 1 second
-			time.sleep(1)
-
-		if AsterError: self.Exit("Some simulations finished with errors")
-		print('\n### Simulations Completed ###\n')
-
-
-	def PostAster(self, **kwargs):
-		'''
-		kwargs available:
+		### PostAster kwargs ###
+		RunPostAster: Run PostAster calculations. Boolean
 		ShowRes: Opens up all results files in Salome GUI. Boolean
-		RunPost: Boolean to decide whether or not to run this part
+
 		'''
-		ShowRes = kwargs.get('ShowRes', False)
-		RunPost = kwargs.get('RunPost', True)
+		RunPreAster = kwargs.get('RunPreAster',True)
+		RunAster = kwargs.get('RunAster', True)
+		RunPostAster = kwargs.get('RunPostAster', True)
 
-		if not self.Studies: return
-		if not RunPost: return
+		print('\n### Starting Simulations ###\n')
 
-		# Opens up all results in ParaVis
-		if ShowRes:
-			print("### Opening .rmed files in ParaVis ###\n")
-			ResList=[]
-			for study, StudyDict in self.Studies.items():
-				ResName = StudyDict['Parameters'].ResName
-				if type(ResName) == str: ResName = [ResName]
-				elif type(ResName) == dict: ResName=list(ResName.values())
-				ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER_DIR']) for name in ResName]
+		if RunPreAster:
+			sys.path.insert(0, self.SIM_PREASTER)
+			for Name, StudyDict in self.Studies.items():
+				PreSimFile = getattr(StudyDict['Parameters'],'PreSimFile', None)
+				if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
+				print("Pre-Aster for '{}' started".format(Name))
+				if not os.path.isdir(StudyDict['PREASTER_DIR']): os.makedirs(StudyDict['PREASTER_DIR'])
+				PreSim = __import__(StudyDict['Parameters'].PreSimFile)
+				PreSim.main(self)
+				print("Pre-Aster for '{}' completed".format(Name))
 
-			AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
-			Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
-			Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
-			Salome.wait()
-			return
+		if RunAster:
+			mpi_nbcpu = kwargs.get('mpi_nbcpu',1)
+			mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
+			ncpus = kwargs.get('ncpus',1)
+			memory = kwargs.get('memory',2)
 
-		sys.path.insert(0, self.SIM_POSTASTER)
-		# Run PostCalcFile and ParVis file if they are provided
-		print('### Starting Post-processing ###\n')
-		for Name, StudyDict in self.Studies.items():
-			ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
-			if not ParaVisFile: continue
+			SubProcs = {}
+			for Name, StudyDict in self.Studies.items():
+				if not os.path.isdir(StudyDict['ASTER_DIR']): os.makedirs(StudyDict['ASTER_DIR'])
 
-			print("ParaVis for '{}'".format(Name)) 
-			if not os.path.isdir(StudyDict['POSTASTER_DIR']): os.makedirs(StudyDict['POSTASTER_DIR'])
+				AddPath = [self.COM_SCRIPTS, self.TMP_DIR, StudyDict['TMP_CALC_DIR']]
+				PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
+				PreCond = PythonPath + ["export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
+				PreCond = ''.join(PreCond)
+				
+				# Copy script to tmp folder and add in tmp file location
+				commfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].CommFile)
+				meshfile = "{}/{}.med".format(self.MESH_DIR,StudyDict['Parameters'].Mesh)
+				exportfile = "{}/Export".format(StudyDict['ASTER_DIR'])
 
-			if ParaVisFile:
+				# Create export file and write to file
+				exportstr = 'P actions make_etude\n' + \
+				'P mode batch\n' + \
+				'P version stable\n' + \
+				'P time_limit 9999\n' + \
+				'P mpi_nbcpu {}\n'.format(mpi_nbcpu) + \
+				'P mpi_nbnoeud {}\n'.format(mpi_nbnoeud) + \
+				'P ncpus {}\n'.format(ncpus) + \
+				'P memory_limit {!s}.0\n'.format(1024*memory) +\
+				'F mmed {} D  20\n'.format(meshfile) + \
+				'F comm {} D  1\n'.format(commfile) + \
+				'F mess {}/AsterLog R  6\n'.format(StudyDict['ASTER_DIR']) + \
+				'R repe {} R  0\n'.format(StudyDict['ASTER_DIR'])
+				with open(exportfile,'w+') as e:
+					e.write(exportstr)
+
+				# Create different command file depending on the mode
+				errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
+				if self.mode == 'Interactive':
+					xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
+					command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
+				elif self.mode == 'Continuous':
+					command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER_DIR'])
+				else :
+					command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
+
+				# Start Aster subprocess
+				SubProcs[Name] = Popen(PreCond + command , shell='TRUE')
+				print("Aster for '{}' started".format(Name))
+
+			# Wait until all Aster subprocesses are finished before moving on
+			AsterError = False
+			while SubProcs:
+				# Check to see the status of each subprocess
+				for Name, Proc in SubProcs.copy().items():
+					Poll = Proc.poll()
+					if Poll is not None:
+						
+						err = Poll
+						if self.mode == 'Interactive':
+							with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
+								err = int(f.readline())
+						elif self.mode == 'Continuous':
+							os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER_DIR']))
+
+						if err != 0:
+							print("Error in simulation '{}' - Check the log file".format(Name))
+							AsterError = True
+						else :
+							print("Aster for '{}' completed".format(Name))
+						SubProcs.pop(Name)
+						Proc.terminate()
+
+				# Check if subprocess has finished every 1 second
+				time.sleep(1)
+
+			if AsterError: self.Exit("Some simulations finished with errors")
+
+		if RunPostAster:
+			ShowRes = kwargs.get('ShowRes', False)
+
+			# Opens up all results in ParaVis
+			if ShowRes:
+				print("### Opening .rmed files in ParaVis ###\n")
+				ResList=[]
+				for study, StudyDict in self.Studies.items():
+					ResName = StudyDict['Parameters'].ResName
+					if type(ResName) == str: ResName = [ResName]
+					elif type(ResName) == dict: ResName=list(ResName.values())
+					ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER_DIR']) for name in ResName]
+
+				AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
+				Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
+				Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
+				Salome.wait()
+				return
+
+			sys.path.insert(0, self.SIM_POSTASTER)
+			# Run PostCalcFile and ParVis file if they are provided
+			for Name, StudyDict in self.Studies.items():
+				ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
+				if not ParaVisFile: continue
+
+				print("ParaVis for '{}' started".format(Name)) 
+				if not os.path.isdir(StudyDict['POSTASTER_DIR']): os.makedirs(StudyDict['POSTASTER_DIR'])
+
 				Script = "{}/{}.py".format(self.SIM_POSTASTER, ParaVisFile)
 				PVlog = "{}/PVlog.txt".format(StudyDict['POSTASTER_DIR'])
 				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], OutLog=PVlog, )
-				print("")
+				print("ParaVis for '{}' completed".format(Name))
 
-		for Name, StudyDict in self.Studies.items():
-			PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
-			if not PostCalcFile : continue
+			for Name, StudyDict in self.Studies.items():
+				PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
+				if not PostCalcFile : continue
 
-			print("## PostCalc for '{}' ##\n".format(Name)) 
-			if not os.path.isdir(StudyDict['POSTASTER_DIR']): os.makedirs(StudyDict['POSTASTER_DIR'])
-			if PostCalcFile:
+				print("PostCalc for '{}' started\n".format(Name)) 
+				if not os.path.isdir(StudyDict['POSTASTER_DIR']): os.makedirs(StudyDict['POSTASTER_DIR'])
+
 				PostCalc = __import__(PostCalcFile)
 				if self.mode == 'Interactive':
 					PostCalc.main(self, StudyDict)
@@ -440,7 +433,21 @@ class VLSetup():
 						with contextlib.redirect_stdout(f):
 							PostCalc.main(self, StudyDict)
 
-		print('\n### Post-processing Completed ###')
+				print("PostCalc for '{}' completed\n".format(Name)) 
+
+		print('\n### Simulations Completed ###')
+
+
+	def WriteModule(self, FileName, Dictionary, **kwargs):
+		Write = kwargs.get('Write','New')
+		if Write == 'New':
+			PathList = []
+			for VarName, Val in Dictionary.items():
+				if type(Val)==str: Val = "'{}'".format(Val)
+				PathList.append("{} = {}\n".format(VarName, Val))
+			Pathstr = ''.join(PathList)
+			with open(FileName,'w+') as f:
+				f.write(Pathstr)
 
 	def ErrorCheck(self, Stage, **kwargs):
 		if Stage == '__init__':
@@ -481,7 +488,7 @@ class VLSetup():
 				self.Exit("CommFile '{}' not in directory '{}'".format(SimDict['CommFile'], self.SIM_ASTER))
 
 			# Check either the mesh is in the mesh directory or that it is in MeshList ready to be created
-			if SimDict['Mesh'] in self.MeshList: pass
+			if SimDict['Mesh'] in getattr(self, 'MeshList', []): pass
 			elif os.path.isfile("{}/{}.med".format(self.MESH_DIR, SimDict['Mesh'])): pass
 			else : self.Exit("Mesh '{}' isn't being created and is not in the mesh directory '{}'".format(SimDict['Mesh'], self.MESH_DIR))
 

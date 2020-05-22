@@ -17,17 +17,16 @@ StudyName = 'Training'
 Input = {'Parameters' : 'TrainingParameters'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
-VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "Interactive")
+VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "I", port=2810)
 
-# Create temporary directories and files
+# Create directories and Parameter files for simulation
 VirtualLab.Create()
 
 # Creates meshes
 VirtualLab.Mesh()
 
 # Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
-VirtualLab.Aster()
-VirtualLab.PostAster(ShowRes=True)
+VirtualLab.Sim()
 
 # Remove tmp folders
 VirtualLab.Cleanup()

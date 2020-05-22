@@ -12,24 +12,22 @@ from Noyau.N__F import _F
 
 
 def AdaptThermal(ResName,Tsteps,Load,Material,Model,Theta,Solver,**kwargs):
-	if 'MaxIter' in kwargs.keys(): MaxIter = kwargs['MaxIter']
-	else: MaxIter = 10
+	MaxIter = kwargs.get('MaxIter', 10)
 
-	if 'Storing' in kwargs.keys(): 
-		_SaveSteps = _F(LIST_INST=kwargs['Storing'])
-
+	if 'Storing' in kwargs.keys(): _SaveSteps = _F(LIST_INST=kwargs['Storing'])
 	else: _SaveSteps = _F()
 
 	timearr = np.array(Tsteps.Valeurs())
-	StartIx = np.argmin(abs(timearr - (ResName.LIST_VARI_ACCES()['INST'])[-1]))
+	StartTime = (ResName.LIST_VARI_ACCES()['INST'])[-1]
+	StartIx = np.argmin(np.abs(timearr - StartTime))
+	if 'EndIndex' in kwargs: timearr = timearr[StartIx:kwargs['EndIndex']+1]
+	elif 'EndTime' in kwargs: pass
+	else: timearr[StartIx:]
 
-	if 'EndTime' in kwargs.keys():
-		EndIndex = np.argmin(abs(timearr - kwargs['EndTime']))
-		timearr = timearr[StartIx:EndIndex+1]
+#	if 'EndTime' in kwargs.keys():
+#		EndIndex = np.argmin(abs(timearr - kwargs['EndTime']))
+#		timearr = timearr[StartIx:EndIndex+1]
 
-	if 'EndIndex' in kwargs.keys():
-		EndIndex = kwargs['EndIndex']
-		timearr = timearr[StartIx:EndIndex+1]
 	
 	_adapt = DEFI_LIST_REEL(VALE=timearr)
 	### Set err=1 here to enter while loop
@@ -207,6 +205,30 @@ def EMloading(mesh, EMpath, groups, scaling = 1, Tol = 0.5):
 		   CREA_GROUP_MA=meshlist)
 
 	return Load_EM, Elem_EM, EMdat
+
+
+def Timesteps(dt, start=0):
+	timelist, savelist = [], []
+	for i, tup in enumerate(dt):
+		if len(tup) == 3: dt, Nstep, save = tup
+		else :dt, Nstep, save = tup[0],tup[1], 1
+
+		fintime = start + dt*Nstep
+		timesteps = np.linspace(start,fintime,Nstep+1).tolist()
+
+		if i == 0: 
+			timelist.append(timesteps)
+			savelist.append(timesteps[::save])
+		else: 
+			timelist.append(timesteps[1:])
+			savelist.append(timesteps[save::save])
+
+		start = fintime
+
+	timearr = np.concatenate(timelist)
+	savearr = np.concatenate(savelist)
+
+	return timearr, savearr
 
 
 

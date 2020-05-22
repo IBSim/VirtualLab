@@ -42,8 +42,9 @@ Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model),
 mesht = partition.MAIL_PY()
 mesht.FromAster(mesh)
 
-NNodes = len(mesht.cn)
+
 EMdat = np.fromfile('{}/ERMES_Node.dat'.format(PathVL.TMP_CALC_DIR),dtype=float,count=-1,sep=" ")
+#NNodes = len(mesht.cn)
 #EMdat = EMdat.reshape((NNodes+1,len(EMdat)//(NNodes+1)))
 #Temps, JouleHeat = EMdat[0,:], EMdat[1:,:]
 Temps, JouleHeat = EMdat[0], EMdat[1:]
@@ -144,78 +145,57 @@ PipeArea,PipeFaceNodes = AsterFunc.BCinfo(mesh,Group = 'PipeFace')[0:2]
 
 Loading = (_F(CHARGE=EMI),_F(CHARGE=PipeHTC))
 
-##### Create list of time steps #####
-start = 0
-timelist, savelist = [], []
-for i, tup in enumerate(Parameters.dt):
-	if len(tup) == 3: dt, Nstep, save = tup
-	else :dt, Nstep, save = tup[0],tup[1], 1
-
-	fintime = start + dt*Nstep
-	timesteps = np.linspace(start,fintime,Nstep+1).tolist()
-
-	if i == 0: 
-		timelist.append(timesteps)
-		savelist.append(timesteps[::save])
-	else: 
-		timelist.append(timesteps[1:])
-		savelist.append(timesteps[save::save])
-
-	start = fintime
-
-timearr = timearrOrig = np.concatenate(timelist)
-savearr = np.concatenate(savelist)
-
+##### Get array of timesteps and saving steps using dt provided in Parameters #####
+timearr, savearr = AsterFunc.Timesteps(Parameters.dt)
+Timestp = DEFI_LIST_REEL(VALE=timearr)
+Savestp = DEFI_LIST_REEL(VALE=savearr)
 
 ##### Run thermal analysis #####
+Theta = getattr(Parameters,'Theta',0.5)
+Solver = getattr(Parameters,'Solver', 'MUMPS')
 MaxIter = getattr(Parameters,'MaxIter',10)
 
-### No results to import so we start with the initial temperature
-if Parameters.ImportRes not in ('Yes','Y','yes','y'):
-	StartTime = 0
+if Parameters.ImportRes:
+	pass
+#	### Import results to create field of temperatures
+#	DEFI_FICHIER(FICHIER=PathVL.RESULTS_DIR + '/ResTher.rmed', UNITE=40)		
+#	resther = LIRE_RESU(FORMAT='MED',
+#			    FORMAT_MED=_F(NOM_CHAM='TEMP',
+#			    NOM_RESU='resther'),
+#			    MAILLAGE=mesh,
+#			    TOUT_ORDRE='OUI',
+#			    TYPE_RESU='EVOL_THER',
+#			    UNITE=40)
+#	StartTime = (resther.LIST_VARI_ACCES()['INST'])[-1]
+#	NewIndex = np.argmin(abs(timearr - StartTime))
+
+#	if os.path.isfile(Info.DATA_DIR + '/TimeSteps.dat'):
+#		PrevTime = np.fromfile(Info.DATA_DIR + '/TimeSteps.dat',dtype=float,count=-1,sep=' ')
+#		ImportIndex = np.argmin(abs(PrevTime - StartTime))
+#		timearr = np.concatenate((PrevTime[0:ImportIndex+1],timearr[NewIndex+1:]))
+#	else:
+#		ImportIndex = 0
+#		timearr = timearr[NewIndex:]
+
+#	TotStep = len(timearr) - 1
+#	if Parameters.CheckFirst == 0:
+#		FinIx = TotStep
+#	else :
+#		FinIx = min(ImportIndex + Parameters.CheckFirst,TotStep)
+
+else:
 	### Create field of temperatures loaded with initial temperature
 	field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
 	resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
 
 #	if Parameters.CheckFirst == 0:FinIx = TotStep
 #	else :FinIx = min(Parameters.CheckFirst,TotStep)
-	FinIx = len(timearr)-1
-
-### Import starting temperature profile from results
-else:
-	### Import results to create field of temperatures
-	DEFI_FICHIER(FICHIER=PathVL.RESULTS_DIR + '/ResTher.rmed', UNITE=40)		
-	resther = LIRE_RESU(FORMAT='MED',
-			    FORMAT_MED=_F(NOM_CHAM='TEMP',
-			    NOM_RESU='resther'),
-			    MAILLAGE=mesh,
-			    TOUT_ORDRE='OUI',
-			    TYPE_RESU='EVOL_THER',
-			    UNITE=40)
-	StartTime = (resther.LIST_VARI_ACCES()['INST'])[-1]
-	NewIndex = np.argmin(abs(timearr - StartTime))
-
-	if os.path.isfile(Info.DATA_DIR + '/TimeSteps.dat'):
-		PrevTime = np.fromfile(Info.DATA_DIR + '/TimeSteps.dat',dtype=float,count=-1,sep=' ')
-		ImportIndex = np.argmin(abs(PrevTime - StartTime))
-		timearr = np.concatenate((PrevTime[0:ImportIndex+1],timearr[NewIndex+1:]))
-	else:
-		ImportIndex = 0
-		timearr = timearr[NewIndex:]
-
-	TotStep = len(timearr) - 1
-	if Parameters.CheckFirst == 0:
-		FinIx = TotStep
-	else :
-		FinIx = min(ImportIndex + Parameters.CheckFirst,TotStep)
+#	FinIx = len(timearr)-1
 
 
-### Create list of timesteps and list of steps to save
-timestp1 = DEFI_LIST_REEL(VALE=timearr)
-Storing = DEFI_LIST_REEL(VALE=savearr)
 
 # Start  thermal analysis
-AdaptSteps = AsterFunc.AdaptThermal(resther,timestp1,Loading,Thermat,Thermod,Parameters.Theta,Parameters.Solver,Storing = Storing, MaxIter=MaxIter,EndIndex = FinIx)
+AdaptSteps = AsterFunc.AdaptThermal(resther,Timestp,Loading,Thermat,Thermod,Theta,Solver,Storing = Savestp, MaxIter=MaxIter)
 
 ## continue thermal analysis
 #while FinIx < TotStep: 

@@ -132,37 +132,8 @@ Savestp = DEFI_LIST_REEL(VALE=savearr)
 
 
 ### Temperature distribution to start simulation
-if Parameters.ImportRes:
-	### Import results to create field of temperatures
-	DEFI_FICHIER(FICHIER=PathVL.RESULTS_DIR + '/ResTher.rmed', UNITE=40)		
-	resther = LIRE_RESU(FORMAT='MED',
-			    FORMAT_MED=_F(NOM_CHAM='TEMP',
-			    NOM_RESU='resther'),
-			    MAILLAGE=mesh,
-			    TOUT_ORDRE='OUI',
-			    TYPE_RESU='EVOL_THER',
-			    UNITE=40)
-	StartTime = (resther.LIST_VARI_ACCES()['INST'])[-1]
-	NewIndex = np.argmin(abs(timearr - StartTime))
-
-	if os.path.isfile(Info.DATA_DIR + '/TimeSteps.dat'):
-		PrevTime = np.fromfile(Info.DATA_DIR + '/TimeSteps.dat',dtype=float,count=-1,sep=' ')
-		ImportIndex = np.argmin(abs(PrevTime - StartTime))
-		timearr = np.concatenate((PrevTime[0:ImportIndex+1],timearr[NewIndex+1:]))
-	else:
-		ImportIndex = 0
-		timearr = timearr[NewIndex:]
-
-	TotStep = len(timearr) - 1
-	if Parameters.CheckFirst == 0:
-		FinIx = TotStep
-	else :
-		FinIx = min(ImportIndex + Parameters.CheckFirst,TotStep)
-
-else:
-	### Create field of temperatures loaded with initial temperature
-	field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
-	resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
+field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
+resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
 
 
 ## Start  thermal analysis ##

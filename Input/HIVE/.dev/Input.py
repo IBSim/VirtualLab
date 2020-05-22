@@ -39,18 +39,18 @@ Sim.Name = 'Single'
 #############
 Sim.PreSimFile = "PreHIVE"
 # HTC between coolant and pipe (need Coolant and Pipe properties)
-Sim.CreateHTC = False
+Sim.CreateHTC = True
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 
 # ERMES solver is used to creat BC for induction heating
-Sim.RunERMES = False
+Sim.RunERMES = True
 Sim.ERMES = {'Frequency':1e4,'Current':100,'NbProc':2}
 
 #############
 ### Aster ###
 #############
-Sim.CommFile = 'AMAZE_Adapt' # This file must be in Scripts/$SIMULATION/Aster
+Sim.CommFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
 Sim.Mesh = 'HiveCoil' # The mesh used for the simulation
 
 Sim.Model = '3D'

@@ -17,7 +17,7 @@ StudyName = 'Training'
 Input = {'Parameters' : 'TrainingParameters'}
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
-VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "I", port=2810)
+VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "Interactive")
 
 # Create directories and Parameter files for simulation
 VirtualLab.Create()

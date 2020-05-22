@@ -17,7 +17,7 @@ def KCalc(halfT, l, rho, Cp):
 def main(Info, StudyDict):
 #	StudyDict = Info.Studies[study]
 
-	ResFile = '{}/{}.rmed'.format(StudyDict['ASTER_DIR'], StudyDict['Parameters'].ResName)
+	ResFile = '{}/{}.rmed'.format(StudyDict['ASTER'], StudyDict['Parameters'].ResName)
 	# Get mesh information from the results file
 	meshdata = MeshInfo(ResFile)
 
@@ -62,7 +62,7 @@ def main(Info, StudyDict):
 	plt.xlabel('Time',fontsize = 20)
 	plt.ylabel('Laser Pulse\n Factor',fontsize = 20)	
 	plt.plot(xLaser, yLaser)
-	plt.savefig("{}/LaserProfile.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
+	plt.savefig("{}/LaserProfile.png".format(StudyDict['POSTASTER']), bbox_inches='tight')
 	print("Created plot LaserProfile.png")
 	plt.close()
 
@@ -108,7 +108,7 @@ def main(Info, StudyDict):
 	im2 = ax2.scatter(TopCoor[:,0], TopCoor[:,1], c=Res[:,1], cmap=cmap)
 	ax1.axis('off')
 	ax2.axis('off')
-	plt.savefig("{}/FluxDist.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
+	plt.savefig("{}/FluxDist.png".format(StudyDict['POSTASTER']), bbox_inches='tight')
 	print("Created plot FluxDist.png")
 	plt.close()
 
@@ -149,7 +149,7 @@ def main(Info, StudyDict):
 	plt.xlabel('Time',fontsize = 20)
 	plt.ylabel('Temperature',fontsize = 20)
 	plt.plot(Time, AvTemp)
-	plt.savefig("{}/BaseTemp.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
+	plt.savefig("{}/BaseTemp.png".format(StudyDict['POSTASTER']), bbox_inches='tight')
 	print("Created plot BaseTemp.png")
 	plt.close()
 
@@ -163,7 +163,7 @@ def main(Info, StudyDict):
 		for Rdata, Rval in zip(np.transpose(R), Rvalues):
 			plt.plot(Time, Rdata, label = 'R = {}'.format(Rval))
 		plt.legend(loc='upper left')
-		plt.savefig("{}/Rplot.png".format(StudyDict['POST_DIR']), bbox_inches='tight')
+		plt.savefig("{}/Rplot.png".format(StudyDict['POSTASTER']), bbox_inches='tight')
 		print("Created plot Rplot.png")
 		plt.close()
 
@@ -197,8 +197,8 @@ def main(Info, StudyDict):
 			ActdT = AvTemp[-1] - AvTemp[0]
 			vol = Radius**2*np.pi*Height - VoidRadius**2*np.pi*VoidHeight
 			ExpdT = StudyDict['Parameters'].Energy/(vol*Rho*Cp)
-			print("Anticipated temperature increase from energy input: {}{}C".format(ActdT, u'\N{DEGREE SIGN}'))
-			print("Measured temperature increase from simulation: {}{}C\n".format(ExpdT, u'\N{DEGREE SIGN}'))
+			print("Anticipated temperature increase from energy input: {}{}C".format(ExpdT, u'\N{DEGREE SIGN}'))
+			print("Measured temperature increase from simulation: {}{}C\n".format(ActdT, u'\N{DEGREE SIGN}'))
 			print("Error: {}%".format(100*abs(1-ActdT/ExpdT)))
 		else :
 			print("Cannot measure temperature change due to BC")
@@ -209,7 +209,7 @@ def main(Info, StudyDict):
 	# Accuracy of temporal discretisation for laser pulse
 	Lsrdat = np.fromfile('{}/Laser/{}.dat'.format(Info.SIM_SCRIPTS, StudyDict['Parameters'].LaserT),dtype=float,count=-1,sep=" ")
 	xp, fp = Lsrdat[::2], Lsrdat[1::2]
-	TimeSteps = np.fromfile('{}/TimeSteps.dat'.format(StudyDict['ASTER_DIR']),dtype=float,count=-1,sep=" ")
+	TimeSteps = np.fromfile('{}/TimeSteps.dat'.format(StudyDict['ASTER']),dtype=float,count=-1,sep=" ")
 	TimeSteps = TimeSteps[TimeSteps <= xp[-1]]
 	ExactLaser = np.trapz(fp, xp)
 	AprxLaser = np.trapz(np.interp(TimeSteps,xp,fp), TimeSteps) 

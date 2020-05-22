@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi
 
-cd $VL_DIR
+#cd $VL_DIR
 CONFIG_FNAME=VLconfig_DEFAULT.sh
 usage() {
   echo

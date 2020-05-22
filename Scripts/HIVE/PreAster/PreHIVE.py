@@ -37,20 +37,20 @@ def GetHTC(Info):
 				WallTemp += incr
 
 			HTC = np.array(HTC)
-			np.savetxt("{}/HTC.dat".format(StudyDict['PREASTER_DIR']), HTC, fmt = '%.2f %.8f')
+			np.savetxt("{}/HTC.dat".format(StudyDict['PREASTER']), HTC, fmt = '%.2f %.8f')
 			np.savetxt("{}/HTC.dat".format(StudyDict['TMP_CALC_DIR']), HTC, fmt = '%.2f %.8f')
 
 			import matplotlib.pyplot as plt
 			plt.plot(HTC[:,0],HTC[:,1])
-			plt.savefig("{}/PipeHTC.png".format(StudyDict['PREASTER_DIR']), bbox_inches='tight')
+			plt.savefig("{}/PipeHTC.png".format(StudyDict['PREASTER']), bbox_inches='tight')
 			plt.close()
 
 		### Use previous HTC values
-		elif os.path.isfile("{}/HTC.dat".format(StudyDict['PREASTER_DIR'])):
-			shutil.copy("{}/HTC.dat".format(StudyDict['PREASTER_DIR']), StudyDict['TMP_CALC_DIR'])
+		elif os.path.isfile("{}/HTC.dat".format(StudyDict['PREASTER'])):
+			shutil.copy("{}/HTC.dat".format(StudyDict['PREASTER']), StudyDict['TMP_CALC_DIR'])
 
 		### Exit due to errors
-		else: Info.Exit("CreateHTC not 'True' and {} contains no HTC.dat file".format(StudyDict['PREASTER_DIR']))
+		else: Info.Exit("CreateHTC not 'True' and {} contains no HTC.dat file".format(StudyDict['PREASTER']))
 
 
 #def ErmesRun(Info,study,NNodes):
@@ -434,12 +434,12 @@ def ERMES(Info):
 		EMtype = 'Node'
 		if EMtype == 'Elem': ERMESfname = 'ERMES_Elem.dat'
 		else : ERMESfname = 'ERMES_Node.dat'
-		EMpath = '{}/{}'.format(StudyDict['PREASTER_DIR'], ERMESfname)
+		EMpath = '{}/{}'.format(StudyDict['PREASTER'], ERMESfname)
 		if RunERMES:
 			### Create a new set of ERMES results
 			JH_Node = SetupERMES(Info, StudyDict)
 #			np.savetxt('{}/{}'.format(StudyDict['PREASTER_DIR'], 'ERMES_Elem.dat'), JH_Elem, fmt = '%.10f', delimiter = '   ')
-			np.savetxt('{}/{}'.format(StudyDict['PREASTER_DIR'], 'ERMES_Node.dat'), JH_Node, fmt = '%.10f', delimiter = '   ')
+			np.savetxt('{}/{}'.format(StudyDict['PREASTER'], 'ERMES_Node.dat'), JH_Node, fmt = '%.10f', delimiter = '   ')
 
 		elif os.path.isfile(EMpath):
 			SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample')

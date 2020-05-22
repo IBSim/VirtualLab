@@ -69,9 +69,8 @@ class VLSetup():
 
 		# Define variables and run some checks
 		# Script directories
-		self.SCRIPT_DIR = "{}/Scripts".format(VL_DIR)
-		self.COM_SCRIPTS = "{}/Common".format(self.SCRIPT_DIR)
-		self.SIM_SCRIPTS = "{}/{}".format(self.SCRIPT_DIR, Simulation)
+		self.COM_SCRIPTS = "{}/Scripts/Common".format(VL_DIR)
+		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VL_DIR, Simulation)
 
 		self.SIM_MESH = "{}/Mesh".format(self.SIM_SCRIPTS)
 		self.SIM_PREASTER = "{}/PreAster".format(self.SIM_SCRIPTS)
@@ -182,9 +181,9 @@ class VLSetup():
 				# Define simulation related directories
 				StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, SimName)
 				StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.SIM_DIR, SimName)
-				StudyDict['PREASTER_DIR'] = "{}/PreAster".format(CALC_DIR)
-				StudyDict['ASTER_DIR'] = "{}/Aster".format(CALC_DIR)
-				StudyDict['POSTASTER_DIR'] = "{}/PostAster".format(CALC_DIR)
+				StudyDict['PREASTER'] = "{}/PreAster".format(CALC_DIR)
+				StudyDict['ASTER'] = "{}/Aster".format(CALC_DIR)
+				StudyDict['POSTASTER'] = "{}/PostAster".format(CALC_DIR)
 
 				if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
 				if not os.path.isdir(CALC_DIR): os.makedirs(CALC_DIR)
@@ -205,8 +204,6 @@ class VLSetup():
 
 	def Mesh(self, **kwargs):
 		if not hasattr(self, 'MeshList'): return
-
-
 		'''
 		kwargs available:
 		MeshCheck: input a meshname and it will open this mesh in the GUI
@@ -302,7 +299,7 @@ class VLSetup():
 				PreSimFile = getattr(StudyDict['Parameters'],'PreSimFile', None)
 				if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
 				print("Pre-Aster for '{}' started".format(Name))
-				if not os.path.isdir(StudyDict['PREASTER_DIR']): os.makedirs(StudyDict['PREASTER_DIR'])
+				if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
 				PreSim = __import__(StudyDict['Parameters'].PreSimFile)
 				PreSim.main(self)
 				print("Pre-Aster for '{}' completed".format(Name))
@@ -315,7 +312,7 @@ class VLSetup():
 
 			SubProcs = {}
 			for Name, StudyDict in self.Studies.items():
-				if not os.path.isdir(StudyDict['ASTER_DIR']): os.makedirs(StudyDict['ASTER_DIR'])
+				if not os.path.isdir(StudyDict['ASTER']): os.makedirs(StudyDict['ASTER'])
 
 				AddPath = [self.COM_SCRIPTS, self.TMP_DIR, StudyDict['TMP_CALC_DIR']]
 				PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
@@ -325,7 +322,7 @@ class VLSetup():
 				# Copy script to tmp folder and add in tmp file location
 				commfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].CommFile)
 				meshfile = "{}/{}.med".format(self.MESH_DIR,StudyDict['Parameters'].Mesh)
-				exportfile = "{}/Export".format(StudyDict['ASTER_DIR'])
+				exportfile = "{}/Export".format(StudyDict['ASTER'])
 
 				# Create export file and write to file
 				exportstr = 'P actions make_etude\n' + \
@@ -338,8 +335,8 @@ class VLSetup():
 				'P memory_limit {!s}.0\n'.format(1024*memory) +\
 				'F mmed {} D  20\n'.format(meshfile) + \
 				'F comm {} D  1\n'.format(commfile) + \
-				'F mess {}/AsterLog R  6\n'.format(StudyDict['ASTER_DIR']) + \
-				'R repe {} R  0\n'.format(StudyDict['ASTER_DIR'])
+				'F mess {}/AsterLog R  6\n'.format(StudyDict['ASTER']) + \
+				'R repe {} R  0\n'.format(StudyDict['ASTER'])
 				with open(exportfile,'w+') as e:
 					e.write(exportstr)
 
@@ -349,7 +346,7 @@ class VLSetup():
 					xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
 					command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
 				elif self.mode == 'Continuous':
-					command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER_DIR'])
+					command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER'])
 				else :
 					command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
 
@@ -370,7 +367,7 @@ class VLSetup():
 							with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
 								err = int(f.readline())
 						elif self.mode == 'Continuous':
-							os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER_DIR']))
+							os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER']))
 
 						if err != 0:
 							print("Error in simulation '{}' - Check the log file".format(Name))
@@ -396,7 +393,7 @@ class VLSetup():
 					ResName = StudyDict['Parameters'].ResName
 					if type(ResName) == str: ResName = [ResName]
 					elif type(ResName) == dict: ResName=list(ResName.values())
-					ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER_DIR']) for name in ResName]
+					ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER']) for name in ResName]
 
 				AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
 				Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
@@ -411,10 +408,10 @@ class VLSetup():
 				if not ParaVisFile: continue
 
 				print("ParaVis for '{}' started".format(Name)) 
-				if not os.path.isdir(StudyDict['POSTASTER_DIR']): os.makedirs(StudyDict['POSTASTER_DIR'])
+				if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
 
 				Script = "{}/{}.py".format(self.SIM_POSTASTER, ParaVisFile)
-				PVlog = "{}/PVlog.txt".format(StudyDict['POSTASTER_DIR'])
+				PVlog = "{}/PVlog.txt".format(StudyDict['POSTASTER'])
 				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], OutLog=PVlog, )
 				print("ParaVis for '{}' completed".format(Name))
 
@@ -423,13 +420,13 @@ class VLSetup():
 				if not PostCalcFile : continue
 
 				print("PostCalc for '{}' started\n".format(Name)) 
-				if not os.path.isdir(StudyDict['POSTASTER_DIR']): os.makedirs(StudyDict['POSTASTER_DIR'])
+				if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
 
 				PostCalc = __import__(PostCalcFile)
 				if self.mode == 'Interactive':
 					PostCalc.main(self, StudyDict)
 				else:
-					with open("{}/log.txt".format(StudyDict['POSTASTER_DIR']), 'w') as f:
+					with open("{}/log.txt".format(StudyDict['POSTASTER']), 'w') as f:
 						with contextlib.redirect_stdout(f):
 							PostCalc.main(self, StudyDict)
 

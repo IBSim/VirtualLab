@@ -14,7 +14,7 @@ Sim = Namespace()
 Sim.Name = 'NameOfSimulation'
 
 #############
-## Pre-Sim ##
+## PreAster #
 #############
 
 #############
@@ -24,6 +24,6 @@ Sim.CommFile = 'FileToRunSimulation' # This file must be in Scripts/$SIMULATION/
 Sim.Mesh = 'NameOfMeshUsedInSimulation' # The mesh used in the simulation
 
 #############
-## Post-Sim #
+# PostAster #
 #############
 

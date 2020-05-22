@@ -21,7 +21,7 @@ from pvsimple import *
 renderView1 = GetActiveViewOrCreate('RenderView')
 #renderView1.ViewSize = (1400,590)
 
-thermalrmed = MEDReader(FileName="{}/{}.rmed".format(PathVL.ASTER_DIR, Parameters.ResName))
+thermalrmed = MEDReader(FileName="{}/{}.rmed".format(PathVL.ASTER, Parameters.ResName))
 
 # show data in view
 thermalrmedDisplay = Show(thermalrmed, renderView1)
@@ -76,7 +76,7 @@ ColorBar.CustomLabels = list(np.round(np.linspace(Temprange[0],Temprange[1],7), 
 ColorBar.UseCustomLabels = 1
 ColorBar.AddRangeLabels = 0
 
-SaveScreenshot("{}/Capture.png".format(PathVL.POST_DIR), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
+SaveScreenshot("{}/Capture.png".format(PathVL.POSTASTER), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
 print("Created image Capture.png\n")
 Hide(thermalrmed, renderView1)
 
@@ -84,7 +84,7 @@ clip1 = Clip(Input=thermalrmed)
 clip1.ClipType.Normal = [0.0, -1.0, 0.0]
 clip1Display = Show(clip1, renderView1)
 ColorBar.Visibility = 1
-SaveScreenshot("{}/ClipCapture.png".format(PathVL.POST_DIR), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
+SaveScreenshot("{}/ClipCapture.png".format(PathVL.POSTASTER), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
 print("Created image ClipCapture.png\n")
 Hide(clip1, renderView1)
 
@@ -93,7 +93,7 @@ ColorBy(thermalrmedDisplay, None)
 thermalrmedDisplay.Representation = 'Surface With Edges'
 thermalrmedDisplay.EdgeColor = [0.0, 0.0, 0.0]
 thermalrmedDisplay.DiffuseColor = [0.2, 0.75, 0.996078431372549]
-SaveScreenshot("{}/Mesh.png".format(PathVL.POST_DIR), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
+SaveScreenshot("{}/Mesh.png".format(PathVL.POSTASTER), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
 print("Created image Mesh.png\n")
 Hide(thermalrmed, renderView1)
 
@@ -119,7 +119,7 @@ renderView1.CameraPosition = [0, -0.015, 0.00125]
 renderView1.CameraFocalPoint = [0, 0, 0.00125]
 renderView1.CameraViewUp = [0.0, 0.0, 1.0]
 
-SaveScreenshot("{}/MeshCrossSection.png".format(PathVL.POST_DIR), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
+SaveScreenshot("{}/MeshCrossSection.png".format(PathVL.POSTASTER), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
 print("Created image MeshCrossSection.png\n")
 
 RenameSource('Thermal', thermalrmed)

@@ -84,9 +84,12 @@ else
     sudo -u ${SUDO_USER:-$USER} tar xvf "$SALOME_VER".tgz
     
     echo "Installing salome in $SALOME_DIR"
-    echo -e "$SALOME_DIR\nN" | ./"$SALOME_VER".run
-    ### Switch in ubuntu v 18->20, need to verify back compatible.
-    #echo -e "$SALOME_DIR\nN" | sudo ./"$SALOME_VER".run
+    if [[ $OS_v == "20.04" ]]; then
+      echo -e "$SALOME_DIR\nN" | ./"$SALOME_VER".run
+    else
+      ### Switch in ubuntu v 18->20, need to verify back compatible.
+      echo -e "$SALOME_DIR\nN" | sudo ./"$SALOME_VER".run
+    fi
     
     ### Add to PATH
     echo "Adding salome to PATH"

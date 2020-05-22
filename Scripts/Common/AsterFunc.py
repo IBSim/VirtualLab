@@ -10,7 +10,6 @@ from code_aster.Cata.Commons import *
 from code_aster.Cata.Commands import *
 from Noyau.N__F import _F
 
-
 def AdaptThermal(ResName,Tsteps,Load,Material,Model,Theta,Solver,**kwargs):
 	MaxIter = kwargs.get('MaxIter', 10)
 
@@ -21,13 +20,8 @@ def AdaptThermal(ResName,Tsteps,Load,Material,Model,Theta,Solver,**kwargs):
 	StartTime = (ResName.LIST_VARI_ACCES()['INST'])[-1]
 	StartIx = np.argmin(np.abs(timearr - StartTime))
 	if 'EndIndex' in kwargs: timearr = timearr[StartIx:kwargs['EndIndex']+1]
-	elif 'EndTime' in kwargs: pass
-	else: timearr[StartIx:]
-
-#	if 'EndTime' in kwargs.keys():
-#		EndIndex = np.argmin(abs(timearr - kwargs['EndTime']))
-#		timearr = timearr[StartIx:EndIndex+1]
-
+	elif 'EndTime' in kwargs: timearr = timearr[StartIx:np.argmin(np.abs(timearr-kwargs['EndTime']))+1]
+	else: timearr = timearr[StartIx:]
 	
 	_adapt = DEFI_LIST_REEL(VALE=timearr)
 	### Set err=1 here to enter while loop
@@ -52,12 +46,11 @@ def AdaptThermal(ResName,Tsteps,Load,Material,Model,Theta,Solver,**kwargs):
 			count += 1
 			ChangeIx = StartIx + message.vali[0]
 			TstepSize = timearr[ChangeIx] - timearr[ChangeIx - 1]
-			print ('The problem timestep is number {}. Previously it was {}, but has been updated to {}'.format(str(ChangeIx),TstepSize,TstepSize/2))
+#			print ('The problem timestep is number {}. Previously it was {}, but has been updated to {}'.format(str(ChangeIx),TstepSize,TstepSize/2))
 
 			timearr = np.insert(timearr,ChangeIx,timearr[ChangeIx-1] + TstepSize/2)
 			DETRUIRE(CONCEPT=_F(NOM=(_adapt)))
 			_adapt = DEFI_LIST_REEL(VALE=timearr)
-
 
 	DETRUIRE(CONCEPT=_F(NOM=(_adapt)))
 	print('{} timesteps have been added to the list of timesteps'.format(count))

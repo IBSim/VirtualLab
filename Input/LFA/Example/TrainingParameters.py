@@ -40,7 +40,7 @@ Sim.ResName = 'Thermal'
 Sim.Materials = {'Top':'Copper', 'Bottom':'Copper'}
 # Initial Conditions - Need either an initial temperature or a results file to import
 Sim.InitTemp = 20
-Sim.ImportRes = 'n'
+Sim.ImportRes = False
 # Laser profile
 Sim.Energy = 5.32468714
 Sim.LaserT= 'Trim' #Temporal profile (see Scripts/LFA/Laser for all options)

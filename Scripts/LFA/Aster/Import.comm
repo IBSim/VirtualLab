@@ -1,0 +1,20 @@
+if Parameters.ImportRes:
+	DEFI_FICHIER(FICHIER=PathVL.RESULTS_DIR + '/ResTher.rmed', UNITE=40)		
+	resther = LIRE_RESU(FORMAT='MED',
+			    FORMAT_MED=_F(NOM_CHAM='TEMP',
+			    NOM_RESU='resther'),
+			    MAILLAGE=mesh,
+			    TOUT_ORDRE='OUI',
+			    TYPE_RESU='EVOL_THER',
+			    UNITE=40)
+	StartTime = (resther.LIST_VARI_ACCES()['INST'])[-1]
+	NewIndex = np.argmin(abs(timearr - StartTime))
+
+	if os.path.isfile(PathVL.DATA_DIR + '/TimeSteps.dat'):
+		PrevTime = np.fromfile(PathVL.DATA_DIR + '/TimeSteps.dat',dtype=float,count=-1,sep=' ')
+		ImportIndex = np.argmin(abs(PrevTime - StartTime))
+		timearr = np.concatenate((PrevTime[0:ImportIndex+1],timearr[NewIndex+1:]))
+		savearr=timearr
+	else:
+		ImportIndex = 0
+		timearr = timearr[NewIndex:]

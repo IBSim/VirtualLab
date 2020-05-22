@@ -31,7 +31,7 @@ Sim.Name = 'Single'
 #############
 ### Aster ###
 #############
-Sim.CommFile = 'Disc_Lin'
+Sim.CommFile = 'Disc_Adapt'
 Sim.Mesh = 'NoVoid'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
@@ -40,7 +40,7 @@ Sim.ResName = 'Thermal'
 Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
 # Initial Conditions - Need either an initial temperature or a results file to import
 Sim.InitTemp = 20
-Sim.ImportRes = 'n'
+Sim.ImportRes = False
 # Laser profile
 Sim.Energy = 5.32468714
 Sim.LaserT= 'Trim' #Temporal profile (see Scripts/LFA/Laser for all options)
@@ -50,7 +50,7 @@ Sim.ExtTemp = 20
 Sim.BottomHTC = 0
 Sim.TopHTC = 0
 # Time-stepping and temporal discretisation
-Sim.dt = [(0.00002,20,1), (0.0005,100,2)]
+Sim.dt = [(0.0004,2,1), (0.0005,2,1)]
 Sim.Theta = 0.5
 
 #############

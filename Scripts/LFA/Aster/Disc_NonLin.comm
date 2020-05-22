@@ -53,27 +53,10 @@ BotMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA = BotLAM, RHO_CP = BotRCP))
 Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TopMat, GROUP_MA='Top'),_F(MATER=BotMat, GROUP_MA='Bottom')),
 	                MAILLAGE=mesh)
 
-##### Create list of time steps #####
-start = 0
-timelist, savelist = [], []
-for i, tup in enumerate(Parameters.dt):
-	if len(tup) == 3: dt, Nstep, save = tup
-	else :dt, Nstep, save = tup[0],tup[1], 1
-
-	fintime = start + dt*Nstep
-	timesteps = np.linspace(start,fintime,Nstep+1).tolist()
-
-	if i == 0: 
-		timelist.append(timesteps)
-		savelist.append(timesteps[::save])
-	else: 
-		timelist.append(timesteps[1:])
-		savelist.append(timesteps[save::save])
-
-	start = fintime
-
-timearr = timearrOrig = np.concatenate(timelist)
-savearr = np.concatenate(savelist)
+### Get timesteps and savesteps using dt provided in Parameters ###
+timearr, savearr = AsterFunc.Timesteps(Parameters.dt)
+Timestp = DEFI_LIST_REEL(VALE=timearr)
+Savestp = DEFI_LIST_REEL(VALE=savearr)
 
 ##### Create BCs #####
 
@@ -119,68 +102,43 @@ HT = AFFE_CHAR_THER_F(ECHANGE=(_F(COEF_H=BotHTC, TEMP_EXT=T_ext, GROUP_MA='Botto
 Loading1 = (_F(CHARGE=LaserOn, FONC_MULT=LsrProf),_F(CHARGE=HT))
 Loading2 = (_F(CHARGE=HT))
 
-### No results to import so we start with the initial temperature
-if Parameters.ImportRes not in ('Yes','Y','yes','y'):
-	StartTime = 0
-	field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
-	resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
+### Temperature distribution to start simulation
+field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
+resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
+StartTime = 0
 
-### Import starting temperature profile from results
-else:	
-	DEFI_FICHIER(FICHIER=PathVL.RESULTS_DIR + '/ResTher.rmed', UNITE=40)		
-	resther = LIRE_RESU(FORMAT='MED',
-			    FORMAT_MED=_F(NOM_CHAM='TEMP',
-			    NOM_RESU='resther'),
-			    MAILLAGE=mesh,
-			    TOUT_ORDRE='OUI',
-			    TYPE_RESU='EVOL_THER',
-			    UNITE=40)
-	StartTime = (resther.LIST_VARI_ACCES()['INST'])[-1]
-	NewIndex = np.argmin(abs(timearr - StartTime))
-
-	if os.path.isfile(PathVL.DATA_DIR + '/TimeSteps.dat'):
-		PrevTime = np.fromfile(PathVL.DATA_DIR + '/TimeSteps.dat',dtype=float,count=-1,sep=' ')
-		ImportIndex = np.argmin(abs(PrevTime - StartTime))
-		timearr = np.concatenate((PrevTime[0:ImportIndex+1],timearr[NewIndex+1:]))
-		savearr=timearr
-	else:
-		ImportIndex = 0
-		timearr = timearr[NewIndex:]
-	TotStep = len(timearr) - 1
-
-
+## Start  thermal analysis ##
 MaxIter = getattr(Parameters, 'MaxIter', 10)
 LPend = getattr(Parameters, 'LaserEnd', xlaser[-1])
-LPindex = np.argmin(abs(timearr - LPend))
-
-timestp = DEFI_LIST_REEL(VALE=timearr)
-Storing = DEFI_LIST_REEL(VALE=savearr)
+LPindex = np.argmin(np.abs(timearr - LPend))
+Theta = getattr(Parameters,'Theta',0.5)
+Solver = getattr(Parameters,'Solver', 'MUMPS')
 
 ### LaserOn
 if  StartTime < LPend:
 	resther = THER_NON_LINE(reuse=resther,
-				ARCHIVAGE=_F(LIST_INST=Storing),
+				ARCHIVAGE=_F(LIST_INST=Savestp),
 				CHAM_MATER=Thermat,
 				ETAT_INIT=_F(EVOL_THER=resther),
 				EXCIT=Loading1,
-				INCREMENT=_F(NUME_INST_FIN=LPindex, LIST_INST=timestp),
+				INCREMENT=_F(NUME_INST_FIN=LPindex, LIST_INST=Timestp),
 				MODELE=Thermod,
-				PARM_THETA=Parameters.Theta,
-				SOLVEUR=_F(METHODE=Parameters.Solver),
+				PARM_THETA=Theta,
+				SOLVEUR=_F(METHODE=Solver),
 				RESULTAT=resther)
 
 
 ### Laser Off
-if fintime > LPend:
+if timearr[-1] > LPend:
 	resther = THER_NON_LINE(reuse=resther,
-				ARCHIVAGE=_F(LIST_INST=Storing),
+				ARCHIVAGE=_F(LIST_INST=Savestp),
 				CHAM_MATER=Thermat,
 				ETAT_INIT=_F(EVOL_THER=resther),
 				EXCIT=Loading2,
-				INCREMENT=_F(LIST_INST=timestp),
+				INCREMENT=_F(LIST_INST=Timestp),
 				MODELE=Thermod,
-				PARM_THETA=Parameters.Theta,
-				SOLVEUR=_F(METHODE=Parameters.Solver),
+				PARM_THETA=Theta,
+				SOLVEUR=_F(METHODE=Solver),
 				RESULTAT=resther)
 
 

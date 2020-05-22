@@ -130,7 +130,11 @@ else
 fi
 
 ### Code_Aster installation location
-ASTER_DIR=$(readlink -m $ASTER_DIR_DEFAULT)
+if [[ "$SALOME_INST" =~ 'y' ]] & [[ ! -z "$SALOME_DIR" ]]; then
+  if [[ $v == "ON" ]]; then echo "Code_aster also being installed in '$SALOME_DIR'."; fi
+else
+  ASTER_DIR=$(readlink -m $ASTER_DIR_DEFAULT)
+fi
 
 ### PATH to various directories required as in/out for VirtualLab.
 ### Default behaviour is to locate in $VL_DIR.

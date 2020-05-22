@@ -80,6 +80,7 @@ while getopts ":d:P:S:yh" options; do
         STRING_TMP="${array[1]}"
         STRING_TMP=${STRING_TMP/'~'/$HOME}
         SALOME_DIR=$(readlink -m $STRING_TMP)
+        ASTER_DIR="$SALOME_DIR/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
         echo " - Salome-Meca will be installed in '$SALOME_DIR' and configured as part of VirtualLab install."
 #      elif [ "$SALOME_INST" == "n" ]; then
 #        echo " - Salome-Meca will not be installed or configured during setup, please do this manually."
@@ -202,6 +203,7 @@ fi
 #END
 ### Run initial VirtualLab setup
 echo
+
 source "$VL_DIR/SetupConfig.sh"
 #./SetupConfig.sh
 #sudo -u ${SUDO_USER:-$USER} ./SetupConfig.sh

@@ -244,13 +244,13 @@ class VLSetup():
 			AddPath = [self.SIM_MESH, self.GEOM_DIR]
 			self.SalomeRun(MeshScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
 
-			IndMeshData = "{}/{}.txt".format(self.MESH_DIR, mesh)
+			IndMeshData = "{}/{}.py".format(self.MESH_DIR, mesh)
 			with open(IndMeshData,"w") as g:
 				with open("{}/{}.py".format(self.GEOM_DIR,mesh),'r') as MeshData:
-					g.write(MeshData.read())
+					g.write("# Geom & Mesh Parameters\n" + MeshData.read())
 				if self.mode != 'Interactive': 
 					with open(IndMeshLog,'r') as rIndMeshLog:
-						g.write('\n### Meshing log ###\n'+rIndMeshLog.read())				
+						g.write("\n'''\n# Meshing log\n{}\n'''".format(rIndMeshLog.read()))				
 
 			if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(mesh))
 			else : print("Completed mesh '{}'. See '{}' for log\n".format(mesh,IndMeshData))

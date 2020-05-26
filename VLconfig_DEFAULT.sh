@@ -1,7 +1,7 @@
 #!/bin/bash
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
-
+SALOME_INST="n"
 #########################
 ### START OF DEFAULTS ###
 ### These are the default config values for installation and operation of VirtualLab.
@@ -117,7 +117,7 @@ else
     SALOME_BIN=${SALOME_TMP#"$prefix"}; #echo "${SALOME_BIN}"
   else
     ### Salome not found on system.
-    if [[ "$SALOME_INST" =~ 'y' ]] & [[ ! -z "$SALOME_DIR" ]]; then
+    if [[ "$SALOME_INST" =~ 'y' ]] && [[ ! -z "$SALOME_DIR" ]]; then
       if [[ $v == "ON" ]]; then echo "Salome not in env path or in /opt, it will be installed in '$SALOME_DIR'."; fi
     else
       if [[ $v == "ON" ]]; then echo "Salome not in env path or in /opt, using default values."; fi
@@ -130,7 +130,7 @@ else
 fi
 
 ### Code_Aster installation location
-if [[ "$SALOME_INST" =~ 'y' ]] & [[ ! -z "$SALOME_DIR" ]]; then
+if [[ "$SALOME_INST" =~ 'y' ]] && [[ ! -z "$SALOME_DIR" ]]; then
   if [[ $v == "ON" ]]; then echo "Code_aster also being installed in '$SALOME_DIR'."; fi
 else
   ASTER_DIR=$(readlink -m $ASTER_DIR_DEFAULT)

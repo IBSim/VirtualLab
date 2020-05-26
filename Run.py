@@ -6,14 +6,11 @@ sys.dont_write_bytecode=True
 sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common.VirtualLab import VLSetup
 
-#try: from Scripts.Common import VLSetup
-#except ModuleNotFoundError: 
-#	sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-#	from Scripts.Common import VLSetup		
-
 Simulation = 'Tensile'
 Project = 'Example'
 StudyName = 'Training'
+# Use Parameters_Master and Parameters_Var to create multiple parameter 
+# files for simulations. To run a single study set Parameters_Var to None.
 Parameters_Master='TrainingParameters'
 Parameters_Var='Parametric_1'
 
@@ -27,8 +24,8 @@ VirtualLab.Create()
 VirtualLab.Mesh()
 
 # Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
-VirtualLab.Sim()
+VirtualLab.Sim(ShowRes=True)
 
 # Remove tmp folders
-VirtualLab.Cleanup()
+VirtualLab.Cleanup()	
 

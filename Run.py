@@ -12,12 +12,13 @@ from Scripts.Common.VirtualLab import VLSetup
 #	from Scripts.Common import VLSetup		
 
 Simulation = 'Tensile'
-StudyDir = 'Example'
+Project = 'Example'
 StudyName = 'Training'
-Input = {'Parameters' : 'TrainingParameters'}
+Parameters_Master='TrainingParameters'
+Parameters_Var='Parametric_1'
 
 # kwarg 'mode' has 3 options - interactive, continuous or headless (default)
-VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "Interactive")
+VirtualLab = VLSetup(Simulation, Project, StudyName, Parameters_Master,Parameters_Var, mode = "Interactive")
 
 # Create directories and Parameter files for simulation
 VirtualLab.Create()

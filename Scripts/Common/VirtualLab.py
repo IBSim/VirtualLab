@@ -15,7 +15,7 @@ import contextlib
 import VLconfig
 	
 class VLSetup():
-	def __init__(self, Simulation, StudyDir, StudyName, Input, **kwargs):
+	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, **kwargs):
 		'''
 		kwargs available:
 		port: Give the port number of an open Salome instance to connect to
@@ -64,8 +64,8 @@ class VLSetup():
 
 		# tmp directory
 		TEMP_DIR = getattr(VLconfig,'TEMP_DIR',"/tmp")
-		if StudyDir == '.dev': self.TMP_DIR = "{}/dev".format(TEMP_DIR)
-		else: self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, StudyDir, (datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
+		if Project == '.dev': self.TMP_DIR = "{}/dev".format(TEMP_DIR)
+		else: self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, Project, (datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
 
 		# Define variables and run some checks
 		# Script directories
@@ -81,13 +81,12 @@ class VLSetup():
 		self.MATERIAL_DIR = MATERIAL_DIR
 
 		# Output directory
-		STUDY_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, StudyDir)
-		self.SIM_DIR = "{}/{}".format(STUDY_DIR, StudyName)
-		self.MESH_DIR = "{}/Meshes".format(STUDY_DIR)
+		PROJECT_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, Project)
+		self.SIM_DIR = "{}/{}".format(PROJECT_DIR, StudyName)
+		self.MESH_DIR = "{}/Meshes".format(PROJECT_DIR)
 
 		# Add path to Input directory
-		self.Input = Input
-		self.Input['Directory'] = '{}/{}/{}'.format(INPUT_DIR, Simulation, StudyDir)
+		self.Parameters = {'Master':Parameters_Master,'Var':Parameters_Var,'Dir':'{}/{}/{}'.format(INPUT_DIR, Simulation, Project)}
 
 		# Check the Input directory to ensure the the required files exist
 		self.ErrorCheck('__init__')
@@ -104,10 +103,9 @@ class VLSetup():
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_SCRIPTS)
 
-		sys.path.insert(0, self.Input['Directory'])
-		Main = __import__(self.Input['Parameters'])
-		Parametric = self.Input.get('Parametric', None)
-		if Parametric: Parametric = __import__(Parametric)
+		sys.path.insert(0, self.Parameters['Dir'])
+		Main = __import__(self.Parameters['Master'])
+		Var = __import__(self.Parameters['Var']) if self.Parameters['Var'] else None
 
 		MainDict = copy.deepcopy(self.__dict__)
 		MainMesh = getattr(Main, 'Mesh', None)
@@ -120,7 +118,7 @@ class VLSetup():
 			self.GEOM_DIR = '{}/Geom'.format(self.TMP_DIR) 
 			if not os.path.isdir(self.GEOM_DIR): os.makedirs(self.GEOM_DIR)
 
-			ParaMesh = getattr(Parametric, 'Mesh', None)
+			ParaMesh = getattr(Var, 'Mesh', None)
 			MeshNames = getattr(ParaMesh, 'Name', [MainMesh.Name])
 			NumMeshes = len(MeshNames)
 
@@ -154,7 +152,7 @@ class VLSetup():
 
 			if not os.path.isdir(self.SIM_DIR): os.makedirs(self.SIM_DIR)
 
-			ParaSim = getattr(Parametric, 'Sim', None)
+			ParaSim = getattr(Var, 'Sim', None)
 			SimNames = getattr(ParaSim, 'Name', [MainSim.Name])
 			NumSims = len(SimNames)
 
@@ -449,18 +447,16 @@ class VLSetup():
 	def ErrorCheck(self, Stage, **kwargs):
 		if Stage == '__init__':
 			# Check if the Input directory exists
-			if not os.path.isdir(self.Input['Directory']):
-				self.Exit("Directory {0} does not exist\n".format(self.Input['Directory']))
-			# Check 'Parameters' is supplied in the dictionary and that the file exists
-			Parameters = self.Input.get('Parameters', '')
-			if Parameters and not os.path.exists('{}/{}.py'.format(self.Input['Directory'], Parameters)):
-				self.Exit("'Parameters' input file '{}' not in Input directory {}\n".format(Parameters, self.Input['Directory']))
-			elif not Parameters :
-				self.Exit("The key 'Parameters' has not been supplied in the input dictionary")
-			# Check that the parametric file exists if it is supplied
-			Parametric = self.Input.get('Parametric','')		
-			if Parametric and not os.path.exists('{}/{}.py'.format(self.Input['Directory'], Parametric)):
-				self.Exit("'Parametric' input file '{}' not in Input directory {}\n".format(Parametric,self.Input['Directory']))
+			if not os.path.isdir(self.Parameters['Dir']):
+				self.Exit("Directory {0} does not exist\n".format(self.Parameters['Dir']))
+
+			# Check 'Parameters_Master' exists
+			if not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Master'])):
+				self.Exit("Parameters_Master file '{}' not in Input directory {}\n".format(self.Parameters['Master'], self.Parameters['Dir']))
+
+			# Check that 'Parameters_Var' exists (if not None)
+			if self.Parameters['Var'] and not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Var'])):
+				self.Exit("Parameters_Var file '{}' not in Input directory {}\n".format(self.Parameters['Var'],self.Parameters['Dir']))
 
 		if Stage == 'Mesh':
 			MeshDict = kwargs.get('MeshDict')

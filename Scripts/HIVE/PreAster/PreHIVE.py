@@ -395,28 +395,6 @@ def SetupERMES(Info, StudyDict, **kwargs):
 		JH_NL.append(np.array(JHres)*ScaleFactor**2)
 
 	JH_Node = np.transpose(JH_NL)
-#	
-#	Nodes = list(range(1,SampleMesh.NbNodes+1))
-#	Coor = SampleMesh.GetNodeXYZ(Nodes)
-#	dataEM = np.hstack((Coor,JH_Node))
-#	SumVol = 0
-#	JH_Elem, Watts = [], []
-#	for grp in StudyDict['Parameters'].Materials.keys():
-#		grpinfo = SampleMesh.GroupInfo(grp)
-#		for Nodes in grpinfo.Connect:
-#			data = dataEM[Nodes-1,:]
-#			Coors, EM = data[:,:3], data[:,3:]
-#			ElSum = (np.sum(EM,axis=0)/4)
-#			JH_Elem.append(ElSum)
-#			vol = abs(np.dot(np.cross(Coors[1,:]-Coors[0,:],Coors[2,:]-Coors[0,:]),Coors[3,:]-Coors[0,:]))/float(6)
-#			SumVol += vol
-#			Watts.append(vol*ElSum)
-
-#	JH_Elem.insert(0,np.array(Temperatures))
-#	JH_Node = np.vstack((np.array(Temperatures), JH_Node))
-
-#	return JH_Node, JH_Elem
-
 	JH_Node = np.vstack((np.array(Temperatures), JH_Node))
 	return JH_Node
 
@@ -431,46 +409,93 @@ def ERMES(Info):
 
 		if RunERMES == None: continue
 
-		EMtype = 'Node'
-		if EMtype == 'Elem': ERMESfname = 'ERMES_Elem.dat'
-		else : ERMESfname = 'ERMES_Node.dat'
-		EMpath = '{}/{}'.format(StudyDict['PREASTER'], ERMESfname)
+		EMpath = '{}/ERMES_Node.dat'.format(StudyDict['PREASTER'])
 		if RunERMES:
 			### Create a new set of ERMES results
-			JH_Node = SetupERMES(Info, StudyDict)
-#			np.savetxt('{}/{}'.format(StudyDict['PREASTER_DIR'], 'ERMES_Elem.dat'), JH_Elem, fmt = '%.10f', delimiter = '   ')
-			np.savetxt('{}/{}'.format(StudyDict['PREASTER'], 'ERMES_Node.dat'), JH_Node, fmt = '%.10f', delimiter = '   ')
+			EM = SetupERMES(Info, StudyDict)
+			np.savetxt('{}/{}'.format(StudyDict['PREASTER'], 'ERMES_Node.dat'), EM, fmt = '%.10f', delimiter = '   ')
 
 		elif os.path.isfile(EMpath):
 			SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample')
 			EM = np.fromfile(EMpath, dtype=float, count=-1, sep=" ")
-			if EMtype == 'Elem': NumCol = EM.shape[0]/(SampleMesh.NbVolumes+1)
-			else : NumCol = EM.shape[0]/(SampleMesh.NbNodes+1)
+			NumCol = EM.shape[0]/(SampleMesh.NbNodes+1)
 			if  not NumCol.is_integer():
 				Info.Exit("EM.dat file doesn't match with current mesh")
 		else :
 			Info.Exit('No EM.dat file found in OUTPUT_DIR and change RunEM not set to "yes"')
 
-		shutil.copy(EMpath, StudyDict['TMP_CALC_DIR'])
+		EM = EM.reshape((EM.shape[0],1))
+
+		NodeDat = EM[1:,:]
+
+		PerVol, Watts = [], []
+		EMMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR, StudyDict['Parameters'].Mesh), 'xERMES')
+		Nodes = list(range(1,EMMesh.NbNodes+1))
+		Coor = EMMesh.GetNodeXYZ(Nodes)
+		Els = []
+		for grp in StudyDict['Parameters'].Materials:
+			grpinfo = EMMesh.GroupInfo(grp)
+			Els+=grpinfo.Elements.tolist()
+			for El, Nds in zip(grpinfo.Elements, grpinfo.Connect):
+
+				Elsum = np.sum(NodeDat[Nds-1,:])/4
+				PerVol.append(Elsum)
+				VCoor = Coor[Nds-1]
+				vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
+				Watts.append(vol*Elsum)
+
+#				print(El, Nds, Elsum)
+
+		PerVol = np.array(PerVol)
+		sortlist = np.argsort(PerVol)
+		Watts = np.array(Watts)
+		sWatts = Watts[sortlist]
+		CumSum = np.cumsum(sWatts)
+		SumWatt = CumSum[-1]
+
+		from bisect import bisect_left as bl
+		pos = bl(CumSum,(1-StudyDict['Parameters'].Threshold)*SumWatt)
+		keep = sortlist[pos:]
+		SP2 = PerVol[keep]
+		Els = np.array(Els)[keep]
+
+		print(keep.shape)
+
+		np.savetxt('{}/{}'.format(StudyDict['TMP_CALC_DIR'], 'ERMES.dat'), np.vstack((Els,SP2)).T, fmt = '%.10f', delimiter = '   ')
 
 
+#		shutil.copy(EMpath, StudyDict['TMP_CALC_DIR'])
+
+#		print(SumVol, SumWatt)
+		
+
+#		PerVol = np.array(PerVol)
+#		Watts = np.array(Watts)
+#		sortlist = np.argsort(PerVol)
+#		sPerVol = PerVol[sortlist]
+#		sWatts = Watts[sortlist]
+#		CumSum = np.cumsum(sWatts)
+#		SumWatt = CumSum[-1]
+#		Num = CumSum.shape[0]
+
+#		from bisect import bisect_left as bl
+#		perc = [0.01, 0.1, 1, 10, 100]
+#		poss, vals = [], []
+#		for prc in perc:
+#			val = (prc/100)*SumWatt
+#			vals.append(val)
+#			poss.append((bl(CumSum,val)+1)/Num)
 
 
-
-	
-#		NodeDat = EM[1:,:]*1e6
-#		PerVol, Watts = [], []
-#		EMMesh = VLFunctions.MeshInfo(EMmeshfile)
-#		Nodes = list(range(1,EMMesh.NbNodes+1))
-#		Coor = EMMesh.GetNodeXYZ(Nodes)
-#		for grp in Info.Studies[study]['Parameters'].SampleGroups:
-#			grpinfo = EMMesh.GroupInfo(grp)
-#			for face in grpinfo.Connect:
-#				Elsum = np.sum(NodeDat[face-1,:])/4
-#				PerVol.append(Elsum)
-#				VCoor = Coor[face-1]
-#				vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
-#				Watts.append(vol*Elsum)
+#		x = np.linspace(0,1,Num)
+#		fig = plt.figure(figsize = (14,5))
+#		plt.plot(x, CumSum, label="Watts Cumulative")
+#		plt.scatter(poss, vals,c='r',marker='x')
+#		for i, prc in enumerate(perc):
+#			plt.annotate('{}%'.format(prc),(poss[i],vals[i]))
+#		plt.xticks(poss)
+#		plt.legend(loc='upper left')
+#		plt.show()
 
 
 #		NbBins = 100

@@ -39,20 +39,21 @@ Sim.Name = 'Single'
 #############
 Sim.PreSimFile = "PreHIVE"
 # HTC between coolant and pipe (need Coolant and Pipe properties)
-Sim.CreateHTC = True
+Sim.CreateHTC = False
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 
 # ERMES solver is used to creat BC for induction heating
-Sim.RunERMES = True
+Sim.RunERMES = False
 Sim.ERMES = {'Frequency':1e4,'Current':100,'NbProc':2}
+Sim.Threshold = 0.99
 
 #############
 ### Aster ###
 #############
 Sim.CommFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
 Sim.Mesh = 'HiveCoil' # The mesh used for the simulation
-
+Sim.ResName = 'ResTher'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
 
@@ -65,7 +66,7 @@ Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation
 Sim.Theta = 0.5
-Sim.dt = [(0.001,1,1)] #timestep size and number of steps
+Sim.dt = [(0.001,50,1)] #timestep size and number of steps
 #Sim.CheckFirst = 3
 #Sim.CheckEvery = 3 #If this is smaller than ResStore then ResStore will be used
 

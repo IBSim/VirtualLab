@@ -39,8 +39,6 @@ Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model),
 	                      TOUT='OUI'),
 	             	      MAILLAGE=mesh)
 
-
-
 ##### Define functions for NL material properties and assign materials to parts #####
 DictMat = AsterFunc.MaterialProps(PathVL.MATERIAL_DIR,Parameters.Materials.values())
 
@@ -81,24 +79,21 @@ Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TileMat, GROUP_MA='Tile'),_F(MATER=PipeMa
 ### BC for coil heating
 mesht = partition.MAIL_PY()
 mesht.FromAster(mesh)
-EMdat = np.fromfile('{}/ERMES_Node.dat'.format(PathVL.TMP_CALC_DIR),dtype=float,count=-1,sep=" ")
-Temps, JouleHeat = EMdat[0], EMdat[1:]
-JHmean = np.mean(JouleHeat)
+EMdat = np.fromfile('{}/ERMES.dat'.format(PathVL.TMP_CALC_DIR),dtype=float,count=-1,sep=" ")
+Els, JouleHeat = EMdat[::2], EMdat[1::2]
+
+ls = mesht.gma.get('Sample')
+ElemIx = np.searchsorted(ls,Els-1)
 
 meshlist, Load_EM = [], []
-for grp in Parameters.Materials.keys():
-	for i, ElNum in enumerate(mesht.gma.get(grp)):
-		Connect = mesht.co[ElNum]
-		JHelem = np.mean(JouleHeat[Connect])
-		if JHelem < JHmean: continue
+for i, (JH, Ix) in enumerate(zip(JouleHeat,ElemIx)):
+	name = 'M{}'.format(i)
+	meshlist.append(_F(GROUP_MA='Sample', NOM=name, NUME_INIT=Ix, NUME_FIN=Ix))
+	Load_EM.append((_F(GROUP_MA=name, SOUR=JH)))
 
-		meshlist.append(_F(GROUP_MA=(grp), NOM='M{}'.format(ElNum), NUME_FIN=i+1, NUME_INIT=i+1))
-		Load_EM.append((_F(GROUP_MA=('M{}'.format(ElNum), ),SOUR=JHelem*1e6)))
 
-DEFI_GROUP(reuse=mesh,
-	   MAILLAGE=mesh,
-	   CREA_GROUP_MA=meshlist)
 
+DEFI_GROUP(reuse=mesh,MAILLAGE=mesh,CREA_GROUP_MA=meshlist)
 EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
 
 
@@ -145,7 +140,7 @@ AdaptSteps = AsterFunc.AdaptThermal(resther,Timestp,Loading,Thermat,Thermod,Thet
 
 
 np.savetxt('./REPE_OUT/TimeSteps.dat', timearr, fmt = '%.6f', delimiter = '   ')
-DEFI_FICHIER(FICHIER='./REPE_OUT/ResTher.rmed', TYPE='BINARY', UNITE=80)
+DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName), TYPE='BINARY', UNITE=80)
 IMPR_RESU(RESU=_F(RESULTAT=resther), UNITE=80)
 
 FIN()

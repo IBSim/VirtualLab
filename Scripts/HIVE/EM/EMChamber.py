@@ -39,15 +39,26 @@ class GetMesh():
 
 			self.SubMeshes.append(dict)
 
-		self.Groups = {}
-		for grp in Mesh.GetGroups():
-			shape = grp.GetShape()
-			if shape.IsMainShape(): Ix = self.MainMesh['Ix']
-			else : Ix = shape.GetSubShapeIndices()
+#		self.Groups = {}
+#		for grp in Mesh.GetGroups():
+#			shape = grp.GetShape()
+#			if shape.IsMainShape(): Ix = self.MainMesh['Ix']
+#			else : Ix = shape.GetSubShapeIndices()
 
-			Name = grp.GetName()
-			GrpType = str(grp.GetType())
-			self.Groups[Name] = {'Ix':Ix,'Type':GrpType}
+#			Name = grp.GetName()
+#			GrpType = str(grp.GetType())
+#			self.Groups[Name] = {'Ix':Ix,'Type':GrpType}
+
+		self.Groups = {'NODE':{},'EDGE':{},'FACE':{}, 'VOLUME':{}}
+		for grp in Mesh.GetGroups():
+			GrpType = str(grp.GetType())			
+			shape = grp.GetShape()
+
+			Ix = self.MainMesh['Ix'] if shape.IsMainShape() else shape.GetSubShapeIndices()
+			Name = str(grp.GetName())
+
+			self.Groups[GrpType][Name] = Ix
+
 
 
 def CreateEMMesh(objMesh,Parameter):
@@ -56,13 +67,11 @@ def CreateEMMesh(objMesh,Parameter):
 	OY = geompy.MakeVectorDXDYDZ(0, 1, 0)
 	OZ = geompy.MakeVectorDXDYDZ(0, 0, 1)
 
-
-
 	### Moving the Sample to the desired location
 	SampleMesh = GetMesh(objMesh)
 
-	cPipeIn = geompy.MakeCDG(geompy.GetSubShape(SampleMesh.Geom, SampleMesh.Groups['PipeIn']['Ix']))
-	cPipeOut = geompy.MakeCDG(geompy.GetSubShape(SampleMesh.Geom, SampleMesh.Groups['PipeOut']['Ix']))
+	cPipeIn = geompy.MakeCDG(geompy.GetSubShape(SampleMesh.Geom, SampleMesh.Groups['FACE']['PipeIn']))
+	cPipeOut = geompy.MakeCDG(geompy.GetSubShape(SampleMesh.Geom, SampleMesh.Groups['FACE']['PipeOut']))
 
 	# Translate Sample so that centre of the pipe is at the origin
 	CrdPipeIn = np.array(geompy.PointCoordinates(cPipeIn))
@@ -76,7 +85,7 @@ def CreateEMMesh(objMesh,Parameter):
 	Sample = geompy.MakeRotation(Sample, OZ, -Rotate1)
 
 	# Orientate Sample so that the norm to CoilFace is in the Z axis
-	CoilNorm = geompy.GetNormal(geompy.GetSubShape(SampleMesh.Geom, SampleMesh.Groups['CoilFace']['Ix']))
+	CoilNorm = geompy.GetNormal(geompy.GetSubShape(SampleMesh.Geom, SampleMesh.Groups['FACE']['CoilFace']))
 	Rotate2 = geompy.GetAngleRadians(CoilNorm, OZ)
 	Sample = geompy.MakeRotation(Sample, OY, -Rotate2)
 
@@ -90,8 +99,8 @@ def CreateEMMesh(objMesh,Parameter):
 	CoilFnc = getattr(CoilDesigns, Parameter.CoilType)
 	CoilMesh = GetMesh(CoilFnc())
 
-	cCoilIn = geompy.MakeCDG(geompy.GetSubShape(CoilMesh.Geom, CoilMesh.Groups['CoilIn']['Ix']))
-	cCoilOut = geompy.MakeCDG(geompy.GetSubShape(CoilMesh.Geom, CoilMesh.Groups['CoilOut']['Ix']))
+	cCoilIn = geompy.MakeCDG(geompy.GetSubShape(CoilMesh.Geom, CoilMesh.Groups['FACE']['CoilIn']))
+	cCoilOut = geompy.MakeCDG(geompy.GetSubShape(CoilMesh.Geom, CoilMesh.Groups['FACE']['CoilOut']))
 	CoilVect = geompy.MakeVector(cCoilIn, cCoilOut)
 	CrdCoilIn = np.array(geompy.PointCoordinates(cCoilIn))
 	CrdCoilOut = np.array(geompy.PointCoordinates(cCoilOut))
@@ -231,44 +240,41 @@ def CreateEMMesh(objMesh,Parameter):
 
 	### Add Groups ###
 	# Groups for Sample
-	SampleDict = {}
-	for Name, Info in SampleMesh.Groups.items():
-		# Change Ix from list to tuple so that it can be ued as a dictionary key
-		Ix = tuple(Info['Ix'])
-		if Ix not in SampleDict: SampleDict[Ix] = {}
-		MeshType = 'NODE' if Info['Type'] == 'NODE' else 'ELEM'
-		SampleDict[Ix][MeshType] = Name
-
 	SampleGrps, SampleNames = [], []
-	for Ix, Info in SampleDict.items():
+	NodesName, NodesIx = zip(*SampleMesh.Groups['NODE'].items())
+	NodesName, NodesIx = list(NodesName), list(NodesIx)
 
-		NewIx = SalomeFunc.ObjIndex(Chamber, Sample, list(Ix))[0]
-		ShapeType = str(geompy.GetSubShape(Chamber, NewIx[0:1]).GetShapeType())
-		nm = ''.join(Info.values())
+	# Creating element groups (and their nodal counterparts if they exist)
+	for grptype in ['EDGE','FACE','VOLUME']:
+		for Name, Ix in SampleMesh.Groups[grptype].items():
+			NewIx = SalomeFunc.ObjIndex(Chamber, Sample, list(Ix))[0]
+			grp = SalomeFunc.AddGroup(Chamber, Name, NewIx)
+			meshgrp = ERMES.GroupOnGeom(grp, Name, getattr(SMESH, grptype))
 
+			SampleGrps.append(meshgrp)
+			if Ix in NodesIx:
+				listindex = NodesIx.index(Ix)
+				NdName = NodesName.pop(listindex)
+				NodesIx.pop(listindex)
+			else:	NdName = None
 
-		grp = SalomeFunc.AddGroup(Chamber, nm, NewIx)
+			SampleNames += [NdName,Name]
+	# Creating nodal groups which are not related to an element group
+	# Needs sorting
+#	for Name, Ix in zip(NodesName,NodesIx):
+#	print(NodesName,NodesIx)
 
-		if ShapeType == 'SOLID': MeshType = 'VOLUME'
-		elif ShapeType == 'VERTEX': MeshType = None
-		else : MeshType = ShapeType
-
-		meshgrp = ERMES.GroupOnGeom(grp, nm, getattr(SMESH, MeshType))
-
-		SampleGrps.append(meshgrp)
-		SampleNames += [Info.get('NODE',None), Info.get('ELEM',None)]
 
 
 	# Groups for Coil
 	EMGrps, EMNames = [], []
-	for Name, Info in CoilMesh.Groups.items():
-
-		NewIx = SalomeFunc.ObjIndex(Chamber, Coil, Info['Ix'],Strict=False)[0]
-		grp = SalomeFunc.AddGroup(Chamber, Name, NewIx)
-		meshgrp = ERMES.GroupOnGeom(grp, Name, getattr(SMESH,Info['Type']))
-		EMGrps.append(meshgrp)
-		EMNames += [None, Name]
-
+	for grptype, grpdict in CoilMesh.Groups.items():
+		for Name, Ix in grpdict.items():
+			NewIx = SalomeFunc.ObjIndex(Chamber, Coil, Ix,Strict=False)[0]
+			grp = SalomeFunc.AddGroup(Chamber, Name, NewIx)
+			meshgrp = ERMES.GroupOnGeom(grp, Name, getattr(SMESH, grptype))
+			EMGrps.append(meshgrp)
+			EMNames += [None, Name]
 
 	# Groups for Vacuum
 	grp = SalomeFunc.AddGroup(Chamber, 'Vacuum', [2])
@@ -305,11 +311,8 @@ def CreateEMMesh(objMesh,Parameter):
 	ERMESMesh.Compute()
 	print('###############################################\n')
 
-	return SampleMesh, ERMESMesh
+	return SampleMesh, ERMESMesh, locals()
 	
-
-	globals().update(locals())
-
 
 def testgeom():
 	class TestDimensions():

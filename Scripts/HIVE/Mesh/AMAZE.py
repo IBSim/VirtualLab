@@ -148,6 +148,7 @@ def Create(**kwargs):
 
 	### Add Groups
 	# Volume
+	MSample = Mesh_1.GroupOnGeom(Sample,'Sample',SMESH.VOLUME)
 	MTile = Mesh_1.GroupOnGeom(GrpTile,'Tile',SMESH.VOLUME)
 	MPipe = Mesh_1.GroupOnGeom(GrpPipe,'Pipe',SMESH.VOLUME)
 	MBlock = Mesh_1.GroupOnGeom(GrpBlock,'Block',SMESH.VOLUME)
@@ -231,7 +232,7 @@ def Create(**kwargs):
 		## This next part takes this mesh and adds in a coil and vacuum around it and then runs the  code.
 		print('Using sample mesh information to create mesh for ERMES')
 		from EM.EMChamber import CreateEMMesh
-		SampleMesh, ERMESMesh = CreateEMMesh(Mesh_1, Parameter)
+		SampleMesh, ERMESMesh, loc = CreateEMMesh(Mesh_1, Parameter)
 		smesh.SetName(SampleMesh, 'Sample')
 		smesh.SetName(ERMESMesh, 'xERMES')
 		if MeshFile:

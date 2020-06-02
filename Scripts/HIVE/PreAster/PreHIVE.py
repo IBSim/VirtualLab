@@ -458,7 +458,6 @@ def ERMES(Info, StudyDict):
 
 	if 0:
 		NbEls = CumSum.shape[0]
-		print(NbEls)
 		CumSum = CumSum/SumWatt
 		Percentages = [0.9,0.99,0.999,0.9999,1]
 

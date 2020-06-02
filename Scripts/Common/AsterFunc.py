@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import sys
+from bisect import bisect_left as bl
 
 import aster
 from Utilitai import partition
@@ -16,14 +17,23 @@ def AdaptThermal(ResName,Tsteps,Load,Material,Model,Theta,Solver,**kwargs):
 	if 'Storing' in kwargs.keys(): _SaveSteps = _F(LIST_INST=kwargs['Storing'])
 	else: _SaveSteps = _F()
 
-	timearr = np.array(Tsteps.Valeurs())
+	# timearr = np.array(Tsteps.Valeurs())
+	tsteps = Tsteps.Valeurs()
 	StartTime = (ResName.LIST_VARI_ACCES()['INST'])[-1]
-	StartIx = np.argmin(np.abs(timearr - StartTime))
-	if 'EndIndex' in kwargs: timearr = timearr[StartIx:kwargs['EndIndex']+1]
-	elif 'EndTime' in kwargs: timearr = timearr[StartIx:np.argmin(np.abs(timearr-kwargs['EndTime']))+1]
-	else: timearr = timearr[StartIx:]
-	
-	_adapt = DEFI_LIST_REEL(VALE=timearr)
+	# StartIx = np.argmin(np.abs(np.array(timearr) - StartTime))
+
+	pos = bl(tsteps, StartTime)
+	if abs(tsteps[pos-1]-StartTime) < abs(tsteps[pos]-StartTime): StartIx = pos -1
+	else: StartIx = pos
+
+
+	EndIndex = kwargs.get('EndIndex', None)
+	EndTime = kwargs.get('EndTime', None)
+	if EndIndex : tsteps = tsteps[StartIx:EndIndex+1]
+	elif EndTime: tsteps = tsteps[StartIx:np.argmin(np.abs(np.array(tsteps)-EndTime))+1]
+	else: tsteps = tsteps[StartIx:]
+
+	_adapt = DEFI_LIST_REEL(VALE=tsteps)
 	### Set err=1 here to enter while loop
 	count, err = 0, 1
 	while err:
@@ -45,16 +55,20 @@ def AdaptThermal(ResName,Tsteps,Load,Material,Model,Theta,Solver,**kwargs):
 			err=1
 			count += 1
 			ChangeIx = StartIx + message.vali[0]
-			TstepSize = timearr[ChangeIx] - timearr[ChangeIx - 1]
+			ProbStep = tsteps[ChangeIx-1:ChangeIx+1]
+			h=0.5
+			NewStep = (1-h)*ProbStep[0] + h*ProbStep[1]
+			# TstepSize = timearr[ChangeIx] - timearr[ChangeIx - 1]
 #			print ('The problem timestep is number {}. Previously it was {}, but has been updated to {}'.format(str(ChangeIx),TstepSize,TstepSize/2))
 
-			timearr = np.insert(timearr,ChangeIx,timearr[ChangeIx-1] + TstepSize/2)
+			# timearr = np.insert(timearr,ChangeIx,timearr[ChangeIx-1] + TstepSize/2)
+			tsteps.insert(ChangeIx,NewStep)
 			DETRUIRE(CONCEPT=_F(NOM=(_adapt)))
-			_adapt = DEFI_LIST_REEL(VALE=timearr)
+			_adapt = DEFI_LIST_REEL(VALE=tsteps)
 
 	DETRUIRE(CONCEPT=_F(NOM=(_adapt)))
 	print('{} timesteps have been added to the list of timesteps'.format(count))
-	return timearr	
+	return tsteps
 
 def MaterialProps(Mat_dir,Materials):
 	## Removes any duplicate materials to save time
@@ -145,7 +159,7 @@ def EMloading(mesh, EMpath, groups, scaling = 1, Tol = 0.5):
 
 	EMdat = np.fromfile(EMpath,dtype=float,count=-1,sep=" ")
 	NNodes = len(mesht.cn)
-	
+
 	EMdat = EMdat.reshape((NNodes+1,len(EMdat)//(NNodes+1)))
 
 	Temps, JouleHeat = EMdat[0,:], EMdat[1:,:]
@@ -177,7 +191,7 @@ def EMloading(mesh, EMpath, groups, scaling = 1, Tol = 0.5):
 			else:
 				vals = [None]*(2*NTemps)
 				vals[::2] = Temps
-				vals[1::2] = load 
+				vals[1::2] = load
 
 	#		ld[count] = DEFI_CONSTANTE(VALE=load[0])
 			ld[count] = DEFI_FONCTION(NOM_PARA='TEMP',
@@ -209,10 +223,10 @@ def Timesteps(dt, start=0):
 		fintime = start + dt*Nstep
 		timesteps = np.linspace(start,fintime,Nstep+1).tolist()
 
-		if i == 0: 
+		if i == 0:
 			timelist.append(timesteps)
 			savelist.append(timesteps[::save])
-		else: 
+		else:
 			timelist.append(timesteps[1:])
 			savelist.append(timesteps[save::save])
 
@@ -222,6 +236,3 @@ def Timesteps(dt, start=0):
 	savearr = np.concatenate(savelist)
 
 	return timearr, savearr
-
-
-

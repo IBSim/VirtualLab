@@ -139,16 +139,28 @@ Savestp = DEFI_LIST_REEL(VALE=savearr)
 field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
 resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
 
+## Convergence indexing
+Nstep = timearr.shape[0]-1
+ConvGap = Parameters.Convergence.get('Gap', 0)
+if ConvGap:
+	ConvStart = Parameters.Convergence.get('Start', ConvGap)
+	CheckList = list(range(ConvStart,Nstep,ConvGap))
+	CheckList.append(Nstep)
+else:
+	CheckList = [Nstep]
 
 ## Start  thermal analysis ##
 Theta = getattr(Parameters,'Theta',0.5)
 Solver = getattr(Parameters,'Solver', 'MUMPS')
 MaxIter = getattr(Parameters,'MaxIter',10)
 
-AdaptSteps = AsterFunc.AdaptThermal(resther,Timestp,Loading,Thermat,Thermod,Theta,Solver,Storing = Savestp, MaxIter=MaxIter)
+for i, CheckIx in enumerate(CheckList):
+	NewTsteps = AsterFunc.AdaptThermal(resther,Timestp,Loading,Thermat,Thermod,Theta,Solver,Storing = Savestp, MaxIter=MaxIter, EndIndex=CheckIx)
+	if i == 0: AdaptTsteps = NewTsteps
+	else: AdaptTsteps.apend(NewTsteps[1:])
 
 
-np.savetxt('./REPE_OUT/TimeSteps.dat', timearr, fmt = '%.6f', delimiter = '   ')
+np.savetxt('./REPE_OUT/TimeSteps.dat', AdaptTsteps, delimiter = '   ')
 DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName), TYPE='BINARY', UNITE=80)
 IMPR_RESU(RESU=_F(RESULTAT=resther), UNITE=80)
 

@@ -23,7 +23,7 @@ Mesh.Length1D = 0.005
 Mesh.Length2D = 0.005
 Mesh.Length3D = 0.005
 Mesh.CircDisc = 20 # Number of segments for pipe circumference
-Mesh.SubTile = 0.002 # Mesh fineness on tile 
+Mesh.SubTile = 0.002 # Mesh fineness on tile
 
 Mesh.CoilType = 'Test'
 Mesh.CoilDisp = [0, 0, 0.002]
@@ -46,13 +46,13 @@ Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 # ERMES solver is used to creat BC for induction heating
 Sim.RunERMES = False
 Sim.ERMES = {'Frequency':1e4,'Current':10000,'NbProc':2}
-Sim.EMThreshold = 0.99
+Sim.EMThreshold = 0.5
 
 
 #############
 ### Aster ###
 #############
-Sim.CommFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
+Sim.CommFile = 'HIVE_Convergence' # This file must be in Scripts/$SIMULATION/Aster
 Sim.Mesh = 'HiveCoil' # The mesh used for the simulation
 Sim.ResName = 'ResTher'
 Sim.Model = '3D'
@@ -67,11 +67,12 @@ Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation
 Sim.Theta = 0.5
-Sim.dt = [(0.001,50,1)] #timestep size and number of steps
+Sim.dt = [(0.0001,1,1)] #timestep size and number of steps
+
+Sim.Convergence = {'Start':10,'Gap':5}
 #Sim.CheckFirst = 3
 #Sim.CheckEvery = 3 #If this is smaller than ResStore then ResStore will be used
 
 #############
 # PostAster #
 #############
-

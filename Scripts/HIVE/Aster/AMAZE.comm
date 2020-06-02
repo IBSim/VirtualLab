@@ -2,7 +2,7 @@ import sys
 sys.dont_write_bytecode=True
 import os
 import numpy as np
-import time as tm
+import time 
 from Utilitai import partition
 
 import AsterFunc
@@ -79,23 +79,55 @@ Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TileMat, GROUP_MA='Tile'),_F(MATER=PipeMa
 ### BC for coil heating
 mesht = partition.MAIL_PY()
 mesht.FromAster(mesh)
-EMdat = np.fromfile('{}/ERMES.dat'.format(PathVL.TMP_CALC_DIR),dtype=float,count=-1,sep=" ")
-Els, JouleHeat = EMdat[::2], EMdat[1::2]
+
+ERMES = np.load('{}/ERMES.npy'.format(PathVL.TMP_CALC_DIR))
+Els, JouleHeat = ERMES[:,0],ERMES[:,1]
 
 ls = mesht.gma.get('Sample')
 ElemIx = np.searchsorted(ls,Els-1)
-
+st = time.time()
 meshlist, Load_EM = [], []
+ld = [None]
 for i, (JH, Ix) in enumerate(zip(JouleHeat,ElemIx)):
 	name = 'M{}'.format(i)
-	meshlist.append(_F(GROUP_MA='Sample', NOM=name, NUME_INIT=Ix, NUME_FIN=Ix))
-	Load_EM.append((_F(GROUP_MA=name, SOUR=JH)))
+	meshlist.append(_F(GROUP_MA='Sample', NOM=name, NUME_INIT=Ix+1, NUME_FIN=Ix+1))
+	ld[i] = DEFI_CONSTANTE(VALE=JH)
+	Load_EM.append((_F(GROUP_MA=(name),SOUR=ld[i])))
+	ld.append(None)
 
-
-
+print(time.time()-st)
+st = time.time()
 DEFI_GROUP(reuse=mesh,MAILLAGE=mesh,CREA_GROUP_MA=meshlist)
-EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
+print(time.time()-st)
+st = time.time()
+EMI = AFFE_CHAR_THER_F(SOURCE = Load_EM, MODELE=Thermod)
+print(time.time()-st)
 
+#if Parameters.arun==2:
+#	ls = mesht.gma.get('Sample')
+#	NNodes = len(mesht.cn)
+#	EMdat = np.fromfile('{}/ERMES_Node.dat'.format(PathVL.TMP_CALC_DIR),dtype=float,count=-1,sep=" ")
+#	JouleHeat = EMdat.reshape((NNodes,len(EMdat)//(NNodes)))
+#	count = 0
+#	st = time.time()
+#	ld = [None]
+#	meshlist, Load_EM = [], []
+#	for i, ElNum in enumerate(ls):
+#		Connect = mesht.co[ElNum]
+#		JHelem = np.sum(JouleHeat[Connect,:],axis=0)/4
+##		if JHelem < Parameters.EMThreshold: continue
+
+#		ld[count] = DEFI_CONSTANTE(VALE=JHelem[0])
+
+#		meshlist.append(_F(GROUP_MA='Sample', NOM='M{}'.format(ElNum), NUME_FIN=i+1, NUME_INIT=i+1))
+#		Load_EM.append((_F(GROUP_MA=('M{}'.format(ElNum), ),SOUR=ld[count])))
+
+#		ld.append(None)
+#		count = count+1
+#	DEFI_GROUP(reuse=mesh,MAILLAGE=mesh,CREA_GROUP_MA=meshlist)
+#	EMI = AFFE_CHAR_THER_F(SOURCE = Load_EM, MODELE=Thermod)
+
+#	print(time.time()-st)
 
 
 ### BC for Pipe - Import Heat transfer coefficient and apply to pipe surface

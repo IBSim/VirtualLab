@@ -299,7 +299,7 @@ class VLSetup():
 				print("Pre-Aster for '{}' started".format(Name))
 				if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
 				PreSim = __import__(StudyDict['Parameters'].PreSimFile)
-				PreSim.main(self)
+				PreSim.main(self, StudyDict)
 				print("Pre-Aster for '{}' completed".format(Name))
 
 		if RunAster:

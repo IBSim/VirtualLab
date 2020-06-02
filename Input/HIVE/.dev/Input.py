@@ -45,8 +45,9 @@ Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 
 # ERMES solver is used to creat BC for induction heating
 Sim.RunERMES = False
-Sim.ERMES = {'Frequency':1e4,'Current':100,'NbProc':2}
-Sim.Threshold = 0.99
+Sim.ERMES = {'Frequency':1e4,'Current':10000,'NbProc':2}
+Sim.EMThreshold = 0.99
+
 
 #############
 ### Aster ###

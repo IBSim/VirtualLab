@@ -9,48 +9,48 @@ from VLFunctions import MeshInfo
 import matplotlib.pyplot as plt
 import time
 
-def GetHTC(Info):
-	for Name, StudyDict in Info.Studies.items():
-		CreateHTC = getattr(StudyDict['Parameters'], 'CreateHTC', True)
+def GetHTC(Info, StudyDict):
+#	for Name, StudyDict in Info.Studies.items():
+	CreateHTC = getattr(StudyDict['Parameters'], 'CreateHTC', True)
 
-		if CreateHTC == None: continue
-		# Create a new set of HTC values
-		if CreateHTC:
-			from HTC.Coolant import Properties as ClProp
-			from HTC.Pipe import PipeGeom
-			from HTC.ITER import htc as htc_ITER
+	if CreateHTC == None: return
+	# Create a new set of HTC values
+	if CreateHTC:
+		from HTC.Coolant import Properties as ClProp
+		from HTC.Pipe import PipeGeom
+		from HTC.ITER import htc as htc_ITER
 
-			Pipedict = StudyDict['Parameters'].Pipe
-			Pipe = PipeGeom(shape=Pipedict['Type'], pipediameter=Pipedict['Diameter'], length=Pipedict['Length'])
+		Pipedict = StudyDict['Parameters'].Pipe
+		Pipe = PipeGeom(shape=Pipedict['Type'], pipediameter=Pipedict['Diameter'], length=Pipedict['Length'])
 
-			Cooldict = StudyDict['Parameters'].Coolant
-			Coolant = ClProp(T=Cooldict['Temperature']+273, P=Cooldict['Pressure'], velocity=Cooldict['Velocity'])
+		Cooldict = StudyDict['Parameters'].Coolant
+		Coolant = ClProp(T=Cooldict['Temperature']+273, P=Cooldict['Pressure'], velocity=Cooldict['Velocity'])
 
-			# Starting WallTemp and increment between temperatures to check
-			WallTemp, incr = 5, 5
-			HTC = []
-			while True:
+		# Starting WallTemp and increment between temperatures to check
+		WallTemp, incr = 5, 5
+		HTC = []
+		while True:
 #				print(WallTemp)
-				h = htc_ITER(Coolant, Pipe, WallTemp + 273)
-				if h == 0: break
-				HTC.append([WallTemp, h])
-				WallTemp += incr
+			h = htc_ITER(Coolant, Pipe, WallTemp + 273)
+			if h == 0: break
+			HTC.append([WallTemp, h])
+			WallTemp += incr
 
-			HTC = np.array(HTC)
-			np.savetxt("{}/HTC.dat".format(StudyDict['PREASTER']), HTC, fmt = '%.2f %.8f')
-			np.savetxt("{}/HTC.dat".format(StudyDict['TMP_CALC_DIR']), HTC, fmt = '%.2f %.8f')
+		HTC = np.array(HTC)
+		np.savetxt("{}/HTC.dat".format(StudyDict['PREASTER']), HTC, fmt = '%.2f %.8f')
+		np.savetxt("{}/HTC.dat".format(StudyDict['TMP_CALC_DIR']), HTC, fmt = '%.2f %.8f')
 
-			import matplotlib.pyplot as plt
-			plt.plot(HTC[:,0],HTC[:,1])
-			plt.savefig("{}/PipeHTC.png".format(StudyDict['PREASTER']), bbox_inches='tight')
-			plt.close()
+		import matplotlib.pyplot as plt
+		plt.plot(HTC[:,0],HTC[:,1])
+		plt.savefig("{}/PipeHTC.png".format(StudyDict['PREASTER']), bbox_inches='tight')
+		plt.close()
 
-		### Use previous HTC values
-		elif os.path.isfile("{}/HTC.dat".format(StudyDict['PREASTER'])):
-			shutil.copy("{}/HTC.dat".format(StudyDict['PREASTER']), StudyDict['TMP_CALC_DIR'])
+	### Use previous HTC values
+	elif os.path.isfile("{}/HTC.dat".format(StudyDict['PREASTER'])):
+		shutil.copy("{}/HTC.dat".format(StudyDict['PREASTER']), StudyDict['TMP_CALC_DIR'])
 
-		### Exit due to errors
-		else: Info.Exit("CreateHTC not 'True' and {} contains no HTC.dat file".format(StudyDict['PREASTER']))
+	### Exit due to errors
+	else: Info.Exit("CreateHTC not 'True' and {} contains no HTC.dat file".format(StudyDict['PREASTER']))
 
 
 #def ErmesRun(Info,study,NNodes):
@@ -387,243 +387,123 @@ def SetupERMES(Info, StudyDict, **kwargs):
 			print('intSurf|J|: {:.6e}'.format(intJ))
 			print('intSurf|J|^2: {:.6e}'.format(intJsq))
 
-		ScaleFactor = (ERMESdict['Current']/intJ)
-
-
-
-
-		JH_NL.append(np.array(JHres)*ScaleFactor**2)
+		JH_NL.append(np.array(JHres)*(1/intJ)**2)
 
 	JH_Node = np.transpose(JH_NL)
-	JH_Node = np.vstack((np.array(Temperatures), JH_Node))
-	return JH_Node
+
+	return JH_Node, Temperatures
 
 
 
-def ERMES(Info):
+def ERMES(Info, StudyDict):
 	currdir = os.path.dirname(os.path.realpath(__file__))
 	ERMESlist = []
 
-	for Name, StudyDict in Info.Studies.items():
-		RunERMES = getattr(StudyDict['Parameters'], 'RunERMES', True)
+#	for Name, StudyDict in Info.Studies.items():
 
-		if RunERMES == None: continue
+	RunERMES = getattr(StudyDict['Parameters'], 'RunERMES', True)
 
-		EMpath = '{}/ERMES_Node.dat'.format(StudyDict['PREASTER'])
-		if RunERMES:
-			### Create a new set of ERMES results
-			EM = SetupERMES(Info, StudyDict)
-			np.savetxt('{}/{}'.format(StudyDict['PREASTER'], 'ERMES_Node.dat'), EM, fmt = '%.10f', delimiter = '   ')
+	if RunERMES == None: return
 
-		elif os.path.isfile(EMpath):
-			SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample')
-			EM = np.fromfile(EMpath, dtype=float, count=-1, sep=" ")
-			NumCol = EM.shape[0]/(SampleMesh.NbNodes+1)
-			if  not NumCol.is_integer():
-				Info.Exit("EM.dat file doesn't match with current mesh")
-		else :
-			Info.Exit('No EM.dat file found in OUTPUT_DIR and change RunEM not set to "yes"')
+	EMpath = '{}/ERMES_Node.dat'.format(StudyDict['PREASTER'])
+	if RunERMES:
+		### Create a new set of ERMES results
+		ERMES_Node, Temperatures = SetupERMES(Info, StudyDict)
+		np.savetxt('{}/{}'.format(StudyDict['PREASTER'], 'ERMES_Node.dat'), np.vstack((Temperatures, ERMES_Node)), fmt = '%.10f', delimiter = '   ')
 
-		EM = EM.reshape((EM.shape[0],1))
+	elif os.path.isfile(EMpath):
+		SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample')
+		EM = np.fromfile(EMpath, dtype=float, count=-1, sep=" ")
+		NumCol = EM.shape[0]/(SampleMesh.NbNodes+1)
+		if  NumCol.is_integer(): 
+			EM = EM.reshape((SampleMesh.NbNodes+1,int(NumCol)))
+			ERMES_Node, Temperatures = EM[1:,:],EM[0,:]
+		else: Info.Exit("EM.dat file doesn't match with current mesh")
+	else :
+		Info.Exit('No EM.dat file found in OUTPUT_DIR and change RunEM not set to "yes"')
 
-		NodeDat = EM[1:,:]
+	PerVol, Watts = [], []
+	EMMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR, StudyDict['Parameters'].Mesh), 'xERMES')
+	Nodes = list(range(1,EMMesh.NbNodes+1))
+	Coor = EMMesh.GetNodeXYZ(Nodes)
+	Els = []
+	for grp in StudyDict['Parameters'].Materials:
+		grpinfo = EMMesh.GroupInfo(grp)
+		Els+=grpinfo.Elements.tolist()
+		for Nds in grpinfo.Connect:
+			Elsum = np.sum(ERMES_Node[Nds-1,:])/4
+			PerVol.append(Elsum)
+			VCoor = Coor[Nds-1]
+			vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
+			Watts.append(vol*Elsum)
 
-		PerVol, Watts = [], []
-		EMMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR, StudyDict['Parameters'].Mesh), 'xERMES')
-		Nodes = list(range(1,EMMesh.NbNodes+1))
-		Coor = EMMesh.GetNodeXYZ(Nodes)
-		Els = []
-		for grp in StudyDict['Parameters'].Materials:
-			grpinfo = EMMesh.GroupInfo(grp)
-			Els+=grpinfo.Elements.tolist()
-			for El, Nds in zip(grpinfo.Elements, grpinfo.Connect):
+	PerVol = np.array(PerVol)
+	sortlist = PerVol.argsort()[::-1]
+	Watts = np.array(Watts)
+	sWatts = Watts[sortlist]
+	CumSum = np.cumsum(sWatts)
+	SumWatt = CumSum[-1]
 
-				Elsum = np.sum(NodeDat[Nds-1,:])/4
-				PerVol.append(Elsum)
-				VCoor = Coor[Nds-1]
-				vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
-				Watts.append(vol*Elsum)
+	from bisect import bisect_left as bl
+	Threshold = StudyDict['Parameters'].EMThreshold
+	pos = bl(CumSum,Threshold*SumWatt)
+	print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
+	keep = sortlist[:pos+1]
 
-#				print(El, Nds, Elsum)
+	PerVol = PerVol[keep]*StudyDict['Parameters'].ERMES['Current']**2
+	Els = np.array(Els)[keep]
+		
+	np.save('{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR']), np.vstack((Els, PerVol)).T)
+#	np.savetxt('{}/{}'.format(StudyDict['TMP_CALC_DIR'], 'ERMES_Node.dat'),  ERMES_Node*StudyDict['Parameters'].ERMES['Current']**2, fmt = '%.10f', delimiter = '   ')
 
-		PerVol = np.array(PerVol)
-		sortlist = np.argsort(PerVol)
-		Watts = np.array(Watts)
-		sWatts = Watts[sortlist]
-		CumSum = np.cumsum(sWatts)
-		SumWatt = CumSum[-1]
+	if 0:
+		NbEls = CumSum.shape[0]
+		print(NbEls)
+		CumSum = CumSum/SumWatt
+		Percentages = [0.9,0.99,0.999,0.9999,1]
 
-		from bisect import bisect_left as bl
-		pos = bl(CumSum,(1-StudyDict['Parameters'].Threshold)*SumWatt)
-		keep = sortlist[pos:]
-		SP2 = PerVol[keep]
-		Els = np.array(Els)[keep]
+		fig = plt.figure(figsize = (10,8))
+		xlog = np.log10(np.arange(1,NbEls+1))
+		xmax = xlog[-1]
+		x = xlog/xmax
+		plt.plot(x, CumSum, label="Watts Cumulative")
 
-		print(keep.shape)
+		ticks, labels = [0], [0]
+		for prc in Percentages:
+			prcNbEls = bl(CumSum,prc)+1
+			num = np.log10(prcNbEls)/xmax
+			plt.plot([num, num], [0, prc], '--',label="{}% of power".format(prc*100))
 
-		np.savetxt('{}/{}'.format(StudyDict['TMP_CALC_DIR'], 'ERMES.dat'), np.vstack((Els,SP2)).T, fmt = '%.10f', delimiter = '   ')
+			frac = round(prcNbEls/NbEls,3)
+			ticks.append(num)
+			labels.append(frac)
+			print("For {}% of the coil power, you will need {} elements ({}% total elements)".format(prc*100,prcNbEls,round(frac*100,2)))
+
+		plt.xticks(ticks, labels, rotation='vertical')
+		plt.legend(loc='upper left')
+		plt.xlabel('Number of elements as fraction of total')
+		plt.ylabel('Scaled  power')
+		plt.show()
+
+		fig = plt.figure(figsize = (14,5))
+		x = np.linspace(1/NbEls,1,NbEls)
+		plt.plot(x, CumSum, label="Watts Cumulative")
+		for prc,frac in zip(Percentages,labels[1:-1]):
+			plt.plot([frac, frac], [0, prc], '--',label="{}% of power".format(prc*100))
+		plt.legend(loc='lower right')
+		plt.xticks(labels)
+		plt.xlabel('Number of elements as fraction of total')
+		plt.ylabel('Scaled  power')
+		plt.show()
 
 
-#		shutil.copy(EMpath, StudyDict['TMP_CALC_DIR'])
-
-#		print(SumVol, SumWatt)
 		
 
-#		PerVol = np.array(PerVol)
-#		Watts = np.array(Watts)
-#		sortlist = np.argsort(PerVol)
-#		sPerVol = PerVol[sortlist]
-#		sWatts = Watts[sortlist]
-#		CumSum = np.cumsum(sWatts)
-#		SumWatt = CumSum[-1]
-#		Num = CumSum.shape[0]
-
-#		from bisect import bisect_left as bl
-#		perc = [0.01, 0.1, 1, 10, 100]
-#		poss, vals = [], []
-#		for prc in perc:
-#			val = (prc/100)*SumWatt
-#			vals.append(val)
-#			poss.append((bl(CumSum,val)+1)/Num)
 
 
-#		x = np.linspace(0,1,Num)
-#		fig = plt.figure(figsize = (14,5))
-#		plt.plot(x, CumSum, label="Watts Cumulative")
-#		plt.scatter(poss, vals,c='r',marker='x')
-#		for i, prc in enumerate(perc):
-#			plt.annotate('{}%'.format(prc),(poss[i],vals[i]))
-#		plt.xticks(poss)
-#		plt.legend(loc='upper left')
-#		plt.show()
-
-
-#		NbBins = 100
-#		Whist, Wbins = np.histogram(Watts, bins=NbBins)
-#		Total = sum(Whist)
-#		print(Total)
-#		print(Whist[0]/Total)
-
-#		Whist, Wbins = np.histogram(PerVol, bins=NbBins)
-#		Total = sum(Whist)
-#		print(Total)
-#		print(Whist[0]/Total)
-
-#		for NbBins in range(5,115,10):
-#			xPV, yPV, xW, yW, xNd, yNd = [], [], [], [], [], []
-#			Ndhist, Ndbins = np.histogram(NodeDat, bins=NbBins)
-#			PVhist, PVbins = np.histogram(PerVol, bins=NbBins)
-#			Whist, Wbins = np.histogram(Watts, bins=NbBins)
-
-#			Ndwidth = Ndbins[1] - Ndbins[0]
-#			PVwidth = PVbins[1] - PVbins[0]
-#			Wwidth = Wbins[1] - Wbins[0]
-#			for i in range(NbBins):
-#				xPV.append(0.5*(PVbins[i]+PVbins[i+1]))
-#				yPV.append(PVhist[i]*PVbins[i])
-#				xW.append(0.5*(Wbins[i]+Wbins[i+1]))
-#				yW.append(Whist[i]*Wbins[i])
-#				xNd.append(0.5*(Ndbins[i]+Ndbins[i+1]))
-#				yNd.append(Ndhist[i]*Ndbins[i])
-
-#			# Hist figures
-#			fig = plt.figure(figsize = (14,5))
-#			ax1 = plt.subplot(121,adjustable = 'box')
-#			ax1.bar(xNd,Ndhist,Ndwidth)
-#			ax1.set_title('W/m^3 nodal histogram')
-#			ax2 = plt.subplot(122,adjustable = 'box')
-#			ax2.bar(xPV,PVhist,PVwidth)
-#			ax2.set_title('W/m^3 element histogram')
-#			plt.tight_layout()
-##			plt.show()
-#			plt.savefig("{}/Hist/{}.png".format(StudyDict['OUTPUT_DIR'],NbBins), bbox_inches='tight')
-#			plt.close()
-
-#			# Hist2 figures
-#			fig = plt.figure(figsize = (14,5))
-#			ax1 = plt.subplot(321,adjustable = 'box')
-#			ax1.bar(xNd,Ndhist,Ndwidth)
-#			ax1.set_title('Node histogram')
-#			ax2 = plt.subplot(322,adjustable = 'box')
-#			ax2.bar(xNd,yNd,Ndwidth)
-#			ax2.set_title('Node histogram scaled by bottom edge')
-#			ax3 = plt.subplot(323,adjustable = 'box')
-#			ax3.bar(xPV,PVhist,PVwidth)
-#			ax3.set_title('W/m^3 histogram')
-#			ax4 = plt.subplot(324,adjustable = 'box')
-#			ax4.bar(xPV,yPV,PVwidth)
-#			ax4.set_title('W/m^3 histogram scaled by bottom edge')
-#			ax5 = plt.subplot(325,adjustable = 'box')
-#			ax5.bar(xW,Whist,Wwidth)
-#			ax5.set_title('W histogram')
-#			ax6 = plt.subplot(326,adjustable = 'box')
-#			ax6.bar(xW,yW,Wwidth)
-#			ax6.set_title('W histogram scaled by bottom edge')
-#			plt.tight_layout()
-##			plt.show()
-#			plt.savefig("{}/Hist2/{}.png".format(StudyDict['OUTPUT_DIR'],NbBins), bbox_inches='tight')
-#			plt.close()
-
-#		print('hello')
-#		plt.show()
-
-#		print(x, y)
-#		plt.bar(x,y,width = bins[1]-bins[0])
-#		plt.show()
-#		plt.hist(Watts,bins = NbBins)
-#		plt.show()
-
-
-
-##		print('Nodal')
-##		hist, bins = np.histogram(NodeDat, bins=NbBins)
-##		print(hist)
-##		print('Element')
-##		hist, bins = np.histogram(ElemDat, bins=NbBins)
-##		print(hist)
-##		for NbBins in range(5,55,5):
-#		for NbBins in [2]:
-#			fig = plt.figure(figsize = (14,5))
-#			ax1 = plt.subplot(121,adjustable = 'box')
-#			ax2 = plt.subplot(122,adjustable = 'box')
-#		
-#			im1 = ax1.hist(NodeDat, bins=NbBins)
-#			ax1.set_title('Nodal')
-#			ax1.set_xlabel('JouleHeat')
-
-#			im2 = ax2.hist(ElemDat, bins=NbBins)
-#			ax2.set_title('Element')
-#			ax2.set_xlabel('JouleHeat')
-
-#			plt.savefig("{}/Hist/{}.png".format(StudyDict['OUTPUT_DIR'],NbBins), bbox_inches='tight')
-#			plt.close()
-#	
-
-
-
-
-#	hist, bins = np.histogram(scaledres[1:])
-
-			### Create the additional files necessary to run multiple ERMES simulation
-#			ERMESFiles(Info,study)
-
-			### Run the ERMES analysis
-#			ErmesRun2(Info,study,NNodes)
-
-#		### Read in previous EM results
-#		elif os.path.isfile(Info.Studies[study]['DATA_DIR'] + '/EM.dat'):
-#			EM = np.fromfile(Info.Studies[study]['DATA_DIR'] + '/EM.dat',dtype=float, count=-1, sep=" ")
-#			EM = EM.reshape((NumNodes+1,len(EM)//(NumNodes+1)))
-#			np.savetxt(Info.Studies[study]['TMP_CALC_DIR'] + '/EM.dat',EM,fmt = '%.8f')
-
-#		### Exit due to no usable EM data
-#		else :
-#			Info.Exit('No EM.dat file found in DATA_DIR and change RunEM not set to "yes"')
-
-
-def main(Info):
-	GetHTC(Info)
-	ERMES(Info)
+def main(Info, StudyDict):
+	GetHTC(Info, StudyDict)
+	ERMES(Info, StudyDict)
 
 
 	

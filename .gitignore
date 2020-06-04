@@ -13,9 +13,12 @@
 !VLconfig_DEFAULT.sh
 !SetupConfig.sh
 !CreateParamFile.py
+!requirements.txt
 
 
-# Whitelist these directories 
+# Whitelist these directories
+!docs/
+docs/build
 !Scripts/
 !Materials/
 # Ensure that only the Example and .dev sub-directory will be included in the whitelist

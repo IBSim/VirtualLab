@@ -140,8 +140,9 @@ fi
 sudo apt update -y
 sudo apt upgrade -y
 
-### Install git
+### Install requirements
 sudo apt install -y git
+sudo apt install -y python3-sphinx
 
 ### Temp solution to avoid prompt while sourcecode is closed-source during alpha phase
 #sudo cp -r /media/Shared/ssh/.ssh .

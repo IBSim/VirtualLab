@@ -71,7 +71,7 @@ if [ "$PYTHON_INST" == "y" ]; then
   ### Install python and required packages
   sudo apt install -y python3
   sudo apt install -y python3-pip
-  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py
+  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py sphinx-rtd-theme
   sudo -u ${SUDO_USER:-$USER} pip3 install iapws
 
   ### Add $VL_DIR to $PYTHONPATH in python env and current shell
@@ -153,7 +153,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
 
   ### Install python and required packages
   sudo apt install -y python3-pip
-  sudo -u ${SUDO_USER:-$USER} pip3 install fpdf
+  sudo -u ${SUDO_USER:-$USER} pip3 install fpdf sphinx-rtd-theme
   #sudo -u ${SUDO_USER:-$USER} pip3 install fpdf2
   echo "Finished creating Conda env $CONDAENV"
   echo

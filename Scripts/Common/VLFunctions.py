@@ -12,7 +12,7 @@ class MeshInfo():
 		self.g = h5py.File(meshfile, 'r')
 		# Fin the name of the mesh(es) in the file
 		names = self.g['ENS_MAA'].keys()
-		
+
 		# If only one mesh in file then set meshname to this
 		if len(names) == 1:
 			meshname = list(names)[0]
@@ -39,6 +39,19 @@ class MeshInfo():
 			elif ElType == 'SE2':
 				self.NbEdges = value
 			self.NbElements += value
+
+	def ConnectByType(self,ElemType):
+		if ElemType in ['Volume']: ElemType = 'TE4'
+
+		dset = self.g["{}/MAI/{}/NOD".format(self.CnctPath, ElemType)]
+		Connectivity = np.reshape(dset[:], (dset.attrs['NBR'],int(dset.shape[0]/dset.attrs['NBR'])), order='F')
+		return Connectivity
+
+	def ElementsByType(self, ElemType):
+		if ElemType in ['Volume']: ElemType = 'TE4'
+
+		ElemNum = self.g["{}/MAI/{}/NUM".format(self.CnctPath, ElemType)][:]
+		return ElemNum
 
 	def __GroupSort__(self):
 		grpInfo = {}
@@ -106,10 +119,12 @@ class MeshInfo():
 		return sum([list(item.keys()) for item in self.__GroupInfo__.values()], [])
 
 
+
+
 	def GroupInfo(self, name, GroupType = None):
 		if not hasattr(self,'__GroupInfo__'):
 			self.__GroupSort__()
-				
+
 		grptype = [x for x in self.__GroupInfo__.keys() if name in self.__GroupInfo__[x].keys()]
 
 		if len(grptype) == 0:
@@ -117,9 +132,9 @@ class MeshInfo():
 		elif len(grptype) == 1:
 			grptype = grptype[0]
 		elif len(grptype) > 1 and not GroupType:
-			err = 'Multiple groups with same name and no type provided' 
+			err = 'Multiple groups with same name and no type provided'
 		elif len(grptype) > 1 and GroupType not in grptype:
-			err = 'This is not one of the types of groups.' 
+			err = 'This is not one of the types of groups.'
 		else :
 			grptype = GroupType
 
@@ -168,6 +183,3 @@ class MeshInfo():
 			xyz = np.reshape(xyz, (len(nodes), 3), order = 'F')
 
 		return xyz
-
-
-

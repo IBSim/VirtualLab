@@ -9,14 +9,12 @@ import AsterFunc
 import Parameters
 import PathVL
 
-def TempChange(ResName):
+def MaxChange(ResName):
 	Temp_1 = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(ResName.LIST_VARI_ACCES()['NUME_ORDRE'])[-1], OPERATION='EXTR', RESULTAT=ResName, TYPE_CHAM='NOEU_TEMP_R')
-	NTemp_1 = np.array(Temp_1.EXTR_COMP().valeurs)
 	Temp_2 = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(ResName.LIST_VARI_ACCES()['NUME_ORDRE'])[-2], OPERATION='EXTR', RESULTAT=ResName, TYPE_CHAM='NOEU_TEMP_R')
-	NTemp_2 = np.array(Temp_2.EXTR_COMP().valeurs)
+	Resid = np.max(np.abs(np.array(Temp_1.EXTR_COMP().valeurs) - np.array(Temp_2.EXTR_COMP().valeurs)))
 	DETRUIRE(CONCEPT=_F(NOM=(Temp_1,Temp_2)))
-	change = NTemp_1 = NTemp_2
-	return change, NTemp_1
+	return Resid
 
 def EMvals(Nodes,Temperatures,EMTemps,EMdat):
 	lis1 = []
@@ -34,6 +32,7 @@ DEBUT(PAR_LOT = 'NON',LANG='EN')
 
 ##### Read in the mesh and define the model #####
 mesh = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
+
 Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model),
 	                      PHENOMENE='THERMIQUE',
 	                      TOUT='OUI'),
@@ -89,13 +88,14 @@ ls = mesht.gma.get('Sample')
 st = time.time()
 
 ElemIx = np.searchsorted(ls,Els-1)
-meshlist, Load_EM, ld = [], [], [None]*NbEls
+EM_Els, meshlist, Load_EM, ld = [], [], [], [None]*NbEls
 
 for i, (JH, Ix) in enumerate(zip(JouleHeat,ElemIx)):
 	name = 'M{}'.format(i)
 	meshlist.append(_F(GROUP_MA='Sample', NOM=name, NUME_INIT=Ix+1, NUME_FIN=Ix+1))
 	ld[i] = DEFI_CONSTANTE(VALE=JH)
-	Load_EM.append((_F(GROUP_MA=(name),SOUR=ld[i])))
+	Load_EM.append((_F(GROUP_MA=name,SOUR=ld[i])))
+	EM_Els.append(name)
 
 print(time.time()-st)
 
@@ -124,7 +124,7 @@ PipeFlux = DEFI_FONCTION(NOM_PARA='TEMP',
 PipeHTC = AFFE_CHAR_THER_F(FLUX_NL=_F(FLUN=PipeFlux,GROUP_MA=('PipeFace')),
 			  MODELE=Thermod)
 
-PipeArea,PipeFaceNodes = AsterFunc.BCinfo(mesh,Group = 'PipeFace')[0:2]
+# PipeArea,PipeFaceNodes = AsterFunc.BCinfo(mesh,Group = 'PipeFace')[0:2]
 
 ## Loads
 Loading = (_F(CHARGE=EMI),_F(CHARGE=PipeHTC))
@@ -153,12 +153,29 @@ else:
 Theta = getattr(Parameters,'Theta',0.5)
 Solver = getattr(Parameters,'Solver', 'MUMPS')
 MaxIter = getattr(Parameters,'MaxIter',10)
+ConvRes = getattr(Parameters,'ConvRes',1e-5)
 
+ConvFile = "{}/Convergence.dat".format(PathVL.ASTER)
+# Create blank file
+
+with open(ConvFile, 'w') as f: pass
+
+
+TempConvergence = []
 for i, CheckIx in enumerate(CheckList):
 	NewTsteps = AsterFunc.AdaptThermal(resther,Timestp,Loading,Thermat,Thermod,Theta,Solver,Storing = Savestp, MaxIter=MaxIter, EndIndex=CheckIx)
 	if i == 0: AdaptTsteps = NewTsteps
-	else: AdaptTsteps.apend(NewTsteps[1:])
+	else: AdaptTsteps+=NewTsteps[1:]
 
+	Tempdiff = MaxChange(resther)
+	TempConvergence.append(Tempdiff)
+	with open(ConvFile, 'a') as f: f.write("{}\n".format(Tempdiff))
+
+	if Tempdiff < ConvRes: break
+
+
+# DETRUIRE(CONCEPT=_F(NOM=(mesh)))
+# mesh = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
 
 np.savetxt('./REPE_OUT/TimeSteps.dat', AdaptTsteps, delimiter = '   ')
 DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName), TYPE='BINARY', UNITE=80)

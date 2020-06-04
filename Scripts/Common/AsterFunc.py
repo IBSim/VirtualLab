@@ -67,7 +67,7 @@ def AdaptThermal(ResName,Tsteps,Load,Material,Model,Theta,Solver,**kwargs):
 			_adapt = DEFI_LIST_REEL(VALE=tsteps)
 
 	DETRUIRE(CONCEPT=_F(NOM=(_adapt)))
-	print('{} timesteps have been added to the list of timesteps'.format(count))
+	# print('{} timesteps have been added to the list of timesteps'.format(count))
 	return tsteps
 
 def MaterialProps(Mat_dir,Materials):

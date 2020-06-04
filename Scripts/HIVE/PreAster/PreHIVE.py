@@ -8,6 +8,7 @@ from subprocess import Popen
 from VLFunctions import MeshInfo
 import matplotlib.pyplot as plt
 import time
+from bisect import bisect_left as bl
 
 def GetHTC(Info, StudyDict):
 #	for Name, StudyDict in Info.Studies.items():
@@ -70,7 +71,7 @@ def GetHTC(Info, StudyDict):
 #	Info.CheckProc(ERMES_run)
 
 #	Results = []
-#	for ERMinf in Info.Studies[study]['ERMES']:	
+#	for ERMinf in Info.Studies[study]['ERMES']:
 #		ERMres = [ERMinf[0]]
 #		with open('{}/{}/{}.post.res'.format(Info.TMP_DIR,study,ERMinf[1]),'r') as f:
 #			for j,line in enumerate(f):
@@ -334,7 +335,7 @@ def SetupERMES(Info, StudyDict, **kwargs):
 
 	if check:
 		strFace = ["PSIE({},{},{},32);\n".format(FNodes[0],FNodes[1],FNodes[2]) for FNodes in CoilInCnct]
-		strFace.insert(0,"// Field integration over a surface\n")		
+		strFace.insert(0,"// Field integration over a surface\n")
 		strFace = "".join(strFace)
 	else : strFace = ""
 
@@ -415,7 +416,7 @@ def ERMES(Info, StudyDict):
 		SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample')
 		EM = np.fromfile(EMpath, dtype=float, count=-1, sep=" ")
 		NumCol = EM.shape[0]/(SampleMesh.NbNodes+1)
-		if  NumCol.is_integer(): 
+		if  NumCol.is_integer():
 			EM = EM.reshape((SampleMesh.NbNodes+1,int(NumCol)))
 			ERMES_Node, Temperatures = EM[1:,:],EM[0,:]
 		else: Info.Exit("EM.dat file doesn't match with current mesh")
@@ -423,37 +424,33 @@ def ERMES(Info, StudyDict):
 		Info.Exit('No EM.dat file found in OUTPUT_DIR and change RunEM not set to "yes"')
 
 	PerVol, Watts = [], []
-	EMMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR, StudyDict['Parameters'].Mesh), 'xERMES')
-	Nodes = list(range(1,EMMesh.NbNodes+1))
-	Coor = EMMesh.GetNodeXYZ(Nodes)
-	Els = []
-	for grp in StudyDict['Parameters'].Materials:
-		grpinfo = EMMesh.GroupInfo(grp)
-		Els+=grpinfo.Elements.tolist()
-		for Nds in grpinfo.Connect:
-			Elsum = np.sum(ERMES_Node[Nds-1,:])/4
-			PerVol.append(Elsum)
-			VCoor = Coor[Nds-1]
-			vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
-			Watts.append(vol*Elsum)
+	SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR, StudyDict['Parameters'].Mesh), 'Sample')
+	Coor = SampleMesh.GetNodeXYZ(list(range(1,SampleMesh.NbNodes+1)))
+	for Nds in SampleMesh.ConnectByType('Volume'):
+		# Work out the volume of each element
+		VCoor = Coor[Nds-1]
+		vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
+		# geometric average of nodal JH to element values
+		Elsum = np.sum(ERMES_Node[Nds-1,:])/4
+		PerVol.append(Elsum)
+		Watts.append(vol*Elsum)
 
 	PerVol = np.array(PerVol)
+	# Get order of per vol in descending order
 	sortlist = PerVol.argsort()[::-1]
-	Watts = np.array(Watts)
-	sWatts = Watts[sortlist]
-	CumSum = np.cumsum(sWatts)
+	Watts = np.array(Watts)[sortlist]
+	CumSum = np.cumsum(Watts)
 	SumWatt = CumSum[-1]
-
-	from bisect import bisect_left as bl
 	Threshold = StudyDict['Parameters'].EMThreshold
+	# Find position in CumSum where the threshold percentage has been reached
 	pos = bl(CumSum,Threshold*SumWatt)
 	print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
 	keep = sortlist[:pos+1]
 
-	PerVol = PerVol[keep]*StudyDict['Parameters'].ERMES['Current']**2
-	Els = np.array(Els)[keep]
-		
-	np.save('{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR']), np.vstack((Els, PerVol)).T)
+	EM_Val = PerVol[keep]*StudyDict['Parameters'].ERMES['Current']**2
+	EM_Els = SampleMesh.ElementsByType('Volume')[keep]
+
+	np.save('{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR']), np.vstack((EM_Els, EM_Val)).T)
 #	np.savetxt('{}/{}'.format(StudyDict['TMP_CALC_DIR'], 'ERMES_Node.dat'),  ERMES_Node*StudyDict['Parameters'].ERMES['Current']**2, fmt = '%.10f', delimiter = '   ')
 
 	if 0:
@@ -496,14 +493,10 @@ def ERMES(Info, StudyDict):
 		plt.show()
 
 
-		
+
 
 
 
 def main(Info, StudyDict):
 	GetHTC(Info, StudyDict)
 	ERMES(Info, StudyDict)
-
-
-	
-

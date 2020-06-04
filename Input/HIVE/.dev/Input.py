@@ -45,8 +45,8 @@ Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 
 # ERMES solver is used to creat BC for induction heating
 Sim.RunERMES = False
-Sim.ERMES = {'Frequency':1e4,'Current':10000,'NbProc':2}
-Sim.EMThreshold = 0.5
+Sim.ERMES = {'Frequency':1e4,'Current':1000,'NbProc':2}
+Sim.EMThreshold = 0.9
 
 
 #############
@@ -67,11 +67,10 @@ Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation
 Sim.Theta = 0.5
-Sim.dt = [(0.0001,1,1)] #timestep size and number of steps
+Sim.dt = [(0.0001,20,1)] #timestep size and number of steps
 
 Sim.Convergence = {'Start':10,'Gap':5}
-#Sim.CheckFirst = 3
-#Sim.CheckEvery = 3 #If this is smaller than ResStore then ResStore will be used
+
 
 #############
 # PostAster #

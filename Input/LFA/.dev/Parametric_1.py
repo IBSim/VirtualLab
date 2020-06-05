@@ -13,6 +13,7 @@ Mesh.VoidHeight = [0, 0.0003]
 ##########################
 Sim = Namespace()
 Sim.Name = ['SimNoVoid','SimVoid1','SimVoid2']
+# Sim.Run = ['N','Y','Y']
 #############
 ## Pre-Sim ##
 #############
@@ -26,5 +27,3 @@ Sim.LaserS = ['Gauss', 'Gauss', 'Uniform']
 #############
 ## Post-Sim #
 #############
-
-

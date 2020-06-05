@@ -15,8 +15,8 @@ Mesh.VoidRadius = 0.000 # Radius of void
 Mesh.VoidHeight = 0.0000 # Height of Void. Positive/negative number gives a void in the top/bottom disk respectively
 # Parameters to generate mesh
 Mesh.Length1D = 0.0003
-Mesh.Length2D = 0.0003  
-Mesh.Length3D = 0.0003 
+Mesh.Length2D = 0.0003
+Mesh.Length3D = 0.0003
 Mesh.HoleDisc = 30 # Number of segments for hole circumference (for sub-mesh)
 
 ##########################
@@ -49,7 +49,7 @@ Sim.ExtTemp = 20
 Sim.BottomHTC = 0
 Sim.TopHTC = 0
 # Time-stepping and temporal discretisation
-Sim.dt = [(0.0004,2,1), (0.0005,2,1)]
+Sim.dt = [(0.00004,20,1), (0.0005,20,1)]
 Sim.Theta = 0.5
 
 #############
@@ -57,5 +57,4 @@ Sim.Theta = 0.5
 #############
 Sim.PostCalcFile = 'DiscPost'
 Sim.Rvalues = [0.1, 0.5, 1]
-Sim.ParaVisFile = 'DiscPV'
-
+Sim.CaptureTime = 0.0108

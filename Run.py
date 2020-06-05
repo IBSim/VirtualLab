@@ -9,7 +9,7 @@ from Scripts.Common.VirtualLab import VLSetup
 Simulation = 'Tensile'
 Project = 'Example'
 StudyName = 'Training'
-# Use Parameters_Master and Parameters_Var to create multiple parameter 
+# Use Parameters_Master and Parameters_Var to create multiple parameter
 # files for simulations. To run a single study set Parameters_Var to None.
 Parameters_Master='TrainingParameters'
 Parameters_Var='Parametric_1'
@@ -27,5 +27,4 @@ VirtualLab.Mesh()
 VirtualLab.Sim(ShowRes=True)
 
 # Remove tmp folders
-VirtualLab.Cleanup()	
-
+VirtualLab.Cleanup()

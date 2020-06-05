@@ -221,18 +221,14 @@ def Timesteps(dt, start=0):
 		else :dt, Nstep, save = tup[0],tup[1], 1
 
 		fintime = start + dt*Nstep
-		timesteps = np.linspace(start,fintime,Nstep+1).tolist()
+		timesteps = np.round(np.linspace(start,fintime,Nstep+1),16).tolist()
 
 		if i == 0:
-			timelist.append(timesteps)
-			savelist.append(timesteps[::save])
+			timelist = timesteps
+			savelist = timesteps[::save]
 		else:
-			timelist.append(timesteps[1:])
-			savelist.append(timesteps[save::save])
-
+			timelist += timesteps[1:]
+			savelist += timesteps[save::save]
 		start = fintime
 
-	timearr = np.concatenate(timelist)
-	savearr = np.concatenate(savelist)
-
-	return timearr, savearr
+	return timelist, savelist

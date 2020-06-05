@@ -13,7 +13,7 @@ import copy
 from types import SimpleNamespace as Namespace
 import contextlib
 import VLconfig
-	
+
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, **kwargs):
 		'''
@@ -27,9 +27,9 @@ class VLSetup():
 		port = kwargs.get('port', None)
 		mode = kwargs.get('mode', 'Headless')
 
-		# If port is provided it assumes an open instance of salome 
+		# If port is provided it assumes an open instance of salome
 		# exists on that port and will shell in to it.
-		# The second value in the list dictates whether or not to kill 
+		# The second value in the list dictates whether or not to kill
 		# the salome instance at the end of the process.
 		self.__port__ = [port, False]
 
@@ -38,10 +38,10 @@ class VLSetup():
 		elif mode in ('c', 'C', 'continuous', 'Continuous'): mode = 'Continuous'
 		elif mode in ('h', 'H', 'headless', 'Headless'): mode = 'Headless'
 		if mode in ('Interactive','Continuous','Headless'): self.mode = mode
-		else : self.Exit("kwarg 'mode' is not in 'Interactive','Continuous' or 'Headless'")	
-		
+		else : self.Exit("kwarg 'mode' is not in 'Interactive','Continuous' or 'Headless'")
 
-		frame = inspect.stack()[1]		
+
+		frame = inspect.stack()[1]
 		RunFile = os.path.realpath(frame[0].f_code.co_filename)
 
 		VL_DIR = VLconfig.VL_DIR
@@ -49,8 +49,8 @@ class VLSetup():
 		if VL_DIR != sys.path[-1]: sys.path.pop(-1)
 
 		### Define directories for VL from config file. If directory name doesn't start with '/'
-		### it will be created relative to the TWD 
-		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored.	
+		### it will be created relative to the TWD
+		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored.
 		OUTPUT_DIR = getattr(VLconfig,'OutputDir', "{}/Output".format(VL_DIR))
 
 		# Material directory
@@ -115,7 +115,7 @@ class VLSetup():
 		# Create Mesh parameter files if they are required
 		if RunMesh and MainMesh:
 			if not os.path.isdir(self.MESH_DIR): os.makedirs(self.MESH_DIR)
-			self.GEOM_DIR = '{}/Geom'.format(self.TMP_DIR) 
+			self.GEOM_DIR = '{}/Geom'.format(self.TMP_DIR)
 			if not os.path.isdir(self.GEOM_DIR): os.makedirs(self.GEOM_DIR)
 
 			ParaMesh = getattr(Var, 'Mesh', None)
@@ -184,10 +184,11 @@ class VLSetup():
 				StudyDict['POSTASTER'] = "{}/PostAster".format(CALC_DIR)
 
 				if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
+				with open("{}/__init__.py".format(TMP_CALC_DIR),'w') as f: pass
 				if not os.path.isdir(CALC_DIR): os.makedirs(CALC_DIR)
 
 				#Merge together Main and Study dict and write to file for salome/CodeAster to import
-				MergeDict = {**MainDict, **StudyDict} 
+				MergeDict = {**MainDict, **StudyDict}
 				self.WriteModule("{}/PathVL.py".format(TMP_CALC_DIR), MergeDict)
 				# Write parameter file for salome/CodeAster to import
 				self.WriteModule("{}/Parameters.py".format(TMP_CALC_DIR), ParaDict)
@@ -219,7 +220,7 @@ class VLSetup():
 			sys.path.insert(0, self.GEOM_DIR)
 			MeshParameters = __import__(MeshCheck)
 
-			AddPath = "PYTHONPATH={}:{}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
+			AddPath = "PYTHONPATH={}:{}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)
 			Script = "{}/{}.py".format(self.SIM_MESH, MeshParameters.File)
 			Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,MeshParameters.__file__), shell='TRUE')
 			Salome.wait()
@@ -233,7 +234,7 @@ class VLSetup():
 		# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
 		MeshLog = "{}/Log".format(self.MESH_DIR)
 		self.SalomeRun(None, SalomeInit=True, OutLog=MeshLog)
-				
+
 		# Script which is used to import the necessary mesh function
 		MeshScript = '{}/MeshRun.py'.format(self.COM_SCRIPTS)
 		for mesh in self.MeshList:
@@ -248,9 +249,9 @@ class VLSetup():
 			with open(IndMeshData,"w") as g:
 				with open("{}/{}.py".format(self.GEOM_DIR,mesh),'r') as MeshData:
 					g.write("# Geom & Mesh Parameters\n" + MeshData.read())
-				if self.mode != 'Interactive': 
+				if self.mode != 'Interactive':
 					with open(IndMeshLog,'r') as rIndMeshLog:
-						g.write("\n'''\n# Meshing log\n{}\n'''".format(rIndMeshLog.read()))				
+						g.write("\n'''\n# Meshing log\n{}\n'''".format(rIndMeshLog.read()))
 
 			if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(mesh))
 			else : print("Completed mesh '{}'. See '{}' for log\n".format(mesh,IndMeshData))
@@ -316,7 +317,7 @@ class VLSetup():
 				PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
 				PreCond = PythonPath + ["export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
 				PreCond = ''.join(PreCond)
-				
+
 				# Copy script to tmp folder and add in tmp file location
 				commfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].CommFile)
 				meshfile = "{}/{}.med".format(self.MESH_DIR,StudyDict['Parameters'].Mesh)
@@ -359,7 +360,7 @@ class VLSetup():
 				for Name, Proc in SubProcs.copy().items():
 					Poll = Proc.poll()
 					if Poll is not None:
-						
+
 						err = Poll
 						if self.mode == 'Interactive':
 							with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
@@ -381,56 +382,54 @@ class VLSetup():
 			if AsterError: self.Exit("Some simulations finished with errors")
 
 		if RunPostAster:
-			ShowRes = kwargs.get('ShowRes', False)
-
-			# Opens up all results in ParaVis
-			if ShowRes:
-				print("### Opening .rmed files in ParaVis ###\n")
-				ResList=[]
-				for study, StudyDict in self.Studies.items():
-					ResName = StudyDict['Parameters'].ResName
-					if type(ResName) == str: ResName = [ResName]
-					elif type(ResName) == dict: ResName=list(ResName.values())
-					ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER']) for name in ResName]
-
-				AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)				
-				Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
-				Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
-				Salome.wait()
-				return
-
 			sys.path.insert(0, self.SIM_POSTASTER)
 			# Run PostCalcFile and ParVis file if they are provided
-			for Name, StudyDict in self.Studies.items():
-				ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
-				if not ParaVisFile: continue
-
-				print("ParaVis for '{}' started".format(Name)) 
-				if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
-
-				Script = "{}/{}.py".format(self.SIM_POSTASTER, ParaVisFile)
-				PVlog = "{}/PVlog.txt".format(StudyDict['POSTASTER'])
-				self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], OutLog=PVlog, )
-				print("ParaVis for '{}' completed".format(Name))
+			# for Name, StudyDict in self.Studies.items():
+			# 	ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
+			# 	if not ParaVisFile: continue
+			#
+			# 	print("ParaVis for '{}' started".format(Name))
+			# 	if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
+			#
+			# 	Script = "{}/{}.py".format(self.SIM_POSTASTER, ParaVisFile)
+			# 	PVlog = "{}/PVlog.txt".format(StudyDict['POSTASTER'])
+			# 	self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], OutLog=PVlog, )
+			# 	print("ParaVis for '{}' completed".format(Name))
 
 			for Name, StudyDict in self.Studies.items():
 				PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
 				if not PostCalcFile : continue
-
-				print("PostCalc for '{}' started\n".format(Name)) 
-				if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
-
 				PostCalc = __import__(PostCalcFile)
-				if self.mode == 'Interactive':
-					PostCalc.main(self, StudyDict)
-				else:
-					with open("{}/log.txt".format(StudyDict['POSTASTER']), 'w') as f:
-						with contextlib.redirect_stdout(f):
-							PostCalc.main(self, StudyDict)
+				if hasattr(PostCalc, 'Individual'):
+					print("PostCalc for '{}' started\n".format(Name))
+					if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
+					if self.mode == 'Interactive':
+						PostCalc.Individual(self, StudyDict)
+					else:
+						with open("{}/log.txt".format(StudyDict['POSTASTER']), 'w') as f:
+							with contextlib.redirect_stdout(f):
+								PostCalc.Individual(self, StudyDict)
+					print("PostCalc for '{}' completed\n".format(Name))
 
-				print("PostCalc for '{}' completed\n".format(Name)) 
+			if hasattr(PostCalc, 'Combined'):
+				PostCalc.Combined(self)
 
 		print('\n### Simulations Completed ###')
+
+		# Opens up all results in ParaVis
+		if kwargs.get('ShowRes', False):
+			print("### Opening .rmed files in ParaVis ###\n")
+			ResList=[]
+			for study, StudyDict in self.Studies.items():
+				ResName = StudyDict['Parameters'].ResName
+				if type(ResName) == str: ResName = [ResName]
+				elif type(ResName) == dict: ResName=list(ResName.values())
+				ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER']) for name in ResName]
+
+			AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)
+			Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
+			Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
+			Salome.wait()
 
 
 	def WriteModule(self, FileName, Dictionary, **kwargs):
@@ -505,7 +504,7 @@ class VLSetup():
 		Init: Creates a new Salome instance in terminal mode
 		'''
 		OutLog = kwargs.get('OutLog', "/dev/null")
-		ErrLog = kwargs.get('ErrLog', OutLog) 
+		ErrLog = kwargs.get('ErrLog', OutLog)
 		AddPath = kwargs.get('AddPath',[])
 		ArgDict = kwargs.get('ArgDict', {})
 		ArgList = kwargs.get('ArgList',[])
@@ -514,10 +513,10 @@ class VLSetup():
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
-		AddPath += [self.COM_SCRIPTS, self.SIM_SCRIPTS] 
+		AddPath += [self.COM_SCRIPTS, self.SIM_SCRIPTS]
 		PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
 		PythonPath.append("export PYTHONPATH;")
-		PythonPath = "".join(PythonPath)	
+		PythonPath = "".join(PythonPath)
 
 		# Write ArgDict and ArgList in format to pass to salome
 		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
@@ -542,7 +541,7 @@ class VLSetup():
 			Salome.wait()
 			self.CheckProc(Salome,'Salome instance has not been created')
 			print("")
-			
+
 			### Get port number from file
 			with open(portfile,'r') as f:
 				self.__port__ = [int(f.readline()), True]
@@ -575,9 +574,3 @@ class VLSetup():
 
 		if remove == 'y':
 			shutil.rmtree(self.TMP_DIR)
-
-
-
-
-			
-

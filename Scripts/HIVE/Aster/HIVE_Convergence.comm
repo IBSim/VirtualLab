@@ -140,7 +140,7 @@ field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),M
 resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
 
 ## Convergence indexing
-Nstep = timearr.shape[0]-1
+Nstep = len(timearr)-1
 ConvGap = Parameters.Convergence.get('Gap', 0)
 if ConvGap:
 	ConvStart = Parameters.Convergence.get('Start', ConvGap)

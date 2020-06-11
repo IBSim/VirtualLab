@@ -13,6 +13,7 @@ import copy
 from types import SimpleNamespace as Namespace
 import contextlib
 import VLconfig
+from importlib import import_module
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, **kwargs):
@@ -82,7 +83,7 @@ class VLSetup():
 
 		# Output directory
 		PROJECT_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, Project)
-		self.SIM_DIR = "{}/{}".format(PROJECT_DIR, StudyName)
+		self.STUDY_DIR = "{}/{}".format(PROJECT_DIR, StudyName)
 		self.MESH_DIR = "{}/Meshes".format(PROJECT_DIR)
 
 		# Add path to Input directory
@@ -111,6 +112,7 @@ class VLSetup():
 		MainMesh = getattr(Main, 'Mesh', None)
 		MainSim = getattr(Main, 'Sim', None)
 
+		self.Parameters_Master = Main
 
 		# Create Mesh parameter files if they are required
 		if RunMesh and MainMesh:
@@ -150,7 +152,7 @@ class VLSetup():
 			if not os.path.exists(self.ASTER_DIR):
 				self.Exit("CodeAster location invalid")
 
-			if not os.path.isdir(self.SIM_DIR): os.makedirs(self.SIM_DIR)
+			if not os.path.isdir(self.STUDY_DIR): os.makedirs(self.STUDY_DIR)
 
 			ParaSim = getattr(Var, 'Sim', None)
 			SimNames = getattr(ParaSim, 'Name', [MainSim.Name])
@@ -178,7 +180,7 @@ class VLSetup():
 				StudyDict = {}
 				# Define simulation related directories
 				StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, SimName)
-				StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.SIM_DIR, SimName)
+				StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.STUDY_DIR, SimName)
 				StudyDict['PREASTER'] = "{}/PreAster".format(CALC_DIR)
 				StudyDict['ASTER'] = "{}/Aster".format(CALC_DIR)
 				StudyDict['POSTASTER'] = "{}/PostAster".format(CALC_DIR)
@@ -292,18 +294,20 @@ class VLSetup():
 
 		print('\n### Starting Simulations ###\n')
 
-		if RunPreAster:
+		SimMaster = self.Parameters_Master.Sim
+
+		if RunPreAster and hasattr(SimMaster,'PreAsterFile'):
 			sys.path.insert(0, self.SIM_PREASTER)
 			for Name, StudyDict in self.Studies.items():
-				PreSimFile = getattr(StudyDict['Parameters'],'PreSimFile', None)
-				if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
+				PreAsterFile = getattr(StudyDict['Parameters'],'PreAsterFile', None)
+				# if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
 				print("Pre-Aster for '{}' started".format(Name))
 				if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
-				PreSim = __import__(StudyDict['Parameters'].PreSimFile)
-				PreSim.main(self, StudyDict)
+				PreAster = import_module(PreAsterFile)
+				PreAster.main(self, StudyDict)
 				print("Pre-Aster for '{}' completed".format(Name))
 
-		if RunAster:
+		if RunAster and hasattr(SimMaster,'CommFile'):
 			mpi_nbcpu = kwargs.get('mpi_nbcpu',1)
 			mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
 			ncpus = kwargs.get('ncpus',1)
@@ -381,38 +385,26 @@ class VLSetup():
 
 			if AsterError: self.Exit("Some simulations finished with errors")
 
-		if RunPostAster:
+		if RunPostAster and hasattr(SimMaster,'PostAsterFile'):
 			sys.path.insert(0, self.SIM_POSTASTER)
-			# Run PostCalcFile and ParVis file if they are provided
-			# for Name, StudyDict in self.Studies.items():
-			# 	ParaVisFile = getattr(StudyDict['Parameters'],'ParaVisFile', None)
-			# 	if not ParaVisFile: continue
-			#
-			# 	print("ParaVis for '{}' started".format(Name))
-			# 	if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
-			#
-			# 	Script = "{}/{}.py".format(self.SIM_POSTASTER, ParaVisFile)
-			# 	PVlog = "{}/PVlog.txt".format(StudyDict['POSTASTER'])
-			# 	self.SalomeRun(Script, AddPath=StudyDict['TMP_CALC_DIR'], OutLog=PVlog, )
-			# 	print("ParaVis for '{}' completed".format(Name))
-
 			for Name, StudyDict in self.Studies.items():
-				PostCalcFile = getattr(StudyDict['Parameters'],'PostCalcFile', None)
-				if not PostCalcFile : continue
-				PostCalc = __import__(PostCalcFile)
-				if hasattr(PostCalc, 'Individual'):
-					print("PostCalc for '{}' started\n".format(Name))
+				PostAsterFile = getattr(StudyDict['Parameters'],'PostAsterFile', None)
+				if not PostAsterFile : continue
+				PostAster = __import__(PostAsterFile)
+				if hasattr(PostAster, 'Individual'):
+					print("PostAster for '{}' started\n".format(Name))
 					if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
 					if self.mode == 'Interactive':
-						PostCalc.Individual(self, StudyDict)
+						PostAster.Individual(self, StudyDict)
 					else:
 						with open("{}/log.txt".format(StudyDict['POSTASTER']), 'w') as f:
 							with contextlib.redirect_stdout(f):
 								PostCalc.Individual(self, StudyDict)
-					print("PostCalc for '{}' completed\n".format(Name))
+					print("PostAster for '{}' completed\n".format(Name))
 
-			if hasattr(PostCalc, 'Combined'):
-				PostCalc.Combined(self)
+			PostAster = import_module(SimMaster.PostAsterFile)
+			if hasattr(PostAster, 'Combined'):
+				PostAster.Combined(self)
 
 		print('\n### Simulations Completed ###')
 

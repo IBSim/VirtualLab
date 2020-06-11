@@ -1,7 +1,7 @@
 Introduction
 ============
 
-VirtualLab (VL) is a python package which enables the user to run Finite Element (FE) simulations completely via the command line. The pre and post processing is carried out using the software SALOME, while the FE solver CodeAster is used for the simulation. While this package has been written for command line use some capabilites have been included to use the GUI for debugging and training.
+VirtualLab is a python package which enables the user to run Finite Element (FE) simulations completely via the command line. The pre and post processing is carried out using the software SALOME, while the FE solver CodeAster is used for the simulation. While this package has been written for command line use some capabilites have been included to use the GUI for debugging and training.
 
 Setup
 *****
@@ -11,39 +11,68 @@ To use VirtualLab there are a few things which must be set up. The first is that
 Layout
 ******
 
-VirtualLab contains three essential directories needed for running any simulation; ‘Scripts’, ‘Materials’ and ‘Input’. A directory named ‘Output’ will be created alongside these containing all of the meshes and simulation results .The file ‘Run.py’ is used to launch simulations. For now ignore the RunFiles directory. 
+In the top level directory (TLD) of VirtualLab you will find the *Run* file which is used to launch simulations along with the essential directories needed for running simulation; *Scripts*, *Materials* and *Input*. Alongside these a directory named *Output* will be created containing all the information relevant to your analysis. The contents of these are explained in more detail below. 
+
+Run
+#####
+
+This file contains the relevant information required to run analysis using VirtualLab, such as the type of simulation or the mode in which it is run.
+
+Simulation
+----------
+
+This indicated the type of simulation which will be run. The simulations currently available are:
+
+* Tensile: A standard tensile test where a component can either be loaded with a constant force or constant displacement.
+
+* LFA: Laser flash analysis experiment where a component is pulsed with a short, high heat flux from a laser.
+
+* HIVE: Heat by Induction to Verify Extremes is an experimental facility at the UK Atomic Energy Authority to expose plasma-facing components to the high temperatures they will face in a fusion reactor.
+
+Project
+-------
+
+This specifies the project you are working on, such as a type of component which is being tested. 
+
+StudyName
+---------
+
+This groups together simulations, for example if you are testing out different magnitude of loads, you could name this ‘LoadingAnalysis’ and all relevant simulations will be saved here.
+
+Parameters_Master & Parameters_Var
+----------------------------------
+
+These files are used to create *Parameters* file(s) which are essential to using VirtualLab. *Parameters* contain information such as the geometrical measurements and boundary conditions required to construct meshes and run simulations. Parameters_Master is the master file which contains all of the variables required and is sufficient without Parameters_Var. The Parameters_Var file is used in conjunction with Parameters_Master to create multiple parameter files, which enables running multiple simulations concurrently. If Parameters_Var is set to None a single parameter file is created (a copy of Parameters_Master). 
+
+Mode
+----
+
+You will notice that when the VLSetup class is initialised a key-word argument ‘mode’ is passed – this dictates how much information is printed in the terminal. There options available are;
+
+* Interactive: Prints all output to the terminal
+
+* Continuous: Writes the output to a file as it is generated
+
+* Headless: Writes output to file at the end of the process (default)
 
 Scripts
 #######
 
-This directory contains all of the scripts needed to set up VirtualLab, the SALOME scripts and CodeAster command files. The sub-directory ‘Common’ contains everything needed to set-up a study, such as creating directories and inerfacing with SALOME and CodeAster. There is also a sub-directory for each simulation type (which is currently Tensile, LFA and HIVE). Inside each of these sub-directories is the relevant SALOME and CodeAster files to run that specific simulation. Each has a PreProc, Aster and PostProc directory containing the relevant scripts. This directory also contains other simulation-specific subdirectories, I.e. ‘Laser’ for LFA which contains different laser pulse profiles. 
+This directory contains all scripts necessary for setting up and running VirtualLab. The sub-directory *Common* contains the scripts necessary to setup the VirtualLab environment for any type of simulation. There are also sub-directories for each type of simulation, insde which are the relevant *SALOME* and *CodeAster* scripts used, along with additional simulation-specific data such as different laser pulse profiles for *LFA* simulations. 
 
 Materials
 #########
 
-This directory contains the material properties which will be used for FE simulations. The sub-directories are different materials, each of which contain material properties. Some materials are non-linear with temperature dependence. 
+This directory contains the material properties which will be used for simulations. The sub-directories are different materials, each of which contain material properties. Some materials are non-linear with temperature dependence. 
 
 Input
 #####
 
-The Input directory contains the parameters which will be used for running simulations, such as dimensions to create meshes and boundary conditions and materials for FE simulations. Input has a sub-directory for each Simulation, and within each of those you will find sub-directories for different Projects (this will be explained more in the next section). 
+The Input directory contains the *Parameters_Master* and *Parameters_Var* files referenced previously and can be found in Input/$SIMULATION/$PROJECT. 
 
-In the file Run.py’ you will notice there are a few variables which need to be defined to run VirtualLab; ‘Simulation’, ‘Project’, ‘StudyName’, ‘Parameters_Master’ and ‘Parameters_Var’.
+Output
+######
 
-Simulation
-##########
+This directory will be created in the TLD to hold all of the data generated by VirtualLab. The meshes created can be found in Output/$SIMULATION/$PROJECT/Meshes, while the simulation results can be found in Output/$SIMULATION/$PROJECT/$STUDYNAME
 
-This indicated the type of simulation which will be run; Tensile, LFA or HIVE. A directory of the Simulation will be created in the Output directory.
 
-Project
-#######
-
-This is a sub directory of Simulation to specify the project you are working on, i.e. here you could specify a type of component you are testing. In this directory a sub-directory $STUDY_NAME will be created to store simulation results and a sub-directory ‘Meshes’ where all the meshes for this project will be saved. 
-
-StudyName
-#########
-
-As previously mentioned a sub-directory of Project where the simulations results will be stored. This is useful to group together simulations, for example if you are testing out different magnitude of loads, you could name this ‘LoadingAnalysis’.
-Parameters_Master & Parameters_Var –  These files are used to create parameter files containing all the necessary values to create a mesh/run a simulation. Parameters_Master defines the master parameter file which will be used for simulations. This file contains all of the variables  required to create a mesh and run a simulation and is sufficient without Parameters_Var. The Parameters_Var file is used in conjunction with Parameters_Master to create multiple parameter files, which enables running multiple simulations concurrently. If Parameters_Var is set to None a single parameter file is created (a copy of Parameters_Master). Both Parameters_Master and Parameters_Var can be found in Input/$SIMULATION/$PROJECT
-
-You will also notice when the class is initialised a key-word argument ‘mode’ is passed – this dictates how much information is printed in the terminal. There are 3 different options available; headless (default), continuous and interactive. Interactive will output all commands in to the terminal, continuous will write the output to a file as it is generated, and headless will write the output in to the file at the end of the process. The output for the meshing stage can be found in the ‘Meshes’ directory, while the output for each CodeAster simulation can be found in the ‘Aster’ directory for each specific Study. For the below tasks it is advised to keep the mode as ‘interactive’ so that you can see the outputs generated by VL easily. 

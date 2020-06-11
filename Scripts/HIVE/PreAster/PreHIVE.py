@@ -423,7 +423,7 @@ def ERMES(Info, StudyDict):
 	else :
 		Info.Exit('No EM.dat file found in OUTPUT_DIR and change RunEM not set to "yes"')
 
-	PerVol, Watts = [], []
+	PerVol, Watts, Volume = [], [], []
 	SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR, StudyDict['Parameters'].Mesh), 'Sample')
 	Coor = SampleMesh.GetNodeXYZ(list(range(1,SampleMesh.NbNodes+1)))
 	for Nds in SampleMesh.ConnectByType('Volume'):
@@ -432,22 +432,35 @@ def ERMES(Info, StudyDict):
 		vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
 		# geometric average of nodal JH to element values
 		Elsum = np.sum(ERMES_Node[Nds-1,:])/4
+		Volume.append(vol)
 		PerVol.append(Elsum)
 		Watts.append(vol*Elsum)
 
 	PerVol = np.array(PerVol)
+
 	# Get order of per vol in descending order
 	sortlist = PerVol.argsort()[::-1]
 	Watts = np.array(Watts)[sortlist]
 	CumSum = np.cumsum(Watts)
 	SumWatt = CumSum[-1]
+
 	Threshold = StudyDict['Parameters'].EMThreshold
 	# Find position in CumSum where the threshold percentage has been reached
 	pos = bl(CumSum,Threshold*SumWatt)
 	print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
 	keep = sortlist[:pos+1]
 
-	EM_Val = PerVol[keep]*StudyDict['Parameters'].ERMES['Current']**2
+	PerVol = PerVol[keep]
+	ActPower = np.sum(Watts[:pos+1])
+	if getattr(StudyDict['Parameters'],'EMScale', False):
+		ActFrc = ActPower/SumWatt
+		PerVol = PerVol/ActFrc
+		Total = np.dot(PerVol, np.array(Volume)[keep])
+		print(Total, SumWatt)
+	else:
+		print(ActPower, SumWatt, ActPower/SumWatt)
+
+	EM_Val = PerVol*StudyDict['Parameters'].ERMES['Current']**2
 	EM_Els = SampleMesh.ElementsByType('Volume')[keep]
 
 	np.save('{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR']), np.vstack((EM_Els, EM_Val)).T)

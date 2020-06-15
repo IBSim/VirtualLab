@@ -4,7 +4,7 @@ from types import SimpleNamespace as Namespace
 ######## Meshing #########
 ##########################
 Mesh = Namespace()
-Mesh.Name = 'HiveCoil'
+Mesh.Name = 'TestCoil'
 Mesh.File = 'AMAZE' # This file must be in Scripts/$SIMULATION/PreProc
 # Geometrical Dimensions
 Mesh.BlockWidth = 0.03 #x
@@ -37,14 +37,14 @@ Sim.Name = 'Single'
 #############
 ## PreAster #
 #############
-Sim.PreSimFile = "PreHIVE"
+Sim.PreAsterFile = "PreHIVE"
 # HTC between coolant and pipe (need Coolant and Pipe properties)
 Sim.CreateHTC = False
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 
 # ERMES solver is used to creat BC for induction heating
-Sim.RunERMES = False
+Sim.RunERMES = True
 Sim.ERMES = {'Frequency':1e4,'Current':1000,'NbProc':2}
 Sim.EMThreshold = 0.9
 
@@ -53,7 +53,7 @@ Sim.EMThreshold = 0.9
 ### Aster ###
 #############
 Sim.CommFile = 'HIVE_Convergence' # This file must be in Scripts/$SIMULATION/Aster
-Sim.Mesh = 'HiveCoil' # The mesh used for the simulation
+Sim.Mesh = 'TestCoil' # The mesh used for the simulation
 Sim.ResName = 'ResTher'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'

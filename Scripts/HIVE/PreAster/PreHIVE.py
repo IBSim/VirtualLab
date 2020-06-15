@@ -237,7 +237,7 @@ def SetupERMES(Info, StudyDict, **kwargs):
 
 	del strNodes, StatBC, WaveBC
 
-	# Create variables for contact node information 9used in dat file 1 and 3
+	# Create variables for contact node information used in dat file 1 and 3
 	Vacuumgrp = ERMESMesh.GroupInfo('Vacuum')
 	VacuumNew = np.copy(Vacuumgrp.Connect)
 	ContactFaceOrig = np.vstack((SampleSurface.Connect,CoilSurface.Connect))
@@ -331,6 +331,8 @@ def SetupERMES(Info, StudyDict, **kwargs):
 	"// Other results\n" + \
 	"ProblemType = CalculateJouleHeating;\n" + \
 	"// J currents\n" + \
+	"Print(REAL_J);\n" + \
+	"Print(IMAG_J);\n" + \
 	"Print(MOD_J);\n\n"
 
 	if check:
@@ -351,9 +353,76 @@ def SetupERMES(Info, StudyDict, **kwargs):
 	with open('{}/Static-9.dat'.format(StudyDict['TMP_CALC_DIR']),'w+') as f:
 		f.write('{}\n0\n'.format(name))
 
-	Ermesstr = "cd {}; ERMESv12.5 {};{}".format(StudyDict['TMP_CALC_DIR'],'Static',''.join(ERMESwave))
-	ERMES_run = Popen(Ermesstr, shell = 'TRUE')
-	ERMES_run.wait()
+	# Ermesstr = "cd {}; ERMESv12.5 {};{}".format(StudyDict['TMP_CALC_DIR'],'Static',''.join(ERMESwave))
+	# ERMES_run = Popen(Ermesstr, shell = 'TRUE')
+	# ERMES_run.wait()
+	ResDict = {}
+	Start, End = -1,-2
+	with open('{}/{}{}.post.res'.format(StudyDict['TMP_CALC_DIR'],'Wave',20),'r') as f:
+		for j,line in enumerate(f):
+			split = line.split()
+			if split[0] == 'Result':
+				ResType = (split[1])[1:-1]
+				Start = j+2
+				End = j+1+ERMESMesh.NbNodes
+				tmplist = []
+				continue
+
+			if Start <= j <= End:
+				tmplist.append(list(map(float,split[1:])))
+			elif j == End+1:
+				ResDict[ResType] = tmplist
+
+	# Create rmed file with ERMES results
+	ERMESfname = "{}/ERMES.rmed".format(StudyDict['PREASTER'])
+	ERMESrmed = h5py.File(ERMESfname, 'w')
+
+	# Copy Mesh data from mesh .med file
+	MeshMed = h5py.File("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), 'r')
+	ERMESrmed.copy(MeshMed["INFOS_GENERALES"],"INFOS_GENERALES")
+	ERMESrmed.copy(MeshMed["FAS/xERMES"],"FAS/xERMES")
+	ERMESrmed.copy(MeshMed["ENS_MAA/xERMES"],"ENS_MAA/xERMES")
+	MeshMed.close()
+
+
+
+
+	# Some groups require specific formatting so take an empty group from format file
+	Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
+	GrpFormat = Formats['ELEME']
+
+	for ResName, Values in ResDict.items():
+		arr = np.array(Values)
+		# print(ResName, arr.shape)
+		# print((arr.flatten(order='F'))[:5])
+		ERMESrmed.copy(GrpFormat,"CHA/{}".format(ResName))
+		grp = ERMESrmed["CHA/{}".format(ResName)]
+		grp.attrs.create('MAI','xERMES',dtype='S8')
+		if arr.shape[1] == 1: NOM =  'Res'.ljust(16)
+		elif arr.shape[1] == 3: NOM = 'DX'.ljust(16) + 'DY'.ljust(16) + 'DZ'.ljust(16)
+		grp.attrs.create('NCO',arr.shape[1],dtype='i4')
+		grp.attrs.create('NOM', NOM,dtype='S100')
+		grp.attrs.create('TYP',6,dtype='i4')
+		grp.attrs.create('UNI',''.ljust(len(NOM)),dtype='S100')
+		grp.attrs.create('UNT','',dtype='S1')
+
+		grp = grp.create_group('0000000000000000000100000000000000000001')
+		grp.attrs.create('NDT',1,dtype='i4')
+		grp.attrs.create('NOR',1,dtype='i4')
+		grp.attrs.create('PDT',0.0,dtype='f8')
+		grp.attrs.create('RDT',-1,dtype='i4')
+		grp.attrs.create('ROR',-1,dtype='i4')
+		grp = grp.create_group('NOE')
+		grp.attrs.create('GAU','',dtype='S1')
+		grp.attrs.create('PFL','MED_NO_PROFILE_INTERNAL',dtype='S100')
+		grp = grp.create_group('MED_NO_PROFILE_INTERNAL')
+		grp.attrs.create('GAU','',dtype='S1'	)
+		grp.attrs.create('NBR', ERMESMesh.NbNodes, dtype='i4')
+		grp.attrs.create('NGA',1,dtype='i4')
+
+		grp.create_dataset("CO",data=arr.flatten(order='F'))
+
+	# sys.exit()
 
 	SampleMesh = MeshInfo(MeshFile, meshname='Sample')
 

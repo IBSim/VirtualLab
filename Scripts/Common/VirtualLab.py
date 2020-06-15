@@ -295,7 +295,6 @@ class VLSetup():
 		print('\n### Starting Simulations ###\n')
 
 		SimMaster = self.Parameters_Master.Sim
-
 		if RunPreAster and hasattr(SimMaster,'PreAsterFile'):
 			sys.path.insert(0, self.SIM_PREASTER)
 			for Name, StudyDict in self.Studies.items():

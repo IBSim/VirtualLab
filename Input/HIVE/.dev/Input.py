@@ -44,7 +44,7 @@ Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 
 # ERMES solver is used to creat BC for induction heating
-Sim.RunERMES = True
+Sim.RunERMES = False
 Sim.ERMES = {'Frequency':1e4,'Current':1000,'NbProc':2}
 Sim.EMThreshold = 0.9
 

@@ -116,7 +116,7 @@ def CoilCurrent(EMMesh, JRes, groupname = 'CoilIn', **kwargs):
 
 	return intJ
 
-def SetupERMES(Info, StudyDict, **kwargs):
+def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	check = kwargs.get('check', False)
 
 	Temperatures = [20]
@@ -353,9 +353,10 @@ def SetupERMES(Info, StudyDict, **kwargs):
 	with open('{}/Static-9.dat'.format(StudyDict['TMP_CALC_DIR']),'w+') as f:
 		f.write('{}\n0\n'.format(name))
 
-	# Ermesstr = "cd {}; ERMESv12.5 {};{}".format(StudyDict['TMP_CALC_DIR'],'Static',''.join(ERMESwave))
-	# ERMES_run = Popen(Ermesstr, shell = 'TRUE')
-	# ERMES_run.wait()
+	Ermesstr = "cd {}; ERMESv12.5 {};{}".format(StudyDict['TMP_CALC_DIR'],'Static',''.join(ERMESwave))
+	ERMES_run = Popen(Ermesstr, shell = 'TRUE')
+	ERMES_run.wait()
+
 	ResDict = {}
 	Start, End = -1,-2
 	with open('{}/{}{}.post.res'.format(StudyDict['TMP_CALC_DIR'],'Wave',20),'r') as f:
@@ -371,11 +372,27 @@ def SetupERMES(Info, StudyDict, **kwargs):
 			if Start <= j <= End:
 				tmplist.append(list(map(float,split[1:])))
 			elif j == End+1:
-				ResDict[ResType] = tmplist
+				ResDict[ResType] = np.array(tmplist)
+
+	Jres = ResDict['mod(J)']
+	CoilInArea, CoilInCurr, CoilInCurrsq = 0, 0, 0
+	for nodes in CoilInCnct:
+		coor1, coor2, coor3 = ERMESMesh.GetNodeXYZ(nodes)
+		J1, J2, J3 = Jres[nodes - 1]
+
+		area = 0.5*np.linalg.norm(np.cross(coor2-coor1,coor3-coor1))
+		CoilInArea += area
+		CoilInCurr += area*(J1 + J2 + J3)/3
+		CoilInCurrsq += area*(J1**2 + J2**2 + J3**2)/3
+
+	if check:
+		print('These values should match up with those on the output from ERMES')
+		print('Area: {:.6e}'.format(CoilInArea))
+		print('intSurf|J|: {:.6e}'.format(CoilInCurr))
+		print('intSurf|J|^2: {:.6e}'.format(CoilInCurrsq))
 
 	# Create rmed file with ERMES results
-	ERMESfname = "{}/ERMES.rmed".format(StudyDict['PREASTER'])
-	ERMESrmed = h5py.File(ERMESfname, 'w')
+	ERMESrmed = h5py.File(ERMESout, 'w')
 
 	# Copy Mesh data from mesh .med file
 	MeshMed = h5py.File("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), 'r')
@@ -384,23 +401,16 @@ def SetupERMES(Info, StudyDict, **kwargs):
 	ERMESrmed.copy(MeshMed["ENS_MAA/xERMES"],"ENS_MAA/xERMES")
 	MeshMed.close()
 
-
-
-
 	# Some groups require specific formatting so take an empty group from format file
 	Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
 	GrpFormat = Formats['ELEME']
-
-	for ResName, Values in ResDict.items():
-		arr = np.array(Values)
-		# print(ResName, arr.shape)
-		# print((arr.flatten(order='F'))[:5])
+	for ResName, Result in ResDict.items():
 		ERMESrmed.copy(GrpFormat,"CHA/{}".format(ResName))
 		grp = ERMESrmed["CHA/{}".format(ResName)]
 		grp.attrs.create('MAI','xERMES',dtype='S8')
-		if arr.shape[1] == 1: NOM =  'Res'.ljust(16)
-		elif arr.shape[1] == 3: NOM = 'DX'.ljust(16) + 'DY'.ljust(16) + 'DZ'.ljust(16)
-		grp.attrs.create('NCO',arr.shape[1],dtype='i4')
+		if Result.shape[1] == 1: NOM =  'Res'.ljust(16)
+		elif Result.shape[1] == 3: NOM = 'DX'.ljust(16) + 'DY'.ljust(16) + 'DZ'.ljust(16)
+		grp.attrs.create('NCO',Result.shape[1],dtype='i4')
 		grp.attrs.create('NOM', NOM,dtype='S100')
 		grp.attrs.create('TYP',6,dtype='i4')
 		grp.attrs.create('UNI',''.ljust(len(NOM)),dtype='S100')
@@ -419,165 +429,157 @@ def SetupERMES(Info, StudyDict, **kwargs):
 		grp.attrs.create('GAU','',dtype='S1'	)
 		grp.attrs.create('NBR', ERMESMesh.NbNodes, dtype='i4')
 		grp.attrs.create('NGA',1,dtype='i4')
+		grp.create_dataset("CO",data=Result.flatten(order='F'))
 
-		grp.create_dataset("CO",data=arr.flatten(order='F'))
+	JH = ResDict["Joule_heating"]
+	Coor = ERMESMesh.GetNodeXYZ(list(range(1,ERMESMesh.NbNodes+1)))
+	# Volumetric results
+	ERMESrmed.copy(GrpFormat,"GAUSS")
+	grp = ERMESrmed["GAUSS"]
+	grp = grp.create_group('TE4_____FPG1')
+	grp.attrs.create('DIM',3,dtype='i4')
+	grp.attrs.create('GEO', 304, dtype='i4')
+	grp.attrs.create('INM', '', dtype='S100')
+	grp.attrs.create('NBR', 1, dtype='i4')
+	grp.create_dataset('COO',data=[0,0,0,1,1,0,0,0,0,0,1,0],dtype='f8')
+	grp.create_dataset('GAU',data=[0.25]*3,dtype='f8')
+	grp.create_dataset('VAL', data=[1/6],dtype='f8')
 
-	# sys.exit()
+	Sample = ERMESMesh.GroupInfo('Sample')
+	WattsPV, Watts, Volume = [], [], []
+	for Nds in  Sample.Connect:
+		VCoor = Coor[Nds-1]
+		vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
+		# geometric average of nodal JH to element values
+		Elsum = np.sum(JH[Nds-1,:])/4
+		Volume.append(vol)
+		WattsPV.append(Elsum)
+		Watts.append(vol*Elsum)
 
-	SampleMesh = MeshInfo(MeshFile, meshname='Sample')
+	FWattsPV = np.zeros(ERMESMesh.NbVolumes)
+	FWattsPV[:len(WattsPV)] = WattsPV
+	FWatts = np.zeros(ERMESMesh.NbVolumes)
+	FWatts[:len(Watts)] = Watts
 
-	JH_NL = [] # NonLinear JouleHeating
-	for Temp in Temperatures:
-		JHres, Jres = [], []
-		JHstart, Jstart = 3, 3 + (NbNodesERMES + 3)
-		JHend, Jend = JHstart + SampleMesh.NbNodes, Jstart + NbNodesERMES
-		with open('{}/{}{}.post.res'.format(StudyDict['TMP_CALC_DIR'],'Wave',Temp),'r') as f:
-			for j,line in enumerate(f):
-				if JHstart <= j < JHend:
-					JHres.append(float(line.split()[1]))
-				elif Jstart <= j < Jend:
-					Jres.append(float(line.split()[1]))
-				elif j >= Jend:
-					break
+	for Name, Values in zip(['WattsPV', 'Watts'],[FWattsPV, FWatts]):
+		ERMESrmed.copy(GrpFormat,"CHA/{}".format(Name))
+		grp = ERMESrmed["CHA/{}".format(Name)]
+		grp.attrs.create('MAI','xERMES',dtype='S8')
+		grp.attrs.create('NCO',1,dtype='i4')
+		grp.attrs.create('NOM', 'Res'.ljust(16),dtype='S100')
+		grp.attrs.create('TYP',6,dtype='i4')
+		grp.attrs.create('UNI',''.ljust(16),dtype='S100')
+		grp.attrs.create('UNT','',dtype='S1')
 
-		facesum, intJ, intJsq = 0, 0, 0
-		Jres = np.array(Jres)
-		for nodes in CoilInCnct:
-			coor1, coor2, coor3 = ERMESMesh.GetNodeXYZ(nodes)
-			area = 0.5*np.linalg.norm(np.cross(coor2-coor1,coor3-coor1))
-			facesum += area
+		grp = grp.create_group('0000000000000000000100000000000000000001')
+		grp.attrs.create('NDT',1,dtype='i4')
+		grp.attrs.create('NOR',1,dtype='i4')
+		grp.attrs.create('PDT',0.0,dtype='f8')
+		grp.attrs.create('RDT',-1,dtype='i4')
+		grp.attrs.create('ROR',-1,dtype='i4')
+		grp = grp.create_group('MAI.TE4')
+		grp.attrs.create('GAU','TE4_____FPG1',dtype='S100')
+		grp.attrs.create('PFL','MED_NO_PROFILE_INTERNAL',dtype='S100')
+		grp = grp.create_group('MED_NO_PROFILE_INTERNAL')
+		grp.attrs.create('GAU','TE4_____FPG1',dtype='S100'	)
+		grp.attrs.create('NBR', ERMESMesh.NbVolumes, dtype='i4')
+		grp.attrs.create('NGA',1,dtype='i4')
+		grp.create_dataset("CO",data=Values)
 
-			J1, J2, J3 = Jres[nodes - 1]
-			intJ += area*(J1 + J2 + J3)/3
-			intJsq += area*(J1**2 + J2**2 + J3**2)/3
+	grp = ERMESrmed.create_group('EM_Load')
+	# Get sorting index in descending order for WattsPV
+	WattsPV = np.array(WattsPV)
+	sortlist = WattsPV.argsort()[::-1]
+	# Sort by sortlist for thresholding capabilities
+	WattsPV = WattsPV[sortlist]*(1/CoilInCurr)**2
+	Watts = np.array(Watts)[sortlist]*(1/CoilInCurr)**2
+	Elements = Sample.Elements[sortlist]
+	# Save arrays to ERMES.rmed file for easy access
+	grp.create_dataset('WattsPV',data=WattsPV)
+	grp.create_dataset('Watts',data=Watts)
+	grp.create_dataset('Elements',data=Elements)
 
-		if check:
-			print('These values should match up with those on the output from ERMES')
-			print('Area: {:.6e}'.format(facesum))
-			print('intSurf|J|: {:.6e}'.format(intJ))
-			print('intSurf|J|^2: {:.6e}'.format(intJsq))
+	# Thresholding image
+	CumSum = Watts.cumsum()
+	NbEls = CumSum.shape[0]
+	CumSum = CumSum/CumSum[-1]
+	Percentages = [0.5,0.9,0.99,0.999,0.9999]
 
-		JH_NL.append(np.array(JHres)*(1/intJ)**2)
+	fig = plt.figure(figsize = (10,8))
+	xlog = np.log10(np.arange(1,NbEls+1))
+	xmax = xlog[-1]
+	x = xlog/xmax
+	plt.plot(x, CumSum, label="Cumulative power")
+	ticks, labels = [0], [0]
+	for prc in Percentages:
+		pos = bl(CumSum,prc)
+		num = np.log10(pos+1)/xmax
+		plt.plot([num, num], [0, prc], '--',label="{}% of power ({} Elements)".format(prc*100,pos+1))
+		frac = round((pos+1)/NbEls,3)
+		ticks.append(num)
+		labels.append(frac)
+		# print("For {}% of the coil power, you will need {} elements ({}% total elements)".format(prc*100,pos+1,round(frac*100,2)))
+	plt.plot([1, 1], [0, 1], '--',label="100% of power ({} Elements)".format(NbEls))
+	ticks.append(1)
+	labels.append(1)
+	plt.xticks(ticks, labels,rotation="vertical")
+	plt.legend(loc='upper left')
+	plt.xlabel('Fraction of total elements required')
+	plt.ylabel('Power (scaled)')
+	plt.savefig("{}/EM_Thresholding".format(StudyDict['PREASTER']))
+	plt.close()
 
-	JH_Node = np.transpose(JH_NL)
+	# fig = plt.figure(figsize = (14,5))
+	# x = np.linspace(1/NbEls,1,NbEls)
+	# plt.plot(x, CumSum, label="Watts Cumulative")
+	# for prc,frac in zip(Percentages,labels[1:-1]):
+	# 	plt.plot([frac, frac], [0, prc], '--',label="{}% of power".format(prc*100))
+	# plt.legend(loc='lower right')
+	# plt.xticks(labels)
+	# plt.xlabel('Number of elements as fraction of total')
+	# plt.ylabel('Scaled  power')
+	# plt.show()
 
-	return JH_Node, Temperatures
-
-
+	return Watts, WattsPV, Elements
 
 def ERMES(Info, StudyDict):
 	currdir = os.path.dirname(os.path.realpath(__file__))
 	ERMESlist = []
 
-#	for Name, StudyDict in Info.Studies.items():
-
 	RunERMES = getattr(StudyDict['Parameters'], 'RunERMES', True)
-
 	if RunERMES == None: return
 
-	EMpath = '{}/ERMES_Node.dat'.format(StudyDict['PREASTER'])
+	ERMESfile = '{}/ERMES.rmed'.format(StudyDict['PREASTER'])
+	# Create a new set of ERMES results
 	if RunERMES:
-		### Create a new set of ERMES results
-		ERMES_Node, Temperatures = SetupERMES(Info, StudyDict)
-		np.savetxt('{}/{}'.format(StudyDict['PREASTER'], 'ERMES_Node.dat'), np.vstack((Temperatures, ERMES_Node)), fmt = '%.10f', delimiter = '   ')
-
-	elif os.path.isfile(EMpath):
-		SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample')
-		EM = np.fromfile(EMpath, dtype=float, count=-1, sep=" ")
-		NumCol = EM.shape[0]/(SampleMesh.NbNodes+1)
-		if  NumCol.is_integer():
-			EM = EM.reshape((SampleMesh.NbNodes+1,int(NumCol)))
-			ERMES_Node, Temperatures = EM[1:,:],EM[0,:]
-		else: Info.Exit("EM.dat file doesn't match with current mesh")
+		Watts, WattsPV, Elements = SetupERMES(Info, StudyDict, ERMESfile)
+	# Read in a previous set of ERMES results
+	elif os.path.isfile(ERMESfile):
+		pass
+		NbVolumes = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample').NbVolumes
+		ERMESres = h5py.File(ERMESfile, 'r')
+		Watts = ERMESres["EM_Load/Watts"][:]
+		WattsPV = ERMESres["EM_Load/WattsPV"][:]
+		Elements = ERMESres["EM_Load/Elements"][:]
+		# Check that the results match up with the mesh
+		if Watts.shape[0] != NbVolumes:
+			Info.Exit("EM.dat file doesn't match with current mesh")
 	else :
-		Info.Exit('No EM.dat file found in OUTPUT_DIR and change RunEM not set to "yes"')
+		Info.Exit("ERMES results file '{}' does not exist and RunERMES flag not set to True".format(ERMESfile))
 
-	PerVol, Watts, Volume = [], [], []
-	SampleMesh = MeshInfo("{}/{}.med".format(Info.MESH_DIR, StudyDict['Parameters'].Mesh), 'Sample')
-	Coor = SampleMesh.GetNodeXYZ(list(range(1,SampleMesh.NbNodes+1)))
-	for Nds in SampleMesh.ConnectByType('Volume'):
-		# Work out the volume of each element
-		VCoor = Coor[Nds-1]
-		vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
-		# geometric average of nodal JH to element values
-		Elsum = np.sum(ERMES_Node[Nds-1,:])/4
-		Volume.append(vol)
-		PerVol.append(Elsum)
-		Watts.append(vol*Elsum)
-
-	PerVol = np.array(PerVol)
-
-	# Get order of per vol in descending order
-	sortlist = PerVol.argsort()[::-1]
-	Watts = np.array(Watts)[sortlist]
-	CumSum = np.cumsum(Watts)
-	SumWatt = CumSum[-1]
-
+	CumSum = Watts.cumsum()
 	Threshold = StudyDict['Parameters'].EMThreshold
 	# Find position in CumSum where the threshold percentage has been reached
-	pos = bl(CumSum,Threshold*SumWatt)
+	pos = bl(CumSum,Threshold*CumSum[-1])
 	print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
-	keep = sortlist[:pos+1]
 
-	PerVol = PerVol[keep]
-	ActPower = np.sum(Watts[:pos+1])
+	EM_Val = WattsPV[:pos+1]*StudyDict['Parameters'].ERMES['Current']**2
+	EM_Els = Elements[:pos+1]
+	# Scale EM_Val to ensure correct energy input
 	if getattr(StudyDict['Parameters'],'EMScale', False):
-		ActFrc = ActPower/SumWatt
-		PerVol = PerVol/ActFrc
-		Total = np.dot(PerVol, np.array(Volume)[keep])
-		print(Total, SumWatt)
-	else:
-		print(ActPower, SumWatt, ActPower/SumWatt)
-
-	EM_Val = PerVol*StudyDict['Parameters'].ERMES['Current']**2
-	EM_Els = SampleMesh.ElementsByType('Volume')[keep]
+		EM_Val = EM_Val*(CumSum[-1]/CumSum[pos])
 
 	np.save('{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR']), np.vstack((EM_Els, EM_Val)).T)
-#	np.savetxt('{}/{}'.format(StudyDict['TMP_CALC_DIR'], 'ERMES_Node.dat'),  ERMES_Node*StudyDict['Parameters'].ERMES['Current']**2, fmt = '%.10f', delimiter = '   ')
-
-	if 0:
-		NbEls = CumSum.shape[0]
-		CumSum = CumSum/SumWatt
-		Percentages = [0.9,0.99,0.999,0.9999,1]
-
-		fig = plt.figure(figsize = (10,8))
-		xlog = np.log10(np.arange(1,NbEls+1))
-		xmax = xlog[-1]
-		x = xlog/xmax
-		plt.plot(x, CumSum, label="Watts Cumulative")
-
-		ticks, labels = [0], [0]
-		for prc in Percentages:
-			prcNbEls = bl(CumSum,prc)+1
-			num = np.log10(prcNbEls)/xmax
-			plt.plot([num, num], [0, prc], '--',label="{}% of power".format(prc*100))
-
-			frac = round(prcNbEls/NbEls,3)
-			ticks.append(num)
-			labels.append(frac)
-			print("For {}% of the coil power, you will need {} elements ({}% total elements)".format(prc*100,prcNbEls,round(frac*100,2)))
-
-		plt.xticks(ticks, labels, rotation='vertical')
-		plt.legend(loc='upper left')
-		plt.xlabel('Number of elements as fraction of total')
-		plt.ylabel('Scaled  power')
-		plt.show()
-
-		fig = plt.figure(figsize = (14,5))
-		x = np.linspace(1/NbEls,1,NbEls)
-		plt.plot(x, CumSum, label="Watts Cumulative")
-		for prc,frac in zip(Percentages,labels[1:-1]):
-			plt.plot([frac, frac], [0, prc], '--',label="{}% of power".format(prc*100))
-		plt.legend(loc='lower right')
-		plt.xticks(labels)
-		plt.xlabel('Number of elements as fraction of total')
-		plt.ylabel('Scaled  power')
-		plt.show()
-
-
-
-
-
 
 def main(Info, StudyDict):
 	GetHTC(Info, StudyDict)

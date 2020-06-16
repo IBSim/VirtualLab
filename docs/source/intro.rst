@@ -1,12 +1,12 @@
 Introduction
 ============
 
-VirtualLab is a python package which enables the user to run Finite Element (FE) simulations completely via the command line. The pre and post processing is carried out using the software SALOME, while the FE solver CodeAster is used for the simulation. While this package has been written for command line use some capabilites have been included to use the GUI for debugging and training.
+VirtualLab is a python package which enables the user to run Finite Element (FE) simulations completely via the command line. The pre and post processing is carried out using the software *SALOME*, while the FE solver *CodeAster* is used for the simulation. While this package has been written for command line use some capabilites have been included to use the GUI for debugging and training.
 
 Setup
 *****
 
-To use VirtualLab there are a few things which must be set up. The first is that you have both SALOME and CodeAster installed on your computer. Once this is done you need to add the SALOME directory to your path so that salome can be opened by just typing ‘salome’ in a terminal window. Talk to Llion
+To use VirtualLab there are a few things which must be set up. The first is that you have both *SALOME* and *CodeAster* installed on your computer. It is advisable to download both of these through the *SalomeMeca* package. Once this is done you need to add the *SALOME* directory to your path so that salome can be opened by just typing ‘salome’ in a terminal window. Talk to Llion
 
 Layout
 ******
@@ -39,15 +39,22 @@ StudyName
 
 This groups together simulations, for example if you are testing out different magnitude of loads, you could name this ‘LoadingAnalysis’ and all relevant simulations will be saved here.
 
-Parameters_Master & Parameters_Var
-----------------------------------
+Parameters_Master
+-----------------
 
-These files are used to create *Parameters* file(s) which are essential to using VirtualLab. *Parameters* contain information such as the geometrical measurements and boundary conditions required to construct meshes and run simulations. Parameters_Master is the master file which contains all of the variables required and is sufficient without Parameters_Var. The Parameters_Var file is used in conjunction with Parameters_Master to create multiple parameter files, which enables running multiple simulations concurrently. If Parameters_Var is set to None a single parameter file is created (a copy of Parameters_Master). 
+This file contains all of the information required to use VirtualLab. Inside each are the python namespaces *Mesh* and *Sim*. *Mesh* defines the parameters required by *SALOME* to construct a mesh, such as geomtrical dimensions and mesh fineness. The file specified at *Mesh.File* is executed in *SALOME* using the attributes of *Mesh* to create an idealised geometry which is then meshed. The script *Mesh.File* must be in the directory *Scripts/$SIMULATION/Mesh*. *Sim* defines the parameters needed by *CodeAster* to perform a FE simulation. The file executed by *CodeAster* is specified at *Sim.AsterFile* and must be in *Scripts/$SIMULATION/Aster*. There is also the option of having *Sim.PreAsterFile* and/or *Sim.PostAsterFile* which are executed before and after the *CodeAster* part respectively for pre/post-processing needs. If used these are located in *PreAster* and *PostAster* sub-directories of *Scripts/$SIMULATION*
+
+Parameters_Var
+--------------
+
+This file is used in conjunction with *Parameters_Master* to enable the running of multiple simulations concurrently. If *Parameters_Var* is set to None a single simulation is run using the values defined in *Parameters_Master*, however if it is provided the values defined in this file will be used instead of those in *Parameters_Master*. For a clearer explanation of this please see the tutorials.
+
+The Parameters_Master and Parameters_Var files specified must be in the directory *Input/$SIMULATION/$PROJECT*. 
 
 Mode
 ----
 
-You will notice that when the VLSetup class is initialised a key-word argument ‘mode’ is passed – this dictates how much information is printed in the terminal. There options available are;
+You will notice that when the VLSetup class is initialised a key-word argument (kwarg) *mode* is provided. This dictates how much information is printed in the terminal during the running of VirtualLab. The options available are;
 
 * Interactive: Prints all output to the terminal
 
@@ -58,7 +65,7 @@ You will notice that when the VLSetup class is initialised a key-word argument �
 Scripts
 #######
 
-This directory contains all scripts necessary for setting up and running VirtualLab. The sub-directory *Common* contains the scripts necessary to setup the VirtualLab environment for any type of simulation. There are also sub-directories for each type of simulation, insde which are the relevant *SALOME* and *CodeAster* scripts used, along with additional simulation-specific data such as different laser pulse profiles for *LFA* simulations. 
+This directory contains all scripts necessary for setting up and running VirtualLab. The sub-directory *Common* contains the scripts necessary to setup the VirtualLab environment for any type of simulation. There are also sub-directories for each type of simulation, inside which are the relevant *SALOME* and *CodeAster* scripts used, along with additional simulation-specific data, such as different laser pulse profiles for the LFA simulations. 
 
 Materials
 #########
@@ -68,11 +75,11 @@ This directory contains the material properties which will be used for simulatio
 Input
 #####
 
-The Input directory contains the *Parameters_Master* and *Parameters_Var* files referenced previously and can be found in Input/$SIMULATION/$PROJECT. 
+As previously outlined the Input directory contains the *Parameters_Master* and *Parameters_Var* files referenced previously and can be found in *Input/$SIMULATION/$PROJECT*. 
 
 Output
 ######
 
-This directory will be created in the TLD to hold all of the data generated by VirtualLab. The meshes created can be found in Output/$SIMULATION/$PROJECT/Meshes, while the simulation results can be found in Output/$SIMULATION/$PROJECT/$STUDYNAME
+This directory will be created in the TLD to hold all of the data generated by VirtualLab. The meshes created can be found in *Output/$SIMULATION/$PROJECT/Meshes*, while the simulation results can be found in *Output/$SIMULATION/$PROJECT/$STUDYNAME*
 
 

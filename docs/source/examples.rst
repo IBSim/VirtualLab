@@ -1,6 +1,8 @@
 Tutorials
 =========
 
+Introductory text to tutorials
+
 Tensile Test (Mechanical FE)
 ****************************
 
@@ -94,9 +96,7 @@ You will have noticed that *Sim.AsterFile* for the LFA simulations so far has be
 You will notice that the CodeAster output looks different for the non-linear simulation compared with the linear simulation. This is due to the fact that the non-linear simulations require performing Newton iterations on each timestep, which is not required in the linear case. The default maximum number of Newton iterations is 10, however this can be changed by adding *Sim.MaxIter* to the *Parameters_Master* file.
 
 
-HIVE experiment (Electromagnetic induction heating) 
+HIVE experiment (Multi-Physics FE) 
 ***************************************************
-
-
 
 

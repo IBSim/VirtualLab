@@ -3,6 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. role:: bash(code)
+  :language: bash
+
 Welcome to VirtualLab's documentation!
 ======================================
 
@@ -11,6 +14,10 @@ Welcome to VirtualLab's documentation!
    :caption: Contents:
 
    intro
+   install
+   structure
+   virtual_exp
+   runsim
    examples
 
 Indices and tables

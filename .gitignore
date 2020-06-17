@@ -9,12 +9,10 @@
 !.gitignore
 !README.md
 !Run.py
-!Instructions.odt
 !VLconfig_DEFAULT.sh
 !SetupConfig.sh
-!CreateParamFile.py
 !requirements.txt
-
+!LICENSE
 
 # Whitelist these directories
 !docs/

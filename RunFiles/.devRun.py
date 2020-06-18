@@ -7,18 +7,17 @@ sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common.VirtualLab import VLSetup
 
 Simulation = 'Tensile'
-Project = 'Example'
-StudyName = 'Training'
-# Use Parameters_Master and Parameters_Var to create multiple parameter
-# files for simulations. To run a single study set Parameters_Var to None.
-Parameters_Master='TrainingParameters'
-Parameters_Var='Parametric_1'
-Mode='Interactive'
+Project = '.dev'
+StudyName = 'Testing'
+Parameters_Master='Input'
+Parameters_Var=None
+# Parameters_Var='Parametric_1'
+Mode = "I"
 
-VirtualLab = VLSetup(Simulation,Project,StudyName,Parameters_Master,Parameters_Var,Mode,port=None)
+VirtualLab = VLSetup(Simulation,Project,StudyName,Parameters_Master,Parameters_Var,Mode,port=2810)
 
 # Create directories and Parameter files for simulation
-VirtualLab.Create(RunMesh=True, RunSim=True)
+VirtualLab.Create(RunMesh=False, RunSim=True)
 
 # Creates meshes
 VirtualLab.Mesh(ShowMesh=False, MeshCheck=None)

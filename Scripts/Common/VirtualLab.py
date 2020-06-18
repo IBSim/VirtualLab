@@ -16,31 +16,23 @@ import VLconfig
 from importlib import import_module
 
 class VLSetup():
-	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, **kwargs):
+	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode, **kwargs):
 		'''
 		kwargs available:
 		port: Give the port number of an open Salome instance to connect to
-		mode: 3 options available:
-		     - Interactive: All outputs shown in terminal window(s)
-		     - Continuous: Output written to file throughout execution
-		     - Headless: Output written to file at the end of execution
 		'''
 		port = kwargs.get('port', None)
-		mode = kwargs.get('mode', 'Headless')
 
-		# If port is provided it assumes an open instance of salome
-		# exists on that port and will shell in to it.
-		# The second value in the list dictates whether or not to kill
-		# the salome instance at the end of the process.
+		# If port is provided it assumes an open instance of salome exists on that port
+		# and will shell in to it. The second value in the list dictates whether or not
+		# to kill the salome instance at the end of the process.
 		self.__port__ = [port, False]
 
 		# Set running mode
-		if mode in ('i', 'I', 'interactive', 'Interactive'): mode = 'Interactive'
-		elif mode in ('c', 'C', 'continuous', 'Continuous'): mode = 'Continuous'
-		elif mode in ('h', 'H', 'headless', 'Headless'): mode = 'Headless'
-		if mode in ('Interactive','Continuous','Headless'): self.mode = mode
-		else : self.Exit("kwarg 'mode' is not in 'Interactive','Continuous' or 'Headless'")
-
+		if Mode in ('i', 'I', 'interactive', 'Interactive'): self.mode = 'Interactive'
+		elif Mode in ('c', 'C', 'continuous', 'Continuous'): self.mode = 'Continuous'
+		elif Mode in ('h', 'H', 'headless', 'Headless'): self.mode = 'Headless'
+		else : self.Exit("'Mode' is not in 'Interactive','Continuous' or 'Headless'")
 
 		frame = inspect.stack()[1]
 		RunFile = os.path.realpath(frame[0].f_code.co_filename)
@@ -324,19 +316,19 @@ class VLSetup():
 
 				# Copy script to tmp folder and add in tmp file location
 				asterfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].AsterFile)
-				meshfile = "{}/{}.med".format(self.MESH_DIR,StudyDict['Parameters'].Mesh)
 				exportfile = "{}/Export".format(StudyDict['ASTER'])
 
 				# Create export file and write to file
 				exportstr = 'P actions make_etude\n' + \
 				'P mode batch\n' + \
 				'P version stable\n' + \
-				'P time_limit 9999\n' + \
+				'P time_limit 99999\n' + \
 				'P mpi_nbcpu {}\n'.format(mpi_nbcpu) + \
 				'P mpi_nbnoeud {}\n'.format(mpi_nbnoeud) + \
 				'P ncpus {}\n'.format(ncpus) + \
-				'P memory_limit {!s}.0\n'.format(1024*memory) +\
-				'F mmed {} D  20\n'.format(meshfile) + \
+				'P batch_memmax 20480\n' +\
+				'P memory_limit {!s}\n'.format(float(1024*memory)) +\
+				'F mmed {} D  20\n'.format(StudyDict["MeshFile"]) + \
 				'F comm {} D  1\n'.format(asterfile) + \
 				'F mess {}/AsterLog R  6\n'.format(StudyDict['ASTER']) + \
 				'R repe {} R  0\n'.format(StudyDict['ASTER'])

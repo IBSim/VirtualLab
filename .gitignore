@@ -29,9 +29,4 @@ Input/*/*
 !RunFiles/
 RunFiles/*
 !RunFiles/Run.py
-!RunFiles/Test_VL.py
-!RunFiles/Test_VL_Parametric.py
-
-
-
-
+!RunFiles/.devRun.py

@@ -1,36 +1,30 @@
 #!/usr/bin/env python3
 
 import sys
-import os
+from os.path import dirname, abspath
 sys.dont_write_bytecode=True
+sys.path.append(dirname(dirname(abspath(__file__))))
+from Scripts.Common.VirtualLab import VLSetup
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from Scripts.Common import VLSetup
-
-#try: from Scripts.Common import VLSetup
-#except ModuleNotFoundError: 
-#	sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-#	from Scripts.Common import VLSetup		
-
-Simulation = 'LFA'
-StudyDir = 'Example'
+Simulation = 'Tensile'
+Project = 'Example'
 StudyName = 'Training'
-Input = {'Parameters' : 'TrainingParameters', 'Parametric':'Parametric_1'}
-Input = {'Parameters' : 'TrainingParameters'}
+# Use Parameters_Master and Parameters_Var to create multiple parameter
+# files for simulations. To run a single study set Parameters_Var to None.
+Parameters_Master='TrainingParameters'
+Parameters_Var='Parametric_1'
+Mode='Interactive'
 
-# kwarg 'mode' has 3 options - interactive, continuous or headless (default)
-VirtualLab = VLSetup(Simulation, StudyDir, StudyName, Input, mode = "interactive")
+VirtualLab = VLSetup(Simulation,Project,StudyName,Parameters_Master,Parameters_Var,Mode,port=None)
 
-# Create temporary directories and files
-VirtualLab.Create(RunSim=True, RunMesh=True)
+# Create directories and Parameter files for simulation
+VirtualLab.Create(RunMesh=True, RunSim=True)
 
 # Creates meshes
-VirtualLab.Mesh()
+VirtualLab.Mesh(ShowMesh=False, MeshCheck=None)
 
 # Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
-VirtualLab.Aster(RunAster=True)
-VirtualLab.PostAster(ShowRes=False)
+VirtualLab.Sim(RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False, mpi_nbcpu=1, mpi_nbnoeud=1, ncpus=1, memory=2)
 
 # Remove tmp folders
 VirtualLab.Cleanup()
-

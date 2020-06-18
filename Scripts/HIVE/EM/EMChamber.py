@@ -18,7 +18,7 @@ else :
 class GetMesh():
 	def __init__(self, Mesh):
 
-		self.Geom = Mesh.GetShape()		
+		self.Geom = Mesh.GetShape()
 
 		self.MainMesh = {'Ix':geompy.SubShapeAllIDs(self.Geom, geompy.ShapeType["SOLID"])}
 		MeshInfo = Mesh.GetHypothesisList(self.Geom)
@@ -51,7 +51,7 @@ class GetMesh():
 
 		self.Groups = {'NODE':{},'EDGE':{},'FACE':{}, 'VOLUME':{}}
 		for grp in Mesh.GetGroups():
-			GrpType = str(grp.GetType())			
+			GrpType = str(grp.GetType())
 			shape = grp.GetShape()
 
 			Ix = self.MainMesh['Ix'] if shape.IsMainShape() else shape.GetSubShapeIndices()
@@ -89,14 +89,15 @@ def CreateEMMesh(objMesh,Parameter):
 	Rotate2 = geompy.GetAngleRadians(CoilNorm, OZ)
 	Sample = geompy.MakeRotation(Sample, OY, -Rotate2)
 
-	
-	
+
+
 
 
 
 	### Importing coil design and moving to the desired location
+	CoilDict = Parameter.Coil
 	from EM import CoilDesigns
-	CoilFnc = getattr(CoilDesigns, Parameter.CoilType)
+	CoilFnc = getattr(CoilDesigns, CoilDict['Type'])
 	CoilMesh = GetMesh(CoilFnc())
 
 	cCoilIn = geompy.MakeCDG(geompy.GetSubShape(CoilMesh.Geom, CoilMesh.Groups['FACE']['CoilIn']))
@@ -110,7 +111,7 @@ def CreateEMMesh(objMesh,Parameter):
 	SampleZmax = geompy.BoundingBox(Sample)[5]
 	CoilZmin = geompy.BoundingBox(geompy.MakeBoundingBox(CoilMesh.Geom,True))[4]
 	CoilTight = [0.090915, 0, SampleZmax + (CrdCoilMid[2] - CoilZmin)]
-	CoilTerminal = np.array(CoilTight) + np.array(Parameter.CoilDisp)
+	CoilTerminal = np.array(CoilTight) + np.array(CoilDict['Displacement'])
 
 	Translation = np.array(CoilTerminal) - CrdCoilMid
 	Coil = geompy.MakeTranslation(CoilMesh.Geom, Translation[0], Translation[1], Translation[2])
@@ -122,7 +123,7 @@ def CreateEMMesh(objMesh,Parameter):
 	geompy.addToStudy(Sample,'newsample')
 	geompy.addToStudy(Coil,'newcoil')
 
-	
+
 
 	### Creating Chamber consisting of the sample, coil and vacuum
 	Compound = geompy.MakeCompound([Sample, Coil])
@@ -142,7 +143,7 @@ def CreateEMMesh(objMesh,Parameter):
 
 	### Meshing part ###
 	### Start by meshing the whole domain coarsly, and then add sub meshes for the sample and coil
-	### This is in essence the sub mesh for the vacuum 
+	### This is in essence the sub mesh for the vacuum
 
 	### Main Mesh
 	# Mesh Parameters
@@ -185,7 +186,7 @@ def CreateEMMesh(objMesh,Parameter):
 
 	Ix = SalomeFunc.ObjIndex(Chamber, Coil, CoilMesh.MainMesh['Ix'], Strict=False)[0]
 	Geom = geompy.GetSubShape(Chamber, Ix)
-	
+
 	Param1D = CoilMesh.MainMesh.get('Regular_1D', None)
 	if Param1D:
 		Coil1D = ERMES.Segment(geom=Geom)
@@ -200,8 +201,8 @@ def CreateEMMesh(objMesh,Parameter):
 	if Param3D:
 		Coil3D = ERMES.Tetrahedron(geom=Geom)
 		ERMES.AddHypothesis(Param3D, geom=Geom)
-		
-	
+
+
 	CoilSub = Coil1D.GetSubMesh()
 	CoilOrder.append(CoilSub)
 	smesh.SetName(CoilSub, 'Coil')
@@ -312,7 +313,7 @@ def CreateEMMesh(objMesh,Parameter):
 	print('###############################################\n')
 
 	return SampleMesh, ERMESMesh, locals()
-	
+
 
 def testgeom():
 	class TestDimensions():
@@ -339,7 +340,7 @@ def testgeom():
 			self.Length3D = 0.005
 			self.CircDisc = 20
 			self.Sub2_1D = 0.003
-		
+
 			self.CoilType = 'HIVE'
 			self.CoilDisp = [0, 0.005, 0.005]
 
@@ -361,9 +362,9 @@ def testgeom():
 	geompy.addToStudy( OX, 'OX' )
 	geompy.addToStudy( OY, 'OY' )
 	geompy.addToStudy( OZ, 'OZ' )
-	
+
 	## Creating the sample
-	# Pipe 
+	# Pipe
 	InRad = Parameter.PipeDiam/2
 	OutRad = Parameter.PipeDiam/2 + Parameter.PipeThick
 
@@ -426,7 +427,7 @@ def testgeom():
 	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile,[31])], True)
 	NewIx = SalomeFunc.ObjIndex(Sample, CutBlkTl, geompy.SubShapeAllIDs(CutBlkTl, geompy.ShapeType["FACE"]))[0]
 	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0] + NewIx
-	
+
 	Ix = TileExtIx + PipeExtIx + BlockExtIx
 	GrpSampleSurface = SalomeFunc.AddGroup(Sample, 'SampleSurface', Ix)
 
@@ -550,7 +551,3 @@ def testgeom():
 if __name__ == "__main__":
 	sys.path.insert(0, '/home/rhydian/Documents/Scripts/Simulation/virtuallab/Scripts/HIVE')
 	testgeom()
-
-
-
-

@@ -38,9 +38,9 @@ def Create(**kwargs):
 	geompy.addToStudy( OX, 'OX' )
 	geompy.addToStudy( OY, 'OY' )
 	geompy.addToStudy( OZ, 'OZ' )
-	
+
 	## Creating the sample
-	# Pipe 
+	# Pipe
 	InRad = Parameter.PipeDiam/2
 	OutRad = Parameter.PipeDiam/2 + Parameter.PipeThick
 
@@ -107,7 +107,7 @@ def Create(**kwargs):
 	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile,[31])], True)
 	NewIx = SalomeFunc.ObjIndex(Sample, CutBlkTl, geompy.SubShapeAllIDs(CutBlkTl, geompy.ShapeType["FACE"]))[0]
 	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0] + NewIx
-	
+
 	Ix = TileExtIx + PipeExtIx + BlockExtIx
 	GrpSampleSurface = SalomeFunc.AddGroup(Sample, 'SampleSurface', Ix)
 
@@ -225,10 +225,8 @@ def Create(**kwargs):
 	smesh.SetName(NETGEN_2D_Parameters_2, 'NETGEN 2D Parameters_2')
 	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
 
-	if Parameter.CoilType==None:
-		Mesh_1.Compute()
-		SalomeFunc.MeshExport(Mesh_1,MeshFile)
-	else :
+	MeshERMES = getattr(Parameter,'ERMES',False)
+	if MeshERMES :
 		## This next part takes this mesh and adds in a coil and vacuum around it and then runs the  code.
 		print('Using sample mesh information to create mesh for ERMES')
 		from EM.EMChamber import CreateEMMesh
@@ -237,7 +235,10 @@ def Create(**kwargs):
 		smesh.SetName(ERMESMesh, 'xERMES')
 		if MeshFile:
 			SalomeFunc.MeshExport(SampleMesh,MeshFile)
-			SalomeFunc.MeshExport(ERMESMesh,MeshFile, Overwrite = 0)	
+			SalomeFunc.MeshExport(ERMESMesh,MeshFile, Overwrite = 0)
+	else:
+		Mesh_1.Compute()
+		SalomeFunc.MeshExport(Mesh_1,MeshFile)
 
 	globals().update(locals()) ### This adds all variables created in this function
 
@@ -265,7 +266,7 @@ class TestDimensions():
 		self.Length3D = 0.005
 		self.CircDisc = 20
 		self.SubTile = 0.003
-	
+
 		self.CoilType = 'Test'
 		self.CoilDisp = [0, 0, 0.005]
 
@@ -288,5 +289,3 @@ if __name__ == '__main__':
 		sys.path.insert(0, os.path.dirname(ParameterFile))
 		Parameters = __import__(os.path.splitext(os.path.basename(ParameterFile))[0])
 		Create(Parameter = Parameters,MeshFile = None)
-
-

@@ -2,14 +2,14 @@ from types import SimpleNamespace as Namespace
 Mesh = Namespace()
 Sim = Namespace()
 
-EMLoad = 'ERMES'
+EMLoad = 'Uniform'
 
 ##########################
 ######## Meshing #########
 ##########################
 
 Mesh.Name = 'Testmesh'
-Mesh.File = 'AMAZE' # This file must be in Scripts/$SIMULATION/PreProc
+Mesh.File = 'HIVE_Convergence' # This file must be in Scripts/$SIMULATION/PreProc
 # Geometrical Dimensions
 Mesh.BlockWidth = 0.03 #x
 Mesh.BlockLength = 0.05 #y

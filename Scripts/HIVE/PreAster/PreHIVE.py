@@ -542,12 +542,33 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 
 	return Watts, WattsPV, Elements
 
-def ERMES(Info, StudyDict):
-	currdir = os.path.dirname(os.path.realpath(__file__))
-	ERMESlist = []
+def CreateGroups():
+	# Salome script
+	import numpy as np
+	import  SMESH, SALOMEDS
+	from salome.smesh import smeshBuilder
+	smesh = smeshBuilder.New()
+	import PathVL
 
+	(Meshes, status) = smesh.CreateMeshesFromMED(PathVL.MeshFile)
+	EMdata = np.load("{}/ERMES.npy".format(PathVL.TMP_CALC_DIR))
+	Sample = Meshes[0]
+	Elements = list(map(int,EMdata[:,0]))
+	grp = Sample.CreateEmptyGroup(SMESH.VOLUME, "EMLoadElements")
+	grp.Add(Elements)
+	for El in Elements:
+		grp = Sample.CreateEmptyGroup(SMESH.VOLUME, "M{}".format(El))
+		grp.Add([El])
+
+
+
+
+	tmpMesh = "{}/Mesh.med".format(PathVL.TMP_CALC_DIR)
+	Sample.ExportMED( tmpMesh, auto_groups=0, minor=40, overwrite=1,meshPart=None,autoDimension=1)
+
+
+def ERMES(Info, StudyDict):
 	RunERMES = getattr(StudyDict['Parameters'], 'RunERMES', True)
-	if RunERMES == None: return
 
 	ERMESfile = '{}/ERMES.rmed'.format(StudyDict['PREASTER'])
 	# Create a new set of ERMES results
@@ -579,8 +600,15 @@ def ERMES(Info, StudyDict):
 	if getattr(StudyDict['Parameters'],'EMScale', False):
 		EM_Val = EM_Val*(CumSum[-1]/CumSum[pos])
 
-	np.save('{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR']), np.vstack((EM_Els, EM_Val)).T)
+	EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
+	np.save(EMLoadFile, np.vstack((EM_Els, EM_Val)).T)
+
+	# ArgDict = {'Module':os.path.abspath(__file__),'Function':'CreateGroups'}
+	# Info.SalomeRun("{}/ImportMod.py".format(Info.COM_SCRIPTS), ArgDict=ArgDict, AddPath=StudyDict["TMP_CALC_DIR"])
+	# StudyDict["MeshFile"] = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
+
 
 def main(Info, StudyDict):
 	GetHTC(Info, StudyDict)
-	ERMES(Info, StudyDict)
+	if StudyDict['Parameters'].EMLoad == 'ERMES':
+		ERMES(Info, StudyDict)

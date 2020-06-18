@@ -9,25 +9,25 @@ import AsterFunc
 import Parameters
 import PathVL
 
-def TempChange(ResName):
-	Temp_1 = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(ResName.LIST_VARI_ACCES()['NUME_ORDRE'])[-1], OPERATION='EXTR', RESULTAT=ResName, TYPE_CHAM='NOEU_TEMP_R')
-	NTemp_1 = np.array(Temp_1.EXTR_COMP().valeurs)
-	Temp_2 = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(ResName.LIST_VARI_ACCES()['NUME_ORDRE'])[-2], OPERATION='EXTR', RESULTAT=ResName, TYPE_CHAM='NOEU_TEMP_R')
-	NTemp_2 = np.array(Temp_2.EXTR_COMP().valeurs)
-	DETRUIRE(CONCEPT=_F(NOM=(Temp_1,Temp_2)))
-	change = NTemp_1 = NTemp_2
-	return change, NTemp_1
-
-def EMvals(Nodes,Temperatures,EMTemps,EMdat):
-	lis1 = []
-	for i,node in enumerate(Nodes):
-		if type(Temperatures) in (float,int):
-			lis1.append(np.interp(Temperatures,EMTemps,EMdat[node,:]))
-		else:
-			lis1.append(np.interp(Temperatures[i],EMTemps,EMdat[node,:]))
-
-	lis1 = np.array(lis1)
-	return lis1
+# def TempChange(ResName):
+# 	Temp_1 = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(ResName.LIST_VARI_ACCES()['NUME_ORDRE'])[-1], OPERATION='EXTR', RESULTAT=ResName, TYPE_CHAM='NOEU_TEMP_R')
+# 	NTemp_1 = np.array(Temp_1.EXTR_COMP().valeurs)
+# 	Temp_2 = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(ResName.LIST_VARI_ACCES()['NUME_ORDRE'])[-2], OPERATION='EXTR', RESULTAT=ResName, TYPE_CHAM='NOEU_TEMP_R')
+# 	NTemp_2 = np.array(Temp_2.EXTR_COMP().valeurs)
+# 	DETRUIRE(CONCEPT=_F(NOM=(Temp_1,Temp_2)))
+# 	change = NTemp_1 = NTemp_2
+# 	return change, NTemp_1
+#
+# def EMvals(Nodes,Temperatures,EMTemps,EMdat):
+# 	lis1 = []
+# 	for i,node in enumerate(Nodes):
+# 		if type(Temperatures) in (float,int):
+# 			lis1.append(np.interp(Temperatures,EMTemps,EMdat[node,:]))
+# 		else:
+# 			lis1.append(np.interp(Temperatures[i],EMTemps,EMdat[node,:]))
+#
+# 	lis1 = np.array(lis1)
+# 	return lis1
 
 
 DEBUT(PAR_LOT = 'NON',LANG='EN')
@@ -76,36 +76,29 @@ Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TileMat, GROUP_MA='Tile'),_F(MATER=PipeMa
 	                MAILLAGE=mesh)
 
 ##### Create BCs #####
-### BC for coil heating
-mesht = partition.MAIL_PY()
-mesht.FromAster(mesh)
+if Parameters.EMLoad == 'Uniform':
+	## Uniform FLUX_NLUniFlux = DEFI_CONSTANTE(VALE=1e5)
+	EMI = AFFE_CHAR_THER(FLUX_REP=_F(FLUN=Parameters.Flux, GROUP_MA='CoilFace'),MODELE=Thermod)
 
-ERMES = np.load('{}/ERMES.npy'.format(PathVL.TMP_CALC_DIR))
-Els, JouleHeat = ERMES[:,0],ERMES[:,1]
-NbEls = Els.shape[0]
+elif Parameters.EMLoad == 'ERMES':
+	### BC for coil heating
+	mesht = partition.MAIL_PY()
+	mesht.FromAster(mesh)
 
-ls = mesht.gma.get('Sample')
+	ERMES = np.load('{}/ERMES.npy'.format(PathVL.TMP_CALC_DIR))
+	Els, JouleHeat = ERMES[:,0],ERMES[:,1]
+	NbEls = Els.shape[0]
 
-st = time.time()
+	ls = mesht.gma.get('Sample')
+	ElemIx = np.searchsorted(ls,Els-1)
+	meshlist, Load_EM, = [], []
+	for i, (JH, Ix) in enumerate(zip(JouleHeat,ElemIx)):
+		name = 'M{}'.format(i)
+		meshlist.append(_F(GROUP_MA='Sample', NOM=name, NUME_INIT=Ix+1, NUME_FIN=Ix+1))
+		Load_EM.append((_F(GROUP_MA=name,SOUR=JH)))
 
-ElemIx = np.searchsorted(ls,Els-1)
-meshlist, Load_EM, ld = [], [], [None]*NbEls
-
-for i, (JH, Ix) in enumerate(zip(JouleHeat,ElemIx)):
-	name = 'M{}'.format(i)
-	meshlist.append(_F(GROUP_MA='Sample', NOM=name, NUME_INIT=Ix+1, NUME_FIN=Ix+1))
-	ld[i] = DEFI_CONSTANTE(VALE=JH)
-	Load_EM.append((_F(GROUP_MA=(name),SOUR=ld[i])))
-
-print(time.time()-st)
-
-st = time.time()
-DEFI_GROUP(reuse=mesh,MAILLAGE=mesh,CREA_GROUP_MA=meshlist)
-print(time.time()-st)
-
-st = time.time()
-EMI = AFFE_CHAR_THER_F(SOURCE = Load_EM, MODELE=Thermod)
-print(time.time()-st)
+	DEFI_GROUP(reuse=mesh,MAILLAGE=mesh,CREA_GROUP_MA=meshlist)
+	EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
 
 ### BC for Pipe - Import Heat transfer coefficient and apply to pipe surface
 PipeHTCdat = np.fromfile('{}/HTC.dat'.format(PathVL.TMP_CALC_DIR),dtype=float,count=-1,sep=" ")
@@ -134,11 +127,9 @@ timearr, savearr = AsterFunc.Timesteps(Parameters.dt)
 Timestp = DEFI_LIST_REEL(VALE=timearr)
 Savestp = DEFI_LIST_REEL(VALE=savearr)
 
-
 ### Temperature distribution to start simulation
 field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
 resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
-
 
 ## Start  thermal analysis ##
 Theta = getattr(Parameters,'Theta',0.5)

@@ -39,9 +39,9 @@ VL Experiments
 
 There are also a sub-directories for each simulation type for various physical laboratory experiments (e.g. Tensile, LFA and HIVE).
 
-Inside each of these sub-directories are the relevant SALOME and Code_Aster files to run that specific virtual experiment. Each has a PreProc, Aster and PostProc directory containing the relevant scripts.
+Inside each of these sub-directories are the relevant files required to run that specific virtual experiment. In the Mesh sub-directory you will find **SALOME** python scripts which create the mesh of the testpiece,  while the Aster sub-directory contains **Code_Aster** command scripts which outline the steps followed to setup the FE simulation, such as assigning materials properties to the testpiece.
 
-These directories also contain other simulation-specific sub-directories, e.g. ‘Laser’ for LFA which contains different laser pulse profiles measured experimentally.
+These directories may also contain PreAster and PostAster sub-directories containing scripts which provide pre and post-processing capabilities, along with other simulation-specific sub-directories, e.g. ‘Laser’ for LFA which contains different laser pulse profiles measured experimentally.
 
 Materials
 *********
@@ -89,4 +89,8 @@ The *'Output'* directory has a similar sub-directory structure to *'Input'*. Tha
 Projects can contain more than one set of simulation results, called 'studies'. The specific output for each of these is stored in its own sub-directory. ::
 
   Input/$SIMULATION/$PROJECT/$STUDYNAME
+
+All meshes used for a specific Project can be found in the 'Meshes' sub-directory. ::
+
+  Input/$SIMULATION/$PROJECT/Meshes
 

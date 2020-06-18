@@ -1,7 +1,7 @@
 ##########################
 ##### Pre-processing #####
 ##########################
-'''The mesh which will be used for the study should be input at 'MeshName', however if 'CreateMesh' 
+'''The mesh which will be used for the study should be input at 'MeshName', however if 'CreateMesh'
 is set to Yes then this name will be assigned to the mesh created using the dimensions defined below'''
 
 CreateMesh = 'N'
@@ -40,7 +40,7 @@ Current = 10 #Current in the coil
 NProc = 2
 
 ## HTC between cooland and pipe
-CreateHTC = 'N' 
+CreateHTC = 'N'
 PipeGeom = 'smooth tube'
 FluidT = 20 #Celcius
 FluidP = 1 #MPa
@@ -52,7 +52,7 @@ FluidV = 10 #m/s
 ############################
 RunStudy = 'Y'
 
-CommFile = 'Amaze_Adapt'
+AsterFile = 'Amaze_Adapt'
 Model = '3D'
 Solver = 'MUMPS'
 
@@ -77,6 +77,3 @@ CheckEvery = 3 #If this is smaller than ResStore then ResStore will be used
 ############################
 RunPostProc = 'n'
 ParaVisFile = 'ParaVis'
-
-
-

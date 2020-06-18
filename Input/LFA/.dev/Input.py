@@ -31,7 +31,7 @@ Sim.Name = 'Single'
 #############
 ### Aster ###
 #############
-Sim.CommFile = 'Disc_Lin'
+Sim.AsterFile = 'Disc_Lin'
 Sim.Mesh = 'NoVoid'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
@@ -55,6 +55,6 @@ Sim.Theta = 0.5
 #############
 # PostAster #
 #############
-Sim.PostCalcFile = 'DiscPost'
+Sim.PostAsterFile = 'DiscPost'
 Sim.Rvalues = [0.1, 0.5, 1]
 Sim.CaptureTime = 0.0108

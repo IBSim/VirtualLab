@@ -181,13 +181,14 @@ class VLSetup():
 				# Define simulation related directories
 				StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, SimName)
 				StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.STUDY_DIR, SimName)
-				StudyDict['PREASTER'] = "{}/PreAster".format(CALC_DIR)
-				StudyDict['ASTER'] = "{}/Aster".format(CALC_DIR)
-				StudyDict['POSTASTER'] = "{}/PostAster".format(CALC_DIR)
-
 				if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
 				with open("{}/__init__.py".format(TMP_CALC_DIR),'w') as f: pass
 				if not os.path.isdir(CALC_DIR): os.makedirs(CALC_DIR)
+
+				StudyDict['PREASTER'] = "{}/PreAster".format(CALC_DIR)
+				StudyDict['ASTER'] = "{}/Aster".format(CALC_DIR)
+				StudyDict['POSTASTER'] = "{}/PostAster".format(CALC_DIR)
+				StudyDict['MeshFile'] = "{}/{}.med".format(self.MESH_DIR, ParaDict['Mesh'])
 
 				#Merge together Main and Study dict and write to file for salome/CodeAster to import
 				MergeDict = {**MainDict, **StudyDict}
@@ -306,7 +307,7 @@ class VLSetup():
 				PreAster.main(self, StudyDict)
 				print("Pre-Aster for '{}' completed".format(Name))
 
-		if RunAster and hasattr(SimMaster,'CommFile'):
+		if RunAster and hasattr(SimMaster,'AsterFile'):
 			mpi_nbcpu = kwargs.get('mpi_nbcpu',1)
 			mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
 			ncpus = kwargs.get('ncpus',1)
@@ -322,7 +323,7 @@ class VLSetup():
 				PreCond = ''.join(PreCond)
 
 				# Copy script to tmp folder and add in tmp file location
-				commfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].CommFile)
+				asterfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].AsterFile)
 				meshfile = "{}/{}.med".format(self.MESH_DIR,StudyDict['Parameters'].Mesh)
 				exportfile = "{}/Export".format(StudyDict['ASTER'])
 
@@ -336,7 +337,7 @@ class VLSetup():
 				'P ncpus {}\n'.format(ncpus) + \
 				'P memory_limit {!s}.0\n'.format(1024*memory) +\
 				'F mmed {} D  20\n'.format(meshfile) + \
-				'F comm {} D  1\n'.format(commfile) + \
+				'F comm {} D  1\n'.format(asterfile) + \
 				'F mess {}/AsterLog R  6\n'.format(StudyDict['ASTER']) + \
 				'R repe {} R  0\n'.format(StudyDict['ASTER'])
 				with open(exportfile,'w+') as e:
@@ -466,9 +467,15 @@ class VLSetup():
 
 		if Stage == 'Simulation':
 			SimDict = kwargs.get('SimDict')
-			# Check that the CommFile exists
-			if not os.path.isfile('{}/{}.comm'.format(self.SIM_ASTER,SimDict['CommFile'])):
-				self.Exit("CommFile '{}' not in directory '{}'".format(SimDict['CommFile'], self.SIM_ASTER))
+			# Check that the scripts provided exist
+			if 'PreAsterFile' in SimDict:
+				if not os.path.isfile('{}/{}.py'.format(self.SIM_PREASTER,SimDict['PreAsterFile'])):
+					self.Exit("PreAsterFile '{}' not in directory '{}'".format(SimDict['PreAsterFile'], self.SIM_PREASTER))
+			if not os.path.isfile('{}/{}.comm'.format(self.SIM_ASTER,SimDict['AsterFile'])):
+				self.Exit("AsterFile '{}' not in directory '{}'".format(SimDict['AsterFile'], self.SIM_ASTER))
+			if 'PostAsterFile' in SimDict:
+				if not os.path.isfile('{}/{}.py'.format(self.SIM_POSTASTER,SimDict['PostAsterFile'])):
+					self.Exit("PostAsterFile '{}' not in directory '{}'".format(SimDict['PostAsterFile'], self.SIM_POSTASTER))
 
 			# Check either the mesh is in the mesh directory or that it is in MeshList ready to be created
 			if SimDict['Mesh'] in getattr(self, 'MeshList', []): pass

@@ -28,7 +28,7 @@ Mesh.HoleDisc = 30 # Number of segments for hole circumference (for sub-mesh)
 Sim = Namespace()
 Sim.Name = 'Single'
 #############
-## Pre-Sim ##
+# PreAster ##
 #############
 
 #############
@@ -39,7 +39,7 @@ A tensile test can be conducted either by constant force or constant displacemen
 The key(s) in the 'Load' dictionary will dictate the type of loading used.
 Force is measured in N, Displacement in M.
 '''
-Sim.CommFile = 'Tensile' # The CodeAster command file can be found in Scripts/$SIMULATION/Aster
+Sim.AsterFile = 'Tensile' # The CodeAster command file can be found in Scripts/$SIMULATION/Aster
 Sim.Mesh = 'Notch1' # The mesh used in the simulation
 Sim.Load = {'Force':1000000, 'Displacement':0.01}
 Sim.ResName = ['ConstForce', 'ConstDisp'] # Name of results file(s) which will be output by CodeAster
@@ -47,8 +47,5 @@ Sim.ResName = ['ConstForce', 'ConstDisp'] # Name of results file(s) which will b
 Sim.Materials = 'Copper'
 
 #############
-## Post-Sim #
+# PostAster #
 #############
-
-
-

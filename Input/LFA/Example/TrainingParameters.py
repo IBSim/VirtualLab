@@ -25,13 +25,13 @@ Mesh.HoleDisc = 30 # Number of segments for void circumference (unnecessary if n
 Sim = Namespace()
 Sim.Name = 'Single'
 #############
-## Pre-Sim ##
+## PreAster #
 #############
 
 #############
 ### Aster ###
 #############
-Sim.CommFile = 'Disc_Lin'
+Sim.AsterFile = 'Disc_Lin'
 Sim.Mesh = 'NoVoid'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
@@ -54,8 +54,8 @@ Sim.dt = [(0.00002,50,1), (0.0005,100,2)]
 Sim.Theta = 0.5
 
 #############
-## Post-Sim #
+# PostAster #
 #############
-Sim.PostCalcFile = 'DiscPost'
+Sim.PostAsterFile = 'DiscPost'
 Sim.Rvalues = [0.1, 0.5]
 Sim.CaptureTime = 0.01

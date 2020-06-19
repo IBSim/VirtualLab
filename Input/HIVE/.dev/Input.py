@@ -2,7 +2,7 @@ from types import SimpleNamespace as Namespace
 Mesh = Namespace()
 Sim = Namespace()
 
-EMLoad = 'Uniform'
+EMLoad = 'ERMES'
 
 ##########################
 ######## Meshing #########
@@ -51,7 +51,7 @@ Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 if EMLoad == 'ERMES':
     Sim.RunERMES = False
     Sim.ERMES = {'Frequency':1e4,'Current':1000,'NbProc':2}
-    Sim.EMThreshold = 0.9
+    Sim.EMThreshold = 1
 
 #############
 ### Aster ###

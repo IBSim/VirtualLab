@@ -52,7 +52,7 @@ Class initiation :
     Mode : '$TYPE'
         This dictates how much information is printed in the terminal during the
         running of VirtualLab. Available types are; 'Interactive','Continuous','Headless'.
-        For ease it's possible to prove only the first letter ('I','C','H').
+        'I'/'C'/'H' may be used in place of the full option names
         'Intercative' - Prints all output to the terminal.
         'Continuous' - Writes the output to a file as it is generated.
         'Headless' - Writes output to file at the end of the process.
@@ -113,7 +113,7 @@ VirtualLab.Sim() :
         Default is 1.
     memory : int (optional)
         Number of GBs of memory allocated to Code_Aster for simulations.
-
+        
     ## MPI parallelism ###
     # MPI doesn't come as standard with Code_Aster and needs to be compiled
     especially. If this is compiled this can be used with solvers 'MUMPS' and

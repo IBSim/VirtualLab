@@ -326,7 +326,6 @@ class VLSetup():
 				'P mpi_nbcpu {}\n'.format(mpi_nbcpu) + \
 				'P mpi_nbnoeud {}\n'.format(mpi_nbnoeud) + \
 				'P ncpus {}\n'.format(ncpus) + \
-				'P batch_memmax 20480\n' +\
 				'P memory_limit {!s}\n'.format(float(1024*memory)) +\
 				'F mmed {} D  20\n'.format(StudyDict["MeshFile"]) + \
 				'F comm {} D  1\n'.format(asterfile) + \

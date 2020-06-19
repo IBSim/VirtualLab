@@ -31,7 +31,9 @@ def EMvals(Nodes,Temperatures,EMTemps,EMdat):
 DEBUT(PAR_LOT = 'NON',LANG='EN')
 
 ##### Read in the mesh and define the model #####
+st = time.time()
 mesh = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
+meshin = time.time()-st
 
 Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model),
 	                      PHENOMENE='THERMIQUE',
@@ -79,28 +81,42 @@ if Parameters.EMLoad == 'Uniform':
 	EMI = AFFE_CHAR_THER(FLUX_REP=_F(FLUN=Parameters.Flux, GROUP_MA='CoilFace'),MODELE=Thermod)
 elif Parameters.EMLoad == 'ERMES':
 	### BC for coil heating
-	mesht = partition.MAIL_PY()
-	mesht.FromAster(mesh)
-
 	ERMES = np.load('{}/ERMES.npy'.format(PathVL.TMP_CALC_DIR))
 	Els, JouleHeat = ERMES[:,0],ERMES[:,1]
-	NbEls = Els.shape[0]
 
+	## Linear
+	## Create groups in Aster
+	mesht = partition.MAIL_PY()
+	mesht.FromAster(mesh)
+	st = time.time()
 	ls = mesht.gma.get('Sample')
-	st = time.time()
 	ElemIx = np.searchsorted(ls,Els-1)
+
 	meshlist, Load_EM = [], []
-	# Linear
-	st = time.time()
 	for i, (JH, Ix) in enumerate(zip(JouleHeat,ElemIx)):
 		name = 'M{}'.format(i)
 		meshlist.append(_F(GROUP_MA='Sample', NOM=name, NUME_INIT=Ix+1, NUME_FIN=Ix+1))
 		Load_EM.append((_F(GROUP_MA=name,SOUR=JH)))
+
+	st = time.time()
+	DEFI_GROUP(reuse=mesh,MAILLAGE=mesh,CREA_GROUP_MA=meshlist)
+	create = time.time()-st
+	print("Create:{}, ReadIn:{}".format(create,meshin))
+
+	if False:
+		# Groups created PreAster - substantial reading in overheads
+		Load_EM = []
+		for El, JH in zip(Els,JouleHeat):
+			Load_EM.append((_F(GROUP_MA="M{}".format(int(El)),SOUR=JH)))
+		print("ReadIn:{}".format(meshin))
+
+	st = time.time()
+	EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod) # Linear
 	print(time.time()-st)
 
 	# Non-linear
 	# st = time.time()
-	# ld = [None]*NbEls
+	# ld = [None]*Els.shape[0
 	# for i, (JH, Ix) in enumerate(zip(JouleHeat,ElemIx)):
 	# 	name = 'M{}'.format(i)
 	# 	meshlist.append(_F(GROUP_MA='Sample', NOM=name, NUME_INIT=Ix+1, NUME_FIN=Ix+1))
@@ -108,15 +124,12 @@ elif Parameters.EMLoad == 'ERMES':
 	# 	ld[i] = DEFI_CONSTANTE(VALE=JH)
 	# 	Load_EM.append((_F(GROUP_MA=name,SOUR=ld[i])))
 	# print(time.time()-st)
-
-	st = time.time()
-	DEFI_GROUP(reuse=mesh,MAILLAGE=mesh,CREA_GROUP_MA=meshlist)
-	print(time.time()-st)
-
-	st = time.time()
-	EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod) # Linear
+	# st = time.time()
+	# DEFI_GROUP(reuse=mesh,MAILLAGE=mesh,CREA_GROUP_MA=meshlist)
+	# print(time.time()-st)
+	# st = time.time()
 	# EMI = AFFE_CHAR_THER_F(SOURCE = Load_EM, MODELE=Thermod) # Non-linear
-	print(time.time()-st)
+	# print(time.time()-st)
 
 
 

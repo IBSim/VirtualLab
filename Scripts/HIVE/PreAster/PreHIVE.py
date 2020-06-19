@@ -542,31 +542,6 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 
 	return Watts, WattsPV, Elements
 
-def CreateGroups():
-	# Salome script
-	import numpy as np
-	import  SMESH, SALOMEDS
-	from salome.smesh import smeshBuilder
-	smesh = smeshBuilder.New()
-	import PathVL
-
-	(Meshes, status) = smesh.CreateMeshesFromMED(PathVL.MeshFile)
-	EMdata = np.load("{}/ERMES.npy".format(PathVL.TMP_CALC_DIR))
-	Sample = Meshes[0]
-	Elements = list(map(int,EMdata[:,0]))
-	grp = Sample.CreateEmptyGroup(SMESH.VOLUME, "EMLoadElements")
-	grp.Add(Elements)
-	for El in Elements:
-		grp = Sample.CreateEmptyGroup(SMESH.VOLUME, "M{}".format(El))
-		grp.Add([El])
-
-
-
-
-	tmpMesh = "{}/Mesh.med".format(PathVL.TMP_CALC_DIR)
-	Sample.ExportMED( tmpMesh, auto_groups=0, minor=40, overwrite=1,meshPart=None,autoDimension=1)
-
-
 def ERMES(Info, StudyDict):
 	RunERMES = getattr(StudyDict['Parameters'], 'RunERMES', True)
 
@@ -603,9 +578,14 @@ def ERMES(Info, StudyDict):
 	EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
 	np.save(EMLoadFile, np.vstack((EM_Els, EM_Val)).T)
 
-	# ArgDict = {'Module':os.path.abspath(__file__),'Function':'CreateGroups'}
-	# Info.SalomeRun("{}/ImportMod.py".format(Info.COM_SCRIPTS), ArgDict=ArgDict, AddPath=StudyDict["TMP_CALC_DIR"])
-	# StudyDict["MeshFile"] = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
+	if False:
+		st = time.time()
+		tmpMesh = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
+		ArgDict = {"MeshFile":StudyDict["MeshFile"], "tmpMesh":tmpMesh,"EMLoadFile":EMLoadFile}
+		EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
+		Info.SalomeRun(EMGroupFile, ArgDict=ArgDict)
+		StudyDict["MeshFile"] = tmpMesh
+		print('Create:{}'.format(time.time()-st))
 
 
 def main(Info, StudyDict):

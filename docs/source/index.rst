@@ -19,6 +19,7 @@ Welcome to VirtualLab's documentation!
    virtual_exp
    runsim
    examples
+   about
 
 Indices and tables
 ==================

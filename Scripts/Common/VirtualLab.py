@@ -129,7 +129,7 @@ class VLSetup():
 
 			if hasattr(ParaMesh,'Run'):
 				if len(ParaMesh.Run)!=NumMeshes: self.Exit("Number of entries for variable 'Mesh.Run' not equal to number of meshes")
-				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag in ('Y','y')]
+				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag]
 
 			sys.path.insert(0, self.SIM_MESH)
 			self.MeshList = []
@@ -163,7 +163,7 @@ class VLSetup():
 
 			if hasattr(ParaSim,'Run'):
 				if len(ParaSim.Run)!=NumSims: self.Exit("Number of entries for variable 'Sim.Run' not equal to number of simulations")
-				SimNames = [sim for sim, flag in zip(SimNames, ParaSim.Run) if flag in ('Y','y')]
+				SimNames = [sim for sim, flag in zip(SimNames, ParaSim.Run) if flag]
 
 			self.Studies = {}
 			for SimName in SimNames:

@@ -89,15 +89,15 @@ Mesh
   Values for each ``Mesh.$VARIABLE_NAME`` are passed to ``Mesh.File``.
 
 Sim
-  Variables within this namespace define the parameters needed by **CodeAster** to perform a FE simulation.
+  Variables within this namespace define the parameters needed by **Code_Aster** to perform a FE simulation.
 
-  The file specified by ``Sim.AsterFile`` is executed in **CodeAster** using the attributes of the *'Sim'* namespace to initiate the simulation.
+  The file specified by ``Sim.AsterFile`` is executed in **Code_Aster** using the attributes of the *'Sim'* namespace to initiate the simulation.
 
   The script ``Sim.AsterFile`` must be in the directory *'Scripts/$SIMULATION/Aster'*.
 
   Values for each ``Sim.$VARIABLE_NAME`` are passed to ``Sim.AsterFile``.
 
-  The *'Sim'* namespace has pre and post-processing options: *'Sim.PreAsterFile'*;  *'Sim.PostAsterFile'*. These are executed before and after the **CodeAster** call, respectively.
+  The *'Sim'* namespace has pre and post-processing options: *'Sim.PreAsterFile'*;  *'Sim.PostAsterFile'*. These are executed before and after the **Code_Aster** call, respectively.
 
   The scripts for these must be located in *'PreAster'* and *'PostAster'* sub-directories within *'Scripts/$SIMULATION'*.
 
@@ -150,7 +150,7 @@ OTHER
 
   VirtualLab.Mesh()
 
-# Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging ::
+# Run Pre-Sim calculations, Code_Aster and Post-Sim calculations/imaging ::
 
   VirtualLab.Sim(ShowRes=True)
 

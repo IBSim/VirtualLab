@@ -1,27 +1,30 @@
 Tutorials
 =========
 
-Introductory text to tutorials
+These examples provide an overview in to running a virtual experiment using **VirtualLab**. It will explain how meshes and simulations can be created parametrically without the need for a graphical user interface (GUI), the flexibility of running only certain aspects and the methods available for debugging. They will also highlight how to use the in-built pre and post-processing capabilities for calculations and results analysis that **VirtualLab** has to offer.
+
+The first example looks at a mechanical FE simulation, the second a thermal simulation and the third a multi-physics simulation.  
 
 Tensile Test
 ************
 
-This example provides an overview in to how **Code_Aster** can be used to perform mechanical FE simulations. A virtual experiment of the standard mechanical tensile test is performed using a linear elastic model. In this experiment a 'dog-bone' shaped sample is loaded either through constant force, measuring the displacement, or constant displacement, measuring the required load. This provides information about mechanical properties such as Young's elastic modulus.
+A virtual experiment of the standard mechanical tensile test is performed using a linear elastic model. In this experiment a 'dog-bone' shaped sample is loaded either through constant force, measuring the displacement, or constant displacement, measuring the required load. This provides information about mechanical properties such as Young's elastic modulus.
 
-Task 1
-######
+To begin with the arguments in the Run file for this task should be::
 
-For this task the Run.py file should be set up already. However the 4 variables in the Run file to begin with should be:
-*Simulation*='HIVE'
-*Project*='Example'
-*StudyName*='Training'
-*Parameters_Master*='TrainingParameters'
-*Parameters_Var*=None
-*Mode*='Interactive'
+    Simulation='HIVE'
+    Project='Example'
+    StudyName='Training'
+    Parameters_Master='TrainingParameters'
+    Parameters_Var=None
+    Mode='Interactive'
 
 Open the *Parameters_Master* file TrainingParameters.py which can be found in *Inputs/Tensile/Example*. As you can see from the *Mesh* namespace, the file used to create the mesh is aptly named 'DogBone' and can be found in *Scripts/Tensile/Mesh*. Attributes of *Mesh*, such as Thickness and Rad_a, are used to create the geometry, while attributes Length_1D,2D,3D specify the mesh fineness. Once the mesh is created it is saved in the mesh directory of the project (*Output/Tensile/Example*) under the name provided at *Mesh.Name*, which in this case is 'Notch1'. 
 
 From *Sim.AsterFile* you will see the script used for this simulation is 'Tensile' and can be found in *Scripts/Tensile/Aster*. All information relating to this simulation will be stored in a directory named 'Single' (*Sim.Name*) in *Output/Tensile/Example/Training*. It is possible to perform a constant force and/or constand displacement simulation through the keys provided to the *Sim.Load* dictionary. For the former the key 'Force' is required with the magnitude of the force (N) supplied as the value, while the latter requires the key 'Displacement' with the enforced displacement (metres) provided as the value. 
+
+Task 1
+######
 
 Execute the Run file. You should see mesh 'Notch1' being created followed by the simulation ‘Single’ showing up in an xterm terminal (you will need to exit out of the terminal once the simulation has completed). Since the *ShowRes* kwarg is set to True in VirtualLab.PostProc in the Run file the results are automatically opened in ParaVis for you to view. There should be two sets of results shown: a constant force and constant displacement simulation (since both keys were provided in *Sim.Load*). 
 
@@ -50,22 +53,20 @@ Once you have completed the above tasks it may be worthwhile taking a look at th
 Laser Flash Analysis
 ********************
 
-This example provides an overview in to how **Code_Aster** can be used to perform thermal FE simulations. The Laser flash analysis experiment consists of a disc shaped sample exposed to a short laser pulse incident on one surface, whilst the temperature change is tracked with respect to time on the opposing surface. This is used to measure thermal diffusivity, which is used to calculate thermal conductivity.
+The Laser flash analysis experiment consists of a disc shaped sample exposed to a short laser pulse incident on one surface, whilst the temperature change is tracked with respect to time on the opposing surface. This is used to measure thermal diffusivity, which is used to calculate thermal conductivity.
 
 This example will also show the post-processing capabilities available in VirtualLab. The results of the simulation will be used to calculate the thermal conductivity of the material, while images of the heated sample will be produced using ParaVis. 
 
 Since this is a different simulation type *Simulation* will need to be changed in the Run file to 'LFA'. The kwarg *RunMesh* in VirtualLab.Create must be set to True since new meshes will need to be created.
 
-Task 1
-######
+The arguments in the Run file should be::
 
-The variables in the Run file should be:
-*Simulation*='LFA'
-*Project*='Example'
-*StudyName*='Training'
-*Parameters_Master*='TrainingParameters'
-*Parameters_Var*='Parametric_1'
-*Mode*='Interactive'
+    Simulation='LFA'
+    Project='Example'
+    StudyName='Training'
+    Parameters_Master='TrainingParameters'
+    Parameters_Var='Parametric_1'
+    Mode='Interactive'
 
 If you open TrainingParameters.py in *Inputs/LFA/Example* you will notice that *Sim* has additional attributes relating to the time-dependent nature of the experiment:
 
@@ -73,7 +74,12 @@ If you open TrainingParameters.py in *Inputs/LFA/Example* you will notice that *
 
 * Sim.Theta – The value of theta sites between 0 and 1 and is used to decide whether the temporal discretisation is fully explicit (0), fully implicit (1) or semi-implicit (between 0 and 1).
 
-Parametric_1.py shows that two meshes will be created and three simulations run, one using mesh 'NoVoid' and two using mesh 'Void'. You are interested in seeing the meshes which are created before running the simulation. Set the kwarg *ShowMesh* to True in VirtualLab.Mesh, which will open all the meshes created in the **SALOME** GUI to look at to asses their suitability. Once **SALOME** is closed the script will terminate (That is no simulaton will run).
+Task 1
+######
+
+The *Parameters_Var* file shows that two meshes will be created and three simulations run, one using mesh 'NoVoid' and two using mesh 'Void'. You are interested in seeing the meshes which are created before running the simulation. Set the kwarg *ShowMesh* to True in VirtualLab.Mesh, which will open all the meshes created in the **SALOME** GUI to look at to asses their suitability. 
+
+Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this kwarg is designed to check mesh suitability the script will terminate once the GUI is closed, meaning that no simulations will be run. 
 
 Task 2
 ######
@@ -108,9 +114,50 @@ You will notice that the **Code_Aster** output looks different for the non-linea
 HIVE experiment (Multi-Physics FE) 
 **********************************
 
-This example shows how multi-physics problems can be tackled using **Code_Aster**. Heat by Induction to Verify Extremes is an experimental facility at the UK Atomic Energy Authority (UKAEA) to expose plasma-facing components to the high temperatures they will face in a fusion reactor. Samples are thermally loaded on by induction heating whilst being actively cooled with pressurised water. 
+Heat by Induction to Verify Extremes is an experimental facility at the UK Atomic Energy Authority (UKAEA) to expose plasma-facing components to the high temperatures they will face in a fusion reactor. Samples are thermally loaded on by induction heating whilst being actively cooled with pressurised water. 
 
-While **Code_Aster** has no in-built ElectroMagnetic coupling its python interpreter and the fact it's open source means that linking it with other softwares and solvers is far easier than with commercial codes. To calculate the heating generated by the induction coil the open source EM solver ERMES is used as a pre-processing step, with the results piped to **Code_Aster** as a boundary condition. 
+While **Code_Aster** has no in-built ElectroMagnetic coupling, its python interpreter and the fact it's open source means that linking it with other softwares and solvers is far easier than with commercial codes. To calculate the heating generated by the induction coil the open source EM solver **ERMES** is used as a pre-processing step, with the results piped to **Code_Aster** for application as a boundary condition (BC). 
+
+The effect of the coolant is modelled as a 1D problem using its temperature, pressure and velocity along with knowing the geometry of the pipe. This code was developed by David Hancock (ref). This information is also piped to **Code_Aster** to apply as a BC
+
+Since this is a new *Simulation* type you will need to change this to 'HIVE' in the Run file along with changing any kwargs back to their original values. 
+
+To begin with the variables in the Run file should be::
+
+    Simulation='HIVE'
+    Project='Example'
+    StudyName='Training'
+    Parameters_Master='TrainingParameters'
+    Parameters_Var=None
+    Mode='Interactive'
+
+Task 1
+######
+
+In TrainingParameteres.py you will notice at the top there is a flag named EMLoad which indicates how the thermal load generated by the coil will be modelled, either via a unfiorm heat flux or using the ERMES solver. 
+
+Ensure this field is set to 'Uniform' and run a simulation. You will notice that the only additional argument required for this is the magnitude of the heat flux, given by *Sim.Flux*. 
+
+Analysing the results in ParaVis it should be clear that the heat is applied uniformly to the top surface. You should also be able to see the effect that the coolant is having at the pipe. 
+
+
+Task 2
+######
+
+While the uniform simulation is useful it is a unrealistic model of the heat source produced by the induction coil. In order to get a more accurate heating profile we will use **ERMES**. 
+
+From TrainingParameters.py wou will notice that when changing EMLoad to 'ERMES' there are some additional requirements during the meshing and pre-Aster stages. 
+
+The ERMES solver requires a mesh of the coil, the sample and the vacuum encompasing both. A function has been written which takes the mesh and geometry of the sample created, adds the geometry of the coil and then creates the mesh required by ERMES. In the dictionary *Mesh.Coil* the key 'Type' will indicate the coil design, while 'Displacement' indicates the x,y and z components of the coil wih respect to the sample. The z-component indicates the gap between the sample and the coil, while the x and y components indicate whether the coil is in the centre (both 0) or not. 
+
+In TrainingParameters.py change EMLoad to 'ERMES' and *Mesh.Name* to 'TestCoil', change *ShowMesh* to True in the Run file and then launch **VirtualLab**.
+
+In the **SALOME** GUI you should see that two meshes are saves to the file, one mesh named 'Sample' which will be used by **Code_Aster** and the other named 'xERMES' which is what was used by **ERMES** to create the boundary condition. The sample mesh here is a sub-mesh of the ERMES mesh to ensure a simpler application of the BC in **Code_Aster**.
+
+Opening the mesh 'Uniform' created in Task 1 alongside these meshes will show that although the meshing parameters have not changed the mesh 'Sample' from 'Uniform' and 'TestCoil' are different. This is due to what was mentioned above, with using a sub-mesh of the ERMES mesh. When the 'xERMES' mesh is generated it meshes the sample, coil and vacuum together, meaning that there will be some differences in the meshing of the sample. As you can see however the meshes look quite similar in terms of fineness, and have similar number of nodes and volumes elements. 
+
+Task 3
+######
 
 
 

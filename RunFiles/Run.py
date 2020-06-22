@@ -6,13 +6,11 @@ sys.dont_write_bytecode=True
 sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common.VirtualLab import VLSetup
 
-Simulation = 'Tensile'
+Simulation = 'HIVE'
 Project = 'Example'
 StudyName = 'Training'
-# Use Parameters_Master and Parameters_Var to create multiple parameter
-# files for simulations. To run a single study set Parameters_Var to None.
 Parameters_Master='TrainingParameters'
-Parameters_Var='Parametric_1'
+Parameters_Var=None
 Mode='Interactive'
 
 VirtualLab = VLSetup(Simulation,Project,StudyName,Parameters_Master,Parameters_Var,Mode,port=None)

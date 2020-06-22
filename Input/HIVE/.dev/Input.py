@@ -50,8 +50,10 @@ Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 # Pre-processing to create EMLoads from ERMES output
 if EMLoad == 'ERMES':
     Sim.RunERMES = False
-    Sim.ERMES = {'Frequency':1e4,'Current':1000,'NbProc':2}
+    Sim.Current = 1000
+    Sim.Frequency = 1e4
     Sim.EMThreshold = 1
+
 
 #############
 ### Aster ###

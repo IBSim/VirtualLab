@@ -140,7 +140,6 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	strNodes.insert(0,"// List of nodes\n")
 	strNodes = "".join(strNodes)
 
-	ERMESdict = StudyDict['Parameters'].ERMES
 	# Electrostatic part
 	Stat01 = "// Setting problem\n" + \
 	"ProblemType = Static;\n" + \
@@ -152,9 +151,9 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	"ProblemType = FSWRIF;\n" + \
 	"ProblemType = OFFASCII;\n" + \
 	"ProblemType = IMPJOFF;\n" + \
-	"ProblemType = 8pr;\n" + \
+	"ProblemType = 2pr;\n" + \
 	"ProblemType = LE;\n" + \
-	"ProblemFrequency = {};\n".format(ERMESdict['Frequency']*2*np.pi) + \
+	"ProblemFrequency = {};\n".format(StudyDict['Parameters'].Frequency*2*np.pi) + \
 	"ProblemType = CheckConsistency;\n"
 
 	EMlist = ['Vacuum','Coil'] + sorted(StudyDict['Parameters'].Materials.keys())
@@ -197,9 +196,9 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	"ProblemType = FSWRIF;\n" + \
 	"ProblemType = OFFASCII;\n" + \
 	"ProblemType = IMPJON;\n" + \
-	"ProblemType = 8pr;\n" + \
+	"ProblemType = 2pr;\n" + \
 	"ProblemType = LE;\n" + \
-	"ProblemFrequency = {};\n".format(ERMESdict['Frequency']*2*np.pi) + \
+	"ProblemFrequency = {};\n".format(StudyDict['Parameters'].Frequency*2*np.pi) + \
 	"ProblemType = CheckConsistency;\n"
 
 	WaveBC = ["// Creating High order nodes\n","ProblemType = CreateHONodes;\n","// Making contact elements\n", \
@@ -564,12 +563,16 @@ def ERMES(Info, StudyDict):
 		Info.Exit("ERMES results file '{}' does not exist and RunERMES flag not set to True".format(ERMESfile))
 
 	CumSum = Watts.cumsum()
-	Threshold = StudyDict['Parameters'].EMThreshold
+	CoilPower = CumSum[-1]
+	print("Power delivered by coil: {:.4f}W".format(CoilPower*StudyDict['Parameters'].Current**2))
+
 	# Find position in CumSum where the threshold percentage has been reached
-	pos = bl(CumSum,Threshold*CumSum[-1])
+	Threshold = StudyDict['Parameters'].EMThreshold
+	pos = bl(CumSum,Threshold*CoilPower)
+
 	print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
 
-	EM_Val = WattsPV[:pos+1]*StudyDict['Parameters'].ERMES['Current']**2
+	EM_Val = WattsPV[:pos+1]*StudyDict['Parameters'].Current**2
 	EM_Els = Elements[:pos+1]
 	# Scale EM_Val to ensure correct energy input
 	if getattr(StudyDict['Parameters'],'EMScale', False):

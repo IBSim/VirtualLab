@@ -33,7 +33,7 @@ import PathVL
 DEBUT(PAR_LOT = 'NON',LANG='EN')
 
 ##### Read in the mesh and define the model #####
-mesh = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
+mesh = LIRE_MAILLAGE(FORMAT='MED',NOM_MED="Sample",UNITE=20)
 Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model),
 	                      PHENOMENE='THERMIQUE',
 	                      TOUT='OUI'),

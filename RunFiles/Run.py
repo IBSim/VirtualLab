@@ -22,7 +22,7 @@ VirtualLab.Create(RunMesh=True, RunSim=True)
 VirtualLab.Mesh(ShowMesh=False, MeshCheck=None)
 
 # Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
-VirtualLab.Sim(RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False, mpi_nbcpu=1, mpi_nbnoeud=1, ncpus=1, memory=2)
+VirtualLab.Sim(RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=True, mpi_nbcpu=1, mpi_nbnoeud=1, ncpus=1, memory=2)
 
 # Remove tmp folders
 VirtualLab.Cleanup()

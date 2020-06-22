@@ -20,20 +20,28 @@ def GetHTC(Info, StudyDict):
 		from HTC.Coolant import Properties as ClProp
 		from HTC.Pipe import PipeGeom
 		from HTC.ITER import htc as htc_ITER
+		from HTC.berglesrohsenow import get_T_onb
 
 		Pipedict = StudyDict['Parameters'].Pipe
 		Pipe = PipeGeom(shape=Pipedict['Type'], pipediameter=Pipedict['Diameter'], length=Pipedict['Length'])
 
+
 		Cooldict = StudyDict['Parameters'].Coolant
 		Coolant = ClProp(T=Cooldict['Temperature']+273, P=Cooldict['Pressure'], velocity=Cooldict['Velocity'])
+
+		# for key, val in Coolant.__dict__.items():
+		# 	print(key, val)
+
+		# Onset of Nucleat boiling
+		T_onb = get_T_onb(Coolant,Pipe)
 
 		# Starting WallTemp and increment between temperatures to check
 		WallTemp, incr = 5, 5
 		HTC = []
 		while True:
-#				print(WallTemp)
-			h = htc_ITER(Coolant, Pipe, WallTemp + 273)
-			if h == 0: break
+			h = htc_ITER(Coolant, Pipe, WallTemp+273,T_onb=T_onb)
+			# if h == 0: break
+			if WallTemp > 200: break
 			HTC.append([WallTemp, h])
 			WallTemp += incr
 

@@ -9,7 +9,7 @@ EMLoad = 'Uniform' # {'Uniform','ERMES'}
 ######## Meshing #########
 ##########################
 
-Mesh.Name = 'Testmesh'
+Mesh.Name = 'Uniform'
 Mesh.File = 'AMAZE' # This file must be in Scripts/$SIMULATION/PreProc
 # Geometrical Dimensions
 Mesh.BlockWidth = 0.03 #x
@@ -38,19 +38,19 @@ if EMLoad == 'ERMES':
 ##########################
 ####### Simulation #######
 ##########################
-Sim.Name = 'Single'
+Sim.Name = 'Sim_Uniform'
 
 #############
 ## PreAster #
 #############
 Sim.PreAsterFile = "PreHIVE"
 # HTC between coolant and pipe (need Coolant and Pipe properties)
-Sim.CreateHTC = False
+Sim.CreateHTC = True
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 # Pre-processing to create EMLoads from ERMES output
 if EMLoad == 'ERMES':
-    Sim.RunERMES = False
+    Sim.RunERMES = True
     Sim.Current = 1000
     Sim.Frequency = 1e4
     Sim.EMThreshold = 0.9
@@ -59,14 +59,14 @@ if EMLoad == 'ERMES':
 ### Aster ###
 #############
 Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
-Sim.Mesh = 'TestCoil' # The mesh used for the simulation
+Sim.Mesh = 'Uniform' # The mesh used for the simulation
 Sim.ResName = 'ResTher'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
 # Loading
 Sim.EMLoad = EMLoad
 if EMLoad == 'Uniform':
-    Sim.Flux = 1e7
+    Sim.Flux = 1e6
 
 
 ### Materials
@@ -78,7 +78,7 @@ Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation
 Sim.Theta = 0.5
-Sim.dt = [(0.0001,20,1)] #timestep size and number of steps
+Sim.dt = [(0.01,200,2)] #timestep size and number of steps
 
 Sim.Convergence = {'Start':10,'Gap':5}
 

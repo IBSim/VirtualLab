@@ -13,9 +13,9 @@ def htc(water,
         geometry,
         T_wall,
         correlationname = 'ITER combined HTC correlation',
-        verbose = False):
+        verbose = False, **kwargs):
 
-    T_onb = BR.get_T_onb(water,geometry)
+    T_onb = kwargs.get('T_onb', BR.get_T_onb(water,geometry))
 #    print(T_onb)
     if T_wall <= T_onb:
 	# Use Seider-Tate

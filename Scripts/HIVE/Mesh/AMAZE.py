@@ -232,7 +232,7 @@ def Create(**kwargs):
 		from EM.EMChamber import CreateEMMesh
 		SampleMesh, ERMESMesh, loc = CreateEMMesh(Mesh_1, Parameter)
 		smesh.SetName(SampleMesh, 'Sample')
-		smesh.SetName(ERMESMesh, 'xERMES')
+		smesh.SetName(ERMESMesh, 'ERMES')
 		if MeshFile:
 			SalomeFunc.MeshExport(SampleMesh,MeshFile)
 			SalomeFunc.MeshExport(ERMESMesh,MeshFile, Overwrite = 0)

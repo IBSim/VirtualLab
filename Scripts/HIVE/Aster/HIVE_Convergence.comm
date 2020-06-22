@@ -32,7 +32,7 @@ DEBUT(PAR_LOT = 'NON',LANG='EN')
 
 ##### Read in the mesh and define the model #####
 st = time.time()
-mesh = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
+mesh = LIRE_MAILLAGE(FORMAT='MED',NOM_MED="Sample",UNITE=20)
 meshin = time.time()-st
 
 Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model),

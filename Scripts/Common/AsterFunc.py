@@ -221,7 +221,7 @@ def Timesteps(dt, start=0):
 		else :dt, Nstep, save = tup[0],tup[1], 1
 
 		fintime = start + dt*Nstep
-		timesteps = np.round(np.linspace(start,fintime,Nstep+1),16).tolist()
+		timesteps = np.round(np.linspace(start,fintime,Nstep+1),14).tolist()
 
 		if i == 0:
 			timelist = timesteps

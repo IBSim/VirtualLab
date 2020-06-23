@@ -402,7 +402,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	ERMESrmed = h5py.File(ERMESout, 'w')
 
 	# Copy Mesh data from mesh .med file
-	MeshMed = h5py.File("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), 'r')
+	MeshMed = h5py.File(StudyDict['MeshFile'], 'r')
 	ERMESrmed.copy(MeshMed["INFOS_GENERALES"],"INFOS_GENERALES")
 	ERMESrmed.copy(MeshMed["FAS/xERMES"],"FAS/xERMES")
 	ERMESrmed.copy(MeshMed["ENS_MAA/xERMES"],"ENS_MAA/xERMES")
@@ -549,6 +549,16 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 
 	return Watts, WattsPV, Elements
 
+def ASCIIname(names):
+	namelist = []
+	for name in names:
+		lis = [0]*80
+		lis[:len(name)] = list(map(ord,name))
+		namelist.append(lis)
+	res = np.array(namelist)
+	return res
+
+
 def ERMES(Info, StudyDict):
 	RunERMES = getattr(StudyDict['Parameters'], 'RunERMES', True)
 
@@ -589,14 +599,85 @@ def ERMES(Info, StudyDict):
 	EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
 	np.save(EMLoadFile, np.vstack((EM_Els, EM_Val)).T)
 
-	if False:
+	GroupBy = 'SALOME'
+
+
+	tmpMeshFile = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
+
+	if GroupBy == 'H5PY':
 		st = time.time()
-		tmpMesh = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
-		ArgDict = {"MeshFile":StudyDict["MeshFile"], "tmpMesh":tmpMesh,"EMLoadFile":EMLoadFile}
+		MeshMed = h5py.File(StudyDict['MeshFile'], 'r')
+		tmpMeshMed = h5py.File(tmpMeshFile,'w')
+		tmpMeshMed.copy(MeshMed["INFOS_GENERALES"],"INFOS_GENERALES")
+		tmpMeshMed.copy(MeshMed["FAS/Sample"],"FAS/Sample")
+		tmpMeshMed.copy(MeshMed["ENS_MAA/Sample"],"ENS_MAA/Sample")
+		MeshMed.close()
+
+		ElInfo = tmpMeshMed["ENS_MAA/Sample/-0000000000000000001-0000000000000000001/MAI/TE4"]
+		ElList = ElInfo["NUM"][:]
+		Elbool = np.searchsorted(ElList,EM_Els)
+		ElList = ElList[Elbool]
+		ElFam = ElInfo["FAM"][:][Elbool]
+		UniqueFam = np.unique(ElFam)
+
+		ElGrps = tmpMeshMed["FAS/Sample/ELEME"]
+		MinNum, GrpName = 0, []
+		for grp in ElGrps.keys():
+			grpnum = ElGrps[grp].attrs['NUM']
+			MinNum = min(MinNum,grpnum)
+			if grpnum in UniqueFam:
+				GrpName.append((grpnum,grp))
+
+		Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
+		NewNum = MinNum-1
+
+		for Num, key in GrpName:
+			st2 = time.time()
+			NameGrps = ElGrps["{}/GRO/NOM".format(key)][:]
+			NumGrps = NameGrps.shape[0]
+			Fambool = ElFam == Num
+			tmplist=[]
+			dsetFormat = Formats["Name{}".format(NumGrps+2)]
+			grpobj = ElGrps[key]
+			for El in ElList[Fambool]:
+				EMnames = ASCIIname(['EMgrp','M{}'.format(El)])
+				NewNames = np.vstack((NameGrps,EMnames))
+				newkey = "Grp{}".format(NewNum)
+
+				ElGrps.copy(dsetFormat,"{}/GRO/NOM".format(newkey))
+				ElGrps[newkey].attrs.create('NUM',NewNum,dtype='i4')
+				ElGrps["{}/GRO".format(newkey)].attrs.create('NBR',NumGrps+2,dtype='i4')
+				ElGrps["Grp{}/GRO/NOM".format(NewNum)][:] = NewNames
+
+				# ElGrps.copy(grpobj,newkey)
+				# ElGrps[newkey].attrs.modify('NUM',NewNum)
+				# ElGrps["{}/GRO".format(newkey)].attrs.modify('NBR',NumGrps+2)
+				# del ElGrps["{}/GRO/NOM".format(newkey)]
+				# ElGrps.copy(dsetFormat,"{}/GRO/NOM".format(newkey))
+				# ElGrps["{}/GRO/NOM".format(newkey)][:] = NewNames
+
+				tmplist.append(NewNum)
+				NewNum -=1
+
+			ElFam[Fambool] = tmplist
+			# print(time.time()-st2)
+
+		Formats.close()
+		ElFamFull = ElInfo["FAM"][:]
+		ElFamFull[Elbool] = ElFam
+		ElInfo["FAM"][:] = ElFamFull
+		tmpMeshMed.close()
+		StudyDict['MeshFile'] = tmpMeshFile
+		print('Create:{}'.format(time.time()-st))
+
+	elif GroupBy == 'SALOME':
+		st = time.time()
+		ArgDict = {"MeshFile":StudyDict["MeshFile"], "tmpMesh":tmpMeshFile,"EMLoadFile":EMLoadFile}
 		EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
 		Info.SalomeRun(EMGroupFile, ArgDict=ArgDict)
-		StudyDict["MeshFile"] = tmpMesh
+		StudyDict['MeshFile'] = tmpMeshFile
 		print('Create:{}'.format(time.time()-st))
+
 
 
 def main(Info, StudyDict):

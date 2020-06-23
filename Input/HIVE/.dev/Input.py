@@ -44,7 +44,7 @@ Sim.Name = 'Single'
 #############
 Sim.PreAsterFile = "PreHIVE"
 # HTC between coolant and pipe (need Coolant and Pipe properties)
-Sim.CreateHTC = True
+Sim.CreateHTC = False
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 # Pre-processing to create EMLoads from ERMES output
@@ -52,7 +52,7 @@ if EMLoad == 'ERMES':
     Sim.RunERMES = False
     Sim.Current = 1000
     Sim.Frequency = 1e4
-    Sim.EMThreshold = 1
+    Sim.EMThreshold = 0.9
 
 
 #############

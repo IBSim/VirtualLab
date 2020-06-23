@@ -158,8 +158,7 @@ for i, CheckIx in enumerate(CheckList):
 
 # DETRUIRE(CONCEPT=_F(NOM=(mesh)))
 # mesh = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
-
-np.savetxt('./REPE_OUT/TimeSteps.dat', AdaptTsteps, delimiter = '   ')
+np.savetxt('./REPE_OUT/TimeSteps.dat', AdaptSteps, fmt='%.4e', delimiter = '   ')
 DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName), TYPE='BINARY', UNITE=80)
 IMPR_RESU(RESU=_F(RESULTAT=resther), UNITE=80)
 

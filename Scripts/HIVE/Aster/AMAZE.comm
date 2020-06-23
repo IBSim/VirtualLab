@@ -11,14 +11,14 @@ import PathVL
 
 DEBUT(PAR_LOT = 'NON',LANG='EN')
 
-##### Read in the mesh and define the model #####
+### Read in the mesh and define the model
 mesh = LIRE_MAILLAGE(FORMAT='MED',NOM_MED="Sample",UNITE=20)
 Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model),
 	                      PHENOMENE='THERMIQUE',
 	                      TOUT='OUI'),
 	             	      MAILLAGE=mesh)
 
-##### Define functions for NL material properties and assign materials to parts #####
+### Define functions for NL material properties and assign materials to parts
 DictMat = AsterFunc.MaterialProps(PathVL.MATERIAL_DIR,Parameters.Materials.values())
 
 BlockRCP = DEFI_FONCTION(NOM_PARA='TEMP',
@@ -54,12 +54,12 @@ TileMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA=TileLAM, RHO_CP=TileRCP))
 Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TileMat, GROUP_MA='Tile'),_F(MATER=PipeMat, GROUP_MA='Pipe'),_F(MATER=BlockMat, GROUP_MA='Block')),
 	                MAILLAGE=mesh)
 
-##### Create BCs #####
+### Create BCs
+## Coil BC
 if Parameters.EMLoad == 'Uniform':
-	## Uniform FLUX_NLUniFlux = DEFI_CONSTANTE(VALE=1e5)
 	EMI = AFFE_CHAR_THER(FLUX_REP=_F(FLUN=Parameters.Flux, GROUP_MA='CoilFace'),MODELE=Thermod)
-
 elif Parameters.EMLoad == 'ERMES':
+	# Read in ERMES file created during PreAster
 	ERMES = np.load('{}/ERMES.npy'.format(PathVL.TMP_CALC_DIR))
 	Els, JouleHeat = ERMES[:,0],ERMES[:,1]
 	Load_EM = []
@@ -67,7 +67,7 @@ elif Parameters.EMLoad == 'ERMES':
 		Load_EM.append((_F(GROUP_MA="M{}".format(int(El)),SOUR=JH)))
 	EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
 
-### BC for Pipe - Import Heat transfer coefficient and apply to pipe surface
+## Pipe BC - Read in HTC generated in PeAster and apply to pipe surface
 PipeHTCdat = np.fromfile('{}/HTC.dat'.format(PathVL.TMP_CALC_DIR),dtype=float,count=-1,sep=" ")
 HTC_Temps, HTC_Values = PipeHTCdat[::2], PipeHTCdat[1::2]
 HTC_Temps = np.hstack((HTC_Temps[0]-1,HTC_Temps,HTC_Temps[-1]+1))
@@ -84,9 +84,7 @@ PipeFlux = DEFI_FONCTION(NOM_PARA='TEMP',
 PipeHTC = AFFE_CHAR_THER_F(FLUX_NL=_F(FLUN=PipeFlux,GROUP_MA=('PipeFace')),
 			  MODELE=Thermod)
 
-PipeArea,PipeFaceNodes = AsterFunc.BCinfo(mesh,Group = 'PipeFace')[0:2]
-
-## Loads
+### Loads
 Loading = (_F(CHARGE=EMI),_F(CHARGE=PipeHTC))
 
 ### Get timesteps and savesteps using dt provided in Parameters ###
@@ -94,19 +92,24 @@ timearr, savearr = AsterFunc.Timesteps(Parameters.dt)
 Timestp = DEFI_LIST_REEL(VALE=timearr)
 Savestp = DEFI_LIST_REEL(VALE=savearr)
 
-### Temperature distribution to start simulation
+### Initial temperature distribution
 field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
 resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
 
-## Start  thermal analysis ##
+### Thermal analysis
+## Provide default values for certain parameters
 Theta = getattr(Parameters,'Theta',0.5)
 Solver = getattr(Parameters,'Solver', 'MUMPS')
 MaxIter = getattr(Parameters,'MaxIter',10)
 
+# The AdaptSteps function is written to ensure that the simulation doesn't crash due to
+# non-convergence from singularities. If an error occurs the problem timestep is cut in
+# half and s attempted again. CodeAster has a routine similar to this inbuilt, however
+# it is only available for mechanical FE, not thermal.
 AdaptSteps = AsterFunc.AdaptThermal(resther,Timestp,Loading,Thermat,Thermod,Theta,Solver,Storing = Savestp, MaxIter=MaxIter)
 
-
-np.savetxt('./REPE_OUT/TimeSteps.dat', timearr, fmt = '%.6f', delimiter = '   ')
+## Save the results and the full list of actual timesteps used for the simulation
+np.savetxt('./REPE_OUT/TimeSteps.dat', AdaptSteps, fmt='%.4e', delimiter = '   ')
 DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName), TYPE='BINARY', UNITE=80)
 IMPR_RESU(RESU=_F(RESULTAT=resther), UNITE=80)
 

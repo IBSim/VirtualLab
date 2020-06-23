@@ -599,7 +599,7 @@ def ERMES(Info, StudyDict):
 	EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
 	np.save(EMLoadFile, np.vstack((EM_Els, EM_Val)).T)
 
-	GroupBy = 'SALOME'
+	GroupBy = 'H5PY'
 
 
 	tmpMeshFile = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])

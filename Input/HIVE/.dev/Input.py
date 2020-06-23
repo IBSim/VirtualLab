@@ -58,7 +58,7 @@ if EMLoad == 'ERMES':
 #############
 ### Aster ###
 #############
-Sim.AsterFile = 'HIVE_Convergence' # This file must be in Scripts/$SIMULATION/Aster
+Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
 Sim.Mesh = 'TestCoil' # The mesh used for the simulation
 Sim.ResName = 'ResTher'
 Sim.Model = '3D'

@@ -16,7 +16,7 @@ Mode='Interactive'
 VirtualLab = VLSetup(Simulation,Project,StudyName,Parameters_Master,Parameters_Var,Mode,port=None)
 
 # Create directories and Parameter files for simulation
-VirtualLab.Create(RunMesh=True, RunSim=True)
+VirtualLab.Create(RunMesh=False, RunSim=True)
 
 # Creates meshes
 VirtualLab.Mesh(ShowMesh=False, MeshCheck=None)

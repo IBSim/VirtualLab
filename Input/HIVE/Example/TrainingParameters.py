@@ -53,7 +53,7 @@ if EMLoad == 'ERMES':
     Sim.RunERMES = True
     Sim.Current = 1000
     Sim.Frequency = 1e4
-    Sim.EMThreshold = 0.9
+    Sim.EMThreshold = 0.999
 
 #############
 ### Aster ###
@@ -72,8 +72,7 @@ if EMLoad == 'Uniform':
 ### Materials
 Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
 
-### IC - Need either an initial temperature or a results file to import
-Sim.ImportRes = False
+### IC 
 Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation

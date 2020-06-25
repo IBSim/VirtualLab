@@ -19,7 +19,7 @@ Below is an explanation of:
  - its input variables (passed from this script)
  - available keyword arguments (kwargs)
 
-The kwargs below in this script are the default values. That is, this is the 
+The kwargs below in this script are the default values. That is, this is the
 default behaviour if no kwargs are given.
 
 The VLSetup class interfaces between the system, SALOME and Code_Aster. Part of
@@ -34,18 +34,18 @@ Class initiation :
         The type of virtual experiment to be conducted.
         Currently available options:
         'Tensile' - A standard mechanical tensile test where a ‘dog-bone’ shaped
-                    sample is loaded. The load can be applied as a constant 
-                    force whilst measuring the displacement or as a constant 
+                    sample is loaded. The load can be applied as a constant
+                    force whilst measuring the displacement or as a constant
                     displacement whilst measuring the required load.
-        'LFA'     - Laser flash analysis experiment where a disc shaped sample 
-                    has a short laser pulse incident on one surface, whilst the 
-                    temperature change is tracked with respect to time on the 
+        'LFA'     - Laser flash analysis experiment where a disc shaped sample
+                    has a short laser pulse incident on one surface, whilst the
+                    temperature change is tracked with respect to time on the
                     opposing surface.
-        'HIVE'    - "Heat by Induction to Verify Extremes" (HIVE) is an 
-                    experimental facility at the UK Atomic Energy Authority's 
+        'HIVE'    - "Heat by Induction to Verify Extremes" (HIVE) is an
+                    experimental facility at the UK Atomic Energy Authority's
                     (UKAEA) Culham site. It is used to expose plasma-facing
-                    components to the high thermal loads they will be subjected 
-                    to in a fusion energy device. In this experiment, samples 
+                    components to the high thermal loads they will be subjected
+                    to in a fusion energy device. In this experiment, samples
                     are thermally loaded on one surface by induction heating
                     whilst being actively cooled with pressurised water.
     Project : '$USER_STRING' (str)
@@ -53,22 +53,22 @@ Class initiation :
     StudyName : '$USER_STRING' (str)
         User-defined field used to group together virtual experiments.
     Parameters_Master : ‘$FNAME’ (str)
-        Name of file which includes values for all the required variables for 
-        the selected virtual experiment. These values are used to describe each 
-        stage of the particular ‘Study’ to be conducted: 
+        Name of file which includes values for all the required variables for
+        the selected virtual experiment. These values are used to describe each
+        stage of the particular ‘Study’ to be conducted:
             pre-processing; simulation; post-processing
         This file must be in the directory ‘Input/$SIMULATION/$PROJECT’.
     Parameters_Var : {‘$FNAME’/None} (str)
         Name of file which includes value ranges for particular variables of the
-        user’s choice. These variables must be a subset from the full list 
-        within ‘Parameters_Master’. These values ranges are used to perform a 
-        parameterised ‘study’ where multiple simulations are conducted 
-        concurrently. If Parameters_Var is set to 'None' a single simulation 
-        will be run. This file must be in the directory 
+        user’s choice. These variables must be a subset from the full list
+        within ‘Parameters_Master’. These values ranges are used to perform a
+        parameterised ‘study’ where multiple simulations are conducted
+        concurrently. If Parameters_Var is set to 'None' a single simulation
+        will be run. This file must be in the directory
         ‘Input/$SIMULATION/$PROJECT’.
     Mode : '$TYPE' (str)
         This dictates how much information is printed in the terminal during the
-        running of VirtualLab. Options available; 'Interactive', 'Continuous', 
+        running of VirtualLab. Options available; 'Interactive', 'Continuous',
         'Headless'. 'I'/'C'/'H' may be used in place of the full option names
           'Intercative' - Prints all output to the terminal.
           'Continuous' - Writes the output to a file as it is generated.
@@ -79,10 +79,10 @@ Class initiation :
         on ports starting at 2810. Default is 'None'.
 
 VirtualLab.Create() :
-    This function is responsible for checking that all defined files exist in 
-    the expected location. These include Parameters_Master and Parameters_Var 
+    This function is responsible for checking that all defined files exist in
+    the expected location. These include Parameters_Master and Parameters_Var
     and the files specified therein (Mesh.File, Sim.PreAsterFile, Sim.AsterFile,
-    Sim.PostAsterFile). Once this is satisfied, output directories are created 
+    Sim.PostAsterFile). Once this is satisfied, output directories are created
     for the results, and the necessary files are created to produce mesh(es) and
     run simulation(s).
     RunMesh : bool (optional)
@@ -96,12 +96,12 @@ VirtualLab.Mesh() :
     This function is the meshing routine. The mesh(es) defined using the
     namespace 'Mesh' in Parameters_Master and Parameters_Var are created and
     saved in Output/$SIMULATION/$PROJECT/Meshes along with a file detailing the
-    variables used for their creation. If RunMesh is set to False in 'Create' 
-    then this routine is skipped. This may be useful when different simulation 
+    variables used for their creation. If RunMesh is set to False in 'Create'
+    then this routine is skipped. This may be useful when different simulation
     parameters are to be used on a pre-existing mesh.
     ShowMesh : bool (optional)
-        Indicates whether or not to open created mesh(es) in the SALOME GUI for 
-        visualisation to assess their suitability. VirtualLab will terminate 
+        Indicates whether or not to open created mesh(es) in the SALOME GUI for
+        visualisation to assess their suitability. VirtualLab will terminate
         once the GUI is closed and no simulation will be carried out. Default is
         False.
     MeshCheck : {'$MESH_NAME'/None} (str, optional)
@@ -109,11 +109,11 @@ VirtualLab.Mesh() :
         there are errors. Default is None.
 
 VirtualLab.Sim() :
-    This function is the simulation routine. The simulation(s), defined using 
-    the namespace 'Sim' in Parameters_Master and Parameters_Var, are carried 
-    out. The results are saved to Output/$SIMULATION/$PROJECT/$STUDYNAME. This 
-    routine also runs pre/post processing scripts provided through 
-    Sim.PreAsterFile and Sim.PostAsterFile, both of which are optional. If 
+    This function is the simulation routine. The simulation(s), defined using
+    the namespace 'Sim' in Parameters_Master and Parameters_Var, are carried
+    out. The results are saved to Output/$SIMULATION/$PROJECT/$STUDYNAME. This
+    routine also runs pre/post processing scripts provided through
+    Sim.PreAsterFile and Sim.PostAsterFile, both of which are optional. If
     RunSim is set to False in 'Create' then this routine is skipped.
     RunPreAster : bool (optional)
         Indicates whether or not to run the optional pre-processing script
@@ -132,27 +132,27 @@ VirtualLab.Sim() :
         Default is 1.
     memory : int (optional)
         Number of GBs of memory allocated to Code_Aster for simulations.
-        
+
     ### Code acceleration through parallelism with MPI ###
-    The binary distribution of standalone Code_Aster and the version packaged 
-    with Salome-Meca does not make use of MPI. To use MPI with Code_Aster it 
-    must be compiled from source, in which case the solvers 'MUMPS' and 'PETSC' 
+    The binary distribution of standalone Code_Aster and the version packaged
+    with Salome-Meca does not make use of MPI. To use MPI with Code_Aster it
+    must be compiled from source, in which case the solvers 'MUMPS' and 'PETSC'
     may be used.
     mpi_nbcpu : int (optional)
         Number of cpus cores for MPI parallelism. Default is 1.
     mpi_nbnoeud : int (optional)
         Number of nodes which mpi_nbnoeud are spread over. Default is 1.
-    For example, mpi_nbcpu=12,mpi_nbnoeud=4 will set the solver to use 12 cores 
+    For example, mpi_nbcpu=12,mpi_nbnoeud=4 will set the solver to use 12 cores
     over 4 nodes, i.e. 3 cores per node.
     Alternatively, mpi_nbcpu=2,mpi_nbnoeud=2 will use 2 cores over 2 nodes, i.e.
     one core per node.
 
-    ncpus and mpi_nbcpu will not conflict because only one value is used 
-    depending on the solver utilised. That is, if both variables are set, only 
+    ncpus and mpi_nbcpu will not conflict because only one value is used
+    depending on the solver utilised. That is, if both variables are set, only
     one is passed to the solver.
 
 VirtualLab.Cleanup()
-    This function removes all tmp directories created and closes the open 
+    This function removes all tmp directories created and closes the open
     instance of SALOME (if one was opened by VirtualLab).
 
 '''
@@ -170,7 +170,8 @@ VirtualLab=VLSetup(
            StudyName,
            Parameters_Master,
            Parameters_Var,
-           Mode,port=None)
+           Mode,
+           port=None)
 
 VirtualLab.Create(
            RunMesh=True,
@@ -185,10 +186,9 @@ VirtualLab.Sim(
            RunAster=True,
            RunPostAster=True,
            ShowRes=False,
-           mpi_nbcpu=1,
-           mpi_nbnoeud=1,
            ncpus=1,
-           memory=2)
+           memory=2,
+           mpi_nbcpu=1,
+           mpi_nbnoeud=1)
 
 VirtualLab.Cleanup()
-

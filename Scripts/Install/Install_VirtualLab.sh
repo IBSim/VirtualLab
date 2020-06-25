@@ -142,7 +142,6 @@ sudo apt upgrade -y
 
 ### Install requirements
 sudo apt install -y git
-sudo apt install -y python3-sphinx
 
 ### Temp solution to avoid prompt while sourcecode is closed-source during alpha phase
 #sudo cp -r /media/Shared/ssh/.ssh .
@@ -234,6 +233,15 @@ if [ "$SALOME_INST" == "y" ]; then
 else
   echo "Skipping salome installation"
 fi
+
+echo
+### Build VirtualLab documentation using sphinx
+echo "Building documentation"
+cd $VL_DIR/docs
+make clean
+make html
+cd $VL_DIR
+ln -s docs/build/html/index.html docs.html
 
 ### Currently can only run test as SU (therefore output files protected)
 #sudo -u ubuntu python3 Test_VL.py

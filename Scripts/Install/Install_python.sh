@@ -71,6 +71,7 @@ if [ "$PYTHON_INST" == "y" ]; then
   ### Install python and required packages
   sudo apt install -y python3
   sudo apt install -y python3-pip
+  sudo apt install -y python3-sphinx
   sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py sphinx-rtd-theme
   sudo -u ${SUDO_USER:-$USER} pip3 install iapws
 
@@ -150,6 +151,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda activate $CONDAENV
   conda config --append channels conda-forge
   conda install -y numpy scipy matplotlib pillow h5py iapws
+  conda install -y sphinx
 
   ### Install python and required packages
   sudo apt install -y python3-pip

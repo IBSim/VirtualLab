@@ -78,11 +78,8 @@ class VLSetup():
 		self.STUDY_DIR = "{}/{}".format(PROJECT_DIR, StudyName)
 		self.MESH_DIR = "{}/Meshes".format(PROJECT_DIR)
 
-		# Add path to Input directory
+		# Create dictionary of Parameters info
 		self.Parameters = {'Master':Parameters_Master,'Var':Parameters_Var,'Dir':'{}/{}/{}'.format(INPUT_DIR, Simulation, Project)}
-
-		# Check the Input directory to ensure the the required files exist
-		self.ErrorCheck('__init__')
 
 	def Create(self, **kwargs):
 		'''
@@ -95,6 +92,9 @@ class VLSetup():
 
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_SCRIPTS)
+
+		# Check the Parameter files exist
+		self.ErrorCheck('Parameters')
 
 		sys.path.insert(0, self.Parameters['Dir'])
 		Main = __import__(self.Parameters['Master'])
@@ -427,18 +427,18 @@ class VLSetup():
 				f.write(Pathstr)
 
 	def ErrorCheck(self, Stage, **kwargs):
-		if Stage == '__init__':
+		if Stage == 'Parameters':
 			# Check if the Input directory exists
 			if not os.path.isdir(self.Parameters['Dir']):
-				self.Exit("Directory {0} does not exist\n".format(self.Parameters['Dir']))
+				self.Exit("Directory '{}' does not exist".format(self.Parameters['Dir']))
 
 			# Check 'Parameters_Master' exists
 			if not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Master'])):
-				self.Exit("Parameters_Master file '{}' not in Input directory {}\n".format(self.Parameters['Master'], self.Parameters['Dir']))
+				self.Exit("Parameters_Master file '{}' not in directory {}".format(self.Parameters['Master'], self.Parameters['Dir']))
 
 			# Check that 'Parameters_Var' exists (if not None)
 			if self.Parameters['Var'] and not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Var'])):
-				self.Exit("Parameters_Var file '{}' not in Input directory {}\n".format(self.Parameters['Var'],self.Parameters['Dir']))
+				self.Exit("Parameters_Var file '{}' not in  directory {}".format(self.Parameters['Var'],self.Parameters['Dir']))
 
 		if Stage == 'Mesh':
 			MeshDict = kwargs.get('MeshDict')

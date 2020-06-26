@@ -1,7 +1,11 @@
 #!/bin/bash
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
-SALOME_INST="n"
+
+#SALOME_INST="n"
+### This caused Install_VirtualLab to skip Salome install.
+### Being commented out might cause issues with SetupConfig if run without install.
+
 #########################
 ### START OF DEFAULTS ###
 ### These are the default config values for installation and operation of VirtualLab.
@@ -130,9 +134,25 @@ else
 fi
 
 ### Code_Aster installation location
-if [[ "$SALOME_INST" =~ 'y' ]] && [[ ! -z "$SALOME_DIR" ]]; then
-  if [[ $v == "ON" ]]; then echo "Code_aster also being installed in '$SALOME_DIR'."; fi
+### Currently, it could be possible to combine if and elif conditions below.
+### Not doing so, in case they need to be separate in future.
+if [[ "$SALOME_INST" =~ 'y' ]] && [[ "$SALOME_DIR" != $(readlink -m $SALOME_DIR_DEFAULT) ]]; then
+  ASTER_DIR=$SALOME_DIR$ASTER_SUBDIR
+  if [[ $v == "ON" ]]; then
+    echo "This condition should be: no salome installed, SALOME_DIR set with flag"
+    echo "ASTER_DIR should be set from Install_VirtualLab.sh"
+    echo "ASTER_DIR = "$ASTER_DIR
+  fi
+elif [[ "$SALOME_INST" =~ 'y' ]] && [[ "$SALOME_DIR" == $(readlink -m $SALOME_DIR_DEFAULT) ]]; then
+  #ASTER_DIR=$(readlink -m $ASTER_DIR_DEFAULT)
+  ASTER_DIR=$SALOME_DIR$ASTER_SUBDIR
+  if [[ $v == "ON" ]]; then
+    echo "This condition should be: no salome installed, SALOME_DIR NOT set with flag"
+    echo "ASTER_DIR should be set from Install_VirtualLab.sh, but using /opt/Salome as SALOME_DIR"
+    echo "ASTER_DIR = "$ASTER_DIR
+  fi
 else
+  if [[ $v == "ON" ]]; then echo "This condition should be: salome already installed, ASTER_DIR read from above"; fi
   ASTER_DIR=$(readlink -m $ASTER_DIR_DEFAULT)
 fi
 

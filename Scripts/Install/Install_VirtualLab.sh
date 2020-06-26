@@ -13,6 +13,8 @@ VL_DIR="$USER_HOME/VirtualLab"
 SKIP=n
 PYTHON_INST="n"
 SALOME_INST="n"
+ASTER_SUBDIR="/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
+
 usage() {
   echo
   echo "Usage:"
@@ -55,8 +57,6 @@ while getopts ":d:P:S:yh" options; do
         echo " - Python will be installed/updated and configured as part of VirtualLab install."
       elif [ "$PYTHON_INST" == "c" ]; then
         echo " - Conda will be installed/updated and configured as part of VirtualLab install."
-#      elif [ "$PYTHON_INST" == "n" ]; then
-#        echo " - Python will not be installed or configured during setup, please do this manually."
       else
         echo "Error: Invalid option argument $PYTHON_INST" >&2
         exit_abnormal
@@ -80,10 +80,7 @@ while getopts ":d:P:S:yh" options; do
         STRING_TMP="${array[1]}"
         STRING_TMP=${STRING_TMP/'~'/$HOME}
         SALOME_DIR=$(readlink -m $STRING_TMP)
-        ASTER_DIR="$SALOME_DIR/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
         echo " - Salome-Meca will be installed in '$SALOME_DIR' and configured as part of VirtualLab install."
-#      elif [ "$SALOME_INST" == "n" ]; then
-#        echo " - Salome-Meca will not be installed or configured during setup, please do this manually."
       else
         echo "Error: Invalid option argument $SALOME_INST" >&2
         exit_abnormal
@@ -187,6 +184,8 @@ fi
 ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
 STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
 if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then 
+  echo '' >> $USER_HOME/.bashrc
+  echo '# Read in environment for VirtualLab' >> $USER_HOME/.bashrc
   echo $STRING_TMP >> $USER_HOME/.bashrc
 fi
 
@@ -221,6 +220,8 @@ if [ "$PYTHON_INST" == "y" ]; then
 elif [ "$PYTHON_INST" == "c" ]; then
   echo "Installing/configuring conda"
   source $VL_DIR/Scripts/Install/Install_python.sh
+  eval "$($HOME/anaconda3/bin/conda shell.bash hook)"
+  conda activate $CONDAENV
 else
   echo "Skipping python installation"
 fi
@@ -239,7 +240,8 @@ echo
 echo "Building documentation"
 cd $VL_DIR/docs
 make clean
-make html
+sudo -u ${SUDO_USER:-$USER} pip3 install sphinx-rtd-theme
+sudo -u ${SUDO_USER:-$USER} make html
 cd $VL_DIR
 ln -s docs/build/html/index.html docs.html
 

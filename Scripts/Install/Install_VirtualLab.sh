@@ -237,13 +237,23 @@ fi
 
 echo
 ### Build VirtualLab documentation using sphinx
+source $VL_DIR/Scripts/Install/Install_docs.sh
+
+: <<'END'
+#commented out script
+echo
+### Build VirtualLab documentation using sphinx
 echo "Building documentation"
 cd $VL_DIR/docs
 make clean
-sudo -u ${SUDO_USER:-$USER} pip3 install sphinx-rtd-theme
-sudo -u ${SUDO_USER:-$USER} make html
+make html
+sudo chown ${SUDO_USER} -R $VL_DIR/docs/build
+sudo chgrp ${SUDO_USER} -R $VL_DIR/docs/build
+sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
 cd $VL_DIR
-ln -s docs/build/html/index.html docs.html
+rm docs.html
+sudo -u ${SUDO_USER:-$USER} ln -s docs/build/html/index.html docs.html
+END
 
 ### Currently can only run test as SU (therefore output files protected)
 #sudo -u ubuntu python3 Test_VL.py
@@ -254,6 +264,6 @@ ln -s docs/build/html/index.html docs.html
 #rm -r ~/VirtualLab/Training/
 #END
 echo
-echo "Finished installing and configuting VirtualLab."
+echo "Finished installing and configutng VirtualLab."
 echo
 #END

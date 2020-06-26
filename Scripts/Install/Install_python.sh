@@ -153,9 +153,14 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda install -y numpy scipy matplotlib pillow h5py iapws
   conda install -y sphinx
 
+  sudo chown ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
+  sudo chgrp ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
+  sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
+
   ### Install python and required packages
   sudo apt install -y python3-pip
-  sudo -u ${SUDO_USER:-$USER} pip3 install fpdf sphinx-rtd-theme
+  #sudo -u ${SUDO_USER:-$USER} pip3 install fpdf sphinx-rtd-theme
+  pip3 install sphinx-rtd-theme
   #sudo -u ${SUDO_USER:-$USER} pip3 install fpdf2
   echo "Finished creating Conda env $CONDAENV"
   echo

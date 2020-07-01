@@ -6,7 +6,7 @@ sys.dont_write_bytecode=True
 sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common.VirtualLab import VLSetup
 
-Simulation = 'HIVE'
+Simulation = 'Tensile'
 Project = '.dev'
 StudyName = 'Testing'
 Parameters_Master='Input'

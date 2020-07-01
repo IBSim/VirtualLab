@@ -17,7 +17,7 @@ Mesh.VoidHeight = 0.0000 # Height of Void. Positive/negative number gives a void
 Mesh.Length1D = 0.0003
 Mesh.Length2D = 0.0003
 Mesh.Length3D = 0.0003
-Mesh.HoleDisc = 30 # Number of segments for hole circumference (for sub-mesh)
+Mesh.VoidDisc = 30 # Number of segments for hole circumference (for sub-mesh)
 
 ##########################
 ####### Simulation #######

@@ -105,8 +105,8 @@ VirtualLab.Mesh() :
         once the GUI is closed and no simulation will be carried out. Default is
         False.
     MeshCheck : {'$MESH_NAME'/None} (str, optional)
-        Meshes '$MESH_NAME' in the SALOME GUI to help with debugging if
-        there are errors. Default is None.
+        '$MESH_NAME' is constructed in the SALOME GUI for debugging. Default is
+        None.
 
 VirtualLab.Sim() :
     This function is the simulation routine. The simulation(s), defined using

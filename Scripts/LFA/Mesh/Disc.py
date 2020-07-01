@@ -68,7 +68,7 @@ def Create(**kwargs):
 	DiskT = geompy.CreateGroup(Testpiece, geompy.ShapeType["SOLID"])
 	geompy.UnionIDs(DiskT, [Vollst[0]])
 	geompy.addToStudyInFather( Testpiece, DiskT, 'Top' )
-	
+
 	DiskB = geompy.CreateGroup(Testpiece, geompy.ShapeType["SOLID"])
 	geompy.UnionIDs(DiskB, [Vollst[1]])
 	geompy.addToStudyInFather( Testpiece, DiskB, 'Bottom' )
@@ -114,7 +114,7 @@ def Create(**kwargs):
 	### SMESH component
 	###
 
-	### Create Main Mesh 
+	### Create Main Mesh
 	Mesh_1 = smesh.Mesh(Testpiece)
 	Regular_1D = Mesh_1.Segment()
 	Local_Length_1 = Regular_1D.LocalLength(Parameter.Length1D,None,1e-07)
@@ -154,10 +154,10 @@ def Create(**kwargs):
 
 	Mesh_Bottom_Ext_Node = Mesh_1.GroupOnGeom(Bottom_Face,'NBottom_Face',SMESH.NODE)
 	Mesh_Top_Ext_Node = Mesh_1.GroupOnGeom(Top_Face,'NTop_Face',SMESH.NODE)
-	
+
 	if isVoid:
 		HoleCirc = 2*np.pi*Parameter.VoidRadius
-		HoleLength = HoleCirc/Parameter.HoleDisc
+		HoleLength = HoleCirc/Parameter.VoidDisc
 
 		### Sub Mesh creation
 		## Sub-Mesh 2
@@ -201,9 +201,9 @@ class TestDimensions():
 		self.VoidHeight = -0.0001
 		### Mesh parameters
 		self.Length1D = 0.0004 #Length on 1D edges
-		self.Length2D = 0.0004 #Maximum length of any edge belonging to a face 
+		self.Length2D = 0.0004 #Maximum length of any edge belonging to a face
 		self.Length3D = 0.0004 #Maximum length of any edge belogining to a tetrahedron
-		self.HoleDisc = 20
+		self.VoidDisc = 20
 		self.MeshName = 'Test'
 
 
@@ -228,8 +228,3 @@ if __name__ == '__main__':
 		sys.path.insert(0, os.path.dirname(ParameterFile))
 		Parameters = __import__(os.path.splitext(os.path.basename(ParameterFile))[0])
 		Create(Parameter = Parameters,MeshFile = None)
-			
-		
-		
-
-

@@ -599,11 +599,9 @@ def ERMES(Info, StudyDict):
 	EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
 	np.save(EMLoadFile, np.vstack((EM_Els, EM_Val)).T)
 
-	GroupBy = 'H5PY'
-
-
 	tmpMeshFile = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
 
+	GroupBy = 'H5PY'
 	if GroupBy == 'H5PY':
 		st = time.time()
 		MeshMed = h5py.File(StudyDict['MeshFile'], 'r')
@@ -632,7 +630,7 @@ def ERMES(Info, StudyDict):
 		NewNum = MinNum-1
 
 		for Num, key in GrpName:
-			st2 = time.time()
+			# st2 = time.time()
 			NameGrps = ElGrps["{}/GRO/NOM".format(key)][:]
 			NumGrps = NameGrps.shape[0]
 			Fambool = ElFam == Num

@@ -39,8 +39,8 @@ def Create(**kwargs):
 	geompy.addToStudy( OY, 'OY' )
 	geompy.addToStudy( OZ, 'OZ' )
 
-	## Creating the sample
-	# Pipe
+	### Creating the sample geometry
+	## Pipe
 	InRad = Parameter.PipeDiam/2
 	OutRad = Parameter.PipeDiam/2 + Parameter.PipeThick
 
@@ -48,26 +48,28 @@ def Create(**kwargs):
 	Fluid = geompy.MakeCylinder(Vertex_1, OY, InRad, Parameter.PipeLength)
 	PipeExt = geompy.MakeCylinder(Vertex_1, OY, OutRad, Parameter.PipeLength)
 	Pipe = geompy.MakeCutList(PipeExt, [Fluid], True)
-
 	geompy.addToStudy( Pipe, 'Pipe' )
 
-	# Block
+	## Block
 	Box = geompy.MakeBoxDXDYDZ(Parameter.BlockWidth, Parameter.BlockLength, Parameter.BlockHeight)
 	Block = geompy.MakeCutList(Box, [PipeExt], True)
 	geompy.addToStudy( Block, 'Block')
 
-	# Tile
+	## Tile
 	TileCentre = geompy.MakeVertex(Parameter.BlockWidth/2+Parameter.TileCentre[0], Parameter.BlockLength/2+Parameter.TileCentre[1], Parameter.BlockHeight)
 	TileCorner1 = geompy.MakeVertexWithRef(TileCentre, -Parameter.TileWidth/2, -Parameter.TileLength/2, 0)
 	TileCorner2 = geompy.MakeVertexWithRef(TileCentre, Parameter.TileWidth/2, Parameter.TileLength/2, Parameter.TileHeight)
 	Tile = geompy.MakeBoxTwoPnt(TileCorner1, TileCorner2)
-
 	geompy.addToStudy( Tile, 'Tile')
 
+	# Combine parts
 	Fuse = geompy.MakeFuseList([Pipe, Block, Tile], True, True)
 	Sample = geompy.MakePartition([Fuse], [Pipe, Block, Tile], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
-
 	geompy.addToStudy( Sample, 'Sample')
+
+	# ObjIndex function returns the object index of a sub-shape in a new geometry
+	# i.e. we want to know what the object index of a sub-shape of the tile is in
+	# sample to create a group there.
 
 	## Add Groups
 	# Solid
@@ -167,7 +169,7 @@ def Create(**kwargs):
 
 	### Sub-Mesh 1 - Refinement on pipe
 	## PipeEdges
-	Length1 = Parameter.PipeDiam*np.pi/Parameter.CircDisc
+	Length1 = Parameter.PipeDiam*np.pi/Parameter.PipeDisc
 
 	Regular_1D_1 = Mesh_1.Segment(geom=GrpPipe)
 	Sub_mesh_1 = Regular_1D_1.GetSubMesh()
@@ -264,7 +266,7 @@ class TestDimensions():
 		self.Length1D = 0.005
 		self.Length2D = 0.005
 		self.Length3D = 0.005
-		self.CircDisc = 20
+		self.PipeDisc = 20
 		self.SubTile = 0.003
 
 		self.CoilType = 'Test'

@@ -27,7 +27,7 @@ Mesh.TileHeight = 0.005 #z
 Mesh.Length1D = 0.005
 Mesh.Length2D = 0.005
 Mesh.Length3D = 0.005
-Mesh.CircDisc = 20 # Number of segments for pipe circumference
+Mesh.PipeDisc = 20 # Number of segments for pipe circumference
 Mesh.SubTile = 0.002 # Mesh fineness on tile
 
 # for ERMES loading we need to create a mesh for the coil and vacuum
@@ -72,7 +72,7 @@ if EMLoad == 'Uniform':
 ### Materials
 Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
 
-### IC 
+### IC
 Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation

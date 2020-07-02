@@ -533,8 +533,10 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	plt.legend(loc='upper left')
 	plt.xlabel('Fraction of total elements required')
 	plt.ylabel('Power (scaled)')
-	plt.savefig("{}/EM_Thresholding".format(StudyDict['PREASTER']))
+	# plt.show()
+	plt.savefig("{}/EM_Thresholding.png".format(StudyDict['PREASTER']))
 	plt.close()
+	print("{}/EM_Thresholding".format(StudyDict['PREASTER']))
 
 	# fig = plt.figure(figsize = (14,5))
 	# x = np.linspace(1/NbEls,1,NbEls)
@@ -584,8 +586,14 @@ def ERMES(Info, StudyDict):
 	CoilPower = CumSum[-1]
 	print("Power delivered by coil: {:.4f}W".format(CoilPower*StudyDict['Parameters'].Current**2))
 
-	# Find position in CumSum where the threshold percentage has been reached
 	Threshold = StudyDict['Parameters'].EMThreshold
+	# If threshold is None VirtualLab will exit at this point.
+	# This is useful for checking the desired threshold prior to the simulation.
+	if Threshold == None:
+		Info.Cleanup()
+		sys.exit()
+
+	# Find position in CumSum where the threshold percentage has been reached
 	pos = bl(CumSum,Threshold*CoilPower)
 
 	print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))

@@ -68,7 +68,6 @@ Sim.EMLoad = EMLoad
 if EMLoad == 'Uniform':
     Sim.Flux = 1e6
 
-
 ### Materials
 Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
 
@@ -79,7 +78,6 @@ Sim.InitTemp = 20 #Celcius
 Sim.Theta = 0.5
 Sim.dt = [(0.01,200,2)] #timestep size and number of steps
 
-Sim.Convergence = {'Start':10,'Gap':5}
 
 
 #############

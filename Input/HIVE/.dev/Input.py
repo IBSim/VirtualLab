@@ -9,7 +9,7 @@ EMLoad = 'ERMES'
 ##########################
 
 Mesh.Name = 'Testmesh'
-Mesh.File = 'HIVE_Convergence' # This file must be in Scripts/$SIMULATION/PreProc
+Mesh.File = 'AMAZE' # This file must be in Scripts/$SIMULATION/PreProc
 # Geometrical Dimensions
 Mesh.BlockWidth = 0.03 #x
 Mesh.BlockLength = 0.05 #y
@@ -49,10 +49,10 @@ Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 # Pre-processing to create EMLoads from ERMES output
 if EMLoad == 'ERMES':
-    Sim.RunERMES = False
+    Sim.RunERMES = True
     Sim.Current = 1000
     Sim.Frequency = 1e4
-    Sim.EMThreshold = 0.9
+    Sim.EMThreshold = None
 
 
 #############

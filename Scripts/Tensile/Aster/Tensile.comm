@@ -31,10 +31,10 @@ fieldmat = AFFE_MATERIAU(AFFE=_F(MATER=(Mat), TOUT='OUI'),
 '''
 Boundary Conditions
 
-Constraint: Adaption of the 3-2-1 method. Fixing the face in X removed the transitional DF in X and rotational DF in Y and Z. 
-Fixing 1 corner node in Y and Z removes the transitional DF in Y and Z, while fixing the final node in Y removes the final rotational DF. 
+Constraint: Adaption of the 3-2-1 method. Fixing the face in X removed the transitional DF in X and rotational DF in Y and Z.
+Fixing 1 corner node in Y and Z removes the transitional DF in Y and Z, while fixing the final node in Y removes the final rotational DF.
 
-Loading: Either a constant force or constant displacement can be chosen. The input for the force is corrected with regards to the loading 
+Loading: Either a constant force or constant displacement can be chosen. The input for the force is corrected with regards to the loading
 area due to the way CA applies forces to the face.
 '''
 
@@ -65,7 +65,7 @@ if Force:
 			    FORCE='FORC_NODA',
 		            RESULTAT=resFrc)
 
-	DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName[0]), UNITE=80)
+	DEFI_FICHIER(FICHIER='./REPE_OUT/Force.rmed', UNITE=80)
 	IMPR_RESU(RESU=_F(RESULTAT=resFrc), UNITE=80)
 
 # Constant Displacement simulation
@@ -86,7 +86,7 @@ if Displacement:
 			    FORCE='FORC_NODA',
 		            RESULTAT=resDsp)
 
-	DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName[1]), UNITE=81)
+	DEFI_FICHIER(FICHIER='./REPE_OUT/Displacement.rmed', UNITE=81)
 	IMPR_RESU(RESU=_F(RESULTAT=resDsp), UNITE=81)
 
 

@@ -15,7 +15,7 @@ def KCalc(halfT, l, rho, Cp):
 def Individual(Info, StudyDict):
 #	StudyDict = Info.Studies[study]
 
-	ResFile = '{}/{}.rmed'.format(StudyDict['ASTER'], StudyDict['Parameters'].ResName)
+	ResFile = '{}/Thermal.rmed'.format(StudyDict['ASTER'])
 	# Get mesh information from the results file
 	meshdata = MeshInfo(ResFile)
 
@@ -230,5 +230,3 @@ def Combined(Info):
 
 	ParaVisFile = "{}/ParaVis.py".format(os.path.dirname(os.path.abspath(__file__)))
 	Info.SalomeRun(ParaVisFile, SalomeGUI=False, AddPath=Info.TMP_DIR)
-
-

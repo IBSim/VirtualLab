@@ -35,7 +35,6 @@ Sim.AsterFile = 'Disc_Lin'
 Sim.Mesh = 'NoVoid'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
-Sim.ResName = 'Thermal'
 # Material type(s) for analysis, the properties of which can be found in the 'Materials' directory
 Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
 # Initial Conditions

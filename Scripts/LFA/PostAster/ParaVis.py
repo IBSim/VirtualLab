@@ -15,7 +15,7 @@ for Sim in PVParameters.Simulations:
 	Parameters = import_module("{}.Parameters".format(Sim))
 	PathVL = import_module("{}.PathVL".format(Sim))
 
-	thermalrmed = pvsimple.MEDReader(FileName="{}/{}.rmed".format(PathVL.ASTER,Parameters.ResName))
+	thermalrmed = pvsimple.MEDReader(FileName="{}/Thermal.rmed".format(PathVL.ASTER))
 
 	# show data in view
 	thermalrmedDisplay = pvsimple.Show(thermalrmed, renderView1)
@@ -115,5 +115,3 @@ for Sim in PVParameters.Simulations:
 
 	for source in pvsimple.GetSources().values():
 			pvsimple.Delete(source)
-
-

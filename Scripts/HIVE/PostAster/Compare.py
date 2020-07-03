@@ -15,7 +15,7 @@ def Combined(Info):
     MaxDiff = {}
     Mean = {SimMaster.Benchmark:[]}
     for Name, StudyDict in Info.Studies.items():
-        ResDict[Name] = h5py.File("{}/{}.rmed".format(StudyDict["ASTER"],StudyDict["Parameters"].ResName), 'r')
+        ResDict[Name] = h5py.File("{}/ResTher.rmed".format(StudyDict["ASTER"]), 'r')
         MaxDiff[Name] = []
         Mean[Name] = []
 

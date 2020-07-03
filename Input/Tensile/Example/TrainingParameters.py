@@ -42,7 +42,6 @@ Force is measured in N, Displacement in M.
 Sim.AsterFile = 'Tensile' # The CodeAster command file can be found in Scripts/$SIMULATION/Aster
 Sim.Mesh = 'Notch1' # The mesh used in the simulation
 Sim.Load = {'Force':1000000, 'Displacement':0.01}
-Sim.ResName = ['ConstForce', 'ConstDisp'] # Name of results file(s) which will be output by CodeAster
 # Material type(s) for analysis, the properties of which can be found in the 'Materials' directory
 Sim.Materials = 'Copper'
 

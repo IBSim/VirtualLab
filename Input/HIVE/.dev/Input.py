@@ -44,7 +44,7 @@ Sim.Name = 'Single'
 #############
 Sim.PreAsterFile = "PreHIVE"
 # HTC between coolant and pipe (need Coolant and Pipe properties)
-Sim.CreateHTC = False
+Sim.CreateHTC = True
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 # Pre-processing to create EMLoads from ERMES output
@@ -52,7 +52,7 @@ if EMLoad == 'ERMES':
     Sim.RunERMES = True
     Sim.Current = 1000
     Sim.Frequency = 1e4
-    Sim.EMThreshold = None
+    Sim.EMThreshold = 0.9
 
 
 #############
@@ -60,7 +60,6 @@ if EMLoad == 'ERMES':
 #############
 Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
 Sim.Mesh = 'TestCoil' # The mesh used for the simulation
-Sim.ResName = 'ResTher'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
 # Loading

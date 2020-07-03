@@ -60,7 +60,6 @@ if EMLoad == 'ERMES':
 #############
 Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
 Sim.Mesh = 'Uniform' # The mesh used for the simulation
-Sim.ResName = 'ResTher'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
 # Loading

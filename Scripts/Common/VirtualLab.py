@@ -402,18 +402,15 @@ class VLSetup():
 		# Opens up all results in ParaVis
 		if kwargs.get('ShowRes', False):
 			print("### Opening .rmed files in ParaVis ###\n")
-			ResList=[]
-			for study, StudyDict in self.Studies.items():
-				ResName = StudyDict['Parameters'].ResName
-				if type(ResName) == str: ResName = [ResName]
-				elif type(ResName) == dict: ResName=list(ResName.values())
-				ResList += ["{0}_{1}={2}/{1}.rmed".format(study,name,StudyDict['ASTER']) for name in ResName]
-
-			AddPath = "PYTHONPATH={}:$PYTHONPATH;PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)
+			ResFiles = {}
+			for SimName, StudyDict in self.Studies.items():
+				for root, dirs, files in os.walk(StudyDict['CALC_DIR']):
+					for file in files:
+						fname, ext = os.path.splitext(file)
+						if ext == '.rmed':
+							ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
 			Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
-			Salome = Popen('{}salome {} args:{} '.format(AddPath,Script,",".join(ResList)), shell='TRUE')
-			Salome.wait()
-
+			self.SalomeRun(Script, GUI=True, AddPath=[self.COM_SCRIPTS], ArgDict=ResFiles)
 
 	def WriteModule(self, FileName, Dictionary, **kwargs):
 		Write = kwargs.get('Write','New')
@@ -490,14 +487,14 @@ class VLSetup():
 		ArgDict: a dictionary of the arguments that Salome will get
 		ArgList: a list of arguments to be passed to Salome
 		GUI: Opens a new instance with GUI (useful for testing)
-		Init: Creates a new Salome instance in terminal mode
+		SalomeInit: Creates a new Salome instance in terminal mode
 		'''
 		OutLog = kwargs.get('OutLog', "/dev/null")
 		ErrLog = kwargs.get('ErrLog', OutLog)
 		AddPath = kwargs.get('AddPath',[])
 		ArgDict = kwargs.get('ArgDict', {})
 		ArgList = kwargs.get('ArgList',[])
-		SalomeGUI = kwargs.get('SalomeGUI',False)
+		GUI = kwargs.get('GUI',False)
 		SalomeInit = kwargs.get('SalomeInit',False)
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
@@ -511,7 +508,7 @@ class VLSetup():
 		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
 		Args = ",".join(ArgList + Args)
 
-		if SalomeGUI:
+		if GUI:
 			command = "salome {} args:{}".format(Script, Args)
 			GUI = Popen(PythonPath + command, shell='TRUE')
 			GUI.wait()

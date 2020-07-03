@@ -20,5 +20,3 @@ for name, path in kwargs.items():
 		ResDict[name]=Res
 Display = Show(Res, renderView1)
 renderView1.ResetCamera()
-
-

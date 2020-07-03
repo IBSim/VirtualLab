@@ -86,7 +86,6 @@ The attributes used by **Code_Aster** are ::
     Sim.AsterFile = 'Tensile' 
     Sim.Mesh = 'Notch1' 
     Sim.Load = {'Force':1000000, 'Displacement':0.01}
-    Sim.ResName = ['ConstForce', 'ConstDisp'] 
     Sim.Materials = 'Copper'
 
 The script used by is :file:'Scripts/Tensile/Aster/Tensile.comm' (ext. ``.comm`` is short for command and what is used for **Code_Aster** scripts). 
@@ -102,26 +101,28 @@ Task 1
 
 As *Parameters_Var* is :code:`None` a single mesh and simulation will be run using the information from *Parameters_Master*. 
 
-The mesh created will be saved to :file:`Output/Tensile/Example/Meshes/Notch1.med`, with the attributes saved to :file:`Notch1.py` in the same directory. 
+When launching **VirtualLab** firstly you will see information regarding the mesh printed to the terminal, such as the number of nodes and where it is saved to. As *Mesh.Name* is 'Notch1' the mesh created will be saved to :file:`Output/Tensile/Example/Meshes/Notch1.med`, with the attributes of *Mesh* saved to :file:`Notch1.py` in the same directory. 
 
-The simulation data will be saved to the simulation directory :file:`Output/Tensile/Example/Training/Single`.
+This will be followed by the **Code_Aster** output for the simulation printing in a seperate *xterm* window. As *Sim.Name* is 'Single' all information relating to the simulation will be saved to the simulation directory :file:`Output/Tensile/Example/Training/Single`.
 
-Execute the Run file. Once the mesh is created you should see information about the mesh printed in the terminal. This will be followed by the simulation opening in a seperate *xterm* window. Since the ``kwarg`` *ShowRes* is set to True in :attr:`VirtualLab.Sim <VLSetup.Sim>` the results are automatically opened in **ParaVis** to view. 
+This **Code_Aster** output is also written to :file:`Aster/AsterLog` in the simulation directory for posterity. Alongside this you will find the :file:`Export` file which is used by **Code_Aster** when launching and contains information such as number of processors and memory allowance. 
+
+You will also find the results files :file:`Force.rmed` and :file:`Displacement.rmed` produced by **Code_Aster** for the constant force and constant displacement simulations respectively. 
+
+.. note:: The file extension :file:`.rmed` is short for 'results-MED' and is used for all **Code_Aster** results files.
+
+As the ``kwarg`` *ShowRes* is set to True in :attr:`VirtualLab.Sim <VLSetup.Sim>` all :file:`.rmed` files in the simulation directory are automatically opened in **ParaVis** to view. 
 
 .. note:: You will need to exit out of xterm once the simulation has completed to open the results in ParaVis. 
-
-The output from **Code_Aster** which is displayed in *xterm* is also output to :file:`Aster/AsterLog` in the simulation directory. Alongside this you will find the :file:`Export` file which is used by **Code_Aster** when launching and contains information such as number of processors and memory allowance. 
-
-You will also find the results files :file:`ConstForce.rmed` and :file:`ConstDisp.rmed` produced by **Code_Aster** (The ext. :file:`.rmed`, short for 'results-MED' is commonly used for results).
 
 Task 2
 ######
 
-The next step is to run multiple simulations concurrently. This is achieved using *Parameters_Var* with *Parameters_Master*. In the Run file change *Parameters_Var* ::
+The next step is to run multiple simulations concurrently. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*. *Parameters_Var* will need to be changed in the Run file ::
 
     Parameters_Var='Parametric_1'
 
-In :file:`Inputs/Tensile/Example/Parametric_1.py` you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b*::
+In *Parameters_Var* file :file:`Inputs/Tensile/Example/Parametric_1.py` you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b*::
 
     Mesh.Name = ['Notch2','Notch3']
     Mesh.Rad_a = [0.001,0.002]
@@ -147,20 +148,20 @@ For attributes of *Mesh* which are not in *Parameters_Var* the value from *Param
     Mesh.Length3D = 0.001
     Mesh.HoleDisc = 30 
 
-As a result two meshes will be created using this *Parameters_Var* file.
+Two meshes will be created using this *Parameters_Var* file.
 
 A simulation is then run on each of these samples::
 
     Sim.Name = ['ParametricSim1', 'ParametricSim2']
     Sim.Mesh = ['Notch2', 'Notch3']
 
-Only the mesh used for the simulation will differ between 'ParametricSim1' and 'ParametricSim2'
+Only the mesh used for the simulation will differ between 'ParametricSim1' and 'ParametricSim2'.
 
 .. warning:: The number of entries for attributes of *Mesh* and *Sim* must be consistent. For example, if *Mesh.Name* has 3 entries then every attribute of *Mesh* in *Parameters_Var* must also have 3 entries. 
 
-Execute the Run file. For clarity the *Name* for each simulation is written at the top of its *xterm* window.
+Execute the Run file. The *Name* for each simulation is written at the top of its *xterm* window to differentiate between them.
 
-The results for both simulations should be shown in ParaVis. The results files will be prefixed with the simulation name for clarity. 
+The results for both simulations will be opened in ParaVis. The results will be prefixed with the simulation name for clarity. 
 
 Compare :file:`Notch2.py` and :file:`Notch3.py` in the *Meshes* directory. You should see that only the values for *Rad_a* and *Rad_b* differ. Likewise only *Mesh* will be different between :file:`ParametricSim1/Parameters.py` and :file:`ParametricSim2/Parameters.py` in the directory 'Training'.
 
@@ -507,7 +508,7 @@ You decide that for this analysis 99% of the coil power will be sufficient. Sinc
 
 Individual mesh groups are created for the element required to ensure 99% of the coil power is provided. The corresponding Joule heating for these elements is piped to **Code_Aster** to apply. The amount of power the coil generates will be printed to the terminal. 
 
-Analysing the results in ParaVis you will see a much more realistic heating profile of the sample using this coil. Open :file:`ERMES.rmed` in ParaVis also to see the results generated by **ERMES**. You should see that the profile *JouleHeating* is very similar to that of the heating profile on the sample. 
+Analysing the results in ParaVis you will see a much more realistic heating profile of the sample using this coil. Open :file:`ERMES.rmed` in ParaVis also to see the results generated by **ERMES**. You should see that the profile *Joule_heating* is very similar to that of the heating profile on the sample. 
 
 Task 5
 ######
@@ -516,7 +517,7 @@ As **ERMES** is a linear solver the results generated are proportional to the cu
 
     Sim.Current=2000
 
-Since *JouleHeating* is the product of the current density J, and the electric filed E it will be proportional to the square of the *Current*. 
+Since *Joule_heating* is the product of the current density J, and the electric filed E it will be proportional to the square of the *Current*. 
 
 You will see that the power supplied by the coil is x4 of that in the previous task. 
 

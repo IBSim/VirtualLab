@@ -1,14 +1,14 @@
 Running a Simulation
 ====================
 
-The `RunFiles <structure.html#runfiles>`_ directory contains the driver files to launch virtual experiments. These files contain the relevant information required to run analysis using **VirtualLab**, such as the type of virtual experiment or the mode in which it is run.
+The `RunFiles <structure.html#runfiles>`_ directory contains the *Run* files used to launch virtual experiments. These files contain the relevant information required to run analysis using **VirtualLab**, such as the type of virtual experiment or the mode in which it is run.
 
-Currently, no options can be passed to Run files from the command line. Options must be selected by editing the files directly. 
+Currently, no options can be passed to *Run* files from the command line. Options must be selected by editing the files directly. 
 
 Header
 ******
 
-At the top of each Run file is the header, common for all analysis, which includes various commands e.g. importing libraries. ::
+At the top of each *Run* file is the header, common for all analysis, which includes various commands e.g. importing libraries. ::
 
   #!/usr/bin/env python3
   
@@ -83,7 +83,7 @@ Name of the file which includes values for all the required variables for the se
 
 .. note:: Do not include the '.py' file extension as part of $FNAME.
 
-The variables in this file are attributed to two different ``Namespaces``; *Mesh* and *Sim*. A ``Namespace`` is essentially an empty class which attributes can be assigned to.  
+The variables in this file are assigned to two different ``Namespaces``; *Mesh* and *Sim*. A ``Namespace`` is essentially an empty class which attributes can be assigned to.  
 
 Mesh
 ####
@@ -181,7 +181,7 @@ VLSetup
       | ``RunPostAster`` bool (optional)
       |   Indicates whether or not to run the optional post-processing script provided in ``Sim.PostAsterFile``. Default is True.
       | ``ShowRes`` bool (optional)
-      |   Visualises the .rmed results file(s) produced by **Code_Aster** through the ParaVis module in **SALOME**. Default is False.
+      |   Visualises the .rmed results file(s) produced by **Code_Aster** through the **ParaVis** module in **SALOME**. Default is False.
       | ``ncpus`` int (optional)
       |   Number of processors used by the solver 'MULT_FRONT' in **Code_Aster**. Default is 1.
       | ``memory`` float (optional)

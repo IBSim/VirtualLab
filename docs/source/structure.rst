@@ -1,7 +1,7 @@
 Code Structure
 ==============
 
-**VirtualLab** contains a number of essential directories needed for running VL simulations:
+**VirtualLab** contains a number of essential directories needed for running simulations:
 
  * `Scripts`_
  * `Materials`_
@@ -16,37 +16,31 @@ In addition to this, other directories are included within the **VirtualLab** st
 Scripts
 *******
 
-This directory includes the scripts needed to initialise a **VirtualLab** simulation. 
-
-Sub-directories within Scripts:
-
- * `Common`_
- * `Install`_
- * `VL Experiments`_
-
-Common
-######
-
-*'Common'* contains the scripts needed by all simulation types. The perform tasks to set up the environment such as creating directories and inerfacing with **SALOME** and **Code_Aster**.
+This directory includes the scripts needed to install **VirtualLab** and initialise a simulation. The content of the sub-directories are detailed below.
 
 Install
 #######
 
-*'Install'* contains the scripts used by the `non-interactive installation <install.html#non-interactive-installation>`_, which will install and configure **VirtualLab** and its dependencies such as python, **Code_Aster**, **SALOME** and **ERMES**.
+This contains the scripts used by the `non-interactive installation <install.html#non-interactive-installation>`_, which will install and configure **VirtualLab** and its dependencies such as python, **Code_Aster**, **SALOME** and **ERMES**.
 
-VL Experiments
-##############
+Common
+######
 
-There are also a sub-directories for each simulation type for various physical laboratory experiments (e.g. Tensile, LFA and HIVE).
+This contains the scripts needed by all simulation types. These includes setting up the environment through creating directories and inerfacing with **SALOME** and **Code_Aster**.
 
-Inside each of these sub-directories are the relevant files required to run that specific virtual experiment. In the Mesh sub-directory you will find **SALOME** python scripts which create the mesh of the testpiece,  while the Aster sub-directory contains **Code_Aster** command scripts which outline the steps followed to setup the FE simulation, such as assigning materials properties to the testpiece.
+Simulations
+###########
 
-These directories may also contain PreAster and PostAster sub-directories containing scripts which provide pre and post-processing capabilities, along with other simulation-specific sub-directories, e.g. ‘Laser’ for LFA which contains different laser pulse profiles measured experimentally.
+There are also a sub-directories for each simulation type for various physical laboratory experiments. Currently you will find `Tensile <virtual_exp.html#tensile-testing>`_, `LFA <virtual_exp.html#laser-flash-analysis>`_ and `HIVE <virtual_exp.html#hive>`_. 
+
+Inside each of these are sub-directories containing the relevant files required to run that specific virtual experiment. In *Mesh* you will find **SALOME** python scripts which create the mesh of the testpiece, while the **Code_Aster** command scripts which outline the steps followed to setup the FE simulation can be found in *Aster*.
+
+The sub-directories *PreAster* and *PostAster* contain scripts which provide pre and post-processing capabilities, if there are any. Simulation-specific sub-directories may also be included here, such as *Laser* for the LFA simulation which contains different laser pulse profiles measured experimentally.
 
 Materials
 *********
 
-*'Materials'* contains the material properties used for FE simulations. Each sub-directory contains properties for different materials.
+This directory contains the material properties used for FE simulations. Each sub-directory contains properties for different materials.
 
 Material properties can be set to be linear or non-linear (e.g. temperature dependence).
 
@@ -55,13 +49,11 @@ The structure of the contents of this directory will be updated soon.
 Input
 *****
 
-*'Input'* contains the parameters which will be used for running simulations, such as dimensions to create meshes and boundary conditions and materials for FE simulations.
+*Input* contains the parameters which will be used for running simulations, such as dimensions to create meshes and boundary conditions and materials for FE simulations.
 
-Input has a sub-directory for each virtual experiment (further details in `Virtual Experiments <virtual_exp.html>`_), and within each of those you will find sub-directories for each different 'Project'. ::
+Input has a sub-directory for each simulation type, and within each of those you will find sub-directories for each different 'Project'.
 
-  Input/$SIMULATION/$PROJECT
-
-The 'Project' sub-directories contain the *'Parameters_Master'* and *'Parameters_Var'* files, explained further in `Running a Simulation <runsim.html>`_.
+Here you will find :file:`$PARAMETERS_MASTER.py` and :file:`$PARAMETERS_VAR.py` files, which are explained in more detail in `Running a Simulation <runsim.html>`_.
 
 docs
 ****
@@ -71,26 +63,15 @@ The files required to create this documentation.
 RunFiles
 ********
 
-*'RunFiles'* is the directory that contain the driver files to launch virtual experiments. This directory contains a number of template files which the user may customise for their own applications.
+The *RunFiles* directory contain the driver files to launch virtual experiments, referred to as *Run* files. This directory contains a number of templates which the user may customise for their own applications.
 
-A detailed template file *‘Run.py’* is included in the top level directory of **VirtualLab** i.e. the installation location.
-
-The structure of the RunFile is explained in `Running a Simulation <runsim.html>`_.
+The structure of a *Run* file is explained in `Running a Simulation <runsim.html>`_. A detailed template file :file:`Run.py` is also included in the top level directory of **VirtualLab** i.e. the installation location.
 
 Output
 ******
 
-This directory will be made when the first **VirtualLab** scripts are run that create output files and will hold all data generated. This will include things such as: meshes; simulation results; visualisation images; analysis reports.
+This directory will be created when the first **VirtualLab** scripts are run which produce output files. 
 
-The *'Output'* directory has a similar sub-directory structure to *'Input'*. That is, it contains a sub-directory for each virtual experiment, and within each of those you will find sub-directories for different 'Projects'. ::
+Similarly to the structure of `Input`_, this directory will have a sub-directory for each 'Project' within each simulation type. This directory will hold all data generated for the 'Project', such as: meshes; simulation results; visualisation images; analysis reports. The structure of the project directory is detailed in `Running a Simulation <runsim.html>`_.
 
-  Input/$SIMULATION/$PROJECT
-
-Projects can contain more than one set of simulation results, called 'studies'. The specific output for each of these is stored in its own sub-directory. ::
-
-  Input/$SIMULATION/$PROJECT/$STUDYNAME
-
-All meshes used for a specific Project can be found in the 'Meshes' sub-directory. ::
-
-  Input/$SIMULATION/$PROJECT/Meshes
 

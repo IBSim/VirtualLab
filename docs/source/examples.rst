@@ -7,6 +7,37 @@ They will show how meshes and simulations can be created parametrically without 
 
 The first tutorial is a mechanical FE simulation, the second a thermal FE simulation and the third a multi-physics simulation.  It is advised to work through the tutorials in order as each will introduce new tools **VirtualLab** has to offer.
 
+Begin each tutorial with all ``kwargs`` set to their default, other than *ShowRes* in :attr:`VirtualLab.Sim <VLSetup.Sim>` which should be :code:`True` ::
+
+	VirtualLab=VLSetup(
+		   Simulation,
+		   Project,
+		   StudyName,
+		   Parameters_Master,
+		   Parameters_Var,
+		   Mode,
+		   port=None)
+
+	VirtualLab.Create(
+		   RunMesh=True,
+		   RunSim=True)
+
+	VirtualLab.Mesh(
+		   ShowMesh=False,
+		   MeshCheck=None)
+
+	VirtualLab.Sim(
+		   RunPreAster=True,
+		   RunAster=True,
+		   RunPostAster=True,
+		   ShowRes=True,
+		   ncpus=1,
+		   memory=2,
+		   mpi_nbcpu=1,
+		   mpi_nbnoeud=1)
+
+	VirtualLab.Cleanup()
+
 
 Tutorial 1: Mechanical
 **********************
@@ -15,7 +46,7 @@ A virtual experiment of the standard mechanical tensile test is performed using 
 
 In this experiment a 'dog-bone' shaped sample is loaded either through constant force, measuring the displacement, or constant displacement, measuring the required load. This provides information about mechanical properties such as Young's elastic modulus.
 
-The variables in the Run file to begin with should be::
+The variables in the *Run* file to begin with should be::
 
     Simulation='Tensile'
     Project='Example'
@@ -113,12 +144,12 @@ You will also find the results files :file:`Force.rmed` and :file:`Displacement.
 
 As the ``kwarg`` *ShowRes* is set to True in :attr:`VirtualLab.Sim <VLSetup.Sim>` all :file:`.rmed` files in the simulation directory are automatically opened in **ParaVis** to view. 
 
-.. note:: You will need to exit out of xterm once the simulation has completed to open the results in ParaVis. 
+.. note:: You will need to exit out of xterm once the simulation has completed to open the results in **ParaVis**. 
 
 Task 2
 ######
 
-The next step is to run multiple simulations concurrently. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*. *Parameters_Var* will need to be changed in the Run file ::
+The next step is to run multiple simulations concurrently. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*. *Parameters_Var* will need to be changed in the *Run* file ::
 
     Parameters_Var='Parametric_1'
 
@@ -159,9 +190,9 @@ Only the mesh used for the simulation will differ between 'ParametricSim1' and '
 
 .. warning:: The number of entries for attributes of *Mesh* and *Sim* must be consistent. For example, if *Mesh.Name* has 3 entries then every attribute of *Mesh* in *Parameters_Var* must also have 3 entries. 
 
-Execute the Run file. The *Name* for each simulation is written at the top of its *xterm* window to differentiate between them.
+Execute the *Run* file. The *Name* for each simulation is written at the top of its *xterm* window to differentiate between them.
 
-The results for both simulations will be opened in ParaVis. The results will be prefixed with the simulation name for clarity. 
+The results for both simulations will be opened in **ParaVis**. The results will be prefixed with the simulation name for clarity. 
 
 Compare :file:`Notch2.py` and :file:`Notch3.py` in the *Meshes* directory. You should see that only the values for *Rad_a* and *Rad_b* differ. Likewise only *Mesh* will be different between :file:`ParametricSim1/Parameters.py` and :file:`ParametricSim2/Parameters.py` in the directory 'Training'.
 
@@ -175,7 +206,7 @@ You realise after running the simulation that the wrong material was used - you 
 
 By setting this flag to :code:`False` **VirtualLab** will skip the meshing routine.
 
-Change *Sim.Materials* in *Parameters_Master* to 'Tungsten' and execute the Run file. You should notice the difference in stress and displacement for the tungsten sample compared with that of the copper sample. 
+Change *Sim.Materials* in *Parameters_Master* to 'Tungsten' and execute the *Run* file. You should notice the difference in stress and displacement for the tungsten sample compared with that of the copper sample. 
 
 
 .. tip:: If you have interest in developing your own scripts then it would be worthwhile looking at the scripts :file:`DogBone.py` and :file:`Tensile.comm` which have been used by **SALOME** and **Code_Aster** respectively for this analysis.  
@@ -186,9 +217,9 @@ Tutorial 2: Thermal
 
 The Laser flash analysis (LFA) experiment consists of a disc shaped sample exposed to a short laser pulse incident on one surface, whilst the temperature change is tracked with respect to time on the opposing surface. This is used to measure thermal diffusivity, which is used to calculate thermal conductivity.
 
-This example introduces some of the post-processing capabilities available in **VirtualLab**. The results of the simulation will be used to calculate the thermal conductivity of the material, while images of the heated sample will be produced using ParaVis. 
+This example introduces some of the post-processing capabilities available in **VirtualLab**. The results of the simulation will be used to calculate the thermal conductivity of the material, while images of the heated sample will be produced using **ParaVis**. 
 
-As this is a different simulation type *Simulation* will need to be changed in the Run file ::
+As this is a different simulation type *Simulation* will need to be changed in the *Run* file ::
 
     Simulation='LFA'
     Project='Example'
@@ -197,7 +228,7 @@ As this is a different simulation type *Simulation* will need to be changed in t
     Parameters_Var='Parametric_1'
     Mode='Interactive'
 
-Since new meshes are required for this simulation the ``kwarg`` *RunMesh* in :attr:`VirtualLab.Create <VLSetup.Create>` will need to be changed to :code:`True` (or it can be removed since this is its default value).
+Since new meshes are required for this simulation ensure the ``kwarg`` *RunMesh* in :attr:`VirtualLab.Create <VLSetup.Create>` is :code:`True`.
 
 In the *Parameters_Master* file :file:`Inputs/LFA/Example/TrainingParameters.py` you will again find namespace *Mesh* and *Sim*
 
@@ -312,7 +343,7 @@ You want to run the post-processing for the simulations again with different *Rv
 
 This flag will ensure that **Code_Aster** is not called, but that other parts of the :attr:`VirtualLab.Sim <VLSetup.Sim>`, such as pre/post-processing are executed. Similarly the ``kwargs`` *RunPreAster* and *RunPostAster* also exist.
 
-Enter new values in the list *Rvalues* (between 0 and 1) and execute the Run file.
+Enter new values in the list *Rvalues* (between 0 and 1) and execute the *Run* file.
 
 Task 4
 ######
@@ -356,7 +387,7 @@ The heating generated by the induction coil uses the open source EM solver **ERM
 
 The effect of the coolant is modelled as a 1D problem using its temperature, pressure and velocity along with knowing the geometry of the pipe. This code was developed by David Hancock (ref). This information is also piped to **Code_Aster** to apply as a BC.
 
-The variables in the Run file should be::
+The variables in the *Run* file should be::
 
     Simulation='HIVE'
     Project='Example'
@@ -458,7 +489,7 @@ Task 1
 
 Ensure *EMLoad* is set to 'Uniform' at the top of :file:`TrainingParameters.py` and execute the file. You will notice that the only additional argument required for this analysis is the magnitude of the heat flux, *Sim.Flux*. 
 
-Analysing the results in ParaVis it should be clear that the heat is applied uniformly to the top surface. You should also be able to see the effect that the HTC BC is having at the pipe. 
+Analysing the results in **ParaVis** it should be clear that the heat is applied uniformly to the top surface. You should also be able to see the effect that the HTC BC is having at the pipe. 
 
 The data used for the HTC between the coolant and the pipe is saved to :file:`PreAster/HTC.dat` in the simulation directory along with a plot of the data :file:`PipeHTC.png`
 
@@ -475,7 +506,7 @@ In :file:`TrainingParameters.py` change the name of the mesh created ::
 
 Along with this ensure that the *ShowMesh* ``kwarg`` is set to :code:`True` in :attr:`VirtualLab.Mesh <VLSetup.Mesh>`.
 
-Execute the Run file. You should notice that information about two meshes are printed in the terminal; 'Sample' and 'xERMES'. 'xERMES' is the mesh used by **ERMES** while 'Sample' is a sub-mesh of it used by **Code_Aster**. Both of these are saved to the same ``MED`` file, :file:`Output/HIVE/Example/Meshes/TestCoil.med` since they are intrinsically linked.
+Execute the *Run* file. You should notice that information about two meshes are printed in the terminal; 'Sample' and 'xERMES'. 'xERMES' is the mesh used by **ERMES** while 'Sample' is a sub-mesh of it used by **Code_Aster**. Both of these are saved to the same ``MED`` file, :file:`Output/HIVE/Example/Meshes/TestCoil.med` since they are intrinsically linked.
 
 In the **SALOME** GUI you should be able to view both meshes. You will also be able to see the mesh for the coil as it is a group in the 'xERMES' mesh.
 
@@ -495,7 +526,7 @@ It is possible to check the *EMThresholding* prior to running the simulation ::
 
     Sim.EMThreshold=None
 
-This will terminate **VirtualLab** after running **ERMES** but prior to creating the individual element groups. A plot of the coil power percentages similar to that above is saved to :file:`PreAster/EM_Thresholding.png` in the simulation directory. You will also find :file:`ERMES.rmed`, which is the results of **ERMES** written in a format compatible with ParaVis.
+This will terminate **VirtualLab** after running **ERMES** but prior to creating the individual element groups. A plot of the coil power percentages similar to that above is saved to :file:`PreAster/EM_Thresholding.png` in the simulation directory. You will also find :file:`ERMES.rmed`, which is the results of **ERMES** written in a format compatible with **ParaVis**.
 
 Task 4
 ######
@@ -508,7 +539,7 @@ You decide that for this analysis 99% of the coil power will be sufficient. Sinc
 
 Individual mesh groups are created for the element required to ensure 99% of the coil power is provided. The corresponding Joule heating for these elements is piped to **Code_Aster** to apply. The amount of power the coil generates will be printed to the terminal. 
 
-Analysing the results in ParaVis you will see a much more realistic heating profile of the sample using this coil. Open :file:`ERMES.rmed` in ParaVis also to see the results generated by **ERMES**. You should see that the profile *Joule_heating* is very similar to that of the heating profile on the sample. 
+Analysing the results in **ParaVis** you will see a much more realistic heating profile of the sample using this coil. Open :file:`ERMES.rmed` in **ParaVis** also to see the results generated by **ERMES**. You should see that the profile *Joule_heating* is very similar to that of the heating profile on the sample. 
 
 Task 5
 ######

@@ -1,7 +1,7 @@
 Tutorials
 =========
 
-The tutorials in this section provide an overview in to running a 'virtual experiment' using **VirtualLab**. 
+The tutorials in this section provide an overview in to running a 'virtual experiment' using **VirtualLab**.
 
 These examples give an overview of:
 
@@ -25,6 +25,8 @@ There is a tutorial for each of **VirtualLab**'s '`virtual experiments <virtual_
    * `HIVE`_
 
 Before starting the tutorials, it is advised to first read the `Code Structure <structure.html>`_ and `Running a Simulation <runsim.html>`_ sections for an overview of **VirtualLab**. Then it is best to work through the tutorials in order as each will introduce new tools that **VirtualLab** has to offer.
+
+These tutorials assume a certain level of pre-existing knowledge about the finite element method (FEM) as a prerequisite. Additionally, these tutorial do not aim to teach users on how to use the **Code_Aster** software itself, only its implementation as part of **VirtualLab**. For **Code_Aster** tutorials we recommend the excellent website `feaforall.com <https://feaforall.com/salome-meca-code-aster-tutorials/>`_. Because **VirtualLab** can be run completely from scripts, without opening the **Code_Aster** graphical user interface (GUI), **VirtualLab** can be used without being familiar with **Code_Aster**.
 
 Each tutorial is structured as follows: firstly the experimental test sample (i.e. geometry domain) is introduced followed by an overview of the boundary conditions and constraints being applied to the sample to emulate the physical experiment. Then a series of tasks are described to guide the user through various stages with specific learning outcomes.
 
@@ -74,7 +76,9 @@ A virtual experiment of the standard mechanical tensile test is performed using 
 
 In this experiment a 'dog-bone' shaped sample is loaded either through constant force, measuring the displacement, or constant displacement, measuring the required load. This provides information about mechanical properties such as Young's elastic modulus.
 
-The variables in the *Run* file to begin with should be::
+.. tip:: You may wish to save your amendments to the template *Run* file ``Run.py`` as a new file, such that you may return to the default template without needing to re-download it. If you do this, remember to replace ``Run.py`` with your custom filename when executing the script to initiate a **VirtualLab** simulation.
+
+Firstly, ensure that the variables in the *Setup* section of the *Run* file ``Run.py`` are set to the values shown below::
 
     Simulation='Tensile'
     Project='Example'
@@ -83,27 +87,31 @@ The variables in the *Run* file to begin with should be::
     Parameters_Var=None
     Mode='Interactive'
 
-The *Parameters_Master* file used is :file:`Inputs/Tensile/Example/TrainingParameters.py`. Firstly you will notice the import statement ::
+The setup above means that the path to the *Parameters_Master* file used is :file:`Inputs/Tensile/Example/TrainingParameters.py`. Open this example python file in a text editor to browse its structure.
+
+Before any definitions are made, you will notice the import statement::
 
     from types import SimpleNamespace as Namespace
 
-A ``Namespace`` is essentially an empty class that attributes can be assigned to. 
+A ``Namespace`` is essentially an empty *class* that *attributes* can be assigned to.
 
-The ``Namespace`` *Mesh* and *Sim* are created in *Parameters_Master* to assign attributes to for the meshing and simulation respectively.
+The ``Namespace`` *Mesh* and *Sim* are created in *Parameters_Master* in order to assign attributes to for the meshing and simulation stages, respectively.
 
 Sample
 ~~~~~~
 
-*Mesh* contains all the variables required by **SALOME** to create the mesh ::
+*Mesh* contains all the variables required by **SALOME** to create the CAD geometry and subsequently generate its mesh. ::
 
     Mesh.Name = 'Notch1'
     Mesh.File = 'DogBone'
 
-Attribute *File* defines the script used by **SALOME** to generate the mesh; :file:`Scripts/Tensile/Mesh/DogBone.py`.
+The attribute *File* defines the script used by **SALOME** to generate the mesh, i.e. :file:`Scripts/Tensile/Mesh/DogBone.py`.
 
-Once the mesh is generated it will be saved as a ``MED`` file in :file:`Output/Tensile/Example/Meshes` under the name specified by *Mesh.Name*. Alongside this a :file:`.py` is created containing the attributes of *Mesh* used to create the mesh. 
+Once the mesh is generated it will be saved as a ``MED`` file in :file:`Output/Tensile/Example/Meshes` under the user specified name set by the *Mesh.Name* attribute, in this instance :file:`Output/Tensile/Example/Meshes/Notch1.med`.
 
-The attributes of *Mesh* used to create the sample geometry in :file:`DogBone.py` are ::
+Alongside this a :file:`.py` file is created containing a record of the *Mesh* attributes used to create the CAD geometry and its mesh.
+
+The default attributes of *Mesh* used to create the sample geometry in :file:`DogBone.py` are::
 
     # Geometric Parameters 
     Mesh.Thickness = 0.003
@@ -120,7 +128,7 @@ The attributes of *Mesh* used to create the sample geometry in :file:`DogBone.py
 
 2Rad_a and 2Rad_b refer to the radii of an elliptic hole machined through a point offset from the centre by *HoleCentre*. The attribute *TransRad* is the radius of the arc which transitions from the gauge to the handle.
 
-The remaining attributes relate to the mesh fineness :: 
+The remaining attributes relate to the mesh refinement parameters:: 
 
     # Meshing Parameters
     Mesh.Length1D = 0.001
@@ -128,16 +136,16 @@ The remaining attributes relate to the mesh fineness ::
     Mesh.Length3D = 0.001
     Mesh.HoleDisc = 30 
 
-*Length1D*, *2D* and *3D* specify the discretisation size along the edges, faces and volumes respectively, while *HoleDisc* specifies the number of segments the circumference of the hole is divided in. 
+*Length1D*, *2D* and *3D* specify the discretisation size (or target seeding distance) along the edges, faces and volumes respectively, while *HoleDisc* specifies the number of segments the circumference of the hole is divided into.
 
 Simulation
 ~~~~~~~~~~
 
-The attributes of *Sim* are used by **Code_Aster** and in any pre/post-processing scripts ::
+The attributes of *Sim* are used by **Code_Aster** and by accompanying pre/post-processing scripts.
 
-*Sim.Name* specifies the name of the sub-directory in :file:`Output/Tensile/Example/Training` which all information relating to the simulation will be stored. Here the file :file:`Parameters.py` is saved containing the attributes of *Sim*, along with the output generated by **Code_Aster** and any pre/post-processing carried out.
+*Sim.Name* specifies the name of the sub-directory in :file:`Output/Tensile/Example/Training` into which all information relating to the simulation will be stored. The file :file:`Parameters.py`, containing the attributes of *Sim*, is saved here along with the output generated by **Code_Aster** and any pre/post-processing stages.
 
-The attributes used by **Code_Aster** are ::
+The attributes used by **Code_Aster** are::
 
     #############
     ### Aster ###
@@ -147,47 +155,60 @@ The attributes used by **Code_Aster** are ::
     Sim.Load = {'Force':1000000, 'Displacement':0.01}
     Sim.Materials = 'Copper'
 
-The script used by is :file:'Scripts/Tensile/Aster/Tensile.comm' (ext. ``.comm`` is short for command and what is used for **Code_Aster** scripts). 
+The attribute *Sim.AsterFile* specifies which virtual experiment script is used by **Code_Aster**, i.e. :file:`Scripts/Tensile/Aster/Tensile.comm`. The extension ``.comm`` is short for command, which is the file extension for scripts used by the **Code_Aster** software.
 
-*Sim.Mesh* specifies what mesh is used in the simulation.
+*Sim.Mesh* specifies which mesh is used in the simulation.
 
-The ``keys`` of *Sim.Load* dictate what simulation will be run. If 'Force' and 'Displacement' are ``keys`` in the dictionary both a constant force and constant displacement simulation will be run. The magnitude for each is the corresponding ``value`` to the ``key``.
+The ``keys`` of *Sim.Load* dictate which simulation type will be run, the options are 'Force' and 'Displacement'. If both 'Force' and 'Displacement' are input as ``keys`` into the dictionary, both a constant force and constant displacement simulation will be run as separate simulations. The magnitude for each is the corresponding ``value`` to the ``key``.
 
-Since *Sim* has neither the attributes *PreAsterFile* or *PostAsterFile* no pre or post processing will be carried out. 
+In this instance, since *Sim* has neither the attributes *PreAsterFile* or *PostAsterFile*, no pre or post processing will be carried out.
 
 Task 1
 ~~~~~~
 
-As *Parameters_Var* is :code:`None` a single mesh and simulation will be run using the information from *Parameters_Master*. 
+Launch your first **VirtualLab** simulation by executing the following command from command line (CL) of the terminal whilst within the directory where your script is saved::
 
-When launching **VirtualLab** firstly you will see information regarding the mesh printed to the terminal, such as the number of nodes and where it is saved to. As *Mesh.Name* is 'Notch1' the mesh created will be saved to :file:`Output/Tensile/Example/Meshes/Notch1.med`, with the attributes of *Mesh* saved to :file:`Notch1.py` in the same directory. 
+  ./Run.py
 
-This will be followed by the **Code_Aster** output for the simulation printing in a seperate *xterm* window. As *Sim.Name* is 'Single' all information relating to the simulation will be saved to the simulation directory :file:`Output/Tensile/Example/Training/Single`.
+Remember to change the filename before executing the command if you are using a customised file.
 
-This **Code_Aster** output is also written to :file:`Aster/AsterLog` in the simulation directory for posterity. Alongside this you will find the :file:`Export` file which is used by **Code_Aster** when launching and contains information such as number of processors and memory allowance. 
+Due to *Parameters_Var* being set to :code:`None`, a single mesh and simulation will be run using the information from *Parameters_Master*.
 
-You will also find the results files :file:`Force.rmed` and :file:`Displacement.rmed` produced by **Code_Aster** for the constant force and constant displacement simulations respectively. 
+When launching **VirtualLab**, firstly you will see information relating to the mesh printed to the terminal, e.g. the number of nodes and the mesh is saved.
+
+Running this simulation will create the following outputs:
+
+ * :file:`Output/Tensile/Example/Meshes/Notch1.med`
+ * etc.
+
+Having *Mesh.Name = 'Notch1'*, the mesh created will be saved to :file:`Output/Tensile/Example/Meshes/Notch1.med`, with the attributes of *Mesh* saved to :file:`Notch1.py` in the same directory. 
+
+With *Mode='Interactive'* in the setup section of ``Run.py``, this output will be followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window. With *Sim.Name = 'Single'*, in *Parameters_Master*, all information relating to the simulation will be saved to the simulation directory :file:`Output/Tensile/Example/Training/Single`.
+
+The **Code_Aster** output messages are also written to :file:`Aster/AsterLog` in the simulation directory for posterity. Alongside this you will find the :file:`Export` file which is used by **Code_Aster** when launching and contains information such as number of processors and memory allowance.
+
+In this directory you will also find the results files :file:`Force.rmed` and :file:`Displacement.rmed` produced by **Code_Aster** for the constant force and constant displacement simulations, respectively.
 
 .. note:: The file extension :file:`.rmed` is short for 'results-MED' and is used for all **Code_Aster** results files.
 
-As the ``kwarg`` *ShowRes* is set to True in :attr:`VirtualLab.Sim <VLSetup.Sim>` all :file:`.rmed` files in the simulation directory are automatically opened in **ParaVis** to view. 
+As the ``kwarg`` *ShowRes* is set to True in :attr:`VirtualLab.Sim <VLSetup.Sim>` all :file:`.rmed` files in the simulation directory are automatically opened in **ParaVis** for visualisation.
 
-.. note:: You will need to exit out of xterm once the simulation has completed to open the results in **ParaVis**. 
+.. note:: You will need to close the xterm window once the simulation has completed for the results to open in **ParaVis**.
 
 Task 2
 ~~~~~~
 
-The next step is to run multiple simulations concurrently. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*. *Parameters_Var* will need to be changed in the *Run* file ::
+The next step is to run multiple simulations concurrently. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*. *Parameters_Var* will need to be changed in the *Run* file::
 
     Parameters_Var='Parametric_1'
 
-In *Parameters_Var* file :file:`Inputs/Tensile/Example/Parametric_1.py` you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b*::
+In the *Parameters_Var* file :file:`Inputs/Tensile/Example/Parametric_1.py` you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b*::
 
     Mesh.Name = ['Notch2','Notch3']
     Mesh.Rad_a = [0.001,0.002]
     Mesh.Rad_b = [0.001,0.0005]
 
-For attributes of *Mesh* which are not in *Parameters_Var* the value from *Parameters_Master* is used. For example, 'Notch2' will have the attributes ::
+Any attributes of *Mesh* which are not included in the *Parameters_Var* file will instead use the values from *Parameters_Master* instead. For example, 'Notch2' will have the attributes::
 
     Mesh.Name = 'Notch2'
     Mesh.File = 'DogBone'
@@ -209,26 +230,30 @@ For attributes of *Mesh* which are not in *Parameters_Var* the value from *Param
 
 Two meshes will be created using this *Parameters_Var* file.
 
-A simulation is then run on each of these samples::
+Simulations will then be performed for each of these samples::
 
     Sim.Name = ['ParametricSim1', 'ParametricSim2']
     Sim.Mesh = ['Notch2', 'Notch3']
 
-Only the mesh used for the simulation will differ between 'ParametricSim1' and 'ParametricSim2'.
+In this instance, only the simulation geometry (hole radii) will differ between 'ParametricSim1' and 'ParametricSim2'.
 
-.. warning:: The number of entries for attributes of *Mesh* and *Sim* must be consistent. For example, if *Mesh.Name* has 3 entries then every attribute of *Mesh* in *Parameters_Var* must also have 3 entries. 
+.. warning:: The number of entries for attributes of *Mesh* and *Sim* must be consistent. For example, if *Mesh.Name* has 3 entries then every attribute of *Mesh* in *Parameters_Var* must also have 3 entries.
 
-Execute the *Run* file. The *Name* for each simulation is written at the top of its *xterm* window to differentiate between them.
+Execute the *Run* file again::
 
-The results for both simulations will be opened in **ParaVis**. The results will be prefixed with the simulation name for clarity. 
+  ./Run.py
 
-Compare :file:`Notch2.py` and :file:`Notch3.py` in the *Meshes* directory. You should see that only the values for *Rad_a* and *Rad_b* differ. Likewise only *Mesh* will be different between :file:`ParametricSim1/Parameters.py` and :file:`ParametricSim2/Parameters.py` in the directory 'Training'.
+The *Name* for each simulation is written at the top of its *xterm* window to differentiate between them.
+
+The results for both simulations will be opened in **ParaVis**. The results will be prefixed with the simulation name for clarity.
+
+Compare :file:`Notch2.py` and :file:`Notch3.py` in the *Meshes* directory. You should see that only the values for *Rad_a* and *Rad_b* differ. Similarly, only *Mesh* will be different between :file:`ParametricSim1/Parameters.py` and :file:`ParametricSim2/Parameters.py` in the directory 'Training'.
 
 
 Task 3
 ~~~~~~
 
-You realise after running the simulation that the wrong material was used - you wanted to run analysis on a tungsten sample. You are happy with the meshes you already have and only want to re-run the simulations. This can be accomplished using the *RunMesh* ``kwarg`` in :attr:`VirtualLab.Create <VLSetup.Create>` ::
+After running the simulation, you realise that the wrong material was used - you wanted to run analysis on a tungsten sample. You are happy with the meshes you already have and only want to re-run the simulations. This can be accomplished by using the *RunMesh* ``kwarg`` in :attr:`VirtualLab.Create <VLSetup.Create>`::
 
     VirtualLab.Create(RunMesh=False)
 
@@ -236,8 +261,9 @@ By setting this flag to :code:`False` **VirtualLab** will skip the meshing routi
 
 Change *Sim.Materials* in *Parameters_Master* to 'Tungsten' and execute the *Run* file. You should notice the difference in stress and displacement for the tungsten sample compared with that of the copper sample. 
 
+.. note:: If you change *Sim.Name* before re-running the simulations, the outputs will be stored in new directories under the new names. If you do not change *Sim.Name*, the initial results will be overwritten.
 
-.. tip:: If you have interest in developing your own scripts then it would be worthwhile looking at the scripts :file:`DogBone.py` and :file:`Tensile.comm` which have been used by **SALOME** and **Code_Aster** respectively for this analysis.  
+.. tip:: If you have interest in developing your own scripts then it would be worthwhile looking at the scripts :file:`DogBone.py` and :file:`Tensile.comm` which have been used by **SALOME** and **Code_Aster** respectively for this analysis.
 
 Thermal
 *******

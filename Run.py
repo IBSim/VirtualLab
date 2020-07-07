@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
+################################################################################
+### HEADER
+################################################################################
 import sys
 from os.path import dirname, abspath
 sys.dont_write_bytecode=True
 sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common.VirtualLab import VLSetup
 
+################################################################################
+### README
+################################################################################
 '''
 Usage:
     ./Run.py
@@ -157,12 +163,20 @@ VirtualLab.Cleanup()
 
 '''
 
+################################################################################
+### SETUP
+################################################################################
+
 Simulation='Tensile'
 Project='Example'
 StudyName='Training'
 Parameters_Master='TrainingParameters'
 Parameters_Var='Parametric_1'
 Mode='Interactive'
+
+################################################################################
+### ENVIRONMENT
+################################################################################
 
 VirtualLab=VLSetup(
            Simulation,

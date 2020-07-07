@@ -18,8 +18,11 @@ At the top of each *Run* file is the header, common for all analysis, which incl
   sys.path.append(dirname(dirname(abspath(__file__))))
   from Scripts.Common.VirtualLab import VLSetup
 
+Setup
+*****
+
 Simulation
-**********
+##########
 
 Usage:
   Simulation = '$TYPE'
@@ -34,23 +37,23 @@ Types available:
 See below for further details.
 
 Mechanical
-##########
+~~~~~~~~~~
 
 `Tensile <virtual_exp.html#tensile-testing>`_ is a standard mechanical tensile test where a 'dog-bone' shaped sample is loaded. The load can be applied as a constant force whilst measuring the displacement or as a constant displacement whilst measuring the required load. This provides information about mechanical properties such as Young's elastic modulus.
 
 Thermal
-#######
+~~~~~~~
 
 `Laser flash analysis <virtual_exp.html#laser-flash-analysis>`_ (LFA) is an experiment where a disc shaped sample has a short laser pulse incident on one surface, whilst the temperature change is tracked with respect to time on the opposing surface. This is used to measure thermal diffusivity, which is used to calculate thermal conductivity.
 
 Multi-Physics
-#############
+~~~~~~~~~~~~~
 
 `Heat by Induction to Verify Extremes <virtual_exp.html#hive>`_ (HIVE) is an experimental facility at the UK Atomic Energy Authority's (UKAEA) Culham site. It is used to expose plasma-facing components to the high thermal loads they will be subjected to in a fusion energy device. In this experiment, samples are thermally loaded on one surface by induction heating whilst being actively cooled with pressurised water.
 
 
 Project
-*******
+#######
 Usage:
   Project = '$USER_STRING'
 
@@ -60,7 +63,7 @@ All data for a project is stored in the project directory located at :file:`Outp
 
 
 StudyName
-*********
+#########
 
 Usage: 
   StudyName = '$USER_STRING'
@@ -74,7 +77,7 @@ For example, if a parameter sweep of a tensile load magnitude was being conducte
 Results from all simulations which are part of this 'study' will be saved in directory :file:`Output/Tensile/additive-manufacturing/LoadMagnitudeSweep`
 
 Parameters_Master
-*****************
+#################
 
 Usage:
   Parameters_Master = '$FNAME'
@@ -86,7 +89,7 @@ Name of the file which includes values for all the required variables for the se
 The variables in this file are assigned to two different ``Namespaces``; *Mesh* and *Sim*. A ``Namespace`` is essentially an empty class which attributes can be assigned to.  
 
 Mesh
-####
+~~~~
 
 Variables within this namespace define the parameters required by **SALOME** to construct a mesh, such as geometric dimensions or mesh fineness.
 
@@ -95,7 +98,7 @@ The script :file:`$MESH.FILE.py` is executed in **SALOME** using the attributes 
 The meshes will be stored in ``MED`` format under the name *Mesh.Name* in the 'Meshes' directory of the `Project`_.
 
 Sim
-###
+~~~
 
 Variables within this namespace define the parameters needed by **Code_Aster** to perform a FE simulation.
 
@@ -106,7 +109,7 @@ Optional pre and post-processing scripts can be run by specifying them in *Sim.P
 Simulation information and data will be stored in the sub-directory *Sim.Name* of the directory *StudyName*
 
 Parameters_Var
-**************
+##############
 
 Usage:
   Parameters_Var = {'$FNAME'/None}
@@ -124,7 +127,7 @@ Please see the `Tutorials <examples.html>`_ to see this in action.
 .. note:: Do not include the '.py' file extension as part of $FNAME.
 
 Mode
-****
+####
 
 Usage:
   mode = "$OPTION"
@@ -138,8 +141,8 @@ Options available:
 
 .. note:: 'I'/'C'/'H' may be used in place of the full option names.
 
-VLSetup
-*******
+Environment
+***********
 
 .. class:: VLSetup
 

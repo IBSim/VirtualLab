@@ -1,13 +1,38 @@
 Tutorials
 =========
 
-The tutorials in this section provide an overview in to running a virtual experiment using **VirtualLab**. 
+The tutorials in this section provide an overview in to running a 'virtual experiment' using **VirtualLab**. 
 
-They will show how meshes and simulations can be created parametrically without the need for a graphical user interface (GUI), the flexibility of running certain aspects and the methods available for debugging. They will also highlight how to use the in-built pre and post-processing capabilities that **VirtualLab** has to offer.
+These examples give an overview of:
 
-The first tutorial is a mechanical FE simulation, the second a thermal FE simulation and the third a multi-physics simulation.  It is advised to work through the tutorials in order as each will introduce new tools **VirtualLab** has to offer.
+ * how meshes and simulations can be created parametrically without the need for a graphical user interface (GUI).
+ * the available options during simulations that give the user a certain degree of flexibility.
+ * methods of debugging.
+ * **VirtualLab**'s in-built pre and post-processing capabilities.
 
-Begin each tutorial with all ``kwargs`` set to their default, other than *ShowRes* in :attr:`VirtualLab.Sim <VLSetup.Sim>` which should be :code:`True` ::
+There is a tutorial for each of **VirtualLab**'s '`virtual experiments <virtual_exp.html>`_' from the currently available list:
+
+ * `Mechanical`_
+
+   * `Tensile Testing`_
+
+ * `Thermal`_
+
+   * `Laser Flash Analysis`_
+
+ * `Multi-physics`_
+
+   * `HIVE`_
+
+Before starting the tutorials, it is advised to first read the `Code Structure <structure.html>`_ and `Running a Simulation <runsim.html>`_ sections for an overview of **VirtualLab**. Then it is best to work through the tutorials in order as each will introduce new tools that **VirtualLab** has to offer.
+
+Each tutorial is structured as follows: firstly the experimental test sample (i.e. geometry domain) is introduced followed by an overview of the boundary conditions and constraints being applied to the sample to emulate the physical experiment. Then a series of tasks are described to guide the user through various stages with specific learning outcomes.
+
+In **VirtualLab**, simulations are initiated by executing a '`Run File <runsim.html>`_'. ``Run.py`` in the **VirtualLab** top level directory is a template 'RunFile' which is given with default `setup <runsim.html#setup>`_ and `environment <runsim.html#environment>`_ values. Additional examples are available in the '`RunFiles <structure.html#runfiles>`_' directory.
+
+.. note:: Each tutorial starts with the ``Run.py`` template using the default values. To help with following the tutorials, the *ShowRes* keyword argument (``kwargs``) in :attr:`VirtualLab.Sim <VLSetup.Sim>` should be manually set to :code:`True`, as shown below.
+
+::
 
 	VirtualLab=VLSetup(
 		   Simulation,
@@ -39,8 +64,11 @@ Begin each tutorial with all ``kwargs`` set to their default, other than *ShowRe
 	VirtualLab.Cleanup()
 
 
-Tutorial 1: Mechanical
-**********************
+Mechanical
+**********
+
+Tensile Testing
+###############
 
 A virtual experiment of the standard mechanical tensile test is performed using a linear elastic model.
 
@@ -64,7 +92,7 @@ A ``Namespace`` is essentially an empty class that attributes can be assigned to
 The ``Namespace`` *Mesh* and *Sim* are created in *Parameters_Master* to assign attributes to for the meshing and simulation respectively.
 
 Sample
-######
+~~~~~~
 
 *Mesh* contains all the variables required by **SALOME** to create the mesh ::
 
@@ -103,7 +131,7 @@ The remaining attributes relate to the mesh fineness ::
 *Length1D*, *2D* and *3D* specify the discretisation size along the edges, faces and volumes respectively, while *HoleDisc* specifies the number of segments the circumference of the hole is divided in. 
 
 Simulation
-##########
+~~~~~~~~~~
 
 The attributes of *Sim* are used by **Code_Aster** and in any pre/post-processing scripts ::
 
@@ -128,7 +156,7 @@ The ``keys`` of *Sim.Load* dictate what simulation will be run. If 'Force' and '
 Since *Sim* has neither the attributes *PreAsterFile* or *PostAsterFile* no pre or post processing will be carried out. 
 
 Task 1
-######
+~~~~~~
 
 As *Parameters_Var* is :code:`None` a single mesh and simulation will be run using the information from *Parameters_Master*. 
 
@@ -147,7 +175,7 @@ As the ``kwarg`` *ShowRes* is set to True in :attr:`VirtualLab.Sim <VLSetup.Sim>
 .. note:: You will need to exit out of xterm once the simulation has completed to open the results in **ParaVis**. 
 
 Task 2
-######
+~~~~~~
 
 The next step is to run multiple simulations concurrently. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*. *Parameters_Var* will need to be changed in the *Run* file ::
 
@@ -198,7 +226,7 @@ Compare :file:`Notch2.py` and :file:`Notch3.py` in the *Meshes* directory. You s
 
 
 Task 3
-######
+~~~~~~
 
 You realise after running the simulation that the wrong material was used - you wanted to run analysis on a tungsten sample. You are happy with the meshes you already have and only want to re-run the simulations. This can be accomplished using the *RunMesh* ``kwarg`` in :attr:`VirtualLab.Create <VLSetup.Create>` ::
 
@@ -211,9 +239,11 @@ Change *Sim.Materials* in *Parameters_Master* to 'Tungsten' and execute the *Run
 
 .. tip:: If you have interest in developing your own scripts then it would be worthwhile looking at the scripts :file:`DogBone.py` and :file:`Tensile.comm` which have been used by **SALOME** and **Code_Aster** respectively for this analysis.  
 
+Thermal
+*******
 
-Tutorial 2: Thermal
-********************
+Laser Flash Analysis
+####################
 
 The Laser flash analysis (LFA) experiment consists of a disc shaped sample exposed to a short laser pulse incident on one surface, whilst the temperature change is tracked with respect to time on the opposing surface. This is used to measure thermal diffusivity, which is used to calculate thermal conductivity.
 
@@ -233,7 +263,7 @@ Since new meshes are required for this simulation ensure the ``kwarg`` *RunMesh*
 In the *Parameters_Master* file :file:`Inputs/LFA/Example/TrainingParameters.py` you will again find namespace *Mesh* and *Sim*
 
 Sample
-######
+~~~~~~
 
 The file used by **SALOME** is :file:`Scripts/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry are ::
 
@@ -254,7 +284,7 @@ The attributes used for the mesh fineness are similar to those used in the first
     Mesh.VoidDisc = 30
 
 Simulation
-##########
+~~~~~~~~~~
 
 As this is a transient simulation additional information is required by **Code_Aster**, such as the initial conditions (IC) of the sample and the temporal discretisation.
 
@@ -303,7 +333,7 @@ As previously mentioned this tutorial introduces post-processing in **VirtualLab
 The script :file:`Scripts/LFA/PostAster/DiscPost.py` is used to create plots of the temperature distribtuion over time, images of the heated sample and the mesh used. 
 
 Task 1
-######
+~~~~~~
 
 The *Parameters_Var* file :file:`Input/LFA/Example/Parametric_1.py` creates two meshes, one with a void and one without, for use in three simulations. 
 
@@ -320,7 +350,7 @@ Notice the volume groups 'Top' and 'Bottom'. This allows different material prop
 Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability the script will terminate once the GUI is closed, meaning that no simulations will be run. 
 
 Task 2
-######
+~~~~~~
 
 You are happy with the quality of the meshes created for your simulation. To run the simulation without re-meshing set the ``kwarg`` *RunMesh* to False (as in Tutorial 1) and remove *ShowMesh*. 
 
@@ -335,7 +365,7 @@ Notice that for simulation ‘SimVoVoid’ the R value 0.1 increases fastest due
 The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the attribute *CaptureTime*.
 
 Task 3
-######
+~~~~~~
 
 You want to run the post-processing for the simulations again with different *Rvalues*. Since the simulations results you have are correct there’s no need to re-run the simulation. In :attr:`VirtualLab.Sim <VLSetup.Sim>` set the ``kwarg`` *RunAster*  to :code:`False`. Change *ShowRes* to :code:`False` also since the results files aren't changing ::
 
@@ -346,7 +376,7 @@ This flag will ensure that **Code_Aster** is not called, but that other parts of
 Enter new values in the list *Rvalues* (between 0 and 1) and execute the *Run* file.
 
 Task 4
-######
+~~~~~~
 
 You realise that you wanted to run the ‘NoVoid’ simulation with a uniform laser profile, not gaussian. Running certain simulations from *Parameters_Var* can be achieved by including *Sim.Run* in the file. This list of booleans will specify what simulations to run ::
 
@@ -359,7 +389,7 @@ Including this in :file:`Parametric_1.py` will result in only the first simulati
 Similarly certain meshes from *Parameters_Var* can be chosen by including *Mesh.Run* in to the file in the same manner as *Sim.Run* was added above.
 
 Task 5
-######
+~~~~~~
 
 The script used by **Code_Aster** up to this point has been :file:`Disc_Lin.py`, which is a linear simulation. The command script :file:`Disc_NonLin.py` allows the use of non-linear, temperature dependent, material properties in the simulation. 
 
@@ -376,8 +406,11 @@ The default maximum number of Newton iterations is 10. This can be altered by ad
 .. tip:: If you are interested in developing post-processing scripts look at :file:`DiscPost.py`.
 
 
-Tutorial 3: Multi-Physics 
-*************************
+Multi-Physics 
+*************
+
+HIVE
+####
 
 Heat by Induction to Verify Extremes (HIVE) is an experimental facility at the UK Atomic Energy Authority (UKAEA) to expose plasma-facing components to the high temperatures they will face in a fusion reactor. Samples are thermally loaded on by induction heating whilst being actively cooled with pressurised water. 
 
@@ -401,7 +434,7 @@ Ensure that the ``kwargs`` changed in the previous tutorial are re-set to their 
 In :file:`Input/HIVE/Example/TrainingParameteres.py` you will notice at the top there is a flag *EMLoad* which indicates how the thermal load generated by the coil will be modelled, either via a unfiorm heat flux or using the **ERMES** solver. 
 
 Sample
-######
+~~~~~~
 
 The sample used in this simulation is an additive manufactured sample which was part of the AMAZE project. The sample is a copper block on a copper pipe with a tungsten tile on the top.
 
@@ -445,7 +478,7 @@ The attributes *Length1D*-*3D* again specify the fineness of the mesh ::
 The attribute *PipeDisc* specifies the number of segments the pipe circumference will be split in. As it's the tile on the sample that will primarily be exposed to the induction heating a finer mesh is required. The attribute *SubTile* specifies the mesh size (1D, 2D and 3D) on the tile. 
 
 Simulation
-##########
+~~~~~~~~~~
 
 You will notice that *Sim* has the attribute *PreAsterFile*. The file :file:`Scripts/HIVE/PreAster/PreHIVE.py` calculates the HTC between the pipe and the coolant for a range of temperatures ::
 
@@ -485,7 +518,7 @@ Since this is again a transient simulation you will see that *Sim* has attribute
 This simulation will run for 200 timesteps up until the end time of 2s. Results will be stored at every other timestep. 
 
 Task 1
-######
+~~~~~~
 
 Ensure *EMLoad* is set to 'Uniform' at the top of :file:`TrainingParameters.py` and execute the file. You will notice that the only additional argument required for this analysis is the magnitude of the heat flux, *Sim.Flux*. 
 
@@ -494,7 +527,7 @@ Analysing the results in **ParaVis** it should be clear that the heat is applied
 The data used for the HTC between the coolant and the pipe is saved to :file:`PreAster/HTC.dat` in the simulation directory along with a plot of the data :file:`PipeHTC.png`
 
 Task 2
-######
+~~~~~~
 
 While the uniform simulation is useful it is an unrealistic model of the heat source produced by the induction coil. To get a more accurate heating profile change *EMLoad* to 'ERMES'.
 
@@ -513,7 +546,7 @@ In the **SALOME** GUI you should be able to view both meshes. You will also be a
 If you import the mesh created in Task 1 alongside these using ``Ctrl+m`` you will see that although the attributes to create the meshes in Task 1 and Task 2 are the same, the meshes have different number of nodes and elements. This is because of the sample being meshed alongside the coil and vacuum for **ERMES** analysis.
 
 Task 3
-######
+~~~~~~
 
 Now that the mesh required by **ERMES** has been create we can use it to create the BC. In :file:`TrainingParameters.py` change *Sim.Mesh* to the **ERMES** compatible mesh and change the simulation *Name* ::
 
@@ -529,7 +562,7 @@ It is possible to check the *EMThresholding* prior to running the simulation ::
 This will terminate **VirtualLab** after running **ERMES** but prior to creating the individual element groups. A plot of the coil power percentages similar to that above is saved to :file:`PreAster/EM_Thresholding.png` in the simulation directory. You will also find :file:`ERMES.rmed`, which is the results of **ERMES** written in a format compatible with **ParaVis**.
 
 Task 4
-######
+~~~~~~
 
 You decide that for this analysis 99% of the coil power will be sufficient. Since the HTC data and **ERMES** results have already been generated there is no need to run these again ::
 
@@ -542,7 +575,7 @@ Individual mesh groups are created for the element required to ensure 99% of the
 Analysing the results in **ParaVis** you will see a much more realistic heating profile of the sample using this coil. Open :file:`ERMES.rmed` in **ParaVis** also to see the results generated by **ERMES**. You should see that the profile *Joule_heating* is very similar to that of the heating profile on the sample. 
 
 Task 5
-######
+~~~~~~
 
 As **ERMES** is a linear solver the results generated are proportional to the current in the coil. This means that if we wanted to re-run analysis with a different current it is not necessary to re-run **ERMES**. Double the value for the attribute *Current* ::
 

@@ -1,3 +1,5 @@
+.. include:: substitutions.rst
+
 Tutorials
 =========
 
@@ -124,7 +126,9 @@ The default attributes of *Mesh* used to create the sample geometry in :file:`Do
     Mesh.Rad_a = 0.001
     Mesh.Rad_b = 0.0005
 
-.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/DogBone.png?inline=false
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/DogBone.png?inline=false
+
+   This is the caption of the figure (a simple paragraph).
 
 2Rad_a and 2Rad_b refer to the radii of an elliptic hole machined through a point offset from the centre by *HoleCentre*. The attribute *TransRad* is the radius of the arc which transitions from the gauge to the handle.
 
@@ -188,7 +192,7 @@ Running this simulation will create the following outputs:
  * :file:`Output/Tensile/Example/Training/Single/Aster/Force.rmed`
  * :file:`Output/Tensile/Example/Training/Single/Aster/Displacement.rmed`
 
-The first two output files relate to the mesh generated. The :file:`.med` file contains the mesh data, while the attributes of *Mesh* are saved to the :file`.py` file. 
+The first two output files relate to the mesh generated. The :file:`.med` file contains the mesh data, while the attributes of *Mesh* are saved to the :file:`.py` file. 
 
 The remaining outputs are all saved to the simulation directory. :file:`Parameters.py` contains the attributes of *Sim* which has been used for the simulation. The :file:`Export` file is used by **Code_Aster** when launching and contains information such as number of processors and memory allowance, while :file:`AsterLog` is a log file containing the **Code_Aster** output messages shown in the xterm window. 
 
@@ -276,11 +280,11 @@ Thermal
 Laser Flash Analysis
 ####################
 
-The Laser flash analysis (LFA) experiment consists of a disc shaped sample exposed to a short laser pulse incident on one surface, whilst the temperature change is tracked with respect to time on the opposing surface. This is used to measure thermal diffusivity, which is used to calculate thermal conductivity.
+The Laser flash analysis (LFA) experiment consists of a disc shaped sample exposed to a short laser pulse incident on one surface. During the pulse, and for a set time afterwards, the temperature change is tracked with respect to time on the opposing surface. This is used to measure thermal diffusivity, which is consequently used to calculate thermal conductivity.
 
-This example introduces some of the post-processing capabilities available in **VirtualLab**. The results of the simulation will be used to calculate the thermal conductivity of the material, while images of the heated sample will be produced using **ParaVis**. 
+This example introduces some of the post-processing capabilities available in **VirtualLab**. The results of the simulation will be used to calculate the thermal conductivity of the material, while images of the heated sample will be produced using **ParaVis**.
 
-As this is a different simulation type *Simulation* will need to be changed in the *Run* file ::
+As this is a different simulation type *Simulation* will need to be changed in the *Run* file. ::
 
     Simulation='LFA'
     Project='Example'
@@ -289,14 +293,14 @@ As this is a different simulation type *Simulation* will need to be changed in t
     Parameters_Var='Parametric_1'
     Mode='Interactive'
 
-Since new meshes are required for this simulation ensure the ``kwarg`` *RunMesh* in :attr:`VirtualLab.Create <VLSetup.Create>` is :code:`True`.
+Since new meshes are required for this simulation, ensure that the ``kwarg`` *RunMesh* in :attr:`VirtualLab.Create <VLSetup.Create>` is :code:`True`.
 
 In the *Parameters_Master* file :file:`Inputs/LFA/Example/TrainingParameters.py` you will again find namespace *Mesh* and *Sim*
 
 Sample
 ~~~~~~
 
-The file used by **SALOME** is :file:`Scripts/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry are ::
+The file used by **SALOME** is :file:`Scripts/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry are::
 
     Mesh.Radius = 0.0063 
     Mesh.HeightB = 0.00125 
@@ -305,9 +309,11 @@ The file used by **SALOME** is :file:`Scripts/LFA/Mesh/Disc.py`. The attributes 
     Mesh.VoidRadius = 0.000 
     Mesh.VoidHeight = 0.0000 
 
-.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LFA_Disc.png?inline=false
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LFA_Disc.png?inline=false
 
-The attributes used for the mesh fineness are similar to those used in the first tutorial ::
+   This is the caption of the figure (a simple paragraph).
+
+The attributes used for the mesh refinement are similar to those used in the `Tensile Testing`_ tutorial::
 
     Mesh.Length1D = 0.0003
     Mesh.Length2D = 0.0003
@@ -317,13 +323,15 @@ The attributes used for the mesh fineness are similar to those used in the first
 Simulation
 ~~~~~~~~~~
 
-As this is a transient simulation additional information is required by **Code_Aster**, such as the initial conditions (IC) of the sample and the temporal discretisation.
+Because this is a transient (time-dependant) simulation, additional information is required by **Code_Aster**, such as the initial conditions (IC) of the sample and the temporal discretisation.
 
-The time-stepping is defined using the attribute *dt*. This is a list of tuples, where the first entry specifies the timestep size, the second the number of time steps and the third how often the results are stored (optional, default is 1). For example ::
+The time-stepping is defined using the attribute *dt*. This is a list of :abbr:`tuples (A tuple is a collection which is ordered and unchangeable. In Python tuples are written with round brackets.)`, where the first entry specifies the timestep size, the second the number of time steps and the third is the frequency of how often the results are stored (optional, default is 1). Further 'time sections' may be defined by additional entries in the list.
+
+For example ::
 
     Sim.dt = [(0.1,5,1),(0.2,10,2)]
 
-Would result in ::
+Would result in::
 
     # Time steps
     0,0.1,0.2,0.3,0.4,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5
@@ -332,16 +340,18 @@ Would result in ::
 
 The attribute *Theta* dictates whether the numerical scheme is fully explicit (0), fully implicit (1) or semi-implicit (between 0 and 1).
 
-For this simulation the temporal discretisation is ::
+For this simulation the temporal discretisation is::
 
     Sim.dt = [(0.00002,50,1), (0.0005,100,2)]
     Sim.Theta = 0.5
 
-The time-step size is smaller initially to capture the larger gradients present during the laser pulse. This simulation will run for 150 timesteps, with 101 sets of results stored (:math:`I.C.+50/1+100/2`). The end time of the simulation will be 0.501 (:math:`0.00002*50+0.0005*100`). 
+When Theta = 0.5 the solution is inherently stable and is known as the the Crank-Nicolson method.
 
-The sample will initially have a uniform temperature profile of 20 **degrees** Celcius.
+The time-step size is smaller initially to capture the larger gradients present during the laser pulse. This simulation will run for 150 timesteps in total, with 101 sets of results stored (:math:`I.C.+50/1+100/2`). The end time of the simulation will be 0.501 *s* (:math:`0.00002*50+0.0005*100`).
 
-*Sim* also has attributes relating to the power and profile of the laser pulse ::
+The sample is set to initially have a uniform temperature profile of 20 |deg| C.
+
+*Sim* also has attributes relating to the power and profile of the laser pulse. ::
 
     Sim.Energy = 5.32468714
     Sim.LaserT= 'Trim' #Temporal profile (see Scripts/LFA/Laser for all options)
@@ -349,49 +359,51 @@ The sample will initially have a uniform temperature profile of 20 **degrees** C
 
 *Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/LFA/Laser`. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian'.
 
-A convective BC is also applied by defining the heat transfer coefficient (HTC) and the external temperature::
+A convective boundary condition (BC) is also applied by defining the heat transfer coefficient (HTC) and the external temperature::
 
     Sim.ExtTemp = 20
     Sim.BottomHTC = 0
     Sim.TopHTC = 0
 
-As previously mentioned this tutorial introduces post-processing in **VirtualLab** :: 
+As previously mentioned, this tutorial introduces post-processing in **VirtualLab**. ::
 
     Sim.PostAsterFile = 'DiscPost'
     Sim.Rvalues = [0.1, 0.5]
     Sim.CaptureTime = 0.01
 
-The script :file:`Scripts/LFA/PostAster/DiscPost.py` is used to create plots of the temperature distribtuion over time, images of the heated sample and the mesh used. 
+The script :file:`Scripts/LFA/PostAster/DiscPost.py` is used to create plots of the temperature distribtuion over time, images of the heated sample and the mesh used.
 
 Task 1: Checking Mesh Quality
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The *Parameters_Var* file :file:`Input/LFA/Example/Parametric_1.py` creates two meshes, one with a void and one without, for use in three simulations. 
+Open the *Parameters_Var* file :file:`Input/LFA/Example/Parametric_1.py` in a text editor. The parameters used here will create two meshes, one with a void and one without, for use in three simulations.
 
-You are interested in seeing the meshes prior to running the simulation. Set the ``kwarg`` *ShowMesh* to True in :attr:`VirtualLab.Mesh <VLSetup.Mesh>` ::
+**What are the three simulations?**
+
+Suppose you are interested in seeing the meshes prior to running the simulation. To do this, in the *Run* file, set the ``kwarg`` *ShowMesh* to True for :attr:`VirtualLab.Mesh <VLSetup.Mesh>`. ::
 
     VirtualLab.Mesh(ShowMesh=True)
 
-This will open all the meshes created in the **SALOME** GUI to look at to asses their suitability. 
+This will open all the meshes created in the **SALOME** GUI to visualise and asses their suitability.
 
-Notice the volume groups 'Top' and 'Bottom'. This allows different material properties to be applied to each in **Code_Aster**, and are defined through the ``keys`` and ``values`` of the dictionary *Sim.Materials*. ::
+Back in *Parameters_Master*, notice the volume groups 'Top' and 'Bottom'. This allows different material properties to be applied to each in **Code_Aster**, and are defined through the ``keys`` and ``values`` of the dictionary *Sim.Materials*. ::
 
     Sim.Materials = {'Top':'Copper', 'Bottom':'Copper'}
 
-Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability the script will terminate once the GUI is closed, meaning that no simulations will be run. 
+Execute your *Run* file in the terminal CL to generate the meshes and visualise them. Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability the script will terminate once the GUI is closed, meaning that no simulations will be run.
 
 Task 2: Running Multiple Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You are happy with the quality of the meshes created for your simulation. To run the simulation without re-meshing set the ``kwarg`` *RunMesh* to :code:`False` (as in the previous tutorial) and remove *ShowMesh*. 
+You decide that you are happy with the quality of the meshes created for your simulation. To run the simulation without re-meshing set the ``kwarg`` *RunMesh* to :code:`False` (as in the previous tutorial) and remove *ShowMesh*.
 
 In the *Aster* directory for each of the 3 simulations run you will find :file:`AsterLog`, :file:`Export` and **Code_Aster** :file:`.rmed` files as seen in the first tutorial. You will also find the file :file:`TimeSteps.dat` which lists the timesteps used in the simulation.
 
-In the *PostAster* directory you will find the output generated by :file:`DiscPost.py`. 
+In the *PostAster* directory you will find the output generated by :file:`DiscPost.py`.
 
-The image :file:`Rplot.png` shows the average temperature on different sized areas of the bottom surface over time. An R value of 0.5 takes the average temperatures of nodes within a half radius of the centre point of the bottom surface. An R value of 1 would be the entire bottom surface. The values for R used in this plot are from the attribute *Rvalues* (R=1 is always included in this plot for comparison).
+The image :file:`Rplot.png` shows the average temperature on different sized areas of the bottom surface over time. An R value of 0.5 takes the average temperatures of nodes within a half radius of the centre point on the bottom surface. An R value of 1 would be the entire bottom surface. The R values used in this plot are from the attribute *Sim.Rvalues* (R=1 is always included in this plot for comparison).
 
-Notice that for simulation ‘SimVoVoid’ the R value 0.1 increases fastest due to the Gaussian profile of the laser pulse. In ‘SimVoid2’ however this R value increases slowest due to the presence of void.
+Notice that for the simulation ‘SimNoVoid’, the R value 0.1 increases fastest due to the Gaussian profile of the laser pulse. In ‘SimVoid2’ however this R value increases slowest due to the presence of void.
 
 The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the attribute *CaptureTime*.
 

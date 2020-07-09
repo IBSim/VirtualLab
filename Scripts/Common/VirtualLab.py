@@ -390,12 +390,13 @@ class VLSetup():
 					else:
 						with open("{}/log.txt".format(StudyDict['POSTASTER']), 'w') as f:
 							with contextlib.redirect_stdout(f):
-								PostCalc.Individual(self, StudyDict)
+								PostAster.Individual(self, StudyDict)
 					print("PostAster for '{}' completed\n".format(Name))
 
 			PostAster = import_module(SimMaster.PostAsterFile)
 			if hasattr(PostAster, 'Combined'):
 				PostAster.Combined(self)
+			
 
 		print('\n### Simulations Completed ###')
 

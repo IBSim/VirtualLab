@@ -7,6 +7,7 @@
 import sys
 import os
 import salome
+import SalomePyQt
 salome.salome_init()
 
 ###
@@ -24,3 +25,12 @@ for Mesh in MeshList:
 	(lstMesh, status) = smesh.CreateMeshesFromMED(Mesh)
 	MeshDict[Name] = {M.GetName():M for M in lstMesh }
 
+sg = SalomePyQt.SalomePyQt()
+sg.activateModule("Mesh") # Activate mesh module
+sg.getObjectBrowser().expandToDepth(1) #  expand Mesh objects
+# Get a ObjectID to show
+smeshComp = salome.myStudy.FindComponent('SMESH') # search for component SMESH in active salome study
+ID = '{}:{}'.format(smeshComp.GetID(),smeshComp.GetLastChildTag())
+# Display and fit to view
+salome.sg.Display(ID)
+salome.sg.FitAll()

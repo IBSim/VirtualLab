@@ -4,6 +4,7 @@ sys.dont_write_bytecode=True
 import salome
 import numpy as np
 from SalomeFunc import GetArgs
+import SalomePyQt
 
 kwargs = GetArgs(sys.argv[1:])
 
@@ -20,3 +21,5 @@ for name, path in kwargs.items():
 		ResDict[name]=Res
 Display = Show(Res, renderView1)
 renderView1.ResetCamera()
+
+SalomePyQt.SalomePyQt().activateModule('ParaViS')

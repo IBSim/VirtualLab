@@ -338,6 +338,24 @@ Would result in::
     # Results stored at
     0,0.1,0.2,0.3,0.4,0.5,0.9,1.3,1.7,2.1,2.5
 
+The total number of timesteps, :math:`N\_tsteps`, is the sum of the second entries in each time section 
+
+.. math ::
+
+   N\_tsteps = N\_tsteps_1 + ... + N\_tsteps_m
+
+The end time of the simulation, :math:`T`, is the sum of the product of timestep size and number of timesteps for each time section
+
+.. math::
+
+   T = t_0 + dt_1*N\_tstep_1 + ... + dt_m*N\_tstep_m 
+
+The number of timestep results stored, :math:`N\_Res`, is the sum of the number of timesteps divided by the storage frequency for each time section plus one for the initial conditions at t0
+
+.. math:: 
+
+   N\_Res = 1 + N\_tstep_1/freq_1 + ... + N\_tstep_m/freq_m
+
 The attribute *Theta* dictates whether the numerical scheme is fully explicit (0), fully implicit (1) or semi-implicit (between 0 and 1).
 
 For this simulation the temporal discretisation is::
@@ -345,9 +363,18 @@ For this simulation the temporal discretisation is::
     Sim.dt = [(0.00002,50,1), (0.0005,100,2)]
     Sim.Theta = 0.5
 
-When Theta = 0.5 the solution is inherently stable and is known as the the Crank-Nicolson method.
+When *Theta* is 0.5 the solution is inherently stable and is known as the the Crank-Nicolson method.
 
-The time-step size is smaller initially to capture the larger gradients present during the laser pulse. This simulation will run for 150 timesteps in total, with 101 sets of results stored (:math:`I.C.+50/1+100/2`). The end time of the simulation will be 0.501 *s* (:math:`0.00002*50+0.0005*100`).
+The time-step size is smaller initially to capture the larger gradients present during the laser pulse at the start of the simulation.
+
+.. math::
+
+   &N\_tsteps = 50 + 100 = 150 \\
+   \\
+   &T = 0.00002*50 + 0.0005*100 = 0.501 \\
+   \\
+   &N\_Res = 1 + 50/1 + 100/2 = 101
+
 
 The sample is set to initially have a uniform temperature profile of 20 |deg| C.
 
@@ -418,9 +445,18 @@ In :attr:`VirtualLab.Sim <VLSetup.Sim>`, in the *Run* file, set the ``kwarg`` *R
 
 These environment settings will ensure that **Code_Aster** is not called, but that other parts of :attr:`VirtualLab.Sim <VLSetup.Sim>`, such as pre/post-processing, are executed. Similarly, the ``kwargs`` *RunPreAster* and *RunPostAster* are available options to control whether those parts of **VirtualLab** are executed.
 
-Try entering your own custom values in the list *Rvalues* (between 0 and 1) and execute the *Run* file again.
+Option A)
 
-**IS IT WORTH USING SOME KIND OF MARKUP TO EMPHASISE WHERE THE USER NEEDS TO CHANGE/DO SOMETHING?**
+:guilabel:`Enter your own custom values in the list *Rvalues*` and execute the *Run* file again.
+
+.. note:: Each value in the list must be between 0 and 1.
+
+Option B)
+
+.. admonition:: Change
+   :class: myOwnStyle
+
+   Try entering your own custom values in the list *Rvalues* (between 0 and 1) and execute the *Run* file again.
 
 Task 4: Re-running Sub-sets of Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

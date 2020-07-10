@@ -626,7 +626,12 @@ This simulation will run for 200 timesteps up until the end time of 2s (200 * 0.
 Task 1: Uniform Heat Flux
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Ensure *EMLoad* is set to 'Uniform' at the top of :file:`TrainingParameters.py` and execute the *Run* file. You will notice that the only additional argument required for this analysis is the magnitude of the heat flux, *Sim.Flux*. 
+You will notice that if *EMLoad* is set to 'Uniform' the only additional argument required for the analysis is the magnitude of the heat flux, *Sim.Flux*. 
+
+.. admonition:: Action
+   :class: myownstyle
+
+   Ensure *EMLoad* is set to 'Uniform' at the top of :file:`TrainingParameters.py` and execute the *Run* file. 
 
 Analysing the results in **ParaVis** it should be clear that the heat is applied uniformly to the top surface. You should also be able to see the effect that the HTC BC is having at the pipe. 
 
@@ -635,17 +640,21 @@ The data used for the HTC between the coolant and the pipe is saved to :file:`Pr
 Task 2: ERMES Mesh
 ~~~~~~~~~~~~~~~~~~
 
-While the uniform simulation is useful it is an unrealistic model of the heat source produced by the induction coil. To get a more accurate heating profile change *EMLoad* to 'ERMES'.
+While the uniform simulation is useful it is an unrealistic model of the heat source produced by the induction coil. A more accurate heating profile can be achieved using **ERMES** .
 
 As previously mentioned, **ERMES** requires a mesh of the coil and surrounding vacuum in addition to the sample. These three need to be compatible by having matching nodes along their shared surfaces (i.e. conformal meshes). To ensure this, the sample, coil and vacuum are meshed together as one geometry. The mesh then used by **Code_Aster** is a sub-mesh of this global mesh.
 
-In :file:`TrainingParameters.py` change the name of the mesh created. ::
+.. admonition:: Action
+   :class: myownstyle
 
-    Mesh.Name='TestCoil'
+   In :file:`TrainingParameters.py` change *EMLoad* to 'ERMES' and the name of the mesh created. ::
 
-Additionally, ensure that the *ShowMesh* ``kwarg`` in the *Run* file is set to :code:`True` in :attr:`VirtualLab.Mesh <VLSetup.Mesh>`.
+      EMLoad = 'ERMES'
+      Mesh.Name='TestCoil'
 
-Execute the *Run* file. You should notice that information about two meshes are printed in the terminal; 'Sample' and 'xERMES'. 'xERMES' is the mesh used by **ERMES** while 'Sample' is a sub-mesh of it used by **Code_Aster**. Both of these are saved to the same ``MED`` file, :file:`Output/HIVE/Example/Meshes/TestCoil.med` since they are intrinsically linked.
+   In the *Run* file change *ShowMesh* ``kwarg`` to :code:`True` in :attr:`VirtualLab.Mesh <VLSetup.Mesh>` and execute it.
+
+You should notice that information about two meshes are printed in the terminal; 'Sample' and 'xERMES'. 'xERMES' is the mesh used by **ERMES** while 'Sample' is a sub-mesh of it used by **Code_Aster**. Both of these are saved to the same ``MED`` file, :file:`Output/HIVE/Example/Meshes/TestCoil.med` since they are intrinsically linked.
 
 In the **SALOME** GUI you should be able to view both meshes. You will also be able to see the mesh for the coil as it is a group within the 'xERMES' mesh.
 
@@ -656,42 +665,59 @@ If you import the mesh created in Task 1 alongside these, by using ``Ctrl+m``, y
 Task 3: Running an ERMES simulation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now that the mesh required by **ERMES** has been created we can use it to create the BCs. In :file:`TrainingParameters.py` change *Sim.Mesh* to the **ERMES** compatible mesh and change the simulation *Name*::
+Now that the mesh required by **ERMES** has been created we can use it to create the BCs. 
 
-    Sim.Name='Sim_ERMES'
-    Sim.Mesh='TestCoil'
+It is possible to check the desried *EMThresholding* prior to running the simulation by setting it to :code:`None`. This will terminate **VirtualLab** after running **ERMES** but prior to creating the individual element groups. A plot of the coil power percentages similar to that above is saved to :file:`PreAster/EM_Thresholding.png` in the simulation directory. You will also find :file:`ERMES.rmed`, which are the results of **ERMES** written in a format compatible with **ParaVis**.
 
-You will also need to change the ``kwargs`` *ShowMesh* and *RunMesh* to :code:`False` in the Run file.
+.. admonition:: Action
+   :class: myownstyle
 
-It is possible to check the desried *EMThresholding* prior to running the simulation. ::
+   In :file:`TrainingParameters.py` change *Sim.Mesh* to the **ERMES** compatible mesh and change the simulation *Name*::
 
-    Sim.EMThreshold=None
+      Sim.Name='Sim_ERMES'
+      Sim.Mesh='TestCoil'
+      Sim.EMThreshold=None
+   
+   You will also need to change the ``kwargs`` *ShowMesh* and *RunMesh* to :code:`False` in the *Run* file.
 
-This will terminate **VirtualLab** after running **ERMES** but prior to creating the individual element groups. A plot of the coil power percentages similar to that above is saved to :file:`PreAster/EM_Thresholding.png` in the simulation directory. You will also find :file:`ERMES.rmed`, which are the results of **ERMES** written in a format compatible with **ParaVis**.
 
 Task 4: Applying ERMES BC in Code_Aster
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You decide that, for this analysis, 99% of the coil power will be sufficient. Since the HTC data and **ERMES** results have already been generated there is no need to run these again. ::
-
-    Sim.CreateHTC=False
-    Sim.RunERMES=False
-    Sim.EMThreshold=0.99
+You decide that, for this analysis, 99% of the coil power will be sufficient. Since the HTC data and **ERMES** results have already been generated there is no need to run these again.
 
 Individual mesh groups are created only for the specific elements required to ensure 99% of the coil power is provided. The corresponding joule heating for these elements is piped to **Code_Aster** to be applied. The amount of power the coil generates will be printed to the terminal. 
 
-By investigating the visualisation of the results in **ParaVis** you will observe a much more realistic heating profile of the sample using this coil. Open :file:`ERMES.rmed` in **ParaVis** also to see the thermal loading results generated by **ERMES**. You should see that the *Joule_heating* profile is very similar to that of the heating profile on the sample. 
+.. admonition:: Action
+   :class: myownstyle
+
+   In :file:`TrainingParameters.py` set *CreateHTC* and *RunERMES* to :code:`False` and change *EMThresholding* to the desired level::
+
+      Sim.CreateHTC=False
+      Sim.RunERMES=False
+      Sim.EMThreshold=0.99
+
+By investigating the visualisation of the results in **ParaVis** you will observe a much more realistic heating profile of the sample using this coil. You should see that the *Joule_heating* profile is very similar to that of the heating profile on the sample.
+
+**BIT HERE FOR EXTRACT GROUPS/PARAVIEW TUTORIAL**
 
 Task 5: ERMES Inputs
 ~~~~~~~~~~~~~~~~~~~~
 
-Because **ERMES** is a linear solver, the results generated are proportional to the current in the coil. This means that if we wanted to re-run analysis with a different current it is not necessary to re-run **ERMES**. Try doubling the value for the attribute *Current*. ::
+Because **ERMES** is a linear solver, the results generated are proportional to the current in the coil. This means that if we wanted to re-run analysis with a different current it is not necessary to re-run **ERMES**.
 
-    Sim.Current=2000
+.. warning:: The same is not true for *Frequency* as this is used in the non-linear cos and sin functions. If the frequency is changed **ERMES** will need to be re-run.  
 
-Since *Joule_heating* is the product of the current density, J, and the electric filed, E, it is proportional to the square of the *Current*. 
+We want to run another simulation where the current in the coil is double that of the previous task, however we do not want to overwrite the results of the simulation. This can be achieved by copying the *PreAster* directory to a new simulation directory.
 
-You will see that the power supplied by the coil is 4 times that of the previous task. 
+.. admonition:: Action
+   :class: myownstyle
 
-.. warning:: The same is not true for *Frequency* as this is used in the non-linear cos and sin functions. If the frequency is changed **ERMES** will need to be re-run. 
+   Create the directory 'Sim_ERMESx2' in :file:`Output/HIVE/Example/Training` and copy over the *PreAster* sub-directory from 'Sim_ERMES' to it. 
+
+   In :file:`TrainingParameters.py` you will need to change *Sim.Name* to 'Sim_ERMESx2' and double the value for the attribute *Current* to 2000. Execute the *Run* file.
+
+The new simulation results will be stored to a different simulation directory using the same pre-processing data. 
+
+Since *Joule_heating* is the product of the current density, J, and the electric filed, E, it is proportional to the square of the *Current*. By doubling the current the power delivered by the coil will be 4 times that of the previous task. 
 

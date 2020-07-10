@@ -338,19 +338,19 @@ Would result in::
     # Results stored at
     0,0.1,0.2,0.3,0.4,0.5,0.9,1.3,1.7,2.1,2.5
 
-The total number of timesteps, :math:`N\_tsteps`, is the sum of the second entries in each time section 
+The total number of timesteps, :math:`N\_tsteps`, is the sum of the second entries in each time section:
 
 .. math ::
 
    N\_tsteps = N\_tsteps_1 + ... + N\_tsteps_m
 
-The end time of the simulation, :math:`T`, is the sum of the product of timestep size and number of timesteps for each time section
+The end time of the simulation, :math:`T`, is the sum of the product of timestep size and number of timesteps for each time section:
 
 .. math::
 
    T = t_0 + dt_1*N\_tstep_1 + ... + dt_m*N\_tstep_m 
 
-The number of timestep results stored, :math:`N\_Res`, is the sum of the number of timesteps divided by the storage frequency for each time section plus one for the initial conditions at t0
+The number of timestep results stored, :math:`N\_Res`, is the sum of the number of timesteps divided by the storage frequency for each time section plus one for the initial conditions at :math:`t_0`:
 
 .. math:: 
 
@@ -405,7 +405,7 @@ Task 1: Checking Mesh Quality
 
 Open the *Parameters_Var* file :file:`Input/LFA/Example/Parametric_1.py` in a text editor. The parameters used here will create two meshes, one with a void and one without, for use in three simulations.
 
-**What are the three simulations?**
+In the first simulation a Gaussian laser profile is applied to the disc without a void. The second and third simulation apply a Gaussian and uniform laser profile, respectively, to the disc containing a void.
 
 Suppose you are interested in seeing the meshes prior to running the simulation. To do this, in the *Run* file, set the ``kwarg`` *ShowMesh* to True for :attr:`VirtualLab.Mesh <VLSetup.Mesh>`. ::
 
@@ -445,33 +445,37 @@ In :attr:`VirtualLab.Sim <VLSetup.Sim>`, in the *Run* file, set the ``kwarg`` *R
 
 These environment settings will ensure that **Code_Aster** is not called, but that other parts of :attr:`VirtualLab.Sim <VLSetup.Sim>`, such as pre/post-processing, are executed. Similarly, the ``kwargs`` *RunPreAster* and *RunPostAster* are available options to control whether those parts of **VirtualLab** are executed.
 
-Option A)
-
-:guilabel:`Enter your own custom values in the list *Rvalues*` and execute the *Run* file again.
-
-.. note:: Each value in the list must be between 0 and 1.
-
-Option B)
-
-.. admonition:: Change
-   :class: myOwnStyle
+.. admonition:: Action
+   :class: myownstyle
 
    Try entering your own custom values in the list *Rvalues* (between 0 and 1) and execute the *Run* file again.
 
 Task 4: Re-running Sub-sets of Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You realise that you wanted to run the ‘NoVoid’ simulation with a uniform laser profile, rather than the Gaussian profile you used. Running particular sub-sets of simulations from *Parameters_Var* can be achieved by including *Sim.Run* in the file. This list of booleans will specify which simulations are run. ::
+You realise that you wanted to run the ‘SimNoVoid’ simulation with a uniform laser profile, rather than the Gaussian profile you used. Running particular sub-sets of simulations from *Parameters_Var* can be achieved by including *Sim.Run* in the file. This list of booleans will specify which simulations are run. For example::
 
-    Sim.Run=[True,False,False]
+    Sim.Run=[True,False,True,False]
 
-Including this in :file:`Parametric_1.py` will result in only the first simulation running. The first entry in *LaserS* will also need to be changed to 'Uniform'. 
+Included in a *Parameters_Var* file would signal that only the first and third simulation need to be run.
+
+Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` the corresponding entry in *Sim.Run* will need to be :code:`True` with the remaining :code:`False`.
+
+.. admonition:: Action
+   :class: myownstyle
+
+   Add *Sim.Run* to :file:`Parametric_1.py` and change the first entry in *Sim.LaserS* to 'Uniform'::
+
+      Sim.Run = [True,False,False] 
+      Sim.LaserS = ['Uniform','Gauss','Uniform']
 
 .. note:: *Sim.Run* is optional and does not need to be included in the *Parameters_Master* file.
 
-Similarly, certain meshes from *Parameters_Var* can be chosen by including *Mesh.Run* in the file in the same manner as *Sim.Run* was added above. ::
+Similarly, certain meshes from *Parameters_Var* can be chosen by including *Mesh.Run* in the file in the same manner as *Sim.Run* was added above. For example, adding::
 
-    Please add an example
+    Mesh.Run = [True,False]
+
+to :file:`Parametric_1.py` and re running the mesh would result only in 'NoVoid' being re-meshed since this is the first entry in *Mesh.Name*.
 
 Task 5: Non-linear Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -480,9 +484,13 @@ Thus far, the script used by **Code_Aster** for the Laser Flash Analysis has bee
 
 The collection of available materials can be found in the `Materials <structure.html#materials>`_ directory. Names of the non-linear types contain the suffix '_NL'.
 
-Modify *Sim.Materials* to use non-linear materials ::
+.. admonition:: Action
+   :class: myownstyle
 
-    Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
+   Change *Sim.AsterFile* to 'Disc_NonLin' and modify *Sim.Materials* to use non-linear materials::
+
+      Sim.AsterFile = 'Disc_NonLin'
+      Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
 
 .. note :: Linear material properties can also be used in :file:`Disc_NonLin.py`
 

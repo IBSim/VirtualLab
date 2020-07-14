@@ -1,7 +1,18 @@
 Running a Simulation
 ====================
 
-The `RunFiles <structure.html#runfiles>`_ directory contains the *Run* files used to launch virtual experiments. These files contain the relevant information required to run analysis using **VirtualLab**, such as the type of virtual experiment or the mode in which it is run.
+If **VirtualLab** has been installed correctly, the main program will have been added to your system :bash:`<path>`. In this case, it is possible to call **VirtualLab** from the terminal or a bash script from any location in your system.
+
+Usage of 'VirtualLab':
+  VirtualLab -f <path>
+
+Options:
+   | :bash:`-f <path>` Where <path> points to the location of the python *Run* file (relative to the current working directory).
+   | :bash:`-h` Display the help menu.
+
+* The default behaviour is to exit if no :bash:`<path>` is given.
+
+The `RunFiles <structure.html#runfiles>`_ directory contains the *Run* files used to specify the settings of virtual experiments. These files contain the relevant information required to run analysis using **VirtualLab**, such as the type of virtual experiment or the mode in which it is run.
 
 Currently, no options can be passed to *Run* files from the command line. Options must be selected by editing the files directly. 
 

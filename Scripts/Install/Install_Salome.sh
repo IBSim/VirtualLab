@@ -109,6 +109,9 @@ else
       echo "Salome now exists in PATH"
       ### ADD TEST HERE TO CHECK WORKING AS EXPECTED
       ### If all working rm salome download files
+      search_var="*salome_meca*.desktop"
+      SALOME_Desktop=$(basename $(eval find $USER_HOME/Desktop/ -name $search_var))
+      sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/Desktop/$SALOME_Desktop 
     else
       ### salome still not installed
       echo "There has been a problem installing salome"

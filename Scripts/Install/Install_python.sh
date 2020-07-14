@@ -153,9 +153,12 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda install -y numpy scipy matplotlib pillow h5py iapws
   conda install -y sphinx
 
-  sudo chown ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
-  sudo chgrp ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
+  #sudo chown ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
+  #sudo chgrp ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
+  sudo chown $SUDO_USER:$SUDO_USER -R $USER_HOME/anaconda3/envs/$CONDAENV
   sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
+  sudo chown -R 1000:1000 $USER_HOME/anaconda3/pkgs/cache
+  sudo chown -R 1000:1000 $USER_HOME/.cache/pip
 
   ### Install python and required packages
   sudo apt install -y python3-pip
@@ -181,7 +184,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   fi
   echo "If conda was not previously installed you will need to open a new"
   echo "terminal to activate it or run the following command in this terminal:"
-  echo 'eval "$($HOME/anaconda3/bin/conda shell.bash hook)"'
+  echo 'eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"'
   echo
 else
   echo "Skipping python installation"

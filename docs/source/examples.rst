@@ -170,17 +170,20 @@ In this instance, since *Sim* has neither the attributes *PreAsterFile* or *Post
 Task 1: Running a simulation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Launch your first **VirtualLab** simulation by executing the following command from command line (CL) of the terminal whilst within the directory where your script is saved::
-
-  ./Run.py
-
-Remember to change the filename before executing the command if you are using a customised file.
-
 Due to *Parameters_Var* being set to :code:`None`, a single mesh and simulation will be run using the information from *Parameters_Master*. The mesh generated for this simulation is ‘Notch1’, specified by Mesh.Name, while the name for the simulation is ‘Single’, given by Sim.Name. Therefore, all information relating to the simulation will be saved to the simulation directory Output/Tensile/Example/Training/Single.
 
 When launching **VirtualLab**, firstly you will see information relating to the mesh printed to the terminal, e.g. the number of nodes and location the mesh is saved.
 
-With *Mode='Interactive'* in the setup section of :file:`Run.py`, this will be followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window. 
+With *Mode* set to 'Interactive' in the setup section of :file:`Run.py`, this will be followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window. 
+
+.. admonition:: Action
+   :class: Action
+
+   Launch your first **VirtualLab** simulation by executing the following command from command line (CL) of the terminal whilst within the directory where your script is saved::
+
+     ./Run.py
+
+   Remember to change the filename before executing the command if you are using a customised file.
 
 Running this simulation will create the following outputs:
 
@@ -196,9 +199,7 @@ The first two output files relate to the mesh generated. The :file:`.med` file c
 
 The remaining outputs are all saved to the simulation directory. :file:`Parameters.py` contains the attributes of *Sim* which has been used for the simulation. The :file:`Export` file is used by **Code_Aster** when launching and contains information such as number of processors and memory allowance, while :file:`AsterLog` is a log file containing the **Code_Aster** output messages shown in the xterm window. 
 
-Since *Sim.Load* contain the ``keys`` 'Force' and 'Displacement' a **Code_Aster** results files for each will be output to :file:`Force.rmed` and :file:`Displacement.rmed` respectively.
-
-.. note:: The file extension :file:`.rmed` is short for 'results-MED' and is used for all **Code_Aster** results files.
+Since *Sim.Load* contain the ``keys`` 'Force' and 'Displacement' a **Code_Aster** results files for each will be output to :file:`Force.rmed` and :file:`Displacement.rmed` respectively. The file extension :file:`.rmed` is short for 'results-MED' and is used for all **Code_Aster** results files.
 
 As the ``kwarg`` *ShowRes* is set to True in :attr:`VirtualLab.Sim <VLSetup.Sim>` all :file:`.rmed` files in the simulation directory are automatically opened in **ParaVis** for visualisation.
 
@@ -207,17 +208,15 @@ As the ``kwarg`` *ShowRes* is set to True in :attr:`VirtualLab.Sim <VLSetup.Sim>
 Task 2: Running Multiple Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The next step is to run multiple simulations concurrently. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*. *Parameters_Var* will need to be changed in the *Run* file::
+The next step is to run multiple simulations concurrently. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*. 
 
-    Parameters_Var='Parametric_1'
-
-In the *Parameters_Var* file :file:`Inputs/Tensile/Example/Parametric_1.py` you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b*::
+The *Parameters_Var* file :file:`Inputs/Tensile/Example/Parametric_1.py` will be used to create two different meshes which are used for simulations. Firstly you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b* along with the *Name* for each mesh::
 
     Mesh.Name = ['Notch2','Notch3']
     Mesh.Rad_a = [0.001,0.002]
     Mesh.Rad_b = [0.001,0.0005]
 
-Any attributes of *Mesh* which are not included in the *Parameters_Var* file will instead use the values from *Parameters_Master* instead. For example, 'Notch2' will have the attributes::
+Any attributes of *Mesh* which are not included in the *Parameters_Var* file will instead use the values from *Parameters_Master*. For example, 'Notch2' will have the attributes::
 
     Mesh.Name = 'Notch2'
     Mesh.File = 'DogBone'
@@ -237,8 +236,6 @@ Any attributes of *Mesh* which are not included in the *Parameters_Var* file wil
     Mesh.Length3D = 0.001
     Mesh.HoleDisc = 30 
 
-Two meshes will be created using this *Parameters_Var* file.
-
 Simulations will then be performed for each of these samples::
 
     Sim.Name = ['ParametricSim1', 'ParametricSim2']
@@ -246,31 +243,45 @@ Simulations will then be performed for each of these samples::
 
 In this instance, only the simulation geometry (hole radii) will differ between 'ParametricSim1' and 'ParametricSim2'.
 
-.. warning:: The number of entries for attributes of *Mesh* and *Sim* must be consistent. For example, if *Mesh.Name* has 3 entries then every attribute of *Mesh* in *Parameters_Var* must also have 3 entries.
-
-Execute the *Run* file again::
-
-  ./Run.py
-
 The *Name* for each simulation is written at the top of its *xterm* window to differentiate between them.
 
 The results for both simulations will be opened in **ParaVis**. The results will be prefixed with the simulation name for clarity.
 
+.. admonition:: Action
+   :class: Action
+
+   Change *Parameters_Var* in the *Run* file::
+
+       Parameters_Var='Parametric_1'
+
+   Execute the *Run* file again
+
 Compare :file:`Notch2.py` and :file:`Notch3.py` in the *Meshes* directory. You should see that only the values for *Rad_a* and *Rad_b* differ. Similarly, only *Mesh* will be different between :file:`ParametricSim1/Parameters.py` and :file:`ParametricSim2/Parameters.py` in the directory 'Training'.
 
+.. warning:: 
+   The number of entries for attributes of *Mesh* and *Sim* must be consistent. 
+
+   For example, if *Mesh.Name* has 3 entries then every attribute of *Mesh* in *Parameters_Var* must also have 3 entries.
 
 Task 3: Simulation Without Meshing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After running the simulation, you realise that the wrong material was used - you wanted to run analysis on a tungsten sample. You are happy with the meshes you already have and only want to re-run the simulations. This can be accomplished by using the *RunMesh* ``kwarg`` in :attr:`VirtualLab.Create <VLSetup.Create>`::
+After running the simulation, you realise that the wrong material was used - you wanted to run analysis on a tungsten sample. You are happy with the meshes you already have and only want to re-run the simulations. 
 
-    VirtualLab.Create(RunMesh=False)
-
-By setting this flag to :code:`False` **VirtualLab** will skip the meshing routine.
-
-Change *Sim.Materials* in *Parameters_Master* to 'Tungsten' and execute the *Run* file. You should notice the difference in stress and displacement for the tungsten sample compared with that of the copper sample. 
+This can be accomplished by using the *RunMesh* ``kwarg`` in :attr:`VirtualLab.Create <VLSetup.Create>`. By setting this flag to :code:`False` **VirtualLab** will skip the meshing routine.
 
 .. note:: If you change *Sim.Name* before re-running the simulations, the outputs will be stored in new directories under the new names. If you do not change *Sim.Name*, the initial results will be overwritten.
+
+.. admonition:: Action
+   :class: Action
+
+   In the *Run* file ensure that *RunMesh* is set to False::
+
+      VirtualLab.Create(RunMesh=False)
+
+   Change *Sim.Materials* in *Parameters_Master* to 'Tungsten' and execute the *Run* file. 
+
+You should notice the difference in stress and displacement for the tungsten sample compared with that of the copper sample. 
 
 .. tip:: If you have interest in developing your own scripts then it would be worthwhile looking at the scripts :file:`DogBone.py` and :file:`Tensile.comm` which have been used by **SALOME** and **Code_Aster** respectively for this analysis.
 
@@ -392,6 +403,12 @@ A convective boundary condition (BC) is also applied by defining the heat transf
     Sim.BottomHTC = 0
     Sim.TopHTC = 0
 
+In this example the attribute *Materials* is a dictionary (**REF**)::
+
+    Sim.Materials = {'Top':'Copper', 'Bottom':'Copper'}
+
+This allows different material properties to be applied to different parts in **Code_Aster**. The dictionary ``keys`` are the names of the mesh groups and their corresponding ``values`` are the material properties which will be applied.
+
 As previously mentioned, this tutorial introduces post-processing in **VirtualLab**. ::
 
     Sim.PostAsterFile = 'DiscPost'
@@ -407,22 +424,35 @@ Open the *Parameters_Var* file :file:`Input/LFA/Example/Parametric_1.py` in a te
 
 In the first simulation a Gaussian laser profile is applied to the disc without a void. The second and third simulation apply a Gaussian and uniform laser profile, respectively, to the disc containing a void.
 
-Suppose you are interested in seeing the meshes prior to running the simulation. To do this, in the *Run* file, set the ``kwarg`` *ShowMesh* to True for :attr:`VirtualLab.Mesh <VLSetup.Mesh>`. ::
+Suppose you are interested in seeing the meshes prior to running the simulation. To do this the ``kwarg`` *ShowMesh* is used in :attr:`VirtualLab.Mesh <VLSetup.Mesh>`. Setting this to :code:`True` will open all the meshes created in the **SALOME** GUI to visualise and asses their suitability.
 
-    VirtualLab.Mesh(ShowMesh=True)
+.. admonition:: Action
+   :class: Action
 
-This will open all the meshes created in the **SALOME** GUI to visualise and asses their suitability.
+   In the *Run* file change the *ShowMesh* ``kwarg``  to :code:`True`::
 
-Back in *Parameters_Master*, notice the volume groups 'Top' and 'Bottom'. This allows different material properties to be applied to each in **Code_Aster**, and are defined through the ``keys`` and ``values`` of the dictionary *Sim.Materials*. ::
+      VirtualLab.Mesh(ShowMesh=True)
 
-    Sim.Materials = {'Top':'Copper', 'Bottom':'Copper'}
+   Execute your *Run* file in the terminal CL to generate the meshes and visualise them. 
 
-Execute your *Run* file in the terminal CL to generate the meshes and visualise them. Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability the script will terminate once the GUI is closed, meaning that no simulations will be run.
+You will notice that each mesh has the group 'Top' and 'Bottom' in :guilabel:`Groups of Volumes` in the object browser (usually located on the left-hand side). These groups are the ``keys`` in *Sim.Materials*.
+
+Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability the script will terminate once the GUI is closed, meaning that no simulations will be run.
 
 Task 2: Running Multiple Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You decide that you are happy with the quality of the meshes created for your simulation. To run the simulation without re-meshing set the ``kwarg`` *RunMesh* to :code:`False` (as in the previous tutorial) and remove *ShowMesh*.
+You decide that you are happy with the quality of the meshes created for your simulation. 
+
+.. admonition:: Action
+   :class: Action
+
+   In the *Run* file set the ``kwargs`` *RunMesh* and *ShowMesh* to  :code:`False` to ensure that the simulations are run without re-meshing::  
+
+      VirtualLab.Create(RunMesh=False)
+      VirtualLab.Mesh(ShowMesh=False)
+
+   Execute the *Run* file.
 
 In the *Aster* directory for each of the 3 simulations run you will find :file:`AsterLog`, :file:`Export` and **Code_Aster** :file:`.rmed` files as seen in the first tutorial. You will also find the file :file:`TimeSteps.dat` which lists the timesteps used in the simulation.
 
@@ -439,14 +469,14 @@ Task 3: Post-Processing Results
 
 Now suppose that you wish to perform post-processing of the simulation results again with different *Rvalues*. Since the existing results are correct there’s no need to re-run the simulation.
 
-In :attr:`VirtualLab.Sim <VLSetup.Sim>`, in the *Run* file, set the ``kwarg`` *RunAster*  to :code:`False`. Since the results files aren't changing, you may also set *ShowRes* to :code:`False`. ::
-
-    VirtualLab.Sim(RunAster=False, ShowRes=False)
-
-These environment settings will ensure that **Code_Aster** is not called, but that other parts of :attr:`VirtualLab.Sim <VLSetup.Sim>`, such as pre/post-processing, are executed. Similarly, the ``kwargs`` *RunPreAster* and *RunPostAster* are available options to control whether those parts of **VirtualLab** are executed.
+This is possible by setting the ``kwarg`` *RunAster* to :code:`False` in :attr:`VirtualLab.Sim <VLSetup.Sim>`. These environment settings will ensure that **Code_Aster** is not called, but that other parts of :attr:`VirtualLab.Sim <VLSetup.Sim>`, such as pre/post-processing, are executed. Similarly, the ``kwargs`` *RunPreAster* and *RunPostAster* are available options to control whether those parts of **VirtualLab** are executed.
 
 .. admonition:: Action
-   :class: myownstyle
+   :class: Action
+
+   In the *Run* file set the ``kwarg`` *RunAster*  to :code:`False`. Since the results files aren't changing, you may also set *ShowRes* to :code:`False`::
+
+      VirtualLab.Sim(RunAster=False, ShowRes=False)
 
    Try entering your own custom values in the list *Rvalues* (between 0 and 1) and execute the *Run* file again.
 
@@ -462,7 +492,11 @@ Included in a *Parameters_Var* file would signal that only the first and third s
 Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` the corresponding entry in *Sim.Run* will need to be :code:`True` with the remaining :code:`False`.
 
 .. admonition:: Action
-   :class: myownstyle
+   :class: Action
+
+   In the *Run* file change *RunAster*  and *ShowRes* back to to :code:`True`::
+
+      VirtualLab.Sim(RunAster=True, ShowRes=True)
 
    Add *Sim.Run* to :file:`Parametric_1.py` and change the first entry in *Sim.LaserS* to 'Uniform'::
 
@@ -471,11 +505,15 @@ Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` th
 
 .. note:: *Sim.Run* is optional and does not need to be included in the *Parameters_Master* file.
 
-Similarly, certain meshes from *Parameters_Var* can be chosen by including *Mesh.Run* in the file in the same manner as *Sim.Run* was added above. For example, adding::
+You should see only the simulation 'SimNoVoid' running in an xterm window. From the results displayed in **ParaVis** it should be clear that a uniform laser profile is used.
 
-    Mesh.Run = [True,False]
+.. tip::
 
-to :file:`Parametric_1.py` and re running the mesh would result only in 'NoVoid' being re-meshed since this is the first entry in *Mesh.Name*.
+   Similarly, certain meshes from *Parameters_Var* can be chosen by including *Mesh.Run* in the file in the same manner as *Sim.Run* was added above. For example, adding::
+
+      Mesh.Run = [True,False]
+
+   to :file:`Parametric_1.py` and re running the mesh would result only in 'NoVoid' being re-meshed since this is the first entry in *Mesh.Name*.
 
 Task 5: Non-linear Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -485,7 +523,7 @@ Thus far, the script used by **Code_Aster** for the Laser Flash Analysis has bee
 The collection of available materials can be found in the `Materials <structure.html#materials>`_ directory. Names of the non-linear types contain the suffix '_NL'.
 
 .. admonition:: Action
-   :class: myownstyle
+   :class: Action
 
    Change *Sim.AsterFile* to 'Disc_NonLin' and modify *Sim.Materials* to use non-linear materials::
 
@@ -629,7 +667,7 @@ Task 1: Uniform Heat Flux
 You will notice in *Parameters_Master* that if *EMLoad* is set to 'Uniform' the only additional argument required for the analysis is the magnitude of the heat flux, *Sim.Flux*. 
 
 .. admonition:: Action
-   :class: myownstyle
+   :class: Action
 
    Ensure *EMLoad* is set to 'Uniform' at the top of :file:`TrainingParameters.py` and execute the *Run* file. 
 
@@ -647,7 +685,7 @@ While the uniform simulation is useful it is an unrealistic model of the heat so
 As previously mentioned, **ERMES** requires a mesh of the coil and surrounding volume (under vacuum) in addition to the sample. These three need to be compatible by having matching nodes along their shared surfaces (i.e. conformal meshes). To ensure this, the sample, coil and vacuum are meshed together as one geometry. The mesh then used by **Code_Aster** is a sub-mesh of this global mesh.
 
 .. admonition:: Action
-   :class: myownstyle
+   :class: Action
 
    In :file:`TrainingParameters.py` change *EMLoad* to 'ERMES' and the name of the mesh created. ::
 
@@ -672,7 +710,7 @@ Now that the mesh required by **ERMES** has been created we can use it to create
 It is possible to check the desried *EMThresholding* prior to running the simulation by setting it to :code:`None`. This will terminate **VirtualLab** after running **ERMES** but prior to creating the individual element groups. A plot of the coil power percentages similar to that above is saved to :file:`PreAster/EM_Thresholding.png` in the simulation directory. You will also find :file:`ERMES.rmed`, which are the results of **ERMES** written in a format compatible for visualisation with **ParaVis**.
 
 .. admonition:: Action
-   :class: myownstyle
+   :class: Action
 
    In :file:`TrainingParameters.py` change *Sim.Mesh* to the **ERMES** compatible mesh and change the simulation *Name*::
 
@@ -693,7 +731,7 @@ You decide that, for this analysis, 99% of the coil power will be sufficient. Si
 Individual mesh groups are created only for the specific elements required to ensure 99% of the coil power is provided. The corresponding joule heating for these elements is piped to **Code_Aster** to be applied. The amount of power the coil generates will be printed to the terminal. 
 
 .. admonition:: Action
-   :class: myownstyle
+   :class: Action
 
    In :file:`TrainingParameters.py` set *CreateHTC* and *RunERMES* to :code:`False` and change *EMThresholding* to the desired level::
 
@@ -717,7 +755,7 @@ Because **ERMES** is a linear solver, the results generated are proportional to 
 In this case, we decide that we want to run another simulation where the current in the coil is double that of the previous task. However, we do not want to overwrite the results of the previous simulation. This can be achieved by copying the existing output from Task 4 into a new directory.
 
 .. admonition:: Action
-   :class: myownstyle
+   :class: Action
 
    Create a copy of the directory 'Sim_ERMES' in :file:`Output/HIVE/Example/Training` and name it 'Sim_ERMESx2'.
 

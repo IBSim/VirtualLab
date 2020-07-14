@@ -93,7 +93,9 @@ else
     
     ### Add to PATH
     echo "Adding salome to PATH"
+    sudo -u ${SUDO_USER:-$USER} echo 'if [[ ! $PATH =~ "'$SALOME_DIR'/appli_'$SALOME_BIN'" ]]; then' >> $USER_HOME/.VLprofile
     sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/appli_'$SALOME_BIN':$PATH"'  >> $USER_HOME/.VLprofile
+    sudo -u ${SUDO_USER:-$USER} echo 'fi'  >> $USER_HOME/.VLprofile
     export PATH="$SALOME_DIR"/appli_"$SALOME_BIN:$PATH"
     
     ### ~/.bashrc doesn't get read by subshells in ubuntu.

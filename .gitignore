@@ -15,6 +15,7 @@
 !LICENSE
 
 # Whitelist these directories
+!bin/
 !docs/
 docs/build
 !Scripts/

@@ -1,0 +1,74 @@
+#!/bin/bash
+USER_HOME=$(eval echo ~${SUDO_USER})
+if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
+BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+usage() {
+  echo
+  echo "Usage:"
+#  echo " $0 [ -f "'$FPATH'" ]"
+  echo " VirtualLab [ -f "'$FPATH'" ]"
+  echo
+  echo "A script to run VirtualLab simulations."
+  echo
+  echo "Options:"
+  echo "   '-f "'$FPATH'"' Where "'$FPATH'" is the path of the python run file."
+  echo "   '-h Display this help menu."
+  echo
+  echo "Default behaviour is to exit if no "'$FPATH'" is given"
+  echo
+}
+exit_abnormal() {
+  usage
+  exit 1
+}
+if [[ $# == 0 ]]; then
+  echo
+  echo "Error: VirtualLab requires an option."
+  exit_abnormal
+fi
+while getopts ":f:h" options; do 
+  case "${options}" in
+    f)
+      CONFIG_FNAME=${OPTARG}
+      if test ! -f "$CONFIG_FNAME" ; then
+        echo 'The file "'$CONFIG_FNAME'" does not exist.'
+        exit 1
+      fi
+      ;;
+    h)  # display Help
+      exit_abnormal
+      ;;
+    :)  # If expected argument omitted:
+      echo "Error: Option -${OPTARG} requires an argument."
+      exit_abnormal
+      ;;
+    *)  # If unknown (any other) option:
+      echo "Error: Invalid option -$OPTARG" >&2
+      exit_abnormal
+      ;;
+  esac
+done
+shift $(($OPTIND - 1))
+if [[ $@ ]]; then
+  echo
+  echo "Error: Too many arguments were entered, please check usage and flags."
+  echo "Remaining arguments: \"$@\"."
+  exit_abnormal
+fi
+
+#source ../../VLconfig.py
+#echo $BIN_DIR
+#source VLconfig.py
+source $BIN_DIR/../VLconfig.py
+
+### Check if Conda is installed, if so activate environment
+### If no conda, prerequisites are assumed installed in local python
+eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"
+if hash conda 2>/dev/null; then
+  CONDAENV="$(basename -- $VL_DIR)"
+  conda activate $CONDAENV
+  #conda info --envs
+fi
+
+$CONFIG_FNAME

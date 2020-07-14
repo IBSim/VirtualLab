@@ -175,6 +175,7 @@ else
   
   sudo -u ${SUDO_USER:-$USER} echo 'if [[ ! $PATH =~ "'$VL_DIR'" ]]; then' >> $USER_HOME/.VLprofile
   sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR':$PATH"'  >> $USER_HOME/.VLprofile
+  sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR'/bin:$PATH"'  >> $USER_HOME/.VLprofile
   sudo -u ${SUDO_USER:-$USER} echo 'fi'  >> $USER_HOME/.VLprofile
   
   export PATH="$VL_DIR:$PATH"

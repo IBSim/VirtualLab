@@ -267,4 +267,13 @@ END
 echo
 echo "Finished installing and configutng VirtualLab."
 echo
+echo "Usage:"
+echo " VirtualLab [ -f "'$FPATH'" ]"
+echo
+echo "Options:"
+echo "   '-f "'$FPATH'"' Where "'$FPATH'" is the path of the python run file."
+echo "   '-h Display this help menu."
+echo
+echo "Default behaviour is to exit if no "'$FPATH'" is given"
+echo
 #END

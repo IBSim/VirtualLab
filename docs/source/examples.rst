@@ -167,7 +167,9 @@ The attribute *Sim.AsterFile* specifies which virtual experiment script is used 
 
 *Sim.Mesh* specifies which mesh is used in the simulation.
 
-The attribute *Sim.Load* is a python `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ that dictates what type of Tensile test will be run. The ``keys`` 'Force' and 'Displacement' specify the type of test which will be performed. Their corresponding ``value`` specifies the magnitude applied in each test. If both 'Force' and 'Displacement' are input as ``keys`` both a constant force and constant displacement simulation will be run as separate simulations.
+The attribute *Sim.Load* is a python `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ that dictates what type of Tensile test will be run. The includion of the ``keys`` 'Force' and/or 'Displacement' in the dictionary specifies whether a constant force and/or constant displacement simulation will be run. The corresponding ``value`` to the ``key`` dictates the magnitude applied in each test. 
+
+The *Sim.Load* defined here specify that a constant force simulation will be run, with a magnitude of 1000000N, and a constant displacement simulation run seperately, with an enforced displacement on 0.01m.
 
 In this instance, since *Sim* has neither the attributes *PreAsterFile* or *PostAsterFile*, no pre or post processing will be carried out.
 
@@ -203,9 +205,7 @@ The first two output files relate to the mesh generated. The :file:`.med` file c
 
 The remaining outputs are all saved to the simulation directory. :file:`Parameters.py` contains the attributes of *Sim* which has been used for the simulation. The :file:`Export` file is used by **Code_Aster** when launching and contains information such as number of processors and memory allowance, while :file:`AsterLog` is a log file containing the **Code_Aster** output messages shown in the xterm window. 
 
-Since *Sim.Load* contain the ``keys`` 'Force' and 'Displacement' a **Code_Aster** results files for each will be output to :file:`Force.rmed` and :file:`Displacement.rmed` respectively. 
-
-.. note:: The file extension :file:`.rmed` is short for 'results-MED' and is used for all **Code_Aster** results files.
+Since *Sim.Load* contain the ``keys`` 'Force' and 'Displacement' a **Code_Aster** results files for each will be output to :file:`Force.rmed` and :file:`Displacement.rmed` respectively. The file extension :file:`.rmed` is short for 'results-MED' and is used for all **Code_Aster** results files.
 
 As the ``kwarg`` *ShowRes* is set to True in :attr:`VirtualLab.Sim <VLSetup.Sim>` all :file:`.rmed` files in the simulation directory are automatically opened in **ParaVis** for visualisation.
 

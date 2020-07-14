@@ -6,11 +6,13 @@ THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $THIS_DIR
 source ../../VLconfig.py
 
-CONDAENV="$(basename -- $VL_DIR)"
+### Check if Conda is installed, if so activate environment
+### If no conda, prerequisites are assumed installed in local python
 eval "$($HOME/anaconda3/bin/conda shell.bash hook)"
-conda activate $CONDAENV
-#echo $CONDA_PREFIX
-#conda list
+if hash conda 2>/dev/null; then
+  CONDAENV="$(basename -- $VL_DIR)"
+  conda activate $CONDAENV
+fi
 
 ### Build VirtualLab documentation using sphinx
 echo "Building documentation"
@@ -19,10 +21,11 @@ make clean
 make html
 sudo chown ${SUDO_USER} -R $VL_DIR/docs/build
 sudo chgrp ${SUDO_USER} -R $VL_DIR/docs/build
-sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
 cd $VL_DIR
 
 if test -f $VL_DIR/docs.html; then
   sudo rm docs.html
 fi
 sudo -u ${SUDO_USER:-$USER} ln -s docs/build/html/index.html docs.html
+echo
+echo "A shortcut to the documentation (docs.html) has been created in $VL_DIR."

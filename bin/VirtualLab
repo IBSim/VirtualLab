@@ -57,18 +57,43 @@ if [[ $@ ]]; then
   exit_abnormal
 fi
 
-#source ../../VLconfig.py
-#echo $BIN_DIR
-#source VLconfig.py
+### Read in VLconfig which contains $VL_DIR
 source $BIN_DIR/../VLconfig.py
 
-### Check if Conda is installed, if so activate environment
+### Check if Conda is installed
+search_var=anaconda*
+conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+if [[ -f $conda_dir/bin/conda ]]; then
+  eval "$($conda_dir/bin/conda shell.bash hook)"
+else
+  search_var=miniconda*
+  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+  if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+  fi
+fi
+
+### If conda found activate environment
 ### If no conda, prerequisites are assumed installed in local python
-eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"
 if hash conda 2>/dev/null; then
   CONDAENV="$(basename -- $VL_DIR)"
   conda activate $CONDAENV
   #conda info --envs
 fi
 
-$CONFIG_FNAME
+### Prefix program filename with "./" such that it executes
+CONFIG_FNAME_exe=$(dirname $CONFIG_FNAME)"/./"$(basename $CONFIG_FNAME)
+
+### Check whether RunFile is executable
+if [[ -x $CONFIG_FNAME_exe ]]; then
+  $CONFIG_FNAME_exe
+else
+  echo
+  echo 'The Run File "'$CONFIG_FNAME'" is not executable.'
+  echo "You must first make it executable by running the following command,"
+  echo "then re-running VirtualLab."
+  echo
+  echo "  sudo chmod +x $CONFIG_FNAME"
+  echo
+fi
+

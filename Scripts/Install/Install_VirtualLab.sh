@@ -174,11 +174,11 @@ else
   echo "Adding VirtualLab to PATH."
   
   sudo -u ${SUDO_USER:-$USER} echo 'if [[ ! $PATH =~ "'$VL_DIR'" ]]; then' >> $USER_HOME/.VLprofile
-  sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR':$PATH"'  >> $USER_HOME/.VLprofile
+#  sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR':$PATH"'  >> $USER_HOME/.VLprofile
   sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR'/bin:$PATH"'  >> $USER_HOME/.VLprofile
   sudo -u ${SUDO_USER:-$USER} echo 'fi'  >> $USER_HOME/.VLprofile
   
-  export PATH="$VL_DIR:$PATH"
+  export PATH="$VL_DIR/bin:$PATH"
 fi
 
 ### ~/.bashrc doesn't get read by subshells in ubuntu.
@@ -221,8 +221,26 @@ if [ "$PYTHON_INST" == "y" ]; then
 elif [ "$PYTHON_INST" == "c" ]; then
   echo "Installing/configuring conda"
   source $VL_DIR/Scripts/Install/Install_python.sh
-  eval "$($HOME/anaconda3/bin/conda shell.bash hook)"
-  conda activate $CONDAENV
+
+  ### Check if Conda is installed
+  search_var=anaconda*
+  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+  if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+  else
+    search_var=miniconda*
+    conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+    if [[ -f $conda_dir/bin/conda ]]; then
+      eval "$($conda_dir/bin/conda shell.bash hook)"
+    fi
+  fi
+
+  ### If conda found activate environment
+  ### If no conda, prerequisites are assumed installed in local python
+  if hash conda 2>/dev/null; then
+    CONDAENV="$(basename -- $VL_DIR)"
+    conda activate $CONDAENV
+  fi
 else
   echo "Skipping python installation"
 fi

@@ -95,7 +95,18 @@ elif [ "$PYTHON_INST" == "c" ]; then
   ### Install conda dependencies
   sudo apt install -y libgl1-mesa-glx libegl1-mesa libxrandr2 libxss1 libxcursor1 libxcomposite1 libasound2 libxi6 libxtst6
 
-  eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"
+  ### Check if Conda is installed
+  search_var=anaconda*
+  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+  if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+  else
+    search_var=miniconda*
+    conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+    if [[ -f $conda_dir/bin/conda ]]; then
+      eval "$($conda_dir/bin/conda shell.bash hook)"
+    fi
+  fi
 
   ### Test to check if conda already exists in current shell's PATH
   if hash conda 2>/dev/null; then

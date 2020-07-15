@@ -6,9 +6,21 @@ THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $THIS_DIR
 source ../../VLconfig.py
 
-### Check if Conda is installed, if so activate environment
+### Check if Conda is installed
+search_var=anaconda*
+conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+if [[ -f $conda_dir/bin/conda ]]; then
+  eval "$($conda_dir/bin/conda shell.bash hook)"
+else
+  search_var=miniconda*
+  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+  if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+  fi
+fi
+
+### If conda found activate environment
 ### If no conda, prerequisites are assumed installed in local python
-eval "$($HOME/anaconda3/bin/conda shell.bash hook)"
 if hash conda 2>/dev/null; then
   CONDAENV="$(basename -- $VL_DIR)"
   conda activate $CONDAENV
@@ -29,3 +41,4 @@ fi
 sudo -u ${SUDO_USER:-$USER} ln -s docs/build/html/index.html docs.html
 echo
 echo "A shortcut to the documentation (docs.html) has been created in $VL_DIR."
+

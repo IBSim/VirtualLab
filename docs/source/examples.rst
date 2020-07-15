@@ -301,7 +301,7 @@ The Laser flash analysis (LFA) experiment consists of a disc shaped sample expos
 
 This example introduces some of the post-processing capabilities available in **VirtualLab**. The results of the simulation will be used to calculate the thermal conductivity of the material, while images of the heated sample will be produced using **ParaVis**.
 
-As this is a different simulation type *Simulation* will need to be changed in the *Run* file. ::
+Because this is a different simulation type, *Simulation* will need to be changed in the *Run* file. ::
 
     Simulation='LFA'
     Project='Example'
@@ -310,6 +310,8 @@ As this is a different simulation type *Simulation* will need to be changed in t
     Parameters_Var='Parametric_1'
     Mode='Interactive'
 
+
+
 Since new meshes are required for this simulation, ensure that the ``kwarg`` *RunMesh* in :attr:`VirtualLab.Create <VLSetup.Create>` is :code:`True`.
 
 In the *Parameters_Master* file :file:`Inputs/LFA/Example/TrainingParameters.py` you will again find namespace *Mesh* and *Sim*
@@ -317,7 +319,7 @@ In the *Parameters_Master* file :file:`Inputs/LFA/Example/TrainingParameters.py`
 Sample
 ~~~~~~
 
-The file used by **SALOME** is :file:`Scripts/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry, referenced in :numref:`Fig. %s <LFA_Disc>` are::
+The file used by **SALOME** to create the geometry and generate the mesh is :file:`Scripts/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry, referenced in :numref:`Fig. %s <LFA_Disc>` are::
 
     Mesh.Radius = 0.0063 
     Mesh.HeightB = 0.00125 
@@ -348,7 +350,7 @@ Because this is a transient (time-dependant) simulation, additional information 
 
 The time-stepping is defined using the attribute *dt*. This is a list of :abbr:`tuples (A tuple is a collection which is ordered and unchangeable. In Python tuples are written with round brackets.)`, where the first entry specifies the timestep size, the second the number of time steps and the third is the frequency of how often the results are stored (optional, default is 1). Further 'time sections' may be defined by additional entries in the list.
 
-For example ::
+For example::
 
     Sim.dt = [(0.1,5,1),(0.2,10,2)]
 
@@ -359,7 +361,7 @@ Would result in::
     # Results stored at
     0,0.1,0.2,0.3,0.4,0.5,0.9,1.3,1.7,2.1,2.5
 
-The total number of timesteps, :math:`N\_tsteps`, is the sum of the second entries in each time section:
+The total number of timesteps, :math:`N\_tsteps`, is the sum of the second entry in each time section:
 
 .. math ::
 
@@ -386,7 +388,7 @@ For this simulation the temporal discretisation is::
 
 When *Theta* is 0.5 the solution is inherently stable and is known as the the Crank-Nicolson method.
 
-The time-step size is smaller initially to capture the larger gradients present during the laser pulse at the start of the simulation.
+For this virtual experiment, the time-step size has been set to be smaller initially to capture the larger gradients present during the laser pulse at the start of the simulation.
 
 .. math::
 
@@ -432,9 +434,9 @@ Task 1: Checking Mesh Quality
 
 Open the *Parameters_Var* file :file:`Input/LFA/Example/Parametric_1.py` in a text editor. The parameters used here will create two meshes, one with a void and one without, for use in three simulations.
 
-In the first simulation a Gaussian laser profile is applied to the disc without a void. The second and third simulation apply a Gaussian and uniform laser profile, respectively, to the disc containing a void.
+In the first simulation, a Gaussian laser profile is applied to the disc without a void. The second and third simulation apply a Gaussian and uniform laser profile, respectively, to the disc now containing a void.
 
-Suppose you are interested in seeing the meshes prior to running the simulation. To do this the ``kwarg`` *ShowMesh* is used in :attr:`VirtualLab.Mesh <VLSetup.Mesh>`. Setting this to :code:`True` will open all the meshes created in the **SALOME** GUI to visualise and asses their suitability.
+Suppose you are interested in seeing the meshes prior to running the simulation. To do this, the ``kwarg`` *ShowMesh* is used in :attr:`VirtualLab.Mesh <VLSetup.Mesh>`. Setting this to :code:`True` will open all the generated meshes in the **SALOME** GUI to visualise and asses their suitability.
 
 .. admonition:: Action
    :class: Action
@@ -447,7 +449,7 @@ Suppose you are interested in seeing the meshes prior to running the simulation.
 
 You will notice that each mesh has the group 'Top' and 'Bottom' in :guilabel:`Groups of Volumes` in the object browser (usually located on the left-hand side). These groups are the ``keys`` in *Sim.Materials*.
 
-Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability the script will terminate once the GUI is closed, meaning that no simulations will be run.
+Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability, the script will terminate once the GUI is closed, meaning that no simulations will be run.
 
 Task 2: Running Multiple Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -464,20 +466,20 @@ You decide that you are happy with the quality of the meshes created for your si
 
    Execute the *Run* file.
 
-In the *Aster* directory for each of the 3 simulations run you will find :file:`AsterLog`, :file:`Export` and **Code_Aster** :file:`.rmed` files as seen in the first tutorial. You will also find the file :file:`TimeSteps.dat` which lists the timesteps used in the simulation.
+In the *Aster* directory for each of the 3 simulations, you will find: :file:`AsterLog`; :file:`Export`; and **Code_Aster** :file:`.rmed` files, as seen in the first tutorial. You will also find the file :file:`TimeSteps.dat` which lists the timesteps used in the simulation.
 
 In the *PostAster* directory you will find the output generated by :file:`DiscPost.py`.
 
 The image :file:`Rplot.png` shows the average temperature on different sized areas of the bottom surface over time. An R value of 0.5 takes the average temperatures of nodes within a half radius of the centre point on the bottom surface. An R value of 1 would be the entire bottom surface. The R values used in this plot are from the attribute *Sim.Rvalues* (R=1 is always included in this plot for comparison).
 
-The curves with an R value of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample i.e. directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations where the geometries are identical due to the different spatial distribution of the thermal load.
+The curves with an R value of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample i.e. directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical. This is due to the different spatial distribution of the thermal load.
 
 The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the attribute *CaptureTime*.
 
 Task 3: Post-Processing Results
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now suppose that you wish to perform post-processing of the simulation results again with different *Rvalues*. Since the existing results are correct there’s no need to re-run the simulation.
+Now suppose that you wish to perform post-processing of the simulation results again, but this time with different *Rvalues*. Since the existing results are correct, there’s no need to re-run the simulation.
 
 This is possible by setting the ``kwarg`` *RunAster* to :code:`False` in :attr:`VirtualLab.Sim <VLSetup.Sim>`. These environment settings will ensure that **Code_Aster** is not called, but that other parts of :attr:`VirtualLab.Sim <VLSetup.Sim>`, such as pre/post-processing, are executed. Similarly, the ``kwargs`` *RunPreAster* and *RunPostAster* are available options to control whether those parts of **VirtualLab** are executed.
 
@@ -488,7 +490,7 @@ This is possible by setting the ``kwarg`` *RunAster* to :code:`False` in :attr:`
 
       VirtualLab.Sim(RunAster=False, ShowRes=False)
 
-   Try entering your own custom values in the list *Rvalues* (between 0 and 1) and execute the *Run* file again.
+   Try entering your own custom values in the list *Rvalues* (between 0 and 1), execute the *Run* file and view the output again.
 
 Task 4: Re-running Sub-sets of Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -497,9 +499,9 @@ You realise that you wanted to run the ‘SimNoVoid’ simulation with a uniform
 
     Sim.Run=[True,False,True,False]
 
-Included in a *Parameters_Var* file would signal that only the first and third simulation need to be run.
+included within a *Parameters_Var* file, this would signal that only the first and third simulation need to be run.
 
-Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` the corresponding entry in *Sim.Run* will need to be :code:`True` with the remaining :code:`False`.
+Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` the corresponding entry in *Sim.Run* will need to be :code:`True` with the remaining entries set to :code:`False`.
 
 .. admonition:: Action
    :class: Action
@@ -508,14 +510,16 @@ Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` th
 
       VirtualLab.Sim(RunAster=True, ShowRes=True)
 
-   Add *Sim.Run* to :file:`Parametric_1.py` and change the first entry in *Sim.LaserS* to 'Uniform'::
+   In the *Aster* section of :file:`Parametric_1.py` add *Sim.Run* with the values shown below and change the first entry in *Sim.LaserS* to 'Uniform'::
 
       Sim.Run = [True,False,False] 
       Sim.LaserS = ['Uniform','Gauss','Uniform']
 
+   Execute the *Run* file again.
+
 .. note:: *Sim.Run* is optional and does not need to be included in the *Parameters_Master* file.
 
-You should see only the simulation 'SimNoVoid' running in an xterm window. From the results displayed in **ParaVis** it should be clear that a uniform laser profile is used.
+You should see only the simulation 'SimNoVoid' running in an xterm window. From the temperature results displayed in **ParaVis** it should be clear that a uniform laser profile is used.
 
 .. tip::
 
@@ -535,14 +539,16 @@ The collection of available materials can be found in the `Materials <structure.
 .. admonition:: Action
    :class: Action
 
-   Change *Sim.AsterFile* to 'Disc_NonLin' and modify *Sim.Materials* to use non-linear materials::
+   In *Parameters_Master* (i.e. :file:`TrainingParameters.py`) change *Sim.AsterFile* to 'Disc_NonLin' and modify *Sim.Materials* to use non-linear materials::
 
       Sim.AsterFile = 'Disc_NonLin'
       Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
 
+   Execute the *Run* file again.
+
 .. note :: Linear material properties can also be used in :file:`Disc_NonLin.py`
 
-Notice that the **Code_Aster** output is different in the non-linear simulation compared with the linear one. This is due to the Newton iterations which are required to find the solution in non-linear simulations.
+Notice that the **Code_Aster** terminal output is different in the non-linear simulation compared with the linear one. This is due to the Newton iterations which are required to find the solution in non-linear simulations.
 
 The default maximum number of Newton iterations is 10. This can be altered by adding the attribute *MaxIter* to the *Sim* namespace.
 

@@ -782,8 +782,8 @@ Since *Joule_heating* is the product of the current density, J, and the electric
 Open the two sets of results in **ParaVis** for comparison.
 
 
-Bibliography
-============
+References
+**********
 
 .. bibliography:: refs.bib
    :style: plain

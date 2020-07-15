@@ -10,12 +10,13 @@ import matplotlib.pyplot as plt
 import time
 from bisect import bisect_left as bl
 
-def GetHTC(Info, StudyDict):
-#	for Name, StudyDict in Info.Studies.items():
+def HTC(Info, StudyDict):
 	CreateHTC = getattr(StudyDict['Parameters'], 'CreateHTC', True)
 
+	# if None then no HTC will be generated
 	if CreateHTC == None: return
-	# Create a new set of HTC values
+
+	# Create a new set of HTC values based on pipe geometries and coolant properties
 	if CreateHTC:
 		from HTC.Coolant import Properties as ClProp
 		from HTC.Pipe import PipeGeom
@@ -24,7 +25,6 @@ def GetHTC(Info, StudyDict):
 
 		Pipedict = StudyDict['Parameters'].Pipe
 		Pipe = PipeGeom(shape=Pipedict['Type'], pipediameter=Pipedict['Diameter'], length=Pipedict['Length'])
-
 
 		Cooldict = StudyDict['Parameters'].Coolant
 		Coolant = ClProp(T=Cooldict['Temperature']+273, P=Cooldict['Pressure'], velocity=Cooldict['Velocity'])
@@ -54,7 +54,7 @@ def GetHTC(Info, StudyDict):
 		plt.savefig("{}/PipeHTC.png".format(StudyDict['PREASTER']), bbox_inches='tight')
 		plt.close()
 
-	### Use previous HTC values
+	### Use previous HTC values from PreAster directory
 	elif os.path.isfile("{}/HTC.dat".format(StudyDict['PREASTER'])):
 		shutil.copy("{}/HTC.dat".format(StudyDict['PREASTER']), StudyDict['TMP_CALC_DIR'])
 
@@ -127,13 +127,19 @@ def CoilCurrent(EMMesh, JRes, groupname = 'CoilIn', **kwargs):
 def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	check = kwargs.get('check', False)
 
+	# Create the .dat files needed by ERMES for a simulation.
+	# Since the coil is non-symmetric an electrostatic simulation is required before
+	# the full wave simulation.
+
+
 	Temperatures = [20]
+	# Get mesh info using the MeshInfo class written using h5py
 	MeshFile = "{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh)
 	ERMESMesh = MeshInfo(MeshFile, meshname='xERMES')
+
+	# Define duplicate nodes for contact surfaces, which is on the SampleSurface and CoilSurface
 	CoilSurface = ERMESMesh.GroupInfo('CoilSurface')
 	SampleSurface = ERMESMesh.GroupInfo('SampleSurface')
-
-	# Define duplicate nodes for contact surfaces, which is on the SampleSurface and Coil Surface
 	ContactNodeSt = ERMESMesh.NbNodes + 1
 	ContactNodes = SampleSurface.Nodes.tolist() + CoilSurface.Nodes.tolist()
 	NbNodesERMES = ERMESMesh.NbNodes + len(ContactNodes)
@@ -148,7 +154,8 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	strNodes.insert(0,"// List of nodes\n")
 	strNodes = "".join(strNodes)
 
-	# Electrostatic part
+	# Electrostatic File
+	# Define problem type
 	Stat01 = "// Setting problem\n" + \
 	"ProblemType = Static;\n" + \
 	"ProblemType = GiDTol9;\n" + \
@@ -164,11 +171,11 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	"ProblemFrequency = {};\n".format(StudyDict['Parameters'].Frequency*2*np.pi) + \
 	"ProblemType = CheckConsistency;\n"
 
+	# Define Material properties. Only need Electrical Conductivity of 1 for coil
+	# for this analysis.
 	EMlist = ['Vacuum','Coil'] + sorted(StudyDict['Parameters'].Materials.keys())
-	# Define Electric Conductivity for electrostatic part - all 0 except the Coil
 	Electrolist = [0]*len(EMlist)
 	Electrolist[1] = 1
-
 	StatMat = "// Material properties\n"
 	for i,res in enumerate(Electrolist):
 		StatMat += "PROPERTIES[{}].IHL_ELECTRIC_CONDUCTIVITY  = {};\n".format(i+1,res) + \
@@ -176,14 +183,18 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		"PROPERTIES[{}].IMAG_MAGNETIC_PERMEABILITY = {};\n".format(i+1,0) + \
 		"PROPERTIES[{}].REAL_ELECTRIC_PERMITTIVITY = {};\n".format(i+1,1) + \
 		"PROPERTIES[{}].IMAG_ELECTRIC_PERMITTIVITY = {};\n".format(i+1,0)
+
+	# Property used for CoilIn BC (100 is a nominal amount)
 	StatMat += "// Special materials properties\n" + \
 	"PROPERTIES[17].COMPLEX_IBC = [0.000000000000000000,100.000000000000000000];\n" + \
 	"PROPERTIES[32].COMPLEX_IBC = [1.0,0.0];\n"
 
+	# BC at CoilOut terminal
 	StatBC =["No[{}].V.Fix(0.0);\n".format(nd) for nd in ERMESMesh.GroupInfo('CoilOut').Nodes]
 	StatBC.insert(0,"// Fixing static voltage on nodes in nodes\n")
 	StatBC = "".join(StatBC)
 
+	# describes the building procedure for the problem
 	Stat05 = "// Initializing building \n" + \
 	"ElementsGroup = electromagnetic_group;\n\n" + \
 	'// Generating debug results (if "Debug" mode activated) \n\n' + \
@@ -245,6 +256,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	del strNodes, StatBC, WaveBC
 
 	# Create variables for contact node information used in dat file 1 and 3
+	# Replace node numbers with newly created nodes at same location
 	Vacuumgrp = ERMESMesh.GroupInfo('Vacuum')
 	VacuumNew = np.copy(Vacuumgrp.Connect)
 	ContactFaceOrig = np.vstack((SampleSurface.Connect,CoilSurface.Connect))
@@ -255,6 +267,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		ContactFaceNew[ContactFaceNew == nd] = NewNode
 
 	###### 1.dat file ######
+	# Desribes the connectivity of the mesh. Same for Electrostatic and FullWave
 	strMesh = ["// Volume elements\n"]
 	for i,name in enumerate(EMlist):
 		if i==0: GrpCnct = VacuumNew
@@ -272,6 +285,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	del strMesh
 
 	####### 2.dat file ######
+	# BC for CoilIn terminal
 	CoilInCnct = ERMESMesh.GroupInfo('CoilIn').Connect
 	StatBC = ["GRC({},{},{},17);\n".format(Nodes[0],Nodes[1],Nodes[2]) for Nodes in CoilInCnct]
 	StatBC.insert(0, "// Static Robin elements\n")
@@ -280,7 +294,9 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		f.write(StatBC)
 
 
-	###### -3.dat file ######
+	###### -2.dat & -3.dat file ######
+	# Describes the contact elements. A prism is created using the old & newly created
+	# nodes (volume is tecchnically 0)
 	strContact = ["// Contact elements\n"]
 	for OrigNd, NewNd in zip(ContactFaceOrig,ContactFaceNew):
 		strContact.append("CE = n([{},{},{},{},{},{}]);\n".format(OrigNd[2],OrigNd[1],OrigNd[0],NewNd[2],NewNd[1],NewNd[0]))
@@ -294,6 +310,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 			f.write("// Source elements\n")
 
 	##### -5.dat file ######
+	# Describes what to solve for in each simulation
 	# Electrostatis part
 	Stat51 = "// Static solver\n" + \
 	"LinearSolver Diagonal = Bi_Conjugate_Gradient(1000000,250,0.000000001000000);\n\n" + \
@@ -342,11 +359,15 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	"Print(IMAG_J);\n" + \
 	"Print(MOD_J);\n\n"
 
+	# if check is True then this is included to calculate the current in the
+	# CoilIn terminal. This can then be verified against the answer calculated
+	# from the results
 	if check:
 		strFace = ["PSIE({},{},{},32);\n".format(FNodes[0],FNodes[1],FNodes[2]) for FNodes in CoilInCnct]
 		strFace.insert(0,"// Field integration over a surface\n")
 		strFace = "".join(strFace)
 	else : strFace = ""
+
 
 	ERMESwave = []
 	for Temp in Temperatures:
@@ -356,6 +377,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		ERMESwave.append("ERMESv12.5 Wave{};".format(Temp))
 
 	### -9.dat file
+	# Output file where currents calculated in the electrostatic simulation is saved to
 	name = '1'
 	with open('{}/Static-9.dat'.format(StudyDict['TMP_CALC_DIR']),'w+') as f:
 		f.write('{}\n0\n'.format(name))
@@ -364,6 +386,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	ERMES_run = Popen(Ermesstr, shell = 'TRUE')
 	ERMES_run.wait()
 
+	# Take results from dat results file and create in to .rmed file to view in ParaVis
 	ResDict = {}
 	Start, End = -1,-2
 	with open('{}/{}{}.post.res'.format(StudyDict['TMP_CALC_DIR'],'Wave',20),'r') as f:
@@ -564,24 +587,28 @@ def ASCIIname(names):
 def ERMES(Info, StudyDict):
 	RunERMES = getattr(StudyDict['Parameters'], 'RunERMES', True)
 
+	# Name of rMED file where results will be stored. This can be opened in ParaVis
 	ERMESfile = '{}/ERMES.rmed'.format(StudyDict['PREASTER'])
+
 	# Create a new set of ERMES results
 	if RunERMES:
 		Watts, WattsPV, Elements = SetupERMES(Info, StudyDict, ERMESfile)
 	# Read in a previous set of ERMES results
 	elif os.path.isfile(ERMESfile):
-		pass
-		NbVolumes = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample').NbVolumes
 		ERMESres = h5py.File(ERMESfile, 'r')
 		Watts = ERMESres["EM_Load/Watts"][:]
 		WattsPV = ERMESres["EM_Load/WattsPV"][:]
 		Elements = ERMESres["EM_Load/Elements"][:]
+
 		# Check that the results match up with the mesh
+		NbVolumes = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample').NbVolumes
 		if Watts.shape[0] != NbVolumes:
 			Info.Exit("EM.dat file doesn't match with current mesh")
+	# exit due to error
 	else :
 		Info.Exit("ERMES results file '{}' does not exist and RunERMES flag not set to True".format(ERMESfile))
 
+	# Cumultive sum is used to find % thresholds for EMThreshold
 	CumSum = Watts.cumsum()
 	CoilPower = CumSum[-1]
 	print("Power delivered by coil: {:.4f}W".format(CoilPower*StudyDict['Parameters'].Current**2))
@@ -595,21 +622,25 @@ def ERMES(Info, StudyDict):
 
 	# Find position in CumSum where the threshold percentage has been reached
 	pos = bl(CumSum,Threshold*CoilPower)
-
 	print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
 
+	# Scale values to reflect Current
 	EM_Val = WattsPV[:pos+1]*StudyDict['Parameters'].Current**2
 	EM_Els = Elements[:pos+1]
-	# Scale EM_Val to ensure correct energy input
+
+	# If EMScale is True then the power input will be scaled to 100% for the elements used.
+	# If EMThreshold is 0.5 then the magnitude for each element will be doubled.
 	if getattr(StudyDict['Parameters'],'EMScale', False):
 		EM_Val = EM_Val*(CumSum[-1]/CumSum[pos])
 
+	# Write results to tmp file for Code_Aster to read in
 	EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
 	np.save(EMLoadFile, np.vstack((EM_Els, EM_Val)).T)
 
+	# Create individual mesh groups for the pos+1 elements which are loaded
 	tmpMeshFile = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
-
 	GroupBy = 'H5PY'
+	# This routine uses h5py to create the groups. It is the fastest available method.
 	if GroupBy == 'H5PY':
 		st = time.time()
 		MeshMed = h5py.File(StudyDict['MeshFile'], 'r')
@@ -687,6 +718,7 @@ def ERMES(Info, StudyDict):
 
 
 def main(Info, StudyDict):
-	GetHTC(Info, StudyDict)
+	HTC(Info, StudyDict)
+	# Only run the ERMES routine if EMLoad is set to ERMES
 	if StudyDict['Parameters'].EMLoad == 'ERMES':
 		ERMES(Info, StudyDict)

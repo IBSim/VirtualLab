@@ -17,17 +17,7 @@ from importlib import import_module
 import ast
 
 class VLSetup():
-	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode, **kwargs):
-		'''
-		kwargs available:
-		port: Give the port number of an open Salome instance to connect to
-		'''
-		port = kwargs.get('port', None)
-
-		# If port is provided it assumes an open instance of salome exists on that port
-		# and will shell in to it. The second value in the list dictates whether or not
-		# to kill the salome instance at the end of the process.
-		self.__port__ = [port, False]
+	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode):
 
 		# Set running mode
 		if Mode in ('i', 'I', 'interactive', 'Interactive'): self.mode = 'Interactive'
@@ -101,9 +91,16 @@ class VLSetup():
 		kwargs available:
 		RunMesh: Boolean to dictate whether or not to create meshes
 		RunSim: Boolean to dictate whether or not to run CodeAster
+		port: Give the port number of an open Salome instance to connect to
 		'''
 		RunMesh = kwargs.get('RunMesh', True)
 		RunSim = kwargs.get('RunSim',True)
+		Port = kwargs.get('Port', None)
+
+		# If port is provided it assumes an open instance of salome exists on that port
+		# and will shell in to it. The second value indictates whether or not
+		# to kill the salome instance at the end of the process.
+		self.__port__ = [Port, False]
 
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_SCRIPTS)
@@ -574,5 +571,5 @@ class VLSetup():
 			Salome_close = Popen('salome kill {}'.format(self.__port__[0]), shell = 'TRUE')
 			Salome_close.wait()
 
-		if remove == 'y':
+		if remove == 'y' and os.path.isdir(self.TMP_DIR):
 			shutil.rmtree(self.TMP_DIR)

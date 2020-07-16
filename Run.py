@@ -79,10 +79,6 @@ Class initiation :
           'Intercative' - Prints all output to the terminal.
           'Continuous' - Writes the output to a file as it is generated.
           'Headless' - Writes output to file at the end of the process.
-    port : int (optional)
-        Specify a port number on which SALOME is open. This will save the time
-        required to open & close an instance of SALOME. SALOME is usually opened
-        on ports starting at 2810. Default is 'None'.
 
 VirtualLab.Create() :
     This function is responsible for checking that all defined files exist in
@@ -97,6 +93,10 @@ VirtualLab.Create() :
     RunSim : bool (optional)
         This indicates whether or not the simulation routine will be run, which
         is defined by the 'Sim' namespace in Parameters_Master. Default is True.
+    Port : int (optional)
+        Specify a port number on which SALOME is open. This will save the time
+        required to open & close an instance of SALOME. SALOME is usually opened
+        on ports starting at 2810. Default is 'None'.
 
 VirtualLab.Mesh() :
     This function is the meshing routine. The mesh(es) defined using the
@@ -184,12 +184,12 @@ VirtualLab=VLSetup(
            StudyName,
            Parameters_Master,
            Parameters_Var,
-           Mode,
-           port=None)
+           Mode)
 
 VirtualLab.Create(
            RunMesh=True,
-           RunSim=True)
+           RunSim=True,
+           Port=None)
 
 VirtualLab.Mesh(
            ShowMesh=False,

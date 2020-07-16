@@ -159,14 +159,12 @@ Environment
 
   The VLSetup class interfaces between the system, **SALOME** and **Code_Aster** to ensure that the full workflow of a virtual experiment can be completed solely via the command line. 
 
-  .. attribute:: __init__(Simulation, Project,StudyName,Parameters_Master, Parameters_Var, Mode, port=None)
+  .. attribute:: __init__(Simulation, Project,StudyName,Parameters_Master, Parameters_Var, Mode)
 
     The variables detailed above are passed as arguments, making it possible to differentiate between different virtual experiments and how results are to be stored.
 
-      | ``port`` int (optional)
-      |     Specify a port number on which **SALOME** is open. This will save the time required to open & close an instance of **SALOME** in **VirtualLab**. An instance is usually opened on ports starting at 2810. Default is None.
 
-  .. attribute:: Create(RunMesh=True, RunSim=True)
+  .. attribute:: Create(RunMesh=True, RunSim=True, Port=None)
 
     This function is responsible for checking that all defined files exist in the expected location. These include *Parameters_Master* and *Parameters_Var* and the files specified therein  (``Mesh.File``, ``Sim.PreAsterFile``, ``Sim.AsterFile``, ``Sim.PostAsterFile``). Once this is satisfied, output directories are created for the results, and the necessary files are created to produce mesh(es) and run simulation(s).
 
@@ -174,6 +172,9 @@ Environment
       |   Indicates whether or not the meshing routine will be run. Default is True.
       | ``RunSim``  bool (optional)
       |   Indicates whether or not the simulation routine will be run. Default is True.
+      | ``Port`` int (optional)
+      |   Specify a port number on which **SALOME** is open. This will save the time required to open & close an instance of **SALOME** in **VirtualLab**. An instance is usually opened on ports starting at 2810. Default is None.
+
 
   .. attribute:: Mesh(ShowMesh=False, MeshCheck=None)
 

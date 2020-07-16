@@ -164,7 +164,7 @@ Environment
     The variables detailed above are passed as arguments, making it possible to differentiate between different virtual experiments and how results are to be stored.
 
 
-  .. attribute:: Create(RunMesh=True, RunSim=True, Port=None)
+  .. attribute:: Control(RunMesh=True, RunSim=True, Port=None)
 
     This function is responsible for checking that all defined files exist in the expected location. These include *Parameters_Master* and *Parameters_Var* and the files specified therein  (``Mesh.File``, ``Sim.PreAsterFile``, ``Sim.AsterFile``, ``Sim.PostAsterFile``). Once this is satisfied, output directories are created for the results, and the necessary files are created to produce mesh(es) and run simulation(s).
 
@@ -178,7 +178,7 @@ Environment
 
   .. attribute:: Mesh(ShowMesh=False, MeshCheck=None)
 
-    This function is the meshing routine. The mesh(es) defined using ``Mesh`` in *Parameters_Master* and *Parameters_Var* are created and saved to the sub-directory 'Meshes' in the project directory along with a file detailing the variables used for their creation. If RunMesh is set to False in 'Create' then this routine is skipped. This may be useful when different simulation parameters are to be used on a pre-existing mesh
+    This function is the meshing routine. The mesh(es) defined using ``Mesh`` in *Parameters_Master* and *Parameters_Var* are created and saved to the sub-directory 'Meshes' in the project directory along with a file detailing the variables used for their creation. If RunMesh is set to False in 'Control' then this routine is skipped. This may be useful when different simulation parameters are to be used on a pre-existing mesh
 
       | ``ShowMesh`` bool (optional)
       |   Indicates whether or not to open created mesh(es) in the **SALOME** GUI for visualisation to assess their suitability. VirtualLab will terminate once the GUI is closed and no simulation will be carried out. Default is False.
@@ -187,7 +187,7 @@ Environment
 
   .. attribute:: Sim(RunPreAster=True,RunAster=True,RunPostAster=True,ShowRes=False,ncpus=1,memory=2,mpi_nbcpu=1,mpi_nbnoeud=1)
 
-    This function is the simulation routine. The simulation(s) defined using ``Sim`` in *Parameters_Master* and *Parameters_Var* are carried out with the results saved to the sub-directory '$STUDYNAME' in the project directory. This routine also runs the pre and post-processing scripts, if they are provided. If RunSim is set to False in 'Create' then this routine is skipped. 
+    This function is the simulation routine. The simulation(s) defined using ``Sim`` in *Parameters_Master* and *Parameters_Var* are carried out with the results saved to the sub-directory '$STUDYNAME' in the project directory. This routine also runs the pre and post-processing scripts, if they are provided. If RunSim is set to False in 'Control' then this routine is skipped. 
 
       | ``RunPreAster`` bool (optional)
       |   Indicates whether or not to run the optional pre-processing script provided in `Sim.PreAsterFile`. Default is True.

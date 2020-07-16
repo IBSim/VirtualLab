@@ -34,38 +34,7 @@ Each tutorial is structured as follows: firstly the experimental test sample (i.
 
 In **VirtualLab**, simulations are initiated by executing a '`Run File <runsim.html>`_'. ``Run.py`` in the **VirtualLab** top level directory is a template *Run* file which is given with default `setup <runsim.html#setup>`_ and `environment <runsim.html#environment>`_ values. Additional examples are available in the `RunFiles <structure.html#runfiles>`_ directory.
 
-.. note:: Each tutorial starts with the ``Run.py`` template using the default values. To help with following the tutorials, the *ShowRes* keyword argument (``kwargs``) in :attr:`VirtualLab.Sim <VLSetup.Sim>` should be manually set to :code:`True`, as shown below.
-
-::
-
-	VirtualLab=VLSetup(
-		   Simulation,
-		   Project,
-		   StudyName,
-		   Parameters_Master,
-		   Parameters_Var,
-		   Mode)
-
-	VirtualLab.Create(
-		   RunMesh=True,
-		   RunSim=True,
-		   Port=None)
-
-	VirtualLab.Mesh(
-		   ShowMesh=False,
-		   MeshCheck=None)
-
-	VirtualLab.Sim(
-		   RunPreAster=True,
-		   RunAster=True,
-		   RunPostAster=True,
-		   ShowRes=True,
-		   ncpus=1,
-		   memory=2,
-		   mpi_nbcpu=1,
-		   mpi_nbnoeud=1)
-
-	VirtualLab.Cleanup()
+.. note:: Each tutorial starts with the ``Run.py`` template using the default values. To help with following the tutorials, the *ShowRes* keyword argument (``kwargs``) in :attr:`VirtualLab.Sim <VLSetup.Sim>` should be manually set to :code:`True`.
 
 .. tip:: You may wish to save your amendments to the template *Run* file ``Run.py`` as a new file, such that you may return to the default template without needing to re-download it. If you do this, remember to replace ``Run.py`` with your custom filename when executing the script to initiate a **VirtualLab** simulation.
 
@@ -101,7 +70,7 @@ In this experiment a 'dog-bone' shaped sample is loaded either through constant 
 		   Parameters_Var,
 		   Mode)
 
-	VirtualLab.Create(
+	VirtualLab.Control(
 		   RunMesh=True,
 		   RunSim=True,
 		   Port=None)
@@ -307,7 +276,7 @@ Task 3: Simulation Without Meshing
 
 After running the simulation, you realise that the wrong material was used - you wanted to run analysis on a tungsten sample. You are happy with the meshes you already have and only want to re-run the simulations. 
 
-This can be accomplished by using the *RunMesh* ``kwarg`` in :attr:`VirtualLab.Create <VLSetup.Create>`. By setting this flag to :code:`False` **VirtualLab** will skip the meshing routine.
+This can be accomplished by using the *RunMesh* ``kwarg`` in :attr:`VirtualLab.Control <VLSetup.Control>`. By setting this flag to :code:`False` **VirtualLab** will skip the meshing routine.
 
 .. note:: If you change *Sim.Name* before re-running the simulations, the outputs will be stored in new directories under the new names. If you do not change *Sim.Name*, the initial results will be overwritten.
 
@@ -316,7 +285,7 @@ This can be accomplished by using the *RunMesh* ``kwarg`` in :attr:`VirtualLab.C
 
    In the *Run* file ensure that *RunMesh* is set to False::
 
-      VirtualLab.Create(RunMesh=False)
+      VirtualLab.Control(RunMesh=False)
 
    Change *Sim.Materials* in *Parameters_Master* to 'Tungsten' and execute the *Run* file. 
 
@@ -346,7 +315,7 @@ This example introduces some of the post-processing capabilities available in **
        Parameters_Var='Parametric_1'
        Mode='Interactive'
 
-   Since new meshes are required for this simulation, the ``kwarg`` *RunMesh* in :attr:`VirtualLab.Create <VLSetup.Create>` must be :code:`True`. The *Enviornment* section should be::
+   Since new meshes are required for this simulation, the ``kwarg`` *RunMesh* in :attr:`VirtualLab.Control <VLSetup.Control>` must be :code:`True`. The *Enviornment* section should be::
 
 	VirtualLab=VLSetup(
 		   Simulation,
@@ -356,7 +325,7 @@ This example introduces some of the post-processing capabilities available in **
 		   Parameters_Var,
 		   Mode)
 
-	VirtualLab.Create(
+	VirtualLab.Control(
 		   RunMesh=True,
 		   RunSim=True,
 		   Port=None)
@@ -524,7 +493,7 @@ You decide that you are happy with the quality of the meshes created for your si
 
    In the *Run* file set the ``kwargs`` *RunMesh* and *ShowMesh* to  :code:`False` to ensure that the simulations are run without re-meshing::  
 
-      VirtualLab.Create(RunMesh=False)
+      VirtualLab.Control(RunMesh=False)
       VirtualLab.Mesh(ShowMesh=False)
 
    Execute the *Run* file.
@@ -652,7 +621,7 @@ The effect of the coolant is modelled as a 1D problem using its temperature, pre
 		   Parameters_Var,
 		   Mode)
 
-	VirtualLab.Create(
+	VirtualLab.Control(
 		   RunMesh=True,
 		   RunSim=True,
 		   Port=None)

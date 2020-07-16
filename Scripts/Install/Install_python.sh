@@ -71,7 +71,8 @@ if [ "$PYTHON_INST" == "y" ]; then
   ### Install python and required packages
   sudo apt install -y python3
   sudo apt install -y python3-pip
-  sudo apt install -y python3-sphinx
+  #sudo apt install -y python3-sphinx
+  sudo pip3 install -U sphinx
   sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py sphinx-rtd-theme sphinxcontrib-bibtex
   sudo -u ${SUDO_USER:-$USER} pip3 install iapws
 

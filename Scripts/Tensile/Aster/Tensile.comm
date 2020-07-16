@@ -31,10 +31,10 @@ fieldmat = AFFE_MATERIAU(AFFE=_F(MATER=(Mat), TOUT='OUI'),
 '''
 Boundary Conditions
 
-Constraint: Adaption of the 3-2-1 method. Fixing the face in X removed the transitional DF in X and rotational DF in Y and Z.
-Fixing 1 corner node in Y and Z removes the transitional DF in Y and Z, while fixing the final node in Y removes the final rotational DF.
+Constraint: Adaption of the 3-2-1 method. Fixing the face in X removed the transitional DoF in X and rotational DoF in Y and Z.
+Fixing 1 corner node in Y and Z removes the transitional DoF in Y and Z, while fixing the final node in Y removes the final rotational DoF.
 
-Loading: Either a constant force or constant displacement can be chosen. The input for the force is corrected with regards to the loading
+Loading: A constant force and/or constant displacement can be chosen. The input for the force is corrected with regards to the loading
 area due to the way CA applies forces to the face.
 '''
 

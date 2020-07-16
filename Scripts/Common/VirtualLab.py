@@ -14,6 +14,7 @@ from types import SimpleNamespace as Namespace
 import contextlib
 import VLconfig
 from importlib import import_module
+import ast
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode, **kwargs):
@@ -34,11 +35,25 @@ class VLSetup():
 		elif Mode in ('h', 'H', 'headless', 'Headless'): self.mode = 'Headless'
 		else : self.Exit("'Mode' is not in 'Interactive','Continuous' or 'Headless'")
 
+		# Using inspect and ast we can get the name of the RunFile used and the
+		# Environment values which are used ()
 		frame = inspect.stack()[1]
 		RunFile = os.path.realpath(frame[0].f_code.co_filename)
+		RunFileSC = inspect.getsource(inspect.getmodule(frame[0]))
+		envdict = {'Simulation':Simulation,'Project':Project,'StudyName':StudyName, \
+					'Parameters_Master':Parameters_Master,'Parameters_Var':Parameters_Var, \
+					'Mode':Mode,'RunMesh':True,'RunSim':True,'MeshCheck':None, \
+					'ShowMesh':False,'RunPreAster':True,'RunAster':True,'RunPostAster':True, \
+					'ShowRes':True,'mpi_nbcpu':1,'mpi_nbnoeud':1,'ncpus':1,'memory':2}
+		for cd in ast.parse(RunFileSC).body:
+			obj = getattr(cd,'value',None)
+			if getattr(getattr(obj,'func',None),'attr',None) in ('Create','Mesh','Sim'):
+				for kw in obj.keywords:
+					if hasattr(kw.value,'value'): val=kw.value.value
+					elif hasattr(kw.value,'n'): val=kw.value.n
+					envdict[kw.arg] = val
 
 		VL_DIR = VLconfig.VL_DIR
-
 		if VL_DIR != sys.path[-1]: sys.path.pop(-1)
 
 		### Define directories for VL from config file. If directory name doesn't start with '/'
@@ -88,7 +103,7 @@ class VLSetup():
 		RunSim: Boolean to dictate whether or not to run CodeAster
 		'''
 		RunMesh = kwargs.get('RunMesh', True)
-		RunSim = kwargs.get('RunSim','True')
+		RunSim = kwargs.get('RunSim',True)
 
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_SCRIPTS)
@@ -284,6 +299,11 @@ class VLSetup():
 		RunPreAster = kwargs.get('RunPreAster',True)
 		RunAster = kwargs.get('RunAster', True)
 		RunPostAster = kwargs.get('RunPostAster', True)
+		ShowRes = kwargs.get('ShowRes', False)
+		mpi_nbcpu = kwargs.get('mpi_nbcpu',1)
+		mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
+		ncpus = kwargs.get('ncpus',1)
+		memory = kwargs.get('memory',2)
 
 		print('\n### Starting Simulations ###\n')
 
@@ -300,11 +320,6 @@ class VLSetup():
 				print("Pre-Aster for '{}' completed".format(Name))
 
 		if RunAster and hasattr(SimMaster,'AsterFile'):
-			mpi_nbcpu = kwargs.get('mpi_nbcpu',1)
-			mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
-			ncpus = kwargs.get('ncpus',1)
-			memory = kwargs.get('memory',2)
-
 			SubProcs = {}
 			for Name, StudyDict in self.Studies.items():
 				if not os.path.isdir(StudyDict['ASTER']): os.makedirs(StudyDict['ASTER'])
@@ -314,8 +329,8 @@ class VLSetup():
 				PreCond = PythonPath + ["export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
 				PreCond = ''.join(PreCond)
 
-				# Copy script to tmp folder and add in tmp file location
-				asterfile = '{0}/{1}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].AsterFile)
+				# Define location of export and Aster file
+				asterfile = '{}/{}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].AsterFile)
 				exportfile = "{}/Export".format(StudyDict['ASTER'])
 
 				# Create export file and write to file
@@ -396,12 +411,12 @@ class VLSetup():
 			PostAster = import_module(SimMaster.PostAsterFile)
 			if hasattr(PostAster, 'Combined'):
 				PostAster.Combined(self)
-			
+
 
 		print('\n### Simulations Completed ###')
 
 		# Opens up all results in ParaVis
-		if kwargs.get('ShowRes', False):
+		if ShowRes:
 			print("### Opening .rmed files in ParaVis ###\n")
 			ResFiles = {}
 			for SimName, StudyDict in self.Studies.items():

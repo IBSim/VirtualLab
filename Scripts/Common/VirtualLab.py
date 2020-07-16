@@ -86,7 +86,7 @@ class VLSetup():
 		# Create dictionary of Parameters info
 		self.Parameters = {'Master':Parameters_Master,'Var':Parameters_Var,'Dir':'{}/{}/{}'.format(INPUT_DIR, Simulation, Project)}
 
-	def Create(self, **kwargs):
+	def Control(self, **kwargs):
 		'''
 		kwargs available:
 		RunMesh: Boolean to dictate whether or not to create meshes

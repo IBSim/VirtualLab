@@ -80,7 +80,7 @@ Class initiation :
           'Continuous' - Writes the output to a file as it is generated.
           'Headless' - Writes output to file at the end of the process.
 
-VirtualLab.Create() :
+VirtualLab.Control() :
     This function is responsible for checking that all defined files exist in
     the expected location. These include Parameters_Master and Parameters_Var
     and the files specified therein (Mesh.File, Sim.PreAsterFile, Sim.AsterFile,
@@ -186,7 +186,7 @@ VirtualLab=VLSetup(
            Parameters_Var,
            Mode)
 
-VirtualLab.Create(
+VirtualLab.Control(
            RunMesh=True,
            RunSim=True,
            Port=None)

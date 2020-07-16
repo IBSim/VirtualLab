@@ -228,5 +228,6 @@ def Combined(Info):
 	PVDict = {"Simulations": Simulations, "GlobalRange":GlobalRange}
 	Info.WriteModule("{}/{}.py".format(Info.TMP_DIR, "PVParameters"), PVDict)
 
+	GUI = getattr(Info.Parameters_Master.Sim, 'PVGUI', False)
 	ParaVisFile = "{}/ParaVis.py".format(os.path.dirname(os.path.abspath(__file__)))
-	Info.SalomeRun(ParaVisFile, SalomeGUI=False, AddPath=Info.TMP_DIR)
+	Info.SalomeRun(ParaVisFile, GUI=GUI, AddPath=Info.TMP_DIR)

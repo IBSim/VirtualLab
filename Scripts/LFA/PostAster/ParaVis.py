@@ -5,7 +5,10 @@ import salome
 import numpy as np
 from importlib import import_module
 import PVParameters
-
+'''
+import SalomePyQt
+SalomePyQt.SalomePyQt().activateModule('ParaViS')
+'''
 import pvsimple
 pvsimple.ShowParaviewView()
 
@@ -16,6 +19,7 @@ for Sim in PVParameters.Simulations:
 	PathVL = import_module("{}.PathVL".format(Sim))
 
 	thermalrmed = pvsimple.MEDReader(FileName="{}/Thermal.rmed".format(PathVL.ASTER))
+	pvsimple.RenameSource(Sim,thermalrmed)
 
 	# show data in view
 	thermalrmedDisplay = pvsimple.Show(thermalrmed, renderView1)
@@ -113,5 +117,5 @@ for Sim in PVParameters.Simulations:
 	pvsimple.Hide(threshold1, renderView1)
 	print("Created image MeshCrossSection.png")
 
-	for source in pvsimple.GetSources().values():
-			pvsimple.Delete(source)
+#	for source in pvsimple.GetSources().values():
+#			pvsimple.Delete(source)

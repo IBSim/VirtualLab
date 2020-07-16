@@ -10,7 +10,10 @@ def event(envdict):
     event_action = 'False' if envdict["Parameters_Var"] == None else 'True'
     event_label = "{}_{}".format(envdict['ncpus'],envdict['mpi_nbcpu'])
     tracking_url = 'https://www.google-analytics.com/collect?v=1&t=event&tid='+tracking_id+'&cid='+clientid_str+'&ec='+event_category+'&ea='+event_action+'&el='+event_label+'&key1='+key1+'&aip=0'
-    requests.post(tracking_url)
+    try:
+        requests.post(tracking_url)
+    except :
+        pass
     # Useful urls
     # https://www.optimizesmart.com/understanding-universal-analytics-measurement-protocol/
     # https://requests.readthedocs.io/en/master/user/quickstart/

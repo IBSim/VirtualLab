@@ -15,6 +15,7 @@ import contextlib
 import VLconfig
 from importlib import import_module
 import ast
+from Scripts.Common import Analytics
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode):
@@ -42,6 +43,8 @@ class VLSetup():
 					if hasattr(kw.value,'value'): val=kw.value.value
 					elif hasattr(kw.value,'n'): val=kw.value.n
 					envdict[kw.arg] = val
+
+		Analytics.event(envdict)
 
 		VL_DIR = VLconfig.VL_DIR
 		if VL_DIR != sys.path[-1]: sys.path.pop(-1)

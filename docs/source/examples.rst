@@ -32,7 +32,7 @@ These tutorials assume a certain level of pre-existing knowledge about the finit
 
 Each tutorial is structured as follows: firstly the experimental test sample (i.e. geometry domain) is introduced followed by an overview of the boundary conditions and constraints being applied to the sample to emulate the physical experiment. Then a series of tasks are described to guide the user through various stages with specific learning outcomes.
 
-In **VirtualLab**, simulations are initiated by executing a '`Run File <runsim.html>`_'. ``Run.py`` in the **VirtualLab** top level directory is a template 'RunFile' which is given with default `setup <runsim.html#setup>`_ and `environment <runsim.html#environment>`_ values. Additional examples are available in the '`RunFiles <structure.html#runfiles>`_' directory.
+In **VirtualLab**, simulations are initiated by executing a '`Run File <runsim.html>`_'. ``Run.py`` in the **VirtualLab** top level directory is a template *Run* file which is given with default `setup <runsim.html#setup>`_ and `environment <runsim.html#environment>`_ values. Additional examples are available in the `RunFiles <structure.html#runfiles>`_ directory.
 
 .. note:: Each tutorial starts with the ``Run.py`` template using the default values. To help with following the tutorials, the *ShowRes* keyword argument (``kwargs``) in :attr:`VirtualLab.Sim <VLSetup.Sim>` should be manually set to :code:`True`, as shown below.
 
@@ -44,12 +44,12 @@ In **VirtualLab**, simulations are initiated by executing a '`Run File <runsim.h
 		   StudyName,
 		   Parameters_Master,
 		   Parameters_Var,
-		   Mode,
-		   port=None)
+		   Mode)
 
 	VirtualLab.Create(
 		   RunMesh=True,
-		   RunSim=True)
+		   RunSim=True,
+		   Port=None)
 
 	VirtualLab.Mesh(
 		   ShowMesh=False,
@@ -67,6 +67,7 @@ In **VirtualLab**, simulations are initiated by executing a '`Run File <runsim.h
 
 	VirtualLab.Cleanup()
 
+.. tip:: You may wish to save your amendments to the template *Run* file ``Run.py`` as a new file, such that you may return to the default template without needing to re-download it. If you do this, remember to replace ``Run.py`` with your custom filename when executing the script to initiate a **VirtualLab** simulation.
 
 Mechanical
 **********
@@ -78,16 +79,48 @@ A virtual experiment of the standard mechanical tensile test is performed using 
 
 In this experiment a 'dog-bone' shaped sample is loaded either through constant force, measuring the displacement, or constant displacement, measuring the required load. This provides information about mechanical properties such as Young's elastic modulus.
 
-.. tip:: You may wish to save your amendments to the template *Run* file ``Run.py`` as a new file, such that you may return to the default template without needing to re-download it. If you do this, remember to replace ``Run.py`` with your custom filename when executing the script to initiate a **VirtualLab** simulation.
+.. admonition:: Action
+   :class: Action
 
-Firstly, ensure that the variables in the *Setup* section of the *Run* file ``Run.py`` are set to the values shown below::
+   The *Run* file ``Run.py`` should be set up correctly for this simulation. The variables in the *Setup* section should be::
 
-    Simulation='Tensile'
-    Project='Example'
-    StudyName='Training'
-    Parameters_Master='TrainingParameters'
-    Parameters_Var=None
-    Mode='Interactive'
+       Simulation='Tensile'
+       Project='Example'
+       StudyName='Training'
+       Parameters_Master='TrainingParameters'
+       Parameters_Var=None
+       Mode='Interactive'
+
+   All `keyword arguments <https://docs.python.org/3/glossary.html>`_, often referred to as ``kwargs``, in the *Enviornment* section should be set to their default value, other than *ShowRes* in :attr:`VirtualLab.Sim <VLSetup.Sim>`::
+
+	VirtualLab=VLSetup(
+		   Simulation,
+		   Project,
+		   StudyName,
+		   Parameters_Master,
+		   Parameters_Var,
+		   Mode)
+
+	VirtualLab.Create(
+		   RunMesh=True,
+		   RunSim=True,
+		   Port=None)
+
+	VirtualLab.Mesh(
+		   ShowMesh=False,
+		   MeshCheck=None)
+
+	VirtualLab.Sim(
+		   RunPreAster=True,
+		   RunAster=True,
+		   RunPostAster=True,
+		   ShowRes=True,
+		   ncpus=1,
+		   memory=2,
+		   mpi_nbcpu=1,
+		   mpi_nbnoeud=1)
+
+	VirtualLab.Cleanup()
 
 The setup above means that the path to the *Parameters_Master* file used is :file:`Inputs/Tensile/Example/TrainingParameters.py`. Open this example python file in a text editor to browse its structure.
 
@@ -301,20 +334,50 @@ The Laser flash analysis (LFA) experiment consists of a disc shaped sample expos
 
 This example introduces some of the post-processing capabilities available in **VirtualLab**. The results of the simulation will be used to calculate the thermal conductivity of the material, while images of the heated sample will be produced using **ParaVis**.
 
-Because this is a different simulation type, *Simulation* will need to be changed in the *Run* file. ::
+.. admonition:: Action
+   :class: Action
 
-    Simulation='LFA'
-    Project='Example'
-    StudyName='Training'
-    Parameters_Master='TrainingParameters'
-    Parameters_Var='Parametric_1'
-    Mode='Interactive'
+   Because this is a different simulation type, *Simulation* will need to be changed. The *Setup* section of the*Run* file should be::
 
+       Simulation='LFA'
+       Project='Example'
+       StudyName='Training'
+       Parameters_Master='TrainingParameters'
+       Parameters_Var='Parametric_1'
+       Mode='Interactive'
 
+   Since new meshes are required for this simulation, the ``kwarg`` *RunMesh* in :attr:`VirtualLab.Create <VLSetup.Create>` must be :code:`True`. The *Enviornment* section should be::
 
-Since new meshes are required for this simulation, ensure that the ``kwarg`` *RunMesh* in :attr:`VirtualLab.Create <VLSetup.Create>` is :code:`True`.
+	VirtualLab=VLSetup(
+		   Simulation,
+		   Project,
+		   StudyName,
+		   Parameters_Master,
+		   Parameters_Var,
+		   Mode)
 
-In the *Parameters_Master* file :file:`Inputs/LFA/Example/TrainingParameters.py` you will again find namespace *Mesh* and *Sim*
+	VirtualLab.Create(
+		   RunMesh=True,
+		   RunSim=True,
+		   Port=None)
+
+	VirtualLab.Mesh(
+		   ShowMesh=False,
+		   MeshCheck=None)
+
+	VirtualLab.Sim(
+		   RunPreAster=True,
+		   RunAster=True,
+		   RunPostAster=True,
+		   ShowRes=True,
+		   ncpus=1,
+		   memory=2,
+		   mpi_nbcpu=1,
+		   mpi_nbnoeud=1)
+
+	VirtualLab.Cleanup()
+
+In the *Parameters_Master* file :file:`Inputs/LFA/Example/TrainingParameters.py` you will again find namespace *Mesh* and *Sim*.
 
 Sample
 ~~~~~~
@@ -569,16 +632,46 @@ In **VirtualLab**, the heating generated by the induction coil is calculated by 
 
 The effect of the coolant is modelled as a 1D problem using its temperature, pressure and velocity along with knowing the geometry of the pipe. This version of the code is based on an implementation by Simon McIntosh (UKAEA) of Theron D. Marshall's (CEA) Film-2000 software to model the Nukiyama curve :cite:`film2000` for water-cooled fusion divertor channels, which itself was further developed by David Hancock (also UKAEA). The output from this model is also piped to **Code_Aster** to apply as a BC.
 
-For this tutorial, set the variables in the *Run* file as follows::
+.. admonition:: Action
+   :class: Action
 
-    Simulation='HIVE'
-    Project='Example'
-    StudyName='Training'
-    Parameters_Master='TrainingParameters'
-    Parameters_Var=None
-    Mode='Interactive'
+   For this tutorial the the *Run* file should have the values::
 
-Ensure that the ``kwargs`` changed in the previous tutorial are re-set to their original values, or start again from the original *Run* file template.
+        Simulation='HIVE'
+        Project='Example'
+        StudyName='Training'
+        Parameters_Master='TrainingParameters'
+        Parameters_Var=None
+        Mode='Interactive'
+
+	VirtualLab=VLSetup(
+		   Simulation,
+		   Project,
+		   StudyName,
+		   Parameters_Master,
+		   Parameters_Var,
+		   Mode)
+
+	VirtualLab.Create(
+		   RunMesh=True,
+		   RunSim=True,
+		   Port=None)
+
+	VirtualLab.Mesh(
+		   ShowMesh=False,
+		   MeshCheck=None)
+
+	VirtualLab.Sim(
+		   RunPreAster=True,
+		   RunAster=True,
+		   RunPostAster=True,
+		   ShowRes=True,
+		   ncpus=1,
+		   memory=2,
+		   mpi_nbcpu=1,
+		   mpi_nbnoeud=1)
+
+	VirtualLab.Cleanup()
 
 In :file:`Input/HIVE/Example/TrainingParameteres.py` you will notice at the top there is a flag, *EMLoad*, which indicates how the thermal load generated by the coil will be modelled. The options are either via a uniform heat flux or using the **ERMES** solver.
 

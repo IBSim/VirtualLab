@@ -33,6 +33,11 @@ RunFilesDir_DEFAULT="$VL_DIR_DEFAULT/RunFiles"
 OutputDir_DEFAULT="$VL_DIR_DEFAULT/Output"
 TEMP_DIR_DEFAULT="/tmp"
 
+#########################
+
+### Other default values.
+VL_ANALYTICS_DEFEULT=True
+
 ### END OF DEFAULTS ###
 #######################
 
@@ -52,6 +57,7 @@ var=(
   RunFilesDir
   OutputDir
   TEMP_DIR
+  VL_ANALYTICS
 )
 
 ### Verbose {ON/OFF}
@@ -164,3 +170,4 @@ RunFilesDir=$(readlink -m $RunFilesDir_DEFAULT)
 OutputDir=$(readlink -m $OutputDir_DEFAULT)
 TEMP_DIR=$(readlink -m $TEMP_DIR_DEFAULT)
 
+VL_ANALYTICS=$VL_ANALYTICS_DEFEULT

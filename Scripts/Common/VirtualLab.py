@@ -44,7 +44,10 @@ class VLSetup():
 					elif hasattr(kw.value,'n'): val=kw.value.n
 					envdict[kw.arg] = val
 
-		Analytics.event(envdict)
+		# Function to analyse usage of VirtualLab to evidence impact for
+		# use in future research grant applications. Can be turned off via 
+		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
+		if VLconfig.VL_ANALYTICS=="True": Analytics.event(envdict)
 
 		VL_DIR = VLconfig.VL_DIR
 		if VL_DIR != sys.path[-1]: sys.path.pop(-1)

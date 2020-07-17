@@ -113,7 +113,8 @@ else
       ### If all working rm salome download files
       search_var="*salome_meca*.desktop"
       SALOME_Desktop=$(basename $(eval find $USER_HOME/Desktop/ -name $search_var))
-      sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/Desktop/$SALOME_Desktop 
+      sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/Desktop/$SALOME_Desktop
+      sudo chown -R $SUDO_USER:$SUDO_USER $USER_HOME/.config/salome/
     else
       ### salome still not installed
       echo "There has been a problem installing salome"

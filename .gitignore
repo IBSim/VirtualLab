@@ -31,3 +31,4 @@ Input/*/*
 RunFiles/*
 !RunFiles/Run.py
 !RunFiles/.devRun.py
+!RunFiles/Tutorials/

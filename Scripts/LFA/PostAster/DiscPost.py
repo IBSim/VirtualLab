@@ -94,8 +94,8 @@ def Individual(Info, StudyDict):
 	fig = plt.figure(figsize = (10,5))
 	ax1 = plt.subplot(121,adjustable = 'box',aspect = 1)
 	ax2 = plt.subplot(122,adjustable = 'box',aspect = 1)
-	im1 = ax1.scatter(TopCoor[:,0], TopCoor[:,1], c=FluxRes[:,0], cmap=cmap)
-	im2 = ax2.scatter(TopCoor[:,0], TopCoor[:,1], c=FluxRes[:,1], cmap=cmap)
+	im1 = ax1.scatter(TopCoor[:,0], TopCoor[:,1], c=FluxRes[:,1], cmap=cmap)
+	im2 = ax2.scatter(TopCoor[:,0], TopCoor[:,1], c=FluxRes[:,0], cmap=cmap)
 	ax1.axis('off')
 	ax2.axis('off')
 	plt.savefig("{}/FluxDist.png".format(StudyDict['POSTASTER']), bbox_inches='tight')
@@ -230,4 +230,5 @@ def Combined(Info):
 
 	GUI = getattr(Info.Parameters_Master.Sim, 'PVGUI', False)
 	ParaVisFile = "{}/ParaVis.py".format(os.path.dirname(os.path.abspath(__file__)))
+	print('Creating images using ParaViS')
 	Info.SalomeRun(ParaVisFile, GUI=GUI, AddPath=Info.TMP_DIR)

@@ -590,10 +590,15 @@ The collection of available materials can be found in the `Materials <structure.
 .. admonition:: Action
    :class: Action
 
-   In *Parameters_Master* (i.e. :file:`TrainingParameters.py`) change *Sim.AsterFile* to 'Disc_NonLin' and modify *Sim.Materials* to use non-linear materials::
+   In :file:`TrainingParameters.py` change *Sim.AsterFile* to 'Disc_NonLin' and modify *Sim.Materials* to use non-linear materials::
 
       Sim.AsterFile = 'Disc_NonLin'
       Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
+
+   We want to run the 3 simulations again and save the results seperately. In :file:`Parameteric_1.py` comment out *Sim.Run* (or remove it) and change the simulation names in *Sim.Names*::
+
+      Sim.Name = ['SimNoVoid_NL','SimVoid1_NL','SimVoid2_NL']
+      #Sim.Run = [True,False,False]
 
    Execute the *Run* file again.
 

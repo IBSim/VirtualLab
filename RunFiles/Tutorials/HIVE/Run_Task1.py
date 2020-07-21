@@ -13,7 +13,7 @@ from Scripts.Common.VirtualLab import VLSetup
 ################################################################################
 
 Simulation='HIVE'
-Project='Example'
+Project='Tutorials'
 StudyName='Training'
 Parameters_Master='TrainingParameters'
 Parameters_Var=None
@@ -37,7 +37,7 @@ VirtualLab.Control(
            Port=None)
 
 VirtualLab.Mesh(
-           ShowMesh=True,
+           ShowMesh=False,
            MeshCheck=None)
 
 VirtualLab.Sim(

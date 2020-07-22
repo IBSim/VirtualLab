@@ -168,7 +168,7 @@ VirtualLab.Cleanup()
 ################################################################################
 
 Simulation='Tensile'
-Project='Example'
+Project='Tutorials'
 StudyName='Training'
 Parameters_Master='TrainingParameters'
 Parameters_Var='Parametric_1'

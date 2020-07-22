@@ -13,7 +13,7 @@ from Scripts.Common.VirtualLab import VLSetup
 ################################################################################
 
 Simulation='Tensile'
-Project='Example'
+Project='Tutorials'
 StudyName='Training'
 Parameters_Master='TrainingParameters'
 Parameters_Var=None

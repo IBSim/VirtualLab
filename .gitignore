@@ -24,6 +24,7 @@ docs/build
 !Input/
 Input/*/*
 !Input/*/Example/
+!Input/*/Tutorials/
 !Input/*/.dev/
 !Input/Unit/*
 

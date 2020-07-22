@@ -13,10 +13,10 @@ from Scripts.Common.VirtualLab import VLSetup
 ################################################################################
 
 Simulation='LFA'
-Project='Example'
+Project='Tutorials'
 StudyName='Training'
 Parameters_Master='TrainingParameters'
-Parameters_Var='Parametric_1'
+Parameters_Var='Parametric_1_Task4'
 Mode='Interactive'
 
 ################################################################################

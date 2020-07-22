@@ -1,0 +1,32 @@
+DEBUT(LANG='EN')
+
+
+mesh = LIRE_MAILLAGE(UNITE=20)
+
+model = AFFE_MODELE(AFFE=_F(MODELISATION=('3D', ),
+                            PHENOMENE='THERMIQUE',
+                            TOUT='OUI'),
+                    MAILLAGE=mesh)
+
+copper = DEFI_MATERIAU(THER=_F(LAMBDA=394.0,
+                               RHO_CP=385.0))
+
+fieldmat = AFFE_MATERIAU(AFFE=_F(MATER=(copper, ),
+                                 TOUT='OUI'),
+                         MODELE=model)
+
+load0 = AFFE_CHAR_THER(MODELE=model,
+                       TEMP_IMPO=(_F(GROUP_MA=('Face_1', ),
+                                     TEMP=20.0),
+                                  _F(GROUP_MA=('Face_2', ),
+                                     TEMP=50.0)))
+
+resther = THER_LINEAIRE(CHAM_MATER=fieldmat,
+                        EXCIT=_F(CHARGE=load0),
+                        MODELE=model)
+
+DEFI_FICHIER(FICHIER='./REPE_OUT/results.rmed', UNITE=81)
+IMPR_RESU(RESU=_F(RESULTAT=resther),
+          UNITE=81)
+
+FIN()

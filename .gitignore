@@ -25,10 +25,12 @@ docs/build
 Input/*/*
 !Input/*/Example/
 !Input/*/.dev/
+!Input/Unit/*
 
 # Ensure that only some Run files will be included in the RunFiles directory
 !RunFiles/
 RunFiles/*
 !RunFiles/Run.py
 !RunFiles/.devRun.py
+!RunFiles/UnitRun.py
 !RunFiles/Tutorials/

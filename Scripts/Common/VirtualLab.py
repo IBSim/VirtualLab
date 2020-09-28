@@ -45,7 +45,7 @@ class VLSetup():
 					envdict[kw.arg] = val
 
 		# Function to analyse usage of VirtualLab to evidence impact for
-		# use in future research grant applications. Can be turned off via 
+		# use in future research grant applications. Can be turned off via
 		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
 		if VLconfig.VL_ANALYTICS=="True": Analytics.event(envdict)
 
@@ -142,7 +142,19 @@ class VLSetup():
 				if NumVals != NumMeshes: self.Exit("Number of entries for 'Mesh.{}' not equal to number of meshes".format(VarName))
 
 				for i, MeshName in enumerate(MeshNames):
-					Val = Value if NewVals==False else NewVals[i]
+					if NewVals==False:
+						Val = Value
+					elif type(Value)==dict:
+						Val = copy.deepcopy(Value)
+						NV = NewVals[i]
+
+						diff = set(NV.keys()).difference(Val)
+						if diff:
+							print("Warning: New key(s) {} specified in dictionary {} for mesh '{}'. This may lead to unexpected resutls".format(diff, VarName, MeshName))
+
+						Val.update(NV)
+					else :
+						Val = NewVals[i]
 					MeshDict[MeshName][VarName] = Val
 
 			if hasattr(ParaMesh,'Run'):
@@ -176,7 +188,18 @@ class VLSetup():
 				if NumVals!=NumSims: self.Exit("Number of entries for 'Sim.{}' not equal to number of simulations".format(VarName))
 
 				for i, SimName in enumerate(SimNames):
-					Val = Value if NewVals==False else NewVals[i]
+					if NewVals==False:
+						Val = Value
+					elif type(Value)==dict:
+						Val = copy.deepcopy(Value)
+						NV = NewVals[i]
+						diff = set(NV.keys()).difference(Val)
+						if diff:
+							print("Warning: New key(s) {} specified in dictionary {} for sim '{}'. This may lead to unexpected resutls".format(diff, VarName, SimName))
+
+						Val.update(NV)
+					else :
+						Val = NewVals[i]
 					SimDict[SimName][VarName] = Val
 
 			if hasattr(ParaSim,'Run'):

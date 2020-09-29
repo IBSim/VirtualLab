@@ -162,12 +162,15 @@ class VLSetup():
 				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag]
 
 			sys.path.insert(0, self.SIM_MESH)
-			self.MeshList = []
+			Meshes = {}
 			for MeshName in MeshNames:
 				ParaDict=MeshDict[MeshName]
 				self.ErrorCheck('Mesh',MeshDict=ParaDict)
 				self.WriteModule("{}/{}.py".format(self.GEOM_DIR, MeshName), ParaDict)
-				self.MeshList.append(MeshName)
+				Meshes[MeshName] = Namespace()
+				Meshes[MeshName].__dict__.update(ParaDict)
+
+			self.Meshes = Meshes
 
 		# Create Simulation parameter files
 		if RunSim and MainSim:
@@ -238,7 +241,7 @@ class VLSetup():
 				self.Studies[SimName] = StudyDict.copy()
 
 	def Mesh(self, **kwargs):
-		if not hasattr(self, 'MeshList'): return
+		if not hasattr(self, 'Meshes'): return
 		'''
 		kwargs available:
 		MeshCheck: input a meshname and it will open this mesh in the GUI
@@ -247,24 +250,20 @@ class VLSetup():
 		MeshCheck = kwargs.get('MeshCheck', None)
 		ShowMesh = kwargs.get('ShowMesh', False)
 
-		MeshList = getattr(self,'MeshList', None)
-
 		# MeshCheck routine which allows you to mesh in the GUI (Used for debugging).
 		# The script will terminate after this routine
-		if MeshCheck and MeshCheck in MeshList:
+		if MeshCheck and MeshCheck in self.Meshes.keys():
 			print('### Meshing {} in GUI ###\n'.format(MeshCheck))
-			sys.path.insert(0, self.GEOM_DIR)
-			MeshParameters = __import__(MeshCheck)
 
-			AddPath = "PYTHONPATH={}:{}:$PYTHONPATH;export PYTHONPATH;".format(self.COM_SCRIPTS,self.SIM_SCRIPTS)
-			Script = "{}/{}.py".format(self.SIM_MESH, MeshParameters.File)
-			Salome = Popen('{}salome {} args:{}'.format(AddPath,Script,MeshParameters.__file__), shell='TRUE')
-			Salome.wait()
-
+			MeshParaFile = "{}/{}.py".format(self.GEOM_DIR,MeshCheck)
+			MeshScript = "{}/{}.py".format(self.SIM_MESH, self.Meshes[MeshCheck].File)
+			# The file MeshParaFile is passed to MeshScript to create the mesh in the GUI
+			self.SalomeRun(MeshScript, ArgList=[MeshParaFile], GUI=True, CheckStatus=False)
 			self.Cleanup()
-			sys.exit()
-		elif MeshCheck and MeshCheck not in MeshList:
-			self.Exit("MeshCheck '{}' is not in the list of meshes to be created. Meshes to be created are {}".format(MeshCheck, MeshList))
+			sys.exit('Terminating after checking mesh')
+
+		elif MeshCheck and MeshCheck not in self.Meshes.keys():
+			self.Exit("MeshCheck '{}' is not one of meshes to be created.\nMeshes to be created are:{}".format(MeshCheck, list(self.Meshes.keys())))
 
 		print('### Starting Meshing ###\n')
 		# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
@@ -273,32 +272,35 @@ class VLSetup():
 
 		# Script which is used to import the necessary mesh function
 		MeshScript = '{}/MeshRun.py'.format(self.COM_SCRIPTS)
-		for mesh in self.MeshList:
-			print("Starting mesh '{}'".format(mesh))
+		for MeshName, MeshPara in self.Meshes.items():
+			print("Starting mesh '{}'".format(MeshName))
 
 			IndMeshLog = "{}/Log".format(self.GEOM_DIR)
-			ArgDict = {"Parameters":mesh, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, mesh)}
+			ArgDict = {"Parameters":MeshName, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, MeshName)}
 			AddPath = [self.SIM_MESH, self.GEOM_DIR]
-			self.SalomeRun(MeshScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
+			Proc = self.SalomeRun(MeshScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog, CheckStatus=False)
 
-			IndMeshData = "{}/{}.py".format(self.MESH_DIR, mesh)
+			MeshCls = import_module('Mesh.{}'.format(MeshPara.File))
+			if hasattr(MeshCls,'ErrorHandling'):
+				MeshCls.ErrorHandling(self, Proc.returncode)
+
+			IndMeshData = "{}/{}.py".format(self.MESH_DIR, MeshName)
 			with open(IndMeshData,"w") as g:
-				with open("{}/{}.py".format(self.GEOM_DIR,mesh),'r') as MeshData:
+				with open("{}/{}.py".format(self.GEOM_DIR,MeshName),'r') as MeshData:
 					g.write("# Geom & Mesh Parameters\n" + MeshData.read())
 				if self.mode != 'Interactive':
 					with open(IndMeshLog,'r') as rIndMeshLog:
 						g.write("\n'''\n# Meshing log\n{}\n'''".format(rIndMeshLog.read()))
 
-			if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(mesh))
-			else : print("Completed mesh '{}'. See '{}' for log\n".format(mesh,IndMeshData))
+			if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(MeshName))
+			else : print("Completed mesh '{}'. See '{}' for log\n".format(MeshName,IndMeshData))
 
 		print('### Meshing Completed ###\n')
 		if ShowMesh:
 			print("Opening mesh files in Salome")
-			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshList]
+			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.Meshes.keys()]
 			Salome = Popen('salome {}/ShowMesh.py args:{} '.format(self.COM_SCRIPTS,",".join(MeshPaths)), shell='TRUE')
 			Salome.wait()
-
 			self.Cleanup()
 			sys.exit()
 
@@ -507,8 +509,8 @@ class VLSetup():
 				if not os.path.isfile('{}/{}.py'.format(self.SIM_POSTASTER,SimDict['PostAsterFile'])):
 					self.Exit("PostAsterFile '{}' not in directory '{}'".format(SimDict['PostAsterFile'], self.SIM_POSTASTER))
 
-			# Check either the mesh is in the mesh directory or that it is in MeshList ready to be created
-			if SimDict['Mesh'] in getattr(self, 'MeshList', []): pass
+			# Check either the mesh is in the mesh directory or that it is a mesh to be created
+			if SimDict['Mesh'] in (getattr(self, 'Meshes', {})).keys(): pass
 			elif os.path.isfile("{}/{}.med".format(self.MESH_DIR, SimDict['Mesh'])): pass
 			else : self.Exit("Mesh '{}' isn't being created and is not in the mesh directory '{}'".format(SimDict['Mesh'], self.MESH_DIR))
 
@@ -538,6 +540,7 @@ class VLSetup():
 		ArgList = kwargs.get('ArgList',[])
 		GUI = kwargs.get('GUI',False)
 		SalomeInit = kwargs.get('SalomeInit',False)
+		CheckStatus = kwargs.get('CheckStatus', True)
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
@@ -584,7 +587,10 @@ class VLSetup():
 		Salome = Popen(PythonPath + command, shell='TRUE')
 		Salome.wait()
 
-		self.CheckProc(Salome)
+		if CheckStatus:
+			self.CheckProc(Salome)
+
+		return Salome
 
 	def CheckProc(self,Proc,message=''):
 		if Proc.returncode != 0:

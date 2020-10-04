@@ -106,7 +106,7 @@ class VLSetup():
 		# If port is provided it assumes an open instance of salome exists on that port
 		# and will shell in to it. The second value indictates whether or not
 		# to kill the salome instance at the end of the process.
-		self.__port__ = [Port, False]
+		# self.__port__ = [Port, False]
 
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_SCRIPTS)
@@ -246,9 +246,11 @@ class VLSetup():
 		kwargs available:
 		MeshCheck: input a meshname and it will open this mesh in the GUI
 		ShowMesh: Opens up the meshes in the GUI. Boolean
+		NumThreads: Number of different meshes to execute concurrently
 		'''
 		MeshCheck = kwargs.get('MeshCheck', None)
 		ShowMesh = kwargs.get('ShowMesh', False)
+		NumThreads = kwargs.get('NumThreads',1)
 
 		# MeshCheck routine which allows you to mesh in the GUI (Used for debugging).
 		# The script will terminate after this routine
@@ -268,32 +270,68 @@ class VLSetup():
 		print('### Starting Meshing ###\n')
 		# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
 		MeshLog = "{}/Log".format(self.MESH_DIR)
-		self.SalomeRun(None, SalomeInit=True, OutLog=MeshLog)
 
+		NumMeshes = len(self.Meshes)
+		NumThreads = min(NumThreads,NumMeshes)
+		MeshInit,Ports = [],[]
+
+		for i in range(NumThreads):
+			portfile = '{}/port_{}.txt'.format(self.TMP_DIR,i)
+			command = 'cd {};salome -t --ns-port-log {}'.format(self.TMP_DIR,portfile)
+			Salome = Popen(command, shell='TRUE')
+			MeshInit.append(Salome)
+
+		for i,proc in enumerate(MeshInit):
+			proc.wait()
+			with open('{}/port_{}.txt'.format(self.TMP_DIR,i),'r') as f:
+				prt = int(f.readline())
+			Ports.append(prt)
+
+		self.__port__ = Ports.copy()
 		# Script which is used to import the necessary mesh function
 		MeshScript = '{}/MeshRun.py'.format(self.COM_SCRIPTS)
+
+		MeshStat = {}
+		NumActive=0
+		count=0
 		for MeshName, MeshPara in self.Meshes.items():
 			print("Starting mesh '{}'".format(MeshName))
-
 			IndMeshLog = "{}/Log".format(self.GEOM_DIR)
 			ArgDict = {"Parameters":MeshName, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, MeshName)}
 			AddPath = [self.SIM_MESH, self.GEOM_DIR]
-			Proc = self.SalomeRun(MeshScript, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog, CheckStatus=False)
+			port = Ports.pop(0)
+			Proc = self.SalomeRun(MeshScript, Port=port, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
+			MeshStat[MeshName] = [Proc,port]
+			NumActive+=1
+			count+=1
+			while NumActive==NumThreads or count==NumMeshes:
+				for tmpMeshName, SalomeInfo in MeshStat.copy().items():
+					Proc, port = SalomeInfo
+					Poll = Proc.poll()
+					if Poll is not None:
+						print("Finishing mesh '{}'\n".format(tmpMeshName))
+						MeshStat.pop(tmpMeshName)
+						Proc.terminate()
+						NumActive-=1
+						Ports.append(port)
 
-			MeshCls = import_module('Mesh.{}'.format(MeshPara.File))
-			if hasattr(MeshCls,'ErrorHandling'):
-				MeshCls.ErrorHandling(self, Proc.returncode)
+				time.sleep(0.1)
+				if not len(MeshStat): break
 
-			IndMeshData = "{}/{}.py".format(self.MESH_DIR, MeshName)
-			with open(IndMeshData,"w") as g:
-				with open("{}/{}.py".format(self.GEOM_DIR,MeshName),'r') as MeshData:
-					g.write("# Geom & Mesh Parameters\n" + MeshData.read())
-				if self.mode != 'Interactive':
-					with open(IndMeshLog,'r') as rIndMeshLog:
-						g.write("\n'''\n# Meshing log\n{}\n'''".format(rIndMeshLog.read()))
-
-			if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(MeshName))
-			else : print("Completed mesh '{}'. See '{}' for log\n".format(MeshName,IndMeshData))
+			# MeshCls = import_module('Mesh.{}'.format(MeshPara.File))
+			# if hasattr(MeshCls,'ErrorHandling'):
+			# 	MeshCls.ErrorHandling(self, Proc.returncode)
+			#
+			# IndMeshData = "{}/{}.py".format(self.MESH_DIR, MeshName)
+			# with open(IndMeshData,"w") as g:
+			# 	with open("{}/{}.py".format(self.GEOM_DIR,MeshName),'r') as MeshData:
+			# 		g.write("# Geom & Mesh Parameters\n" + MeshData.read())
+			# 	if self.mode != 'Interactive':
+			# 		with open(IndMeshLog,'r') as rIndMeshLog:
+			# 			g.write("\n'''\n# Meshing log\n{}\n'''".format(rIndMeshLog.read()))
+			#
+			# if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(MeshName))
+			# else : print("Completed mesh '{}'. See '{}' for log\n".format(MeshName,IndMeshData))
 
 		print('### Meshing Completed ###\n')
 		if ShowMesh:
@@ -540,7 +578,8 @@ class VLSetup():
 		ArgList = kwargs.get('ArgList',[])
 		GUI = kwargs.get('GUI',False)
 		SalomeInit = kwargs.get('SalomeInit',False)
-		CheckStatus = kwargs.get('CheckStatus', True)
+		Port = kwargs.get('Port',None)
+
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
@@ -559,8 +598,7 @@ class VLSetup():
 			GUI.wait()
 			return
 
-
-		if not self.__port__[0]:
+		if not hasattr(self,'__port__'):
 			# Cd to TMP_DIR to avoid test.out file created in VL
 			portfile = '{}/port.txt'.format(self.TMP_DIR)
 			command = 'cd {};salome -t --ns-port-log {}'.format(self.TMP_DIR,portfile)
@@ -575,21 +613,18 @@ class VLSetup():
 
 			### Get port number from file
 			with open(portfile,'r') as f:
-				self.__port__ = [int(f.readline()), True]
+				self.__port__ = [int(f.readline())]
 
 		# Return here if SalomeInit as we only want to initiate Salome, not run anything
 		if SalomeInit: return
 
-		command = "salome shell -p{!s} {} args:{}".format(self.__port__[0], Script, Args)
+		if not Port: Port = self.__port__[0]
+
+		command = "salome shell -p{!s} {} args:{}".format(Port, Script, Args)
 		if self.mode != 'Interactive':
 			command += " 2>{} 1>{}".format(ErrLog, OutLog)
 
 		Salome = Popen(PythonPath + command, shell='TRUE')
-		Salome.wait()
-
-		if CheckStatus:
-			self.CheckProc(Salome)
-
 		return Salome
 
 	def CheckProc(self,Proc,message=''):
@@ -602,9 +637,15 @@ class VLSetup():
 
 	def Cleanup(self,remove = 'y'):
 		# If a port is a kwarg during setup it wont be killed, otherwise the instance set up will be killed
-		if self.__port__[1]:
-			Salome_close = Popen('salome kill {}'.format(self.__port__[0]), shell = 'TRUE')
+		Ports = getattr(self,'__port__',[])
+		if Ports:
+			print('Closing Salome on port(s) {}'.format(Ports))
+			Salome_close = Popen('salome kill {}'.format(" ".join(map(str,Ports))), shell = 'TRUE')
 			Salome_close.wait()
+
+		# if self.__port__[1]:
+			# Salome_close = Popen('salome kill {}'.format(self.__port__[0]), shell = 'TRUE')
+			# Salome_close.wait()
 
 		if remove == 'y' and os.path.isdir(self.TMP_DIR):
 			shutil.rmtree(self.TMP_DIR)

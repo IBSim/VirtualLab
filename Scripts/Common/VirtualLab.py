@@ -16,6 +16,7 @@ import VLconfig
 from importlib import import_module
 import ast
 from Scripts.Common import Analytics
+from multiprocessing import Process
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode):
@@ -370,23 +371,56 @@ class VLSetup():
 		mpi_nbnoeud = kwargs.get('mpi_nbnoeud',1)
 		ncpus = kwargs.get('ncpus',1)
 		memory = kwargs.get('memory',2)
+		NumThreads = kwargs.get('NumThreads',1)
 
 		print('\n### Starting Simulations ###\n')
+
+		NumSim = len(self.Studies)
+		NumThreads = min(NumThreads,NumSim)
 
 		SimMaster = self.Parameters_Master.Sim
 		if RunPreAster and hasattr(SimMaster,'PreAsterFile'):
 			sys.path.insert(0, self.SIM_PREASTER)
+			# for Name, StudyDict in self.Studies.items():
+			# 	PreAsterFile = getattr(StudyDict['Parameters'],'PreAsterFile', None)
+			# 	# if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
+			# 	print("Pre-Aster for '{}' started".format(Name))
+			# 	if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
+			# 	PreAster = import_module(PreAsterFile)
+			# 	PreAster.main(self, StudyDict)
+			# 	print("Pre-Aster for '{}' completed".format(Name))
+
+			count, NumActive = 0, 0
+			PreStat = {}
 			for Name, StudyDict in self.Studies.items():
 				PreAsterFile = getattr(StudyDict['Parameters'],'PreAsterFile', None)
 				# if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
-				print("Pre-Aster for '{}' started".format(Name))
+				print("Pre-Aster for '{}' started\n".format(Name))
 				if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
 				PreAster = import_module(PreAsterFile)
-				PreAster.main(self, StudyDict)
-				print("Pre-Aster for '{}' completed".format(Name))
+				proc = Process(target=PreAster.main, args=(self,StudyDict))
+				proc.start()
+				count +=1
+				NumActive +=1
+
+				PreStat[Name] = proc
+
+				while NumActive==NumThreads or count==NumSim:
+					for tmpName, proc in PreStat.copy().items():
+						Alive = proc.is_alive()
+						if not Alive:
+							print("Pre-Aster for '{}' completed\n".format(tmpName))
+							PreStat.pop(tmpName)
+							NumActive-=1
+
+					time.sleep(0.1)
+					if not len(PreStat): break
+
 
 		if RunAster and hasattr(SimMaster,'AsterFile'):
-			SubProcs = {}
+			AsterError = []
+			AsterStat = {}
+			count, NumActive = 0, 0
 			for Name, StudyDict in self.Studies.items():
 				if not os.path.isdir(StudyDict['ASTER']): os.makedirs(StudyDict['ASTER'])
 
@@ -426,36 +460,60 @@ class VLSetup():
 					command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
 
 				# Start Aster subprocess
-				SubProcs[Name] = Popen(PreCond + command , shell='TRUE')
+				AsterStat[Name] = Popen(PreCond + command , shell='TRUE')
 				print("Aster for '{}' started".format(Name))
+				count +=1
+				NumActive +=1
+
+				while NumActive==NumThreads or count==NumSim:
+					for Name, Proc in AsterStat.copy().items():
+						Poll = Proc.poll()
+						if Poll is not None:
+							err = Poll
+							if self.mode == 'Interactive':
+								with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
+									err = int(f.readline())
+							elif self.mode == 'Continuous':
+								os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER']))
+
+							if err != 0:
+								print("Error in simulation '{}' - Check the log file".format(Name))
+								AsterError.append(Name)
+							else :
+								print("Aster for '{}' completed".format(Name))
+							AsterStat.pop(Name)
+							Proc.terminate()
+
+					if not len(AsterStat): break
+					time.sleep(0.1)
 
 			# Wait until all Aster subprocesses are finished before moving on
-			AsterError = False
-			while SubProcs:
-				# Check to see the status of each subprocess
-				for Name, Proc in SubProcs.copy().items():
-					Poll = Proc.poll()
-					if Poll is not None:
+			# AsterError = False
+			# while SubProcs:
+			# 	# Check to see the status of each subprocess
+			# 	for Name, Proc in SubProcs.copy().items():
+			# 		Poll = Proc.poll()
+			# 		if Poll is not None:
+			#
+			# 			err = Poll
+			# 			if self.mode == 'Interactive':
+			# 				with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
+			# 					err = int(f.readline())
+			# 			elif self.mode == 'Continuous':
+			# 				os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER']))
+			#
+			# 			if err != 0:
+			# 				print("Error in simulation '{}' - Check the log file".format(Name))
+			# 				AsterError = True
+			# 			else :
+			# 				print("Aster for '{}' completed".format(Name))
+			# 			SubProcs.pop(Name)
+			# 			Proc.terminate()
+			#
+			# 	# Check if subprocess has finished every 1 second
+			# 	time.sleep(1)
 
-						err = Poll
-						if self.mode == 'Interactive':
-							with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
-								err = int(f.readline())
-						elif self.mode == 'Continuous':
-							os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER']))
-
-						if err != 0:
-							print("Error in simulation '{}' - Check the log file".format(Name))
-							AsterError = True
-						else :
-							print("Aster for '{}' completed".format(Name))
-						SubProcs.pop(Name)
-						Proc.terminate()
-
-				# Check if subprocess has finished every 1 second
-				time.sleep(1)
-
-			if AsterError: self.Exit("Some simulations finished with errors")
+			if AsterError: self.Exit("The following simulation(s) finished with errors: {}".format(AsterError))
 
 		if RunPostAster and hasattr(SimMaster,'PostAsterFile'):
 			sys.path.insert(0, self.SIM_POSTASTER)

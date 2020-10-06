@@ -391,31 +391,47 @@ class VLSetup():
 			# 	print("Pre-Aster for '{}' completed".format(Name))
 
 			count, NumActive = 0, 0
+			PreError = []
 			PreStat = {}
 			for Name, StudyDict in self.Studies.items():
-				PreAsterFile = getattr(StudyDict['Parameters'],'PreAsterFile', None)
-				# if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
+				PreAsterFile = StudyDict['Parameters'].PreAsterFile
+				if not PreAsterFile: continue
+
 				print("Pre-Aster for '{}' started\n".format(Name))
 				if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
+
 				PreAster = import_module(PreAsterFile)
 				proc = Process(target=PreAster.main, args=(self,StudyDict))
-				proc.start()
+
+				if self.mode == 'Interactive':
+					proc.start()
+				else :
+					with open("{}/Log.txt".format(StudyDict['PREASTER']), 'w') as f:
+						with contextlib.redirect_stdout(f):
+							# stderr may need to be written to a seperate file and then copied over
+							with contextlib.redirect_stderr(sys.stdout):
+								proc.start()
+
 				count +=1
 				NumActive +=1
-
 				PreStat[Name] = proc
-
 				while NumActive==NumThreads or count==NumSim:
 					for tmpName, proc in PreStat.copy().items():
-						Alive = proc.is_alive()
-						if not Alive:
+						EC = proc.exitcode
+						if EC == None:
+							continue
+						elif EC == 0:
 							print("Pre-Aster for '{}' completed\n".format(tmpName))
-							PreStat.pop(tmpName)
-							NumActive-=1
+						else :
+							print("Pre-Aster for '{}' returned error code {}\n".format(tmpName,EC))
+							PreError.append(tmpName)
+						PreStat.pop(tmpName)
+						NumActive-=1
 
 					time.sleep(0.1)
 					if not len(PreStat): break
 
+				if PreError: self.Exit("The following PreAster routine(s) finished with errors:\n{}".format(PreError))
 
 		if RunAster and hasattr(SimMaster,'AsterFile'):
 			AsterError = []
@@ -471,13 +487,13 @@ class VLSetup():
 						if Poll is not None:
 							err = Poll
 							if self.mode == 'Interactive':
-								with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
+								with open('{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR']),'r') as f:
 									err = int(f.readline())
 							elif self.mode == 'Continuous':
-								os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER']))
+								os.remove('{}/ContinuousAsterLog'.format(StudyDict['ASTER']))
 
 							if err != 0:
-								print("Error in simulation '{}' - Check the log file".format(Name))
+								print("Aster for '{}' returned error code {}.\nCheck AsterLog in {}".format(Name,err,StudyDict['ASTER']))
 								AsterError.append(Name)
 							else :
 								print("Aster for '{}' completed".format(Name))
@@ -513,7 +529,7 @@ class VLSetup():
 			# 	# Check if subprocess has finished every 1 second
 			# 	time.sleep(1)
 
-			if AsterError: self.Exit("The following simulation(s) finished with errors: {}".format(AsterError))
+			if AsterError: self.Exit("The following simulation(s) finished with errors:\n{}".format(AsterError))
 
 		if RunPostAster and hasattr(SimMaster,'PostAsterFile'):
 			sys.path.insert(0, self.SIM_POSTASTER)

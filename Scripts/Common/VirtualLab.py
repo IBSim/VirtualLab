@@ -275,10 +275,9 @@ class VLSetup():
 		NumMeshes = len(self.Meshes)
 		NumThreads = min(NumThreads,NumMeshes)
 		MeshInit,Ports = [],[]
-
+		PortCount = {}
 		for i in range(NumThreads):
-			portfile = '{}/port_{}.txt'.format(self.TMP_DIR,i)
-			command = 'cd {};salome -t --ns-port-log {}'.format(self.TMP_DIR,portfile)
+			command = 'cd {0};salome -t --ns-port-log {0}/port_{1}.txt'.format(self.TMP_DIR,i)
 			Salome = Popen(command, shell='TRUE')
 			MeshInit.append(Salome)
 
@@ -287,25 +286,41 @@ class VLSetup():
 			with open('{}/port_{}.txt'.format(self.TMP_DIR,i),'r') as f:
 				prt = int(f.readline())
 			Ports.append(prt)
+			PortCount[prt] = 0
 
-		self.__port__ = Ports.copy()
 		# Script which is used to import the necessary mesh function
 		MeshScript = '{}/MeshRun.py'.format(self.COM_SCRIPTS)
 
 		MeshStat = {}
 		NumActive=0
-		count=0
+		NumComplete=0
+		SalomeReset = 200/NumThreads
 		for MeshName, MeshPara in self.Meshes.items():
 			print("Starting mesh '{}'".format(MeshName))
 			IndMeshLog = "{}/Log".format(self.GEOM_DIR)
 			ArgDict = {"Parameters":MeshName, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, MeshName)}
 			AddPath = [self.SIM_MESH, self.GEOM_DIR]
+
 			port = Ports.pop(0)
+			if PortCount[port] >= SalomeReset:
+				print("Limit reached on Salome session {}. Closing and opening a new session".format(port))
+				Salome_Close = self.KillSalome(port)
+				portfile = '{0}/port_{1}.txt'.format(self.TMP_DIR,NumComplete)
+				command = 'cd {0};salome -t --ns-port-log {1}'.format(self.TMP_DIR,portfile)
+				Salome = Popen(command, shell='TRUE')
+				Salome.wait()
+				with open(portfile,'r') as f:
+					port = int(f.readline())
+				PortCount[port] = 0
+				Salome_Close.wait()
+
 			Proc = self.SalomeRun(MeshScript, Port=port, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
 			MeshStat[MeshName] = [Proc,port]
+			print(MeshName,port)
+			PortCount[port] +=1
 			NumActive+=1
-			count+=1
-			while NumActive==NumThreads or count==NumMeshes:
+			NumComplete+=1
+			while NumActive==NumThreads or NumComplete==NumMeshes:
 				for tmpMeshName, SalomeInfo in MeshStat.copy().items():
 					Proc, port = SalomeInfo
 					Poll = Proc.poll()
@@ -318,6 +333,8 @@ class VLSetup():
 
 				time.sleep(0.1)
 				if not len(MeshStat): break
+
+		self.__port__ = Ports.copy()
 
 			# MeshCls = import_module('Mesh.{}'.format(MeshPara.File))
 			# if hasattr(MeshCls,'ErrorHandling'):
@@ -708,6 +725,16 @@ class VLSetup():
 	def Exit(self,Error):
 		self.Cleanup('n')
 		sys.exit('Error: ' + Error)
+
+	def KillSalome(self, Ports):
+		print('Closing Salome on port(s) {}'.format(Ports))
+		if type(Ports) == list:
+			Portstr = " ".join(map(str,Ports))
+		elif type(Ports) == int:
+			Portstr = str(Ports)
+		Salome_close = Popen('salome kill {}'.format(Portstr), shell = 'TRUE')
+
+		return Salome_close
 
 	def Cleanup(self,remove = 'y'):
 		# If a port is a kwarg during setup it wont be killed, otherwise the instance set up will be killed

@@ -49,7 +49,7 @@ def MeshExport(Mesh,Meshfile, **kwargs):
 		print("Error in Exporting mesh")
 
 def ObjIndex(NewGeom, OldGeom, OldIndex, Tol=1e-9, Strict=True):
-	### This functions finds the index of a shape in a new geometry which was was created from a preious geometry
+	### This functions finds the index of a shape in a new geometry which was was created from a previous geometry
 	NewIndex = []
 	ObjectType = str(geompy.GetSubShape(OldGeom,[OldIndex[0]]).GetShapeType())
 	DomainGeoms = geompy.SubShapeAll(NewGeom, geompy.ShapeType[ObjectType])
@@ -62,7 +62,7 @@ def ObjIndex(NewGeom, OldGeom, OldIndex, Tol=1e-9, Strict=True):
 				Dist = np.linalg.norm(np.array(geompy.PointCoordinates(shape)) - OldCoor)
 				if Dist < Tol:
 					NewIndex += shape.GetSubShapeIndices()
-					break		
+					break
 	else:
 		# Want to check the higher order spatial measure for a shape, i.e. volume for a solid, area for a face
 		if ObjectType == 'SOLID': CheckIx=2
@@ -82,20 +82,23 @@ def ObjIndex(NewGeom, OldGeom, OldIndex, Tol=1e-9, Strict=True):
 				if Check and Strict:
 					intersect = geompy.MakeCommonList([obj, shape], True)
 					IntMeasure = geompy.BasicProperties(intersect)[CheckIx]
-					intersect.Destroy()
+					intersect.UnRegister()
 
-					# If the measure of the intersection matches with the original we are confident 
+					# If the measure of the intersection matches with the original we are confident
 					# it's the same shape and so we return this index
-					if abs(IntMeasure - OldMeasure) < Tol: 
+					if abs(IntMeasure - OldMeasure) < Tol:
 						NewIndex += shape.GetSubShapeIndices()
 						break
 
 				elif Check and not Strict:
 					objCOM = np.array(geompy.PointCoordinates(geompy.MakeCDG(obj)))
 					shapeCOM = np.array(geompy.PointCoordinates(geompy.MakeCDG(shape)))
-					if np.linalg.norm(objCOM-shapeCOM) < Tol: 
+					if np.linalg.norm(objCOM-shapeCOM) < Tol:
 						NewIndex += shape.GetSubShapeIndices()
 						break
+
+		for shape in DomainGeoms:
+			shape.UnRegister()
 
 	return NewIndex, ObjectType
 
@@ -118,6 +121,3 @@ def GetArgs(argv):
 
 def Reload(name):
 	importlib.reload(sys.modules[name])
-
-
-

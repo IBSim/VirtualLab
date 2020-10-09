@@ -12,6 +12,7 @@ def Create(**kwargs):
 	import  SMESH
 	import salome_version
 	import SalomeFunc
+	import salome
 
 	if salome_version.getVersions()[0] < 9:
 		import salome
@@ -28,6 +29,9 @@ def Create(**kwargs):
 	###
 	### GEOM component
 	###
+
+	# # flag dictating whether GUI is open
+	# GUIopen = salome.sg.hasDesktop()
 
 	O = geompy.MakeVertex(0, 0, 0)
 	OX = geompy.MakeVectorDXDYDZ(1, 0, 0)
@@ -166,7 +170,6 @@ def Create(**kwargs):
 	MPipe = Mesh_1.GroupOnGeom(GrpPipe,'PipeNd',SMESH.NODE)
 	MSample = Mesh_1.GroupOnGeom(GrpBlock,'BlockNd',SMESH.NODE)
 
-
 	### Sub-Mesh 1 - Refinement on pipe
 	## PipeEdges
 	Length1 = Parameter.PipeDiam*np.pi/Parameter.PipeDisc
@@ -227,7 +230,7 @@ def Create(**kwargs):
 	smesh.SetName(NETGEN_2D_Parameters_2, 'NETGEN 2D Parameters_2')
 	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
 
-	MeshERMES = getattr(Parameter,'ERMES',False)
+	MeshERMES = getattr(Parameter,'ERMES',True)
 	if MeshERMES :
 		## This next part takes this mesh and adds in a coil and vacuum around it and then runs the  code.
 		print('Using sample mesh information to create mesh for ERMES')
@@ -242,7 +245,14 @@ def Create(**kwargs):
 		Mesh_1.Compute()
 		SalomeFunc.MeshExport(Mesh_1,MeshFile)
 
+	# b = salome.myStudy.NewBuilder()
+	# for i, ms in enumerate([Mesh_1,SampleMesh,ERMESMesh]):
+	# 	so =  salome.ObjectToSObject(ms.mesh)
+	# 	b.RemoveObjectWithChildren(so)
+
 	globals().update(locals()) ### This adds all variables created in this function
+
+	# return 12
 
 class TestDimensions():
 	def __init__(self):
@@ -257,7 +267,7 @@ class TestDimensions():
 		self.PipeThick = 0.001
 		self.PipeLength = self.BlockLength
 
-		self.TileCentre = [0,-0.01]
+		self.TileCentre = [0,0]
 		self.TileWidth = self.BlockWidth
 		self.TileLength = 0.03
 		self.TileHeight = 0.005
@@ -281,6 +291,9 @@ def error(Parameters):
 	# Ensure that pipe length is always greater to or equal to block length
 	message = None
 	return message
+
+def ErrorHandling(Info, ReturnCode):
+	print(ReturnCode)
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:

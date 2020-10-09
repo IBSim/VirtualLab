@@ -8,6 +8,7 @@ from subprocess import Popen
 from VLFunctions import MeshInfo
 import matplotlib.pyplot as plt
 import time
+from importlib import import_module
 from bisect import bisect_left as bl
 
 def HTC(Info, StudyDict):
@@ -126,15 +127,17 @@ def CoilCurrent(EMMesh, JRes, groupname = 'CoilIn', **kwargs):
 
 def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	check = kwargs.get('check', False)
-
+	Parameters = StudyDict['Parameters']
 	# Create the .dat files needed by ERMES for a simulation.
 	# Since the coil is non-symmetric an electrostatic simulation is required before
 	# the full wave simulation.
 
+	tmpERMESdir = "{}/ERMES".format(StudyDict["TMP_CALC_DIR"])
+	os.makedirs(tmpERMESdir,exist_ok=True)
 
 	Temperatures = [20]
 	# Get mesh info using the MeshInfo class written using h5py
-	MeshFile = "{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh)
+	MeshFile = "{}/{}.med".format(Info.MESH_DIR,Parameters.Mesh)
 	ERMESMesh = MeshInfo(MeshFile, meshname='xERMES')
 
 	# Define duplicate nodes for contact surfaces, which is on the SampleSurface and CoilSurface
@@ -166,14 +169,14 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	"ProblemType = FSWRIF;\n" + \
 	"ProblemType = OFFASCII;\n" + \
 	"ProblemType = IMPJOFF;\n" + \
-	"ProblemType = 2pr;\n" + \
+	"ProblemType = {}pr;\n".format(getattr(Parameters,'NbProc',1)) + \
 	"ProblemType = LE;\n" + \
-	"ProblemFrequency = {};\n".format(StudyDict['Parameters'].Frequency*2*np.pi) + \
+	"ProblemFrequency = {};\n".format(Parameters.Frequency*2*np.pi) + \
 	"ProblemType = CheckConsistency;\n"
 
 	# Define Material properties. Only need Electrical Conductivity of 1 for coil
 	# for this analysis.
-	EMlist = ['Vacuum','Coil'] + sorted(StudyDict['Parameters'].Materials.keys())
+	EMlist = ['Vacuum','Coil'] + sorted(Parameters.Materials.keys())
 	Electrolist = [0]*len(EMlist)
 	Electrolist[1] = 1
 	StatMat = "// Material properties\n"
@@ -201,7 +204,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	"// Building and solving\n" + \
 	"ProblemType = Build;\n"
 
-	with open('{}/Static.dat'.format(StudyDict['TMP_CALC_DIR']),'w+') as f:
+	with open('{}/Static.dat'.format(tmpERMESdir),'w+') as f:
 		f.write(Stat01 + strNodes + StatMat + StatBC + Stat05)
 
 	# FullWave part
@@ -215,9 +218,9 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	"ProblemType = FSWRIF;\n" + \
 	"ProblemType = OFFASCII;\n" + \
 	"ProblemType = IMPJON;\n" + \
-	"ProblemType = 2pr;\n" + \
+	"ProblemType = {}pr;\n".format(getattr(Parameters,'NbProc',1)) + \
 	"ProblemType = LE;\n" + \
-	"ProblemFrequency = {};\n".format(StudyDict['Parameters'].Frequency*2*np.pi) + \
+	"ProblemFrequency = {};\n".format(Parameters.Frequency*2*np.pi) + \
 	"ProblemType = CheckConsistency;\n"
 
 	WaveBC = ["// Creating High order nodes\n","ProblemType = CreateHONodes;\n","// Making contact elements\n", \
@@ -237,7 +240,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 			if part in ('Vacuum','Coil'):
 				ElCnd = 0
 			else :
-				fpath = '{}/{}/{}.dat'.format(Info.MATERIAL_DIR,StudyDict['Parameters'].Materials[part],'ElecCond')
+				fpath = '{}/{}/{}.dat'.format(Info.MATERIAL_DIR,Parameters.Materials[part],'ElecCond')
 				prop = np.fromfile(fpath,dtype=float,count=-1,sep=" ")
 				ElCnd = np.interp(Temp,prop[::2],prop[1::2])
 
@@ -250,7 +253,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		"PROPERTIES[17].COMPLEX_IBC = [0.000000000000000000,100.000000000000000000];\n" + \
 		"PROPERTIES[32].COMPLEX_IBC = [1.0,0.0];\n"
 
-		with open('{}/Wave{}.dat'.format(StudyDict['TMP_CALC_DIR'],Temp),'w+') as f:
+		with open('{}/Wave{}.dat'.format(tmpERMESdir,Temp),'w+') as f:
 			f.write(Wave01 + strNodes + WaveMat + WaveBC + Wave05)
 
 	del strNodes, StatBC, WaveBC
@@ -276,10 +279,10 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 			strMesh.append("VE({},{},{},{},{});\n".format(Nodes[2],Nodes[1],Nodes[0],Nodes[3],i+1))
 	strMesh = "".join(strMesh)
 
-	with open('{}/Static-1.dat'.format(StudyDict['TMP_CALC_DIR']),'w+') as f:
+	with open('{}/Static-1.dat'.format(tmpERMESdir),'w+') as f:
 		f.write(strMesh)
 	for Temp in Temperatures:
-		with open('{}/Wave{}-1.dat'.format(StudyDict['TMP_CALC_DIR'],Temp),'w+') as f:
+		with open('{}/Wave{}-1.dat'.format(tmpERMESdir,Temp),'w+') as f:
 			f.write(strMesh)
 
 	del strMesh
@@ -290,7 +293,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	StatBC = ["GRC({},{},{},17);\n".format(Nodes[0],Nodes[1],Nodes[2]) for Nodes in CoilInCnct]
 	StatBC.insert(0, "// Static Robin elements\n")
 	StatBC = "".join(StatBC)
-	with open('{}/Static-2.dat'.format(StudyDict['TMP_CALC_DIR']),'w+') as f:
+	with open('{}/Static-2.dat'.format(tmpERMESdir),'w+') as f:
 		f.write(StatBC)
 
 
@@ -303,10 +306,10 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	strContact = "".join(strContact)
 
 	for Temp in Temperatures:
-		with open('{}/Wave{}-3.dat'.format(StudyDict['TMP_CALC_DIR'], Temp),'w+') as f:
+		with open('{}/Wave{}-3.dat'.format(tmpERMESdir, Temp),'w+') as f:
 			f.write(strContact)
 		# Need this blank file for Wave analysis to execute properly
-		with open('{}/Wave{}-2.dat'.format(StudyDict['TMP_CALC_DIR'], Temp),'w+') as f:
+		with open('{}/Wave{}-2.dat'.format(tmpERMESdir, Temp),'w+') as f:
 			f.write("// Source elements\n")
 
 	##### -5.dat file ######
@@ -328,7 +331,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	Stat52 = "// Print the results of the field integrals\n" + \
 	"ProblemType = Project_Static_Fields;\n"
 
-	with open('{}/Static-5.dat'.format(StudyDict['TMP_CALC_DIR']),'w+') as f:
+	with open('{}/Static-5.dat'.format(tmpERMESdir),'w+') as f:
 		f.write(Stat51 + Stat52)
 
 	# FullWave part
@@ -357,7 +360,16 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	"// J currents\n" + \
 	"Print(REAL_J);\n" + \
 	"Print(IMAG_J);\n" + \
-	"Print(MOD_J);\n\n"
+	"Print(MOD_J);\n" + \
+	"// Printing main results (E field)\n" +\
+	"Print(IMAG_E);\n" + \
+	"Print(REAL_E);\n" + \
+	"Print(MOD_E);\n" + \
+	"// Printing derivatives (H field)\n" + \
+	"Print(IMAG_H);\n" + \
+	"Print(REAL_H);\n" + \
+	"Print(MOD_H);\n\n"
+
 
 	# if check is True then this is included to calculate the current in the
 	# CoilIn terminal. This can then be verified against the answer calculated
@@ -371,7 +383,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 
 	ERMESwave = []
 	for Temp in Temperatures:
-		with open('{}/Wave{}-5.dat'.format(StudyDict['TMP_CALC_DIR'], Temp),'w+') as f:
+		with open('{}/Wave{}-5.dat'.format(tmpERMESdir, Temp),'w+') as f:
 			f.write(Wave51 + strFace + Wave52)
 
 		ERMESwave.append("ERMESv12.5 Wave{};".format(Temp))
@@ -379,17 +391,17 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	### -9.dat file
 	# Output file where currents calculated in the electrostatic simulation is saved to
 	name = '1'
-	with open('{}/Static-9.dat'.format(StudyDict['TMP_CALC_DIR']),'w+') as f:
+	with open('{}/Static-9.dat'.format(tmpERMESdir),'w+') as f:
 		f.write('{}\n0\n'.format(name))
 
-	Ermesstr = "cd {}; ERMESv12.5 {};{}".format(StudyDict['TMP_CALC_DIR'],'Static',''.join(ERMESwave))
-	ERMES_run = Popen(Ermesstr, shell = 'TRUE')
+	Ermesstr = "cd {}; ERMESv12.5 {};{}".format(tmpERMESdir,'Static',''.join(ERMESwave))
+	ERMES_run = Popen(Ermesstr, stdout=sys.stdout, stderr=sys.stdout, shell = 'TRUE')
 	ERMES_run.wait()
 
 	# Take results from dat results file and create in to .rmed file to view in ParaVis
 	ResDict = {}
 	Start, End = -1,-2
-	with open('{}/{}{}.post.res'.format(StudyDict['TMP_CALC_DIR'],'Wave',20),'r') as f:
+	with open('{}/{}{}.post.res'.format(tmpERMESdir,'Wave',20),'r') as f:
 		for j,line in enumerate(f):
 			split = line.split()
 			if split[0] == 'Result':
@@ -482,7 +494,7 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		vol = 1/float(6)*abs(np.dot(np.cross(VCoor[1,:]-VCoor[0,:],VCoor[2,:]-VCoor[0,:]),VCoor[3,:]-VCoor[0,:]))
 		# geometric average of nodal JH to element values
 		Elsum = np.sum(JH[Nds-1,:])/4
-		Volume.append(vol)
+		# Volume.append(vol)
 		WattsPV.append(Elsum)
 		Watts.append(vol*Elsum)
 
@@ -524,55 +536,20 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	WattsPV = WattsPV[sortlist]*(1/CoilInCurr)**2
 	Watts = np.array(Watts)[sortlist]*(1/CoilInCurr)**2
 	Elements = Sample.Elements[sortlist]
+	JH = JH*(1/CoilInCurr)**2
 	# Save arrays to ERMES.rmed file for easy access
 	grp.create_dataset('WattsPV',data=WattsPV)
 	grp.create_dataset('Watts',data=Watts)
 	grp.create_dataset('Elements',data=Elements)
+	grp.create_dataset('JHNode',data=JH)
 
-	# Thresholding image
-	CumSum = Watts.cumsum()
-	NbEls = CumSum.shape[0]
-	CumSum = CumSum/CumSum[-1]
-	Percentages = [0.5,0.9,0.99,0.999,0.9999]
+	ERMESrmed.close()
 
-	fig = plt.figure(figsize = (10,8))
-	xlog = np.log10(np.arange(1,NbEls+1))
-	xmax = xlog[-1]
-	x = xlog/xmax
-	plt.plot(x, CumSum, label="Cumulative power")
-	ticks, labels = [0], [0]
-	for prc in Percentages:
-		pos = bl(CumSum,prc)
-		num = np.log10(pos+1)/xmax
-		plt.plot([num, num], [0, prc], '--',label="{}% of power ({} Elements)".format(prc*100,pos+1))
-		frac = round((pos+1)/NbEls,3)
-		ticks.append(num)
-		labels.append(frac)
-		# print("For {}% of the coil power, you will need {} elements ({}% total elements)".format(prc*100,pos+1,round(frac*100,2)))
-	plt.plot([1, 1], [0, 1], '--',label="100% of power ({} Elements)".format(NbEls))
-	ticks.append(1)
-	labels.append(1)
-	plt.xticks(ticks, labels,rotation="vertical")
-	plt.legend(loc='upper left')
-	plt.xlabel('Fraction of total elements required')
-	plt.ylabel('Power (scaled)')
-	# plt.show()
-	plt.savefig("{}/EM_Thresholding.png".format(StudyDict['PREASTER']))
-	plt.close()
-	print("{}/EM_Thresholding".format(StudyDict['PREASTER']))
+	shutil.rmtree(tmpERMESdir)
+	time.sleep(2)
 
-	# fig = plt.figure(figsize = (14,5))
-	# x = np.linspace(1/NbEls,1,NbEls)
-	# plt.plot(x, CumSum, label="Watts Cumulative")
-	# for prc,frac in zip(Percentages,labels[1:-1]):
-	# 	plt.plot([frac, frac], [0, prc], '--',label="{}% of power".format(prc*100))
-	# plt.legend(loc='lower right')
-	# plt.xticks(labels)
-	# plt.xlabel('Number of elements as fraction of total')
-	# plt.ylabel('Scaled  power')
-	# plt.show()
 
-	return Watts, WattsPV, Elements
+	return Watts, WattsPV, Elements, JH
 
 def ASCIIname(names):
 	namelist = []
@@ -585,135 +562,205 @@ def ASCIIname(names):
 
 
 def ERMES(Info, StudyDict):
-	RunERMES = getattr(StudyDict['Parameters'], 'RunERMES', True)
-
+	Parameters = StudyDict['Parameters']
 	# Name of rMED file where results will be stored. This can be opened in ParaVis
 	ERMESfile = '{}/ERMES.rmed'.format(StudyDict['PREASTER'])
 
 	# Create a new set of ERMES results
-	if RunERMES:
-		Watts, WattsPV, Elements = SetupERMES(Info, StudyDict, ERMESfile)
+	if getattr(Parameters,'RunERMES',True):
+		Watts, WattsPV, Elements, JHNode = SetupERMES(Info, StudyDict, ERMESfile)
 	# Read in a previous set of ERMES results
 	elif os.path.isfile(ERMESfile):
 		ERMESres = h5py.File(ERMESfile, 'r')
 		Watts = ERMESres["EM_Load/Watts"][:]
 		WattsPV = ERMESres["EM_Load/WattsPV"][:]
 		Elements = ERMESres["EM_Load/Elements"][:]
+		JHNode =  ERMESres["EM_Load/JHNode"][:]
 
 		# Check that the results match up with the mesh
-		NbVolumes = MeshInfo("{}/{}.med".format(Info.MESH_DIR,StudyDict['Parameters'].Mesh), meshname='Sample').NbVolumes
+		NbVolumes = MeshInfo("{}/{}.med".format(Info.MESH_DIR,Parameters.Mesh), meshname='Sample').NbVolumes
 		if Watts.shape[0] != NbVolumes:
-			Info.Exit("EM.dat file doesn't match with current mesh")
+			Info.Exit("ERMES.rmed file doesn't match with mesh used for {} simulation".format(Parameters.Name))
 	# exit due to error
 	else :
 		Info.Exit("ERMES results file '{}' does not exist and RunERMES flag not set to True".format(ERMESfile))
-
 	# Cumultive sum is used to find % thresholds for EMThreshold
 	CumSum = Watts.cumsum()
 	CoilPower = CumSum[-1]
-	print("Power delivered by coil: {:.4f}W".format(CoilPower*StudyDict['Parameters'].Current**2))
+	CumSum = CumSum/CoilPower
+	CoilPower = CoilPower*Parameters.Current**2
+	print("Power delivered by coil: {:.4f}W".format(CoilPower))
 
-	Threshold = StudyDict['Parameters'].EMThreshold
-	# If threshold is None VirtualLab will exit at this point.
-	# This is useful for checking the desired threshold prior to the simulation.
-	if Threshold == None:
-		Info.Cleanup()
-		sys.exit()
+	CoilFace = MeshInfo("{}/{}.med".format(Info.MESH_DIR,Parameters.Mesh), meshname='Sample').GroupInfo('CoilFace')
+	CFNodes = JHNode[CoilFace.Nodes-1]
+	Std = np.std(CFNodes)
+	sqrtd = np.sqrt(CFNodes.shape[0])
 
-	# Find position in CumSum where the threshold percentage has been reached
-	pos = bl(CumSum,Threshold*CoilPower)
-	print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
+	# Get mesh information from {MESHNAME}.py file in MESH_DIR
+	sys.path.insert(0,Info.MESH_DIR)
+	VLMesh = import_module(Parameters.Mesh)
 
-	# Scale values to reflect Current
-	EM_Val = WattsPV[:pos+1]*StudyDict['Parameters'].Current**2
-	EM_Els = Elements[:pos+1]
+	CoilTypes = ['Test','HIVE']
+	Ix = CoilTypes.index(VLMesh.CoilType)
+	InList = [Ix,VLMesh.CoilRotation] + VLMesh.CoilDisplacement
+	OutList = [CoilPower,Std]
+	Rlist = np.around(InList+OutList,6)
+	print(Rlist)
 
-	# If EMScale is True then the power input will be scaled to 100% for the elements used.
-	# If EMThreshold is 0.5 then the magnitude for each element will be doubled.
-	if getattr(StudyDict['Parameters'],'EMScale', False):
-		EM_Val = EM_Val*(CumSum[-1]/CumSum[pos])
+	MLFile = "{}/ML.hdf5".format(Info.STUDY_DIR)
+	Write = True
+	while Write:
+		try :
+			ML = h5py.File(MLFile, 'a')
+			Write = False
+		except OSError:
+			pass
+	# print('writing',Parameters.Name)
+	if 'ERMES' not in ML.keys():
+		length = Rlist.shape[0]
+		ML.create_dataset('ERMES',(length,1),data=Rlist,maxshape=(length,None))
+	else:
+		ML['ERMES'].resize(ML['ERMES'].shape[1]+1,axis=1)
+		ML['ERMES'][:,-1] = Rlist
+	ML.close()
 
-	# Write results to tmp file for Code_Aster to read in
-	EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
-	np.save(EMLoadFile, np.vstack((EM_Els, EM_Val)).T)
+	## Thresholding preview
+	if getattr(Parameters,'ThresholdPreview', True):
+		fig = plt.figure(figsize = (10,8))
+		NbEls = CumSum.shape[0]
+		Percentages = [0.5,0.9,0.99,0.999,0.9999]
+		xlog = np.log10(np.arange(1,NbEls+1))
+		xmax = xlog[-1]
+		x = xlog/xmax
+		plt.plot(x, CumSum, label="Cumulative power")
+		ticks, labels = [0], [0]
+		for prc in Percentages:
+			pos = bl(CumSum,prc)
+			num = np.log10(pos+1)/xmax
+			plt.plot([num, num], [0, prc], '--',label="{}% of power ({} Elements)".format(prc*100,pos+1))
+			frac = round((pos+1)/NbEls,3)
+			ticks.append(num)
+			labels.append(frac)
+			# print("For {}% of the coil power, you will need {} elements ({}% total elements)".format(prc*100,pos+1,round(frac*100,2)))
+		plt.plot([1, 1], [0, 1], '--',label="100% of power ({} Elements)".format(NbEls))
+		ticks.append(1)
+		labels.append(1)
+		plt.xticks(ticks, labels,rotation="vertical")
+		plt.legend(loc='upper left')
+		plt.xlabel('Fraction of total elements required')
+		plt.ylabel('Power (scaled)')
+		# plt.show()
+		plt.savefig("{}/EM_Thresholding.png".format(StudyDict['PREASTER']))
+		plt.close()
 
-	# Create individual mesh groups for the pos+1 elements which are loaded
-	tmpMeshFile = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
-	GroupBy = 'H5PY'
-	# This routine uses h5py to create the groups. It is the fastest available method.
-	if GroupBy == 'H5PY':
-		st = time.time()
-		MeshMed = h5py.File(StudyDict['MeshFile'], 'r')
-		tmpMeshMed = h5py.File(tmpMeshFile,'w')
-		tmpMeshMed.copy(MeshMed["INFOS_GENERALES"],"INFOS_GENERALES")
-		tmpMeshMed.copy(MeshMed["FAS/Sample"],"FAS/Sample")
-		tmpMeshMed.copy(MeshMed["ENS_MAA/Sample"],"ENS_MAA/Sample")
-		MeshMed.close()
+		# fig = plt.figure(figsize = (14,5))
+		# x = np.linspace(1/NbEls,1,NbEls)
+		# plt.plot(x, CumSum, label="Watts Cumulative")
+		# for prc,frac in zip(Percentages,labels[1:-1]):
+		# 	plt.plot([frac, frac], [0, prc], '--',label="{}% of power".format(prc*100))
+		# plt.legend(loc='lower right')
+		# plt.xticks(labels)
+		# plt.xlabel('Number of elements as fraction of total')
+		# plt.ylabel('Scaled  power')
+		# plt.show()
 
-		ElInfo = tmpMeshMed["ENS_MAA/Sample/-0000000000000000001-0000000000000000001/MAI/TE4"]
-		ElList = ElInfo["NUM"][:]
-		Elbool = np.searchsorted(ElList,EM_Els)
-		ElList = ElList[Elbool]
-		ElFam = ElInfo["FAM"][:][Elbool]
-		UniqueFam = np.unique(ElFam)
 
-		ElGrps = tmpMeshMed["FAS/Sample/ELEME"]
-		MinNum, GrpName = 0, []
-		for grp in ElGrps.keys():
-			grpnum = ElGrps[grp].attrs['NUM']
-			MinNum = min(MinNum,grpnum)
-			if grpnum in UniqueFam:
-				GrpName.append((grpnum,grp))
+	Threshold = getattr(Parameters,'Threshold', 0.999)
+	if Threshold:
+		# Find position in CumSum where the threshold percentage has been reached
+		pos = bl(CumSum,Threshold)
+		print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
 
-		Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
-		NewNum = MinNum-1
+		# Scale values to reflect Current
+		EM_Val = WattsPV[:pos+1]*Parameters.ERMES['Current']**2
+		EM_Els = Elements[:pos+1]
 
-		for Num, key in GrpName:
-			# st2 = time.time()
-			NameGrps = ElGrps["{}/GRO/NOM".format(key)][:]
-			NumGrps = NameGrps.shape[0]
-			Fambool = ElFam == Num
-			tmplist=[]
-			dsetFormat = Formats["Name{}".format(NumGrps+2)]
-			grpobj = ElGrps[key]
-			for El in ElList[Fambool]:
-				EMnames = ASCIIname(['EMgrp','M{}'.format(El)])
-				NewNames = np.vstack((NameGrps,EMnames))
-				newkey = "Grp{}".format(NewNum)
+		# If EMScale is True then the power input will be scaled to 100% for the elements used.
+		# If EMThreshold is 0.5 then the magnitude for each element will be doubled.
+		if getattr(StudyDict['Parameters'],'EMScale', False):
+			EM_Val = EM_Val*(CumSum[-1]/CumSum[pos])
 
-				ElGrps.copy(dsetFormat,"{}/GRO/NOM".format(newkey))
-				ElGrps[newkey].attrs.create('NUM',NewNum,dtype='i4')
-				ElGrps["{}/GRO".format(newkey)].attrs.create('NBR',NumGrps+2,dtype='i4')
-				ElGrps["Grp{}/GRO/NOM".format(NewNum)][:] = NewNames
+		# Write results to tmp file for Code_Aster to read in
+		EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
+		np.save(EMLoadFile, np.vstack((EM_Els, EM_Val)).T)
 
-				# ElGrps.copy(grpobj,newkey)
-				# ElGrps[newkey].attrs.modify('NUM',NewNum)
-				# ElGrps["{}/GRO".format(newkey)].attrs.modify('NBR',NumGrps+2)
-				# del ElGrps["{}/GRO/NOM".format(newkey)]
-				# ElGrps.copy(dsetFormat,"{}/GRO/NOM".format(newkey))
-				# ElGrps["{}/GRO/NOM".format(newkey)][:] = NewNames
+		# Create individual mesh groups for the pos+1 elements which are loaded
+		tmpMeshFile = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
+		GroupBy = 'H5PY'
+		# This routine uses h5py to create the groups. It is the fastest available method.
+		if GroupBy == 'H5PY':
+			st = time.time()
+			MeshMed = h5py.File(StudyDict['MeshFile'], 'r')
+			tmpMeshMed = h5py.File(tmpMeshFile,'w')
+			tmpMeshMed.copy(MeshMed["INFOS_GENERALES"],"INFOS_GENERALES")
+			tmpMeshMed.copy(MeshMed["FAS/Sample"],"FAS/Sample")
+			tmpMeshMed.copy(MeshMed["ENS_MAA/Sample"],"ENS_MAA/Sample")
+			MeshMed.close()
 
-				tmplist.append(NewNum)
-				NewNum -=1
+			ElInfo = tmpMeshMed["ENS_MAA/Sample/-0000000000000000001-0000000000000000001/MAI/TE4"]
+			ElList = ElInfo["NUM"][:]
+			Elbool = np.searchsorted(ElList,EM_Els)
+			ElList = ElList[Elbool]
+			ElFam = ElInfo["FAM"][:][Elbool]
+			UniqueFam = np.unique(ElFam)
 
-			ElFam[Fambool] = tmplist
-			# print(time.time()-st2)
+			ElGrps = tmpMeshMed["FAS/Sample/ELEME"]
+			MinNum, GrpName = 0, []
+			for grp in ElGrps.keys():
+				grpnum = ElGrps[grp].attrs['NUM']
+				MinNum = min(MinNum,grpnum)
+				if grpnum in UniqueFam:
+					GrpName.append((grpnum,grp))
 
-		Formats.close()
-		ElFamFull = ElInfo["FAM"][:]
-		ElFamFull[Elbool] = ElFam
-		ElInfo["FAM"][:] = ElFamFull
-		tmpMeshMed.close()
-		StudyDict['MeshFile'] = tmpMeshFile
-		print('Create:{}'.format(time.time()-st))
+			Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
+			NewNum = MinNum-1
 
-	elif GroupBy == 'SALOME':
-		st = time.time()
-		ArgDict = {"MeshFile":StudyDict["MeshFile"], "tmpMesh":tmpMeshFile,"EMLoadFile":EMLoadFile}
-		EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
-		Info.SalomeRun(EMGroupFile, ArgDict=ArgDict)
-		StudyDict['MeshFile'] = tmpMeshFile
-		print('Create:{}'.format(time.time()-st))
+			for Num, key in GrpName:
+				# st2 = time.time()
+				NameGrps = ElGrps["{}/GRO/NOM".format(key)][:]
+				NumGrps = NameGrps.shape[0]
+				Fambool = ElFam == Num
+				tmplist=[]
+				dsetFormat = Formats["Name{}".format(NumGrps+2)]
+				grpobj = ElGrps[key]
+				for El in ElList[Fambool]:
+					EMnames = ASCIIname(['EMgrp','M{}'.format(El)])
+					NewNames = np.vstack((NameGrps,EMnames))
+					newkey = "Grp{}".format(NewNum)
+
+					ElGrps.copy(dsetFormat,"{}/GRO/NOM".format(newkey))
+					ElGrps[newkey].attrs.create('NUM',NewNum,dtype='i4')
+					ElGrps["{}/GRO".format(newkey)].attrs.create('NBR',NumGrps+2,dtype='i4')
+					ElGrps["Grp{}/GRO/NOM".format(NewNum)][:] = NewNames
+
+					# ElGrps.copy(grpobj,newkey)
+					# ElGrps[newkey].attrs.modify('NUM',NewNum)
+					# ElGrps["{}/GRO".format(newkey)].attrs.modify('NBR',NumGrps+2)
+					# del ElGrps["{}/GRO/NOM".format(newkey)]
+					# ElGrps.copy(dsetFormat,"{}/GRO/NOM".format(newkey))
+					# ElGrps["{}/GRO/NOM".format(newkey)][:] = NewNames
+
+					tmplist.append(NewNum)
+					NewNum -=1
+
+				ElFam[Fambool] = tmplist
+				# print(time.time()-st2)
+
+			Formats.close()
+			ElFamFull = ElInfo["FAM"][:]
+			ElFamFull[Elbool] = ElFam
+			ElInfo["FAM"][:] = ElFamFull
+			tmpMeshMed.close()
+			StudyDict['MeshFile'] = tmpMeshFile
+			print('Create:{}'.format(time.time()-st))
+
+		elif GroupBy == 'SALOME':
+			st = time.time()
+			ArgDict = {"MeshFile":StudyDict["MeshFile"], "tmpMesh":tmpMeshFile,"EMLoadFile":EMLoadFile}
+			EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
+			Info.SalomeRun(EMGroupFile, ArgDict=ArgDict)
+			StudyDict['MeshFile'] = tmpMeshFile
+			print('Create:{}'.format(time.time()-st))
 
 
 

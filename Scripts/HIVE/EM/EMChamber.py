@@ -5,6 +5,7 @@ from salome.smesh import smeshBuilder
 import SMESH
 import salome_version
 import SalomeFunc
+import salome
 
 if salome_version.getVersions()[0] < 9:
 	import salome
@@ -89,15 +90,10 @@ def CreateEMMesh(objMesh,Parameter):
 	Rotate2 = geompy.GetAngleRadians(CoilNorm, OZ)
 	Sample = geompy.MakeRotation(Sample, OY, -Rotate2)
 
-
-
-
-
-
 	### Importing coil design and moving to the desired location
-	CoilDict = Parameter.Coil
+	# CoilDict = Parameter.Coil
 	from EM import CoilDesigns
-	CoilFnc = getattr(CoilDesigns, CoilDict['Type'])
+	CoilFnc = getattr(CoilDesigns, Parameter.CoilType)
 	CoilMesh = GetMesh(CoilFnc())
 
 	cCoilIn = geompy.MakeCDG(geompy.GetSubShape(CoilMesh.Geom, CoilMesh.Groups['FACE']['CoilIn']))
@@ -111,7 +107,7 @@ def CreateEMMesh(objMesh,Parameter):
 	SampleZmax = geompy.BoundingBox(Sample)[5]
 	CoilZmin = geompy.BoundingBox(geompy.MakeBoundingBox(CoilMesh.Geom,True))[4]
 	CoilTight = [0.090915, 0, SampleZmax + (CrdCoilMid[2] - CoilZmin)]
-	CoilTerminal = np.array(CoilTight) + np.array(CoilDict['Displacement'])
+	CoilTerminal = np.array(CoilTight) + np.array(Parameter.CoilDisplacement)
 
 	Translation = np.array(CoilTerminal) - CrdCoilMid
 	Coil = geompy.MakeTranslation(CoilMesh.Geom, Translation[0], Translation[1], Translation[2])
@@ -119,6 +115,9 @@ def CreateEMMesh(objMesh,Parameter):
 	RotateVector = geompy.MakeTranslation(OZ, CoilTerminal[0], CoilTerminal[1], CoilTerminal[2])
 	RotateAngle = geompy.GetAngleRadians(CoilVect, OY)
 	Coil = geompy.MakeRotation(Coil, RotateVector, -RotateAngle)
+
+
+	Sample = geompy.MakeRotation(Sample, OY, Parameter.CoilRotation/180*np.pi)
 
 	geompy.addToStudy(Sample,'newsample')
 	geompy.addToStudy(Coil,'newcoil')
@@ -295,6 +294,7 @@ def CreateEMMesh(objMesh,Parameter):
 	# Remove Node groups from the EMMesh as we dont need them
 	EMNames[0::2] = [None]*len(EMGrps)
 
+	print('Computing ERMES mesh')
 	isdone = ERMES.Compute()
 
 	SampleMesh = smesh.Concatenate(SampleGrps, 1, 1, 1e-05,True,'Sample')
@@ -311,6 +311,10 @@ def CreateEMMesh(objMesh,Parameter):
 	SampleMesh.Compute()
 	ERMESMesh.Compute()
 	print('###############################################\n')
+
+	# b = salome.myStudy.NewBuilder()
+	# so =  salome.ObjectToSObject(ERMES.mesh)
+	# b.RemoveObjectWithChildren(so)
 
 	return SampleMesh, ERMESMesh, locals()
 

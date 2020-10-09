@@ -27,28 +27,9 @@ class VLSetup():
 		elif Mode in ('h', 'H', 'headless', 'Headless'): self.mode = 'Headless'
 		else : self.Exit("'Mode' is not in 'Interactive','Continuous' or 'Headless'")
 
-		# Using inspect and ast we can get the name of the RunFile used and the
-		# Environment values which are used ()
-		frame = inspect.stack()[1]
-		RunFile = os.path.realpath(frame[0].f_code.co_filename)
-		RunFileSC = inspect.getsource(inspect.getmodule(frame[0]))
-		envdict = {'Simulation':Simulation,'Project':Project,'StudyName':StudyName, \
-					'Parameters_Master':Parameters_Master,'Parameters_Var':Parameters_Var, \
-					'Mode':Mode,'RunMesh':True,'RunSim':True,'MeshCheck':None, \
-					'ShowMesh':False,'RunPreAster':True,'RunAster':True,'RunPostAster':True, \
-					'ShowRes':True,'mpi_nbcpu':1,'mpi_nbnoeud':1,'ncpus':1,'memory':2}
-		for cd in ast.parse(RunFileSC).body:
-			obj = getattr(cd,'value',None)
-			if getattr(getattr(obj,'func',None),'attr',None) in ('Create','Mesh','Sim'):
-				for kw in obj.keywords:
-					if hasattr(kw.value,'value'): val=kw.value.value
-					elif hasattr(kw.value,'n'): val=kw.value.n
-					envdict[kw.arg] = val
-
-		# Function to analyse usage of VirtualLab to evidence impact for
-		# use in future research grant applications. Can be turned off via
-		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
-		if VLconfig.VL_ANALYTICS=="True": Analytics.event(envdict)
+		self.Simulation = Simulation
+		self.Project = Project
+		self.StudyName = StudyName
 
 		VL_DIR = VLconfig.VL_DIR
 		if VL_DIR != sys.path[-1]: sys.path.pop(-1)
@@ -211,6 +192,7 @@ class VLSetup():
 				SimNames = [sim for sim, flag in zip(SimNames, ParaSim.Run) if flag]
 
 			self.Studies = {}
+			MeshNames = []
 			for SimName in SimNames:
 				ParaDict = SimDict[SimName]
 				self.ErrorCheck('Simulation',SimDict=ParaDict)
@@ -227,6 +209,8 @@ class VLSetup():
 				StudyDict['POSTASTER'] = "{}/PostAster".format(CALC_DIR)
 				StudyDict['MeshFile'] = "{}/{}.med".format(self.MESH_DIR, ParaDict['Mesh'])
 
+				MeshNames.append(ParaDict['Mesh'])
+
 				#Merge together Main and Study dict and write to file for salome/CodeAster to import
 				MergeDict = {**MainDict, **StudyDict}
 				self.WriteModule("{}/PathVL.py".format(TMP_CALC_DIR), MergeDict)
@@ -240,6 +224,47 @@ class VLSetup():
 
 				# Add StudyDict to Studies dictionary
 				self.Studies[SimName] = StudyDict.copy()
+
+		NumSims = len(getattr(self,'Studies',{}))
+		NumMeshes = len(MeshNames) if NumSims else 0
+		NumMeshesCr = len(getattr(self,'Meshes',{}))
+
+		# Using inspect and ast we can get the name of the RunFile used and the
+		# Environment values which are used ()
+		frame = inspect.stack()[1]
+		RunFile = os.path.realpath(frame[0].f_code.co_filename)
+		RunFileSC = inspect.getsource(inspect.getmodule(frame[0]))
+		envdict = {'Simulation':self.Simulation,'Project':self.Project, \
+					'StudyName':self.StudyName, 'Parameters_Master':self.Parameters['Master'], \
+					'Parameters_Var':self.Parameters['Var'],'Mode':self.mode, \
+					'NumSims':NumSims,'NumMeshes':NumMeshes,'NumMeshesCr':NumMeshesCr}
+
+		keywords = {'RunMesh':RunMesh,'RunSim':RunSim,'MeshCheck':None, \
+					'ShowMesh':False, 'MeshThreads':1,'RunPreAster':True, \
+					'RunAster':True, 'RunPostAster':True, 'ShowRes':True, \
+					'SimThreads':1, 'mpi_nbcpu':1, 'mpi_nbnoeud':1, \
+					'ncpus':1,'memory':2}
+		for cd in ast.parse(RunFileSC).body:
+			obj = getattr(cd,'value',None)
+			fn = getattr(getattr(obj,'func',None),'attr',None)
+			if fn in ('Mesh','Sim'):
+				for kw in obj.keywords:
+					if hasattr(kw.value,'value'): val=kw.value.value
+					elif hasattr(kw.value,'n'): val=kw.value.n
+
+					key = kw.arg
+					if key == 'NumThreads':
+						key = "MeshThreads" if fn == 'Mesh' else "SimThreads"
+					keywords[key] = val
+
+			envdict.update(keywords)
+
+		# Function to analyse usage of VirtualLab to evidence impact for
+		# use in future research grant applications. Can be turned off via
+		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
+		if VLconfig.VL_ANALYTICS=="True": Analytics.event(envdict)
+
+
 
 	def Mesh(self, **kwargs):
 		if not hasattr(self, 'Meshes'): return

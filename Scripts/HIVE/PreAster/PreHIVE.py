@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import time
 from importlib import import_module
 from bisect import bisect_left as bl
+import pickle
 
 def HTC(Info, StudyDict):
 	CreateHTC = getattr(StudyDict['Parameters'], 'CreateHTC', True)
@@ -672,7 +673,7 @@ def ERMES(Info, StudyDict):
 		print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
 
 		# Scale values to reflect Current
-		EM_Val = WattsPV[:pos+1]*Parameters.ERMES['Current']**2
+		EM_Val = WattsPV[:pos+1]*Parameters.Current**2
 		EM_Els = Elements[:pos+1]
 
 		# If EMScale is True then the power input will be scaled to 100% for the elements used.
@@ -762,10 +763,12 @@ def ERMES(Info, StudyDict):
 			StudyDict['MeshFile'] = tmpMeshFile
 			print('Create:{}'.format(time.time()-st))
 
-
-
 def main(Info, StudyDict):
 	HTC(Info, StudyDict)
 	# Only run the ERMES routine if EMLoad is set to ERMES
 	if StudyDict['Parameters'].EMLoad == 'ERMES':
 		ERMES(Info, StudyDict)
+
+	pickle_out = open("{}/StudyDict.pickle".format(StudyDict["TMP_CALC_DIR"]),"wb")
+	pickle.dump(StudyDict, pickle_out)
+	pickle_out.close()

@@ -17,6 +17,7 @@ from importlib import import_module
 import ast
 from Scripts.Common import Analytics
 from multiprocessing import Process
+import pickle
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode):
@@ -421,14 +422,6 @@ class VLSetup():
 		SimMaster = self.Parameters_Master.Sim
 		if RunPreAster and hasattr(SimMaster,'PreAsterFile'):
 			sys.path.insert(0, self.SIM_PREASTER)
-			# for Name, StudyDict in self.Studies.items():
-			# 	PreAsterFile = getattr(StudyDict['Parameters'],'PreAsterFile', None)
-			# 	# if not hasattr(StudyDict['Parameters'],'PreSimFile'): continue
-			# 	print("Pre-Aster for '{}' started".format(Name))
-			# 	if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
-			# 	PreAster = import_module(PreAsterFile)
-			# 	PreAster.main(self, StudyDict)
-			# 	print("Pre-Aster for '{}' completed".format(Name))
 
 			count, NumActive = 0, 0
 			PreError = []
@@ -467,6 +460,12 @@ class VLSetup():
 							PreError.append(tmpName)
 						PreStat.pop(tmpName)
 						NumActive-=1
+
+						picklefile = "{}/StudyDict.pickle".format(StudyDict["TMP_CALC_DIR"])
+						if os.path.exists(picklefile):
+							with open(picklefile, 'rb') as handle:
+								NewDict = pickle.load(handle)
+							StudyDict.update(NewDict)
 
 					time.sleep(0.1)
 					if not len(PreStat): break
@@ -589,7 +588,7 @@ class VLSetup():
 		# Create different command file depending on the mode
 		errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
 		if self.mode == 'Interactive':
-			xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
+			xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(StudyDict["Parameters"].Name)
 			command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
 		elif self.mode == 'Continuous':
 			command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER'])

@@ -107,6 +107,7 @@ class VLSetup():
 		self.Parameters_Master = Main
 
 		# Create Mesh parameter files if they are required
+		self.Meshes = {}
 		if RunMesh and MainMesh:
 			if not os.path.isdir(self.MESH_DIR): os.makedirs(self.MESH_DIR)
 			self.GEOM_DIR = '{}/Geom'.format(self.TMP_DIR)
@@ -144,17 +145,15 @@ class VLSetup():
 				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag]
 
 			sys.path.insert(0, self.SIM_MESH)
-			Meshes = {}
 			for MeshName in MeshNames:
 				ParaDict=MeshDict[MeshName]
 				self.ErrorCheck('Mesh',MeshDict=ParaDict)
 				self.WriteModule("{}/{}.py".format(self.GEOM_DIR, MeshName), ParaDict)
-				Meshes[MeshName] = Namespace()
-				Meshes[MeshName].__dict__.update(ParaDict)
-
-			self.Meshes = Meshes
+				self.Meshes[MeshName] = Namespace()
+				self.Meshes[MeshName].__dict__.update(ParaDict)
 
 		# Create Simulation parameter files
+		self.Studies = {}
 		if RunSim and MainSim:
 			if not os.path.exists(self.ASTER_DIR):
 				self.Exit("CodeAster location invalid")
@@ -191,7 +190,6 @@ class VLSetup():
 				if len(ParaSim.Run)!=NumSims: self.Exit("Number of entries for variable 'Sim.Run' not equal to number of simulations")
 				SimNames = [sim for sim, flag in zip(SimNames, ParaSim.Run) if flag]
 
-			self.Studies = {}
 			MeshNames = []
 			for SimName in SimNames:
 				ParaDict = SimDict[SimName]
@@ -225,12 +223,14 @@ class VLSetup():
 				# Add StudyDict to Studies dictionary
 				self.Studies[SimName] = StudyDict.copy()
 
-		NumSims = len(getattr(self,'Studies',{}))
+		# Gather information to return to Analytics function
+
+		NumSims = len(self.Studies)
 		NumMeshes = len(MeshNames) if NumSims else 0
-		NumMeshesCr = len(getattr(self,'Meshes',{}))
+		NumMeshesCr = len(self.Meshes)
 
 		# Using inspect and ast we can get the name of the RunFile used and the
-		# Environment values which are used ()
+		# environment values which are used ()
 		frame = inspect.stack()[1]
 		RunFile = os.path.realpath(frame[0].f_code.co_filename)
 		RunFileSC = inspect.getsource(inspect.getmodule(frame[0]))
@@ -238,7 +238,6 @@ class VLSetup():
 					'StudyName':self.StudyName, 'Parameters_Master':self.Parameters['Master'], \
 					'Parameters_Var':self.Parameters['Var'],'Mode':self.mode, \
 					'NumSims':NumSims,'NumMeshes':NumMeshes,'NumMeshesCr':NumMeshesCr}
-
 		keywords = {'RunMesh':RunMesh,'RunSim':RunSim,'MeshCheck':None, \
 					'ShowMesh':False, 'MeshThreads':1,'RunPreAster':True, \
 					'RunAster':True, 'RunPostAster':True, 'ShowRes':True, \
@@ -251,13 +250,12 @@ class VLSetup():
 				for kw in obj.keywords:
 					if hasattr(kw.value,'value'): val=kw.value.value
 					elif hasattr(kw.value,'n'): val=kw.value.n
-
 					key = kw.arg
 					if key == 'NumThreads':
 						key = "MeshThreads" if fn == 'Mesh' else "SimThreads"
 					keywords[key] = val
 
-			envdict.update(keywords)
+		envdict.update(keywords)
 
 		# Function to analyse usage of VirtualLab to evidence impact for
 		# use in future research grant applications. Can be turned off via
@@ -265,9 +263,8 @@ class VLSetup():
 		if VLconfig.VL_ANALYTICS=="True": Analytics.event(envdict)
 
 
-
 	def Mesh(self, **kwargs):
-		if not hasattr(self, 'Meshes'): return
+		if not self.Meshes: return
 		'''
 		kwargs available:
 		MeshCheck: input a meshname and it will open this mesh in the GUI
@@ -387,7 +384,7 @@ class VLSetup():
 			sys.exit()
 
 	def Sim(self, **kwargs):
-		if not hasattr(self,'Studies'): return
+		if not self.Studies: return
 
 		'''
 		kwargs
@@ -483,11 +480,6 @@ class VLSetup():
 			for Name, StudyDict in self.Studies.items():
 				if not os.path.isdir(StudyDict['ASTER']): os.makedirs(StudyDict['ASTER'])
 
-				AddPath = [self.COM_SCRIPTS, self.TMP_DIR, StudyDict['TMP_CALC_DIR']]
-				PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
-				PreCond = PythonPath + ["export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
-				PreCond = ''.join(PreCond)
-
 				# Define location of export and Aster file
 				asterfile = '{}/{}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].AsterFile)
 				exportfile = "{}/Export".format(StudyDict['ASTER'])
@@ -508,18 +500,7 @@ class VLSetup():
 				with open(exportfile,'w+') as e:
 					e.write(exportstr)
 
-				# Create different command file depending on the mode
-				errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
-				if self.mode == 'Interactive':
-					xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
-					command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
-				elif self.mode == 'Continuous':
-					command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER'])
-				else :
-					command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
-
-				# Start Aster subprocess
-				AsterStat[Name] = Popen(PreCond + command , shell='TRUE')
+				AsterStat[Name] = self.AsterExec(StudyDict, exportfile)
 				print("Aster for '{}' started".format(Name))
 				count +=1
 				NumActive +=1
@@ -545,32 +526,6 @@ class VLSetup():
 
 					if not len(AsterStat): break
 					time.sleep(0.1)
-
-			# Wait until all Aster subprocesses are finished before moving on
-			# AsterError = False
-			# while SubProcs:
-			# 	# Check to see the status of each subprocess
-			# 	for Name, Proc in SubProcs.copy().items():
-			# 		Poll = Proc.poll()
-			# 		if Poll is not None:
-			#
-			# 			err = Poll
-			# 			if self.mode == 'Interactive':
-			# 				with open('{}/Aster.txt'.format(self.Studies[Name]['TMP_CALC_DIR']),'r') as f:
-			# 					err = int(f.readline())
-			# 			elif self.mode == 'Continuous':
-			# 				os.remove('{}/ContinuousAsterLog'.format(self.Studies[Name]['ASTER']))
-			#
-			# 			if err != 0:
-			# 				print("Error in simulation '{}' - Check the log file".format(Name))
-			# 				AsterError = True
-			# 			else :
-			# 				print("Aster for '{}' completed".format(Name))
-			# 			SubProcs.pop(Name)
-			# 			Proc.terminate()
-			#
-			# 	# Check if subprocess has finished every 1 second
-			# 	time.sleep(1)
 
 			if AsterError: self.Exit("The following simulation(s) finished with errors:\n{}".format(AsterError))
 
@@ -621,6 +576,30 @@ class VLSetup():
 			Pathstr = ''.join(PathList)
 			with open(FileName,'w+') as f:
 				f.write(Pathstr)
+
+	def AsterExec(self, StudyDict, exportfile, **kwargs):
+		AddPath = kwargs.get('AddPath',[])
+
+		AddPath = [AddPath] if type(AddPath) == str else AddPath
+		AddPath += [self.COM_SCRIPTS, self.TMP_DIR, StudyDict['TMP_CALC_DIR']]
+		PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
+		PreCond = PythonPath + ["export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
+		PreCond = ''.join(PreCond)
+
+		# Create different command file depending on the mode
+		errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
+		if self.mode == 'Interactive':
+			xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(Name)
+			command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
+		elif self.mode == 'Continuous':
+			command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER'])
+		else :
+			command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
+
+		# Start Aster subprocess
+		proc = Popen(PreCond + command , shell='TRUE')
+		return proc
+
 
 	def ErrorCheck(self, Stage, **kwargs):
 		if Stage == 'Parameters':

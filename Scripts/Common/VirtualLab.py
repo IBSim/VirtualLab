@@ -15,7 +15,7 @@ import contextlib
 import VLconfig
 from importlib import import_module
 import ast
-from Scripts.Common import Analytics
+from Scripts.Common import Analytics, MPRun
 from multiprocessing import Process
 import pickle
 
@@ -106,6 +106,8 @@ class VLSetup():
 		MainSim = getattr(Main, 'Sim', None)
 
 		self.Parameters_Master = Main
+
+		# self.Files = {'Mesh':[],'PreAster':[],'PostAster':[]}
 
 		# Create Mesh parameter files if they are required
 		self.Meshes = {}
@@ -461,11 +463,13 @@ class VLSetup():
 						PreStat.pop(tmpName)
 						NumActive-=1
 
-						picklefile = "{}/StudyDict.pickle".format(StudyDict["TMP_CALC_DIR"])
-						if os.path.exists(picklefile):
+						tmpStudyDict = self.Studies[tmpName]
+						picklefile = "{}/StudyDict.pickle".format(tmpStudyDict["TMP_CALC_DIR"])
+						if os.path.isfile(picklefile):
 							with open(picklefile, 'rb') as handle:
 								NewDict = pickle.load(handle)
-							StudyDict.update(NewDict)
+							tmpStudyDict.update(NewDict)
+							os.remove(picklefile)
 
 					time.sleep(0.1)
 					if not len(PreStat): break
@@ -530,25 +534,77 @@ class VLSetup():
 
 		if RunPostAster and hasattr(SimMaster,'PostAsterFile'):
 			sys.path.insert(0, self.SIM_POSTASTER)
+
+			count, NumActive = 0, 0
+			PostError = []
+			PostStat = {}
 			for Name, StudyDict in self.Studies.items():
 				PostAsterFile = getattr(StudyDict['Parameters'],'PostAsterFile', None)
 				if not PostAsterFile : continue
-				PostAster = __import__(PostAsterFile)
-				if hasattr(PostAster, 'Individual'):
-					print("PostAster for '{}' started\n".format(Name))
-					if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
-					if self.mode == 'Interactive':
-						PostAster.Individual(self, StudyDict)
-					else:
-						with open("{}/log.txt".format(StudyDict['POSTASTER']), 'w') as f:
-							with contextlib.redirect_stdout(f):
-								PostAster.Individual(self, StudyDict)
-					print("PostAster for '{}' completed\n".format(Name))
+				PostAster = import_module(PostAsterFile)
+				PostAsterInd = getattr(PostAster, 'Individual',None)
+				if not PostAsterInd: continue
+
+				print("PostAster for '{}' started\n".format(Name))
+				if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
+
+				proc = Process(target=MPRun.main, args=(self,StudyDict,PostAsterInd))
+				if self.mode == 'Interactive':
+					proc.start()
+				else :
+					with open("{}/Log.txt".format(StudyDict['POSTASTER']), 'w') as f:
+						with contextlib.redirect_stdout(f):
+							# stderr may need to be written to a seperate file and then copied over
+							with contextlib.redirect_stderr(sys.stdout):
+								proc.start()
+
+				count +=1
+				NumActive +=1
+				PostStat[Name] = proc
+				while NumActive==NumThreads or count==NumSim:
+					for tmpName, proc in PostStat.copy().items():
+						EC = proc.exitcode
+						if EC == None:
+							continue
+						elif EC == 0:
+							print("Post-Aster for '{}' completed\n".format(tmpName))
+						else :
+							print("Post-Aster for '{}' returned error code {}\n".format(tmpName,EC))
+							PostError.append(tmpName)
+						PostStat.pop(tmpName)
+						NumActive-=1
+
+						tmpStudyDict = self.Studies[tmpName]
+						picklefile = "{}/StudyDict.pickle".format(tmpStudyDict["TMP_CALC_DIR"])
+						if os.path.isfile(picklefile):
+							with open(picklefile, 'rb') as handle:
+								NewDict = pickle.load(handle)
+							tmpStudyDict.update(NewDict)
+							os.remove(picklefile)
+
+					time.sleep(0.1)
+					if not len(PostStat): break
+
+			if PostError: self.Exit("The following PostAster routine(s) finished with errors:\n{}".format(PreError))
 
 			PostAster = import_module(SimMaster.PostAsterFile)
 			if hasattr(PostAster, 'Combined'):
 				PostAster.Combined(self)
 
+			# for Name, StudyDict in self.Studies.items():
+			# 	PostAsterFile = getattr(StudyDict['Parameters'],'PostAsterFile', None)
+			# 	if not PostAsterFile : continue
+			# 	PostAster = __import__(PostAsterFile)
+			# 	if hasattr(PostAster, 'Individual'):
+			# 		print("PostAster for '{}' started\n".format(Name))
+			# 		if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
+			# 		if self.mode == 'Interactive':
+			# 			PostAster.Individual(self, StudyDict)
+			# 		else:
+			# 			with open("{}/log.txt".format(StudyDict['POSTASTER']), 'w') as f:
+			# 				with contextlib.redirect_stdout(f):
+			# 					PostAster.Individual(self, StudyDict)
+			# 		print("PostAster for '{}' completed\n".format(Name))
 
 		print('\n### Simulations Completed ###')
 

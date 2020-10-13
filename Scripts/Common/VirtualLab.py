@@ -431,12 +431,13 @@ class VLSetup():
 			for Name, StudyDict in self.Studies.items():
 				PreAsterFile = StudyDict['Parameters'].PreAsterFile
 				if not PreAsterFile: continue
+				PreAster = import_module(PreAsterFile)
+				PreAsterSgl = getattr(PreAster, 'Single',None)
+				if not PreAsterSgl: continue
 
 				print("Pre-Aster for '{}' started\n".format(Name))
 				if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
-
-				PreAster = import_module(PreAsterFile)
-				proc = Process(target=PreAster.main, args=(self,StudyDict))
+				proc = Process(target=MPRun.main, args=(self,StudyDict,PreAsterSgl))
 
 				if self.mode == 'Interactive':
 					proc.start()
@@ -475,6 +476,10 @@ class VLSetup():
 					if not len(PreStat): break
 
 			if PreError: self.Exit("The following PreAster routine(s) finished with errors:\n{}".format(PreError))
+
+			PreAster = import_module(SimMaster.PreAsterFile)
+			if hasattr(PreAster, 'Combined'):
+				PreAster.Combined(self)
 
 		if RunAster and hasattr(SimMaster,'AsterFile'):
 			AsterError = []
@@ -542,13 +547,13 @@ class VLSetup():
 				PostAsterFile = getattr(StudyDict['Parameters'],'PostAsterFile', None)
 				if not PostAsterFile : continue
 				PostAster = import_module(PostAsterFile)
-				PostAsterInd = getattr(PostAster, 'Individual',None)
-				if not PostAsterInd: continue
+				PostAsterSgl = getattr(PostAster, 'Single',None)
+				if not PostAsterSgl: continue
 
 				print("PostAster for '{}' started\n".format(Name))
 				if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
 
-				proc = Process(target=MPRun.main, args=(self,StudyDict,PostAsterInd))
+				proc = Process(target=MPRun.main, args=(self,StudyDict,PostAsterSgl))
 				if self.mode == 'Interactive':
 					proc.start()
 				else :

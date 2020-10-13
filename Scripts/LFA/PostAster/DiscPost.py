@@ -12,8 +12,7 @@ def KCalc(halfT, l, rho, Cp):
 	k=alpha*Cp*rho
 	return k, alpha
 
-def Individual(Info, StudyDict):
-#	StudyDict = Info.Studies[study]
+def Single(Info, StudyDict):
 
 	ResFile = '{}/Thermal.rmed'.format(StudyDict['ASTER'])
 	# Get mesh information from the results file

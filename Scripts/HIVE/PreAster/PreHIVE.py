@@ -608,7 +608,7 @@ def ERMES(Info, StudyDict):
 	Rlist = np.around(InList+OutList,6)
 	print(Rlist)
 
-	MLFile = "{}/ML.hdf5".format(Info.STUDY_DIR)
+	MLFile = "{}/ML2.hdf5".format(Info.STUDY_DIR)
 	Write = True
 	while Write:
 		try :
@@ -621,8 +621,12 @@ def ERMES(Info, StudyDict):
 		length = Rlist.shape[0]
 		ML.create_dataset('ERMES',(length,1),data=Rlist,maxshape=(length,None))
 	else:
-		ML['ERMES'].resize(ML['ERMES'].shape[1]+1,axis=1)
-		ML['ERMES'][:,-1] = Rlist
+		dset = ML['ERMES'][:].T
+		# tst = (dset[:,:5] == Rlist[:5]).all(axis=1)
+		if not (dset[:,:5] == Rlist[:5]).all(axis=1).any():
+			ML['ERMES'].resize(ML['ERMES'].shape[1]+1,axis=1)
+			ML['ERMES'][:,-1] = Rlist
+		else : print('skip')
 	ML.close()
 
 	## Thresholding preview
@@ -763,12 +767,8 @@ def ERMES(Info, StudyDict):
 			StudyDict['MeshFile'] = tmpMeshFile
 			print('Create:{}'.format(time.time()-st))
 
-def main(Info, StudyDict):
+def Single(Info, StudyDict):
 	HTC(Info, StudyDict)
 	# Only run the ERMES routine if EMLoad is set to ERMES
 	if StudyDict['Parameters'].EMLoad == 'ERMES':
 		ERMES(Info, StudyDict)
-
-	pickle_out = open("{}/StudyDict.pickle".format(StudyDict["TMP_CALC_DIR"]),"wb")
-	pickle.dump(StudyDict, pickle_out)
-	pickle_out.close()

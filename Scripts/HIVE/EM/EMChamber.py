@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from salome.geom import geomBuilder
 from salome.smesh import smeshBuilder
@@ -6,6 +7,7 @@ import SMESH
 import salome_version
 import SalomeFunc
 import salome
+import contextlib
 
 if salome_version.getVersions()[0] < 9:
 	import salome
@@ -39,16 +41,6 @@ class GetMesh():
 				dict[algo.GetName()] = hypoth
 
 			self.SubMeshes.append(dict)
-
-#		self.Groups = {}
-#		for grp in Mesh.GetGroups():
-#			shape = grp.GetShape()
-#			if shape.IsMainShape(): Ix = self.MainMesh['Ix']
-#			else : Ix = shape.GetSubShapeIndices()
-
-#			Name = grp.GetName()
-#			GrpType = str(grp.GetType())
-#			self.Groups[Name] = {'Ix':Ix,'Type':GrpType}
 
 		self.Groups = {'NODE':{},'EDGE':{},'FACE':{}, 'VOLUME':{}}
 		for grp in Mesh.GetGroups():
@@ -105,6 +97,7 @@ def CreateEMMesh(objMesh,Parameter):
 
 	# Find point CoilTight where the Coil BoundingBox sits on top of the Sample BoundingBox
 	SampleZmax = geompy.BoundingBox(Sample)[5]
+
 	CoilZmin = geompy.BoundingBox(geompy.MakeBoundingBox(CoilMesh.Geom,True))[4]
 	CoilTight = [0.090915, 0, SampleZmax + (CrdCoilMid[2] - CoilZmin)]
 	CoilTerminal = np.array(CoilTight) + np.array(Parameter.CoilDisplacement)
@@ -116,13 +109,13 @@ def CreateEMMesh(objMesh,Parameter):
 	RotateAngle = geompy.GetAngleRadians(CoilVect, OY)
 	Coil = geompy.MakeRotation(Coil, RotateVector, -RotateAngle)
 
-
 	Sample = geompy.MakeRotation(Sample, OY, Parameter.CoilRotation/180*np.pi)
 
-	geompy.addToStudy(Sample,'newsample')
-	geompy.addToStudy(Coil,'newcoil')
-
-
+	Common = geompy.MakeCommonList([Sample,Coil], True)
+	Measure = np.array(geompy.BasicProperties(Common))
+	Common.Destroy()
+	if not all(Measure < 1e-9):
+		return False
 
 	### Creating Chamber consisting of the sample, coil and vacuum
 	Compound = geompy.MakeCompound([Sample, Coil])
@@ -302,15 +295,15 @@ def CreateEMMesh(objMesh,Parameter):
 		if name: grp.SetName(name)
 		else : SampleMesh.RemoveGroup(grp)
 
-	ERMESMesh = smesh.Concatenate(EMGrps, 1, 1, 1e-05,True,'ERMES')
+	ERMESMesh = smesh.Concatenate(EMGrps, 1, 1, 1e-05,True,'xERMES')
 	for name, grp in zip(EMNames, ERMESMesh.GetGroups()):
 		if name: grp.SetName(name)
 		else : ERMESMesh.RemoveGroup(grp)
 
-	print('\n############# Ignore these messages ###################')
-	SampleMesh.Compute()
-	ERMESMesh.Compute()
-	print('###############################################\n')
+	with open("/dev/null", 'w') as f:
+		with contextlib.redirect_stdout(f):
+			SampleMesh.Compute()
+			ERMESMesh.Compute()
 
 	# b = salome.myStudy.NewBuilder()
 	# so =  salome.ObjectToSObject(ERMES.mesh)

@@ -7,8 +7,7 @@ import os
 In this script the geometry and mesh we are creating is defined in the function 'Create', with dimensional arguments and mesh arguments passed to it. The 'test' function provides dimensions for when the script is loaded manually in to Salome and not via a parametric study. The error function is imported during the setup of parametric studies to check for any geometrical errors which may arise.
 '''
 
-
-def Create(**kwargs):
+def Create(Parameter):
 	from salome.geom import geomBuilder
 	from salome.smesh import smeshBuilder
 	import  SMESH
@@ -23,9 +22,6 @@ def Create(**kwargs):
 	else :
 		geompy = geomBuilder.New()
 		smesh = smeshBuilder.New()
-
-	Parameter = kwargs['Parameter']
-	MeshFile = kwargs['MeshFile']
 
 	###
 	### GEOM component
@@ -133,7 +129,7 @@ def Create(**kwargs):
 		geompy.addToStudy( Notch, 'Notch' )
 	else :
 		Testpiece = Full
-	
+
 	geompy.addToStudy( Testpiece, 'Testpiece' )
 
 	### Create Groups
@@ -167,7 +163,7 @@ def Create(**kwargs):
 		Ix = SalomeFunc.ObjIndex(Testpiece, Notch, [3])[0]
 		Notch_Surf = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
 		geompy.UnionIDs(Notch_Surf, Ix)
-		geompy.addToStudyInFather( Testpiece, Notch_Surf, 'Notch_Surf' )	
+		geompy.addToStudyInFather( Testpiece, Notch_Surf, 'Notch_Surf' )
 
 		Ix = SalomeFunc.ObjIndex(Testpiece, Notch, [8, 9])[0]
 		Notch_Edge = geompy.CreateGroup(Testpiece, geompy.ShapeType["EDGE"])
@@ -252,11 +248,10 @@ def Create(**kwargs):
 		F_NotchSurf = Mesh_1.GroupOnGeom(Notch_Surf,'Notch_Surf',SMESH.FACE)
 
 	isDone = Mesh_1.Compute()
-	if MeshFile:
-		from SalomeFunc import MeshExport
-		MeshExport(Mesh_1,MeshFile)
 
 	globals().update(locals())
+
+	return Mesh_1
 
 
 def GeomError(Parameters):
@@ -265,15 +260,15 @@ def GeomError(Parameters):
 	message = None
 	if Parameters.HandleWidth > (Parameters.GaugeWidth + 2*Parameters.TransRad):
 		message = 'Handle width too wide for given gauge width and arc radius'
-	if (Parameters.Rad_a == 0 and Parameters.Rad_b !=0) or (Parameters.Rad_a != 0 and Parameters.Rad_b ==0): 
+	if (Parameters.Rad_a == 0 and Parameters.Rad_b !=0) or (Parameters.Rad_a != 0 and Parameters.Rad_b ==0):
 		message = 'Both Parameter.Rad_a and Parameter.Rad_b must both be zero or non-zero'
-	if (Parameters.Rad_a < 0 or Parameters.Rad_b < 0): 
+	if (Parameters.Rad_a < 0 or Parameters.Rad_b < 0):
 		message = 'Radii must be positive'
 	if abs(Parameters.HoleCentre[1]) + 2*Parameters.Rad_b >= Parameters.GaugeWidth/2:
 		message = 'Hole not entirely in testpiece'
 	if abs(Parameters.HoleCentre[0]) + 2*Parameters.Rad_a >= Parameters.GaugeLength/2:
 		message = 'Hole not entirely in gauge'
-	
+
 	return message
 
 class TestDimensions():
@@ -293,16 +288,14 @@ class TestDimensions():
 		self.Length1D = 0.002
 		self.Length2D = 0.002
 		self.Length3D = 0.002
-		self.MeshName = 'Test'
+		self.Name = 'Test'
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		Create(Parameter = TestDimensions(),MeshFile = None)
+		Create(TestDimensions())
 	# 1 argument provided which is the parameter file
 	elif len(sys.argv) == 2:
 		ParameterFile = sys.argv[1]
 		sys.path.insert(0, os.path.dirname(ParameterFile))
 		Parameters = __import__(os.path.splitext(os.path.basename(ParameterFile))[0])
-		Create(Parameter = Parameters,MeshFile = None)
-
-
+		Create(Parameters)

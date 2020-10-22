@@ -6,16 +6,22 @@ import os
 '''
 In this script the geometry and mesh we are creating is defined in the function 'Create', with dimensional arguments and mesh arguments passed to it. The 'test' function provides dimensions for when the script is loaded manually in to Salome and not via a parametric study. The error function is imported during the setup of parametric studies to check for any geometrical errors which may arise.
 '''
-def Create(**kwargs):
+def Create(Parameter):
 	#!/usr/bin/env python3
 
 	from salome.geom import geomBuilder
 	from salome.smesh import smeshBuilder
 	import  SMESH
+	import salome_version
 
-	MeshFile = kwargs['MeshFile']
-
-	geompy = geomBuilder.New()
+	if salome_version.getVersions()[0] < 9:
+		import salome
+		theStudy = salome.myStudy
+		geompy = geomBuilder.New(theStudy)
+		smesh = smeshBuilder.New(theStudy)
+	else :
+		geompy = geomBuilder.New()
+		smesh = smeshBuilder.New()
 
 	O = geompy.MakeVertex(0, 0, 0)
 	OX = geompy.MakeVectorDXDYDZ(1, 0, 0)
@@ -39,8 +45,6 @@ def Create(**kwargs):
 	### SMESH component
 	###
 
-	smesh = smeshBuilder.New()
-
 	Mesh_1 = smesh.Mesh(Box_1)
 	Regular_1D = Mesh_1.Segment()
 	Regular_1D.NumberOfSegments(2)
@@ -50,9 +54,7 @@ def Create(**kwargs):
 	MFace_2 = Mesh_1.GroupOnGeom(Face_2,'Face_2',SMESH.FACE)
 	Mesh_1.Compute()
 
-	if MeshFile:
-		from SalomeFunc import MeshExport
-		MeshExport(Mesh_1,MeshFile)
+	return Mesh_1
 
 	## Set names of Mesh objects
 	#smesh.SetName(Regular_1D.GetAlgorithm(), 'Regular_1D')

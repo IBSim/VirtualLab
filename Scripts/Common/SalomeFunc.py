@@ -4,11 +4,11 @@ from salome.geom import geomBuilder
 from salome.smesh import smeshBuilder
 import SMESH
 import salome_version
+import salome
 import sys
 import importlib
 
 if salome_version.getVersions()[0] < 9:
-	import salome
 	theStudy = salome.myStudy
 	geompy = geomBuilder.New(theStudy)
 	smesh = smeshBuilder.New(theStudy)
@@ -121,3 +121,11 @@ def GetArgs(argv):
 
 def Reload(name):
 	importlib.reload(sys.modules[name])
+
+def MeshStore(MeshRn,MeshFile,RCfile,**kwargs):
+    if type(MeshRn)==salome.smesh.smeshBuilder.Mesh:
+        isDone = MeshRn.Compute()
+        MeshExport(MeshRn,MeshFile)
+    elif type(MeshRn) == int:
+        pass
+        # Write this to file to be picked up

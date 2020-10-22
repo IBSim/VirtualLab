@@ -5,7 +5,7 @@ sys.dont_write_bytecode=True
 import time
 
 
-def Create(**kwargs):
+def Create(Parameter):
 
 	from salome.geom import geomBuilder
 	from salome.smesh import smeshBuilder
@@ -22,9 +22,6 @@ def Create(**kwargs):
 	else :
 		geompy = geomBuilder.New()
 		smesh = smeshBuilder.New()
-
-	Parameter = kwargs['Parameter']
-	MeshFile = kwargs['MeshFile']
 
 	###
 	### GEOM component
@@ -230,29 +227,12 @@ def Create(**kwargs):
 	smesh.SetName(NETGEN_2D_Parameters_2, 'NETGEN 2D Parameters_2')
 	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
 
-	MeshERMES = getattr(Parameter,'ERMES',True)
-	if MeshERMES :
-		## This next part takes this mesh and adds in a coil and vacuum around it and then runs the  code.
-		print('Using sample mesh information to create mesh for ERMES')
-		from EM.EMChamber import CreateEMMesh
-		SampleMesh, ERMESMesh, loc = CreateEMMesh(Mesh_1, Parameter)
-		smesh.SetName(SampleMesh, 'Sample')
-		smesh.SetName(ERMESMesh, 'xERMES')
-		if MeshFile:
-			SalomeFunc.MeshExport(SampleMesh,MeshFile)
-			SalomeFunc.MeshExport(ERMESMesh,MeshFile, Overwrite = 0)
-	else:
-		Mesh_1.Compute()
-		SalomeFunc.MeshExport(Mesh_1,MeshFile)
-
-	# b = salome.myStudy.NewBuilder()
-	# for i, ms in enumerate([Mesh_1,SampleMesh,ERMESMesh]):
-	# 	so =  salome.ObjectToSObject(ms.mesh)
-	# 	b.RemoveObjectWithChildren(so)
-
 	globals().update(locals()) ### This adds all variables created in this function
 
-	# return 12
+	return Mesh_1
+
+
+
 
 class TestDimensions():
 	def __init__(self):
@@ -286,7 +266,7 @@ class TestDimensions():
 		self.SampleGroups = ['Tile','Block','Pipe']
 
 
-def error(Parameters):
+def GeomError(Parameters):
 	''' This function is imported in during the Setup to pick up any errors which will occur for the given geometrical dimension. i.e. impossible dimensions '''
 	# Ensure that pipe length is always greater to or equal to block length
 	message = None

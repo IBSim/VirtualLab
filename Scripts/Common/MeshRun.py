@@ -1,30 +1,24 @@
 import sys
 import os
 sys.dont_write_bytecode=True
-from SalomeFunc import GetArgs
+import SalomeFunc
 import salome
 salome.salome_init()
 
 # This function gives the ArgDict dictionary we passed to SalomeRun
-kwargs = GetArgs(sys.argv[1:])
+kwargs = SalomeFunc.GetArgs(sys.argv[1:])
 
+# Import the Create function which is used to generate the mesh using the mesh parameters
 Parameters = __import__(kwargs['Parameters'])
 Create = __import__(Parameters.File).Create
 
-RC = Create(Parameter = Parameters, MeshFile = kwargs['MESH_FILE'])
+MeshRn = Create(Parameters)
 
-# nb = salome.myStudy.NewBuilder()
-# comp = salome.myStudy.FindComponent('GEOM')
-# iterator = salome.myStudy.NewChildIterator( comp )
-# while iterator.More():
-#     sobj = iterator.Value()
-#     # print(sobj.GetName())
-#     sobj.UnRegister()
-#     iterator.Next()
+if kwargs.get('ConfigFile'):
+    import config
+    config.MeshStore(MeshRn, kwargs['MESH_FILE'], kwargs['RCfile'], Parameters=Parameters)
+else :
+    SalomeFunc.MeshStore(MeshRn, kwargs['MESH_FILE'], kwargs['RCfile'])
 
 salome.myStudy.Clear()
 salome.salome_close()
-
-if RC:
-    print('')
-    sys.exit(RC)

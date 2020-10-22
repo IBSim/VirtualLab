@@ -3,7 +3,7 @@ sys.dont_write_bytecode=True
 import numpy as np
 import os
 
-def Create(**kwargs):
+def Create(Parameter):
 	from salome.geom import geomBuilder
 	from salome.smesh import smeshBuilder
 	import  SMESH
@@ -18,9 +18,6 @@ def Create(**kwargs):
 	else :
 		geompy = geomBuilder.New()
 		smesh = smeshBuilder.New()
-
-	Parameter = kwargs['Parameter']
-	MeshFile = kwargs['MeshFile']
 
 	if Parameter.VoidRadius and Parameter.VoidHeight:
 		isVoid = True
@@ -185,10 +182,9 @@ def Create(**kwargs):
 
 	isDone = Mesh_1.Compute()
 
-	if MeshFile:
-		SalomeFunc.MeshExport(Mesh_1,MeshFile)
-
 	globals().update(locals())
+
+	return Mesh_1
 
 class TestDimensions():
 	def __init__(self):

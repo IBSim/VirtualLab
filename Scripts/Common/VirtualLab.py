@@ -317,6 +317,9 @@ class VLSetup():
 
 		# Script which is used to import the necessary mesh function
 		MeshScript = '{}/MeshRun.py'.format(self.COM_SCRIPTS)
+		AddPath = [self.SIM_MESH, self.GEOM_DIR]
+		ArgDict = {}
+		if os.path.isfile('{}/config.py'.format(self.SIM_MESH)): ArgDict["ConfigFile"] = True
 
 		MeshStat = {}
 		NumActive=0
@@ -325,8 +328,8 @@ class VLSetup():
 		for MeshName, MeshPara in self.Meshes.items():
 			print("Starting mesh '{}'".format(MeshName))
 			IndMeshLog = "{}/Log".format(self.GEOM_DIR)
-			ArgDict = {"Parameters":MeshName, "MESH_FILE":"{}/{}.med".format(self.MESH_DIR, MeshName)}
-			AddPath = [self.SIM_MESH, self.GEOM_DIR]
+			ArgDict.update(Parameters=MeshName, MESH_FILE="{}/{}.med".format(self.MESH_DIR, MeshName),
+						   RCfile="{}/{}_RC.txt".format(self.GEOM_DIR,MeshName))
 
 			port = Ports.pop(0)
 			if PortCount[port] >= SalomeReset:
@@ -435,8 +438,10 @@ class VLSetup():
 				PreAsterSgl = getattr(PreAster, 'Single',None)
 				if not PreAsterSgl: continue
 
+
 				print("Pre-Aster for '{}' started\n".format(Name))
 				if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
+
 				proc = Process(target=MPRun.main, args=(self,StudyDict,PreAsterSgl))
 
 				if self.mode == 'Interactive':
@@ -480,6 +485,7 @@ class VLSetup():
 			PreAster = import_module(SimMaster.PreAsterFile)
 			if hasattr(PreAster, 'Combined'):
 				PreAster.Combined(self)
+
 
 		if RunAster and hasattr(SimMaster,'AsterFile'):
 			AsterError = []

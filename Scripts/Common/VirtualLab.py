@@ -295,11 +295,12 @@ class VLSetup():
 
 		print('### Starting Meshing ###\n')
 		# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
-		MeshLog = "{}/Log".format(self.MESH_DIR)
+		# MeshLog = "{}/Log".format(self.MESH_DIR)
 
 		NumMeshes = len(self.Meshes)
 		NumThreads = min(NumThreads,NumMeshes)
-		MeshInit,Ports = [],[]
+		MeshInit, Ports, MeshError = [],[],[]
+
 		PortCount = {}
 		for i in range(NumThreads):
 			command = 'cd {0};salome -t --ns-port-log {0}/port_{1}.txt'.format(self.TMP_DIR,i)
@@ -326,8 +327,8 @@ class VLSetup():
 		NumComplete=0
 		SalomeReset = 400/NumThreads
 		for MeshName, MeshPara in self.Meshes.items():
-			print("Starting mesh '{}'".format(MeshName))
-			IndMeshLog = "{}/Log".format(self.GEOM_DIR)
+			print("\nStarting mesh '{}'".format(MeshName))
+			IndMeshLog = "{}/{}_log".format(self.GEOM_DIR,MeshName)
 			ArgDict.update(Parameters=MeshName, MESH_FILE="{}/{}.med".format(self.MESH_DIR, MeshName),
 						   RCfile="{}/{}_RC.txt".format(self.GEOM_DIR,MeshName))
 
@@ -353,25 +354,38 @@ class VLSetup():
 				for tmpMeshName, SalomeInfo in MeshStat.copy().items():
 					Proc, port = SalomeInfo
 					Poll = Proc.poll()
+					# If SubProc finished Poll will change from None to errorcode
 					if Poll is not None:
-						print("Finishing mesh '{}'\n".format(tmpMeshName))
+						# Check in meshfile for error code handling
+						RCfile="{}/{}_RC.txt".format(self.GEOM_DIR,tmpMeshName)
+						if os.path.isfile(RCfile):
+							with open(RCfile,'r') as f:
+								returncode=int(f.readline())
+							print("Code {} returned during creation of {}".format(returncode,tmpMeshName))
+						# SubProc returned with error code
+						elif Poll != 0:
+							print("Mesh '{}' finished with errors\n".format(tmpMeshName))
+							MeshError.append(tmpMeshName)
+						# SubProc returned successfully
+						else :
+							print("Mesh '{}' completed\n".format(tmpMeshName))
+							IndMeshData = "{}/{}.py".format(self.MESH_DIR, tmpMeshName)
+							with open(IndMeshData,"w") as g:
+								with open("{}/{}.py".format(self.GEOM_DIR,tmpMeshName),'r') as MeshData:
+									g.write("# Parameters used to create mesh\n{}".format(MeshData.read()))
+									if self.mode != 'Interactive':
+										with open("{}/{}_log".format(self.GEOM_DIR,tmpMeshName),'r') as rIndMeshLog:
+											g.write("\n'''\nMesh output:\n\n{}\n'''".format(rIndMeshLog.read()))
 						MeshStat.pop(tmpMeshName)
 						Proc.terminate()
 						NumActive-=1
 						Ports.append(port)
 
-						IndMeshData = "{}/{}.py".format(self.MESH_DIR, tmpMeshName)
-						with open(IndMeshData,"w") as g:
-							with open("{}/{}.py".format(self.GEOM_DIR,tmpMeshName),'r') as MeshData:
-								g.write("# Parameters used to create mesh {}.med\n{}".format(tmpMeshName,MeshData.read()))
-							# if self.mode != 'Interactive':
-							# 	with open(IndMeshLog,'r') as rIndMeshLog:
-							# 		g.write("\n'''\n# Meshing log\n{}\n'''".format(rIndMeshLog.read()))
-
 				time.sleep(0.1)
 				if not len(MeshStat): break
 
 		self.__port__ = Ports.copy()
+		if MeshError: self.Exit("The following Meshes finished with errors:\n{}".format(MeshError))
 
 			# MeshCls = import_module('Mesh.{}'.format(MeshPara.File))
 			# if hasattr(MeshCls,'ErrorHandling'):

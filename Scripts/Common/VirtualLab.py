@@ -297,15 +297,15 @@ class VLSetup():
 			self.Exit("MeshCheck '{}' is not one of meshes to be created.\nMeshes to be created are:{}".format(MeshCheck, list(self.Meshes.keys())))
 
 		print('### Starting Meshing ###\n')
-		# This will start a salome instance if one hasnt been proivded with the kwarg 'port' on Setup
-		# MeshLog = "{}/Log".format(self.MESH_DIR)
+
+		COutFile = '' if self.mode=='Interactive' else '/dev/null'
 
 		NumMeshes = len(self.Meshes)
 		NumThreads = min(NumThreads,NumMeshes)
 		MeshError = []
 
 		# Start #NumThreads number of Salome sessions
-		Ports = self.Salome.Start(NumThreads)
+		Ports = self.Salome.Start(NumThreads,OutFile = COutFile)
 		PortCount = {Port:0 for Port in Ports}
 
 		# Script which is used to import the necessary mesh function
@@ -323,7 +323,7 @@ class VLSetup():
 			port = Ports.pop(0)
 			tmpLog = '' if self.mode=='Interactive' else "{}/{}_log".format(self.GEOM_DIR,MeshName)
 
-			ArgDict.update(Parameters=MeshName, MESH_FILE="{}/{}.med".format(self.MESH_DIR, MeshName),
+			ArgDict.update(Name=MeshName, MESH_FILE="{}/{}.med".format(self.MESH_DIR, MeshName),
 						   RCfile="{}/{}_RC.txt".format(self.GEOM_DIR,MeshName))
 
 			Proc = self.Salome.Run(MeshScript, Port=port, AddPath=AddPath, ArgDict=ArgDict, OutFile=tmpLog)
@@ -394,7 +394,7 @@ class VLSetup():
 			# if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(MeshName))
 			# else : print("Completed mesh '{}'. See '{}' for log\n".format(MeshName,IndMeshData))
 
-		print('### Meshing Completed ###\n')
+		print('\n### Meshing Completed ###\n')
 		if ShowMesh:
 			print("Opening mesh files in Salome")
 			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.Meshes.keys()]
@@ -754,12 +754,17 @@ class VLSalome():
 
 	def Start(self, Num=1,**kwargs):
 		OutFile = kwargs.get('OutFile', "")
+		ErrFile = kwargs.get('ErrFile', OutFile)
+
+		output = ''
+		if OutFile: output += "1>{} ".format(OutFile)
+		if ErrFile: output += "2>{} ".format(ErrFile)
 
 		SalomeSP = []
 		NewPorts = []
 		for i in range(Num):
 			portfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
-			SubProc = Popen('cd {};salome -t --ns-port-log {} {}'.format(self.TMP_DIR, portfile, OutFile), shell='TRUE')
+			SubProc = Popen('cd {};salome -t --ns-port-log {} {}'.format(self.TMP_DIR, portfile, output), shell='TRUE')
 			SalomeSP.append((SubProc,portfile))
 
 		for SubProc, portfile in SalomeSP:
@@ -818,8 +823,8 @@ class VLSalome():
 		ErrFile = kwargs.get('ErrFile', OutFile)
 
 		output = ''
-		if OutFile: output += "1>{}".format(OutFile)
-		if ErrFile: output += "2>{}".format(ErrFile)
+		if OutFile: output += "1>{} ".format(OutFile)
+		if ErrFile: output += "2>{} ".format(ErrFile)
 
 		command = "salome shell -p{!s} {} args:{} {}".format(Port, Script, Args, output)
 

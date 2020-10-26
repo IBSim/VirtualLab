@@ -9,7 +9,7 @@ salome.salome_init()
 kwargs = SalomeFunc.GetArgs(sys.argv[1:])
 
 # Import the Create function which is used to generate the mesh using the mesh parameters
-Parameters = __import__(kwargs['Parameters'])
+Parameters = __import__(kwargs['Name'])
 Create = __import__(Parameters.File).Create
 
 MeshRn = Create(Parameters)

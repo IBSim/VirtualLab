@@ -337,12 +337,22 @@ class VLSetup():
 					Poll = Proc.poll()
 					# If SubProc finished Poll will change from None to errorcode
 					if Poll is not None:
-						# Check in meshfile for error code handling
+						# Check if any returncode provided
 						RCfile="{}/{}_RC.txt".format(self.GEOM_DIR,tmpMeshName)
 						if os.path.isfile(RCfile):
 							with open(RCfile,'r') as f:
 								returncode=int(f.readline())
-							print("Code {} returned during creation of {}".format(returncode,tmpMeshName))
+							AffectedSims = [Name for Name, StudyDict in self.Studies.items() if StudyDict["Parameters"].Mesh == tmpMeshName]
+							print("Code {} returned during creation of mesh {}".format(returncode,tmpMeshName))
+							MeshPara = self.Meshes[tmpMeshName]
+							MeshImp = import_module('Mesh.{}'.format(MeshPara.File))
+							# Check in meshfile for error code handling
+							if hasattr(MeshImp,'HandleRC'):
+								print("ReturnCode passed to HandleRC() in mesh file")
+								MeshImp.HandleRC(returncode,self.Studies,AffectedSims,tmpMeshName, MeshError)
+							else :
+								print("No error handling function in mesh file, mesh added to mesh error list")
+								MeshError.append(tmpMeshName)
 						# SubProc returned with error code
 						elif Poll != 0:
 							print("Mesh '{}' finished with errors\n".format(tmpMeshName))

@@ -127,5 +127,9 @@ def MeshStore(MeshRn,MeshFile,RCfile,**kwargs):
         isDone = MeshRn.Compute()
         MeshExport(MeshRn,MeshFile)
     elif type(MeshRn) == int:
-        pass
+        MeshRC(RCfile,MeshRn)
         # Write this to file to be picked up
+
+def MeshRC(RCfile,returncode):
+	with open(RCfile,'w') as f:
+		f.write(str(returncode))

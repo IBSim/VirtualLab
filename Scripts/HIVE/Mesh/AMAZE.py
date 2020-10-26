@@ -265,6 +265,15 @@ class TestDimensions():
 		self.MeshName = 'Test'
 		self.SampleGroups = ['Tile','Block','Pipe']
 
+def HandleRC(returncode, Sims={}, AffectedSims=[], MeshName='',MeshErrors=[]):
+	'''
+	Depending on the returncode, you can either remove the AffectedSims from
+	the dictionary of simulations or add the Mesh to the list of mesh errors
+	If Mesh errors is populated then VirtualLab will stop before running the simulations.
+	'''
+	for Sim in AffectedSims:
+		Sims.pop(Sim)
+
 
 def GeomError(Parameters):
 	''' This function is imported in during the Setup to pick up any errors which will occur for the given geometrical dimension. i.e. impossible dimensions '''

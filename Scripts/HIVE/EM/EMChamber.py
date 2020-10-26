@@ -115,7 +115,7 @@ def CreateEMMesh(objMesh,Parameter):
 	Measure = np.array(geompy.BasicProperties(Common))
 	Common.Destroy()
 	if not all(Measure < 1e-9):
-		return False
+		return 2319
 
 	### Creating Chamber consisting of the sample, coil and vacuum
 	Compound = geompy.MakeCompound([Sample, Coil])

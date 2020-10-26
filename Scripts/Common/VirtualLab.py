@@ -18,6 +18,7 @@ import ast
 from Scripts.Common import Analytics, MPRun
 from multiprocessing import Process
 import pickle
+import uuid
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode):
@@ -74,6 +75,8 @@ class VLSetup():
 
 		# Create dictionary of Parameters info
 		self.Parameters = {'Master':Parameters_Master,'Var':Parameters_Var,'Dir':'{}/{}/{}'.format(INPUT_DIR, Simulation, Project)}
+
+		self.Salome = VLSalome(self.TMP_DIR, self.COM_SCRIPTS, self.SIM_SCRIPTS)
 
 	def Control(self, **kwargs):
 		'''
@@ -286,7 +289,7 @@ class VLSetup():
 			MeshParaFile = "{}/{}.py".format(self.GEOM_DIR,MeshCheck)
 			MeshScript = "{}/{}.py".format(self.SIM_MESH, self.Meshes[MeshCheck].File)
 			# The file MeshParaFile is passed to MeshScript to create the mesh in the GUI
-			self.SalomeRun(MeshScript, ArgList=[MeshParaFile], GUI=True, CheckStatus=False)
+			self.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
 			self.Cleanup()
 			sys.exit('Terminating after checking mesh')
 
@@ -299,22 +302,11 @@ class VLSetup():
 
 		NumMeshes = len(self.Meshes)
 		NumThreads = min(NumThreads,NumMeshes)
-		MeshInit, Ports, MeshError = [],[],[]
+		MeshError = []
 
-		PortCount = {}
-		for i in range(NumThreads):
-			command = 'cd {0};salome -t --ns-port-log {0}/port_{1}.txt'.format(self.TMP_DIR,i)
-			Salome = Popen(command, shell='TRUE')
-			MeshInit.append(Salome)
-
-		for i,proc in enumerate(MeshInit):
-			proc.wait()
-			with open('{}/port_{}.txt'.format(self.TMP_DIR,i),'r') as f:
-				prt = int(f.readline())
-			Ports.append(prt)
-			PortCount[prt] = 0
-
-		self.__port__ = Ports.copy()
+		# Start #NumThreads number of Salome sessions
+		Ports = self.Salome.Start(NumThreads)
+		PortCount = {Port:0 for Port in Ports}
 
 		# Script which is used to import the necessary mesh function
 		MeshScript = '{}/MeshRun.py'.format(self.COM_SCRIPTS)
@@ -323,29 +315,18 @@ class VLSetup():
 		if os.path.isfile('{}/config.py'.format(self.SIM_MESH)): ArgDict["ConfigFile"] = True
 
 		MeshStat = {}
-		NumActive=0
-		NumComplete=0
-		SalomeReset = 400/NumThreads
+		NumActive=NumComplete=0
+		SalomeReset = 1 #Close Salome session(s) & open new after this many meshes due to memory leak
 		for MeshName, MeshPara in self.Meshes.items():
 			print("\nStarting mesh '{}'".format(MeshName))
-			IndMeshLog = "{}/{}_log".format(self.GEOM_DIR,MeshName)
+
+			port = Ports.pop(0)
+			tmpLog = '' if self.mode=='Interactive' else "{}/{}_log".format(self.GEOM_DIR,MeshName)
+
 			ArgDict.update(Parameters=MeshName, MESH_FILE="{}/{}.med".format(self.MESH_DIR, MeshName),
 						   RCfile="{}/{}_RC.txt".format(self.GEOM_DIR,MeshName))
 
-			port = Ports.pop(0)
-			if PortCount[port] >= SalomeReset:
-				print("Limit reached on Salome session {}. Closing and opening a new session".format(port))
-				Salome_Close = self.KillSalome(port)
-				portfile = '{0}/port_{1}.txt'.format(self.TMP_DIR,NumComplete)
-				command = 'cd {0};salome -t --ns-port-log {1}'.format(self.TMP_DIR,portfile)
-				Salome = Popen(command, shell='TRUE')
-				Salome.wait()
-				with open(portfile,'r') as f:
-					port = int(f.readline())
-				PortCount[port] = 0
-				Salome_Close.wait()
-
-			Proc = self.SalomeRun(MeshScript, Port=port, AddPath=AddPath, ArgDict=ArgDict, OutLog=IndMeshLog)
+			Proc = self.Salome.Run(MeshScript, Port=port, AddPath=AddPath, ArgDict=ArgDict, OutFile=tmpLog)
 			MeshStat[MeshName] = [Proc,port]
 			PortCount[port] +=1
 			NumActive+=1
@@ -374,8 +355,18 @@ class VLSetup():
 								with open("{}/{}.py".format(self.GEOM_DIR,tmpMeshName),'r') as MeshData:
 									g.write("# Parameters used to create mesh\n{}".format(MeshData.read()))
 									if self.mode != 'Interactive':
-										with open("{}/{}_log".format(self.GEOM_DIR,tmpMeshName),'r') as rIndMeshLog:
-											g.write("\n'''\nMesh output:\n\n{}\n'''".format(rIndMeshLog.read()))
+										with open("{}/{}_log".format(self.GEOM_DIR,tmpMeshName),'r') as rtmpLog:
+											g.write("\n'''\nMesh output:\n\n{}\n'''".format(rtmpLog.read()))
+
+						# Check if a new salome sesion is needed to free up memory
+						# for the next mesh
+						if NumComplete < NumMeshes and PortCount[port] >= SalomeReset/NumThreads:
+							print("Limit reached on Salome session {}".format(port))
+							Salome_Close = self.Salome.Close(port)
+							port = self.Salome.Start()[0]
+							PortCount[port] = 0
+							Salome_Close.wait()
+
 						MeshStat.pop(tmpMeshName)
 						Proc.terminate()
 						NumActive-=1
@@ -384,7 +375,6 @@ class VLSetup():
 				time.sleep(0.1)
 				if not len(MeshStat): break
 
-		self.__port__ = Ports.copy()
 		if MeshError: self.Exit("The following Meshes finished with errors:\n{}".format(MeshError))
 
 			# MeshCls = import_module('Mesh.{}'.format(MeshPara.File))
@@ -398,8 +388,8 @@ class VLSetup():
 		if ShowMesh:
 			print("Opening mesh files in Salome")
 			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.Meshes.keys()]
-			Salome = Popen('salome {}/ShowMesh.py args:{} '.format(self.COM_SCRIPTS,",".join(MeshPaths)), shell='TRUE')
-			Salome.wait()
+			SubProc = Popen('salome {}/ShowMesh.py args:{} '.format(self.COM_SCRIPTS,",".join(MeshPaths)), shell='TRUE')
+			SubProc.wait()
 			self.Cleanup()
 			sys.exit()
 
@@ -644,7 +634,7 @@ class VLSetup():
 						if ext == '.rmed':
 							ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
 			Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
-			self.SalomeRun(Script, GUI=True, AddPath=[self.COM_SCRIPTS], ArgDict=ResFiles)
+			self.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
 
 	def WriteModule(self, FileName, Dictionary, **kwargs):
 		Write = kwargs.get('Write','New')
@@ -734,28 +724,63 @@ class VLSetup():
 			for mat in set(Materials):
 				if not os.path.exists('{}/{}'.format(self.MATERIAL_DIR, mat)):
 					self.Exit("Material '{}' isn't in the materials directory '{}'".format(mat, self.MATERIAL_DIR))
+	def Exit(self,Error):
+		self.Cleanup('n')
+		sys.exit('Error: ' + Error)
 
+	def Cleanup(self,remove = 'y'):
+		if self.Salome.Ports:
+			self.Salome.Close(self.Salome.Ports)
 
-	def SalomeRun(self, Script, **kwargs):
+		if remove == 'y' and os.path.isdir(self.TMP_DIR):
+			shutil.rmtree(self.TMP_DIR)
+
+class VLSalome():
+	def __init__(self, TMP_DIR, COM_SCRIPTS, SIM_SCRIPTS):
+		self.TMP_DIR = TMP_DIR
+		self.COM_SCRIPTS = COM_SCRIPTS
+		self.SIM_SCRIPTS = SIM_SCRIPTS
+		self.Ports = []
+
+	def Start(self, Num=1,**kwargs):
+		OutFile = kwargs.get('OutFile', "")
+
+		SalomeSP = []
+		NewPorts = []
+		for i in range(Num):
+			portfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
+			SubProc = Popen('cd {};salome -t --ns-port-log {} {}'.format(self.TMP_DIR, portfile, OutFile), shell='TRUE')
+			SalomeSP.append((SubProc,portfile))
+
+		for SubProc, portfile in SalomeSP:
+			SubProc.wait()
+			if SubProc.returncode != 0:
+				print("Error during Salome initiation")
+				return False
+
+			with open(portfile,'r') as f:
+				port = int(f.readline())
+
+			print('Salome opened on port {}'.format(port))
+			NewPorts.append(port)
+
+		self.Ports.extend(NewPorts)
+
+		return NewPorts
+
+	def Run(self, Script, **kwargs):
 		'''
 		kwargs available:
-		OutLog: The log file you want to write stdout to (default is /dev/null)
-		ErrLog: The log file you want to write stderr to (default is OutLog)
+		OutFile: The log file you want to write stdout to (default is /dev/null)
+		ErrFile: The log file you want to write stderr to (default is OutLog)
 		AddPath: Additional paths that Salome will be able to import from
 		ArgDict: a dictionary of the arguments that Salome will get
 		ArgList: a list of arguments to be passed to Salome
 		GUI: Opens a new instance with GUI (useful for testing)
-		SalomeInit: Creates a new Salome instance in terminal mode
 		'''
-		OutLog = kwargs.get('OutLog', "/dev/null")
-		ErrLog = kwargs.get('ErrLog', OutLog)
 		AddPath = kwargs.get('AddPath',[])
 		ArgDict = kwargs.get('ArgDict', {})
 		ArgList = kwargs.get('ArgList',[])
-		GUI = kwargs.get('GUI',False)
-		SalomeInit = kwargs.get('SalomeInit',False)
-		Port = kwargs.get('Port',None)
-
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
@@ -768,70 +793,42 @@ class VLSetup():
 		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
 		Args = ",".join(ArgList + Args)
 
-		if GUI:
+		if kwargs.get('GUI',False):
 			command = "salome {} args:{}".format(Script, Args)
 			GUI = Popen(PythonPath + command, shell='TRUE')
 			GUI.wait()
 			return
 
-		if not hasattr(self,'__port__'):
-			# Cd to TMP_DIR to avoid test.out file created in VL
-			portfile = '{}/port.txt'.format(self.TMP_DIR)
-			command = 'cd {};salome -t --ns-port-log {}'.format(self.TMP_DIR,portfile)
+		if not self.Ports:
+			self.Start()
 
-			if self.mode != 'Interactive':
-				command += " > {} 2>&1".format(OutLog)
+		Port = kwargs.get('Port', self.Ports[0])
 
-			Salome = Popen(command, shell='TRUE')
-			Salome.wait()
-			self.CheckProc(Salome,'Salome instance has not been created')
-			print("")
+		OutFile = kwargs.get('OutFile', "")
+		ErrFile = kwargs.get('ErrFile', OutFile)
 
-			### Get port number from file
-			with open(portfile,'r') as f:
-				self.__port__ = [int(f.readline())]
+		output = ''
+		if OutFile: output += "1>{}".format(OutFile)
+		if ErrFile: output += "2>{}".format(ErrFile)
 
-		# Return here if SalomeInit as we only want to initiate Salome, not run anything
-		if SalomeInit: return
+		command = "salome shell -p{!s} {} args:{} {}".format(Port, Script, Args, output)
 
-		if not Port: Port = self.__port__[0]
+		SubProc = Popen(PythonPath + command, shell='TRUE')
+		return SubProc
 
-		command = "salome shell -p{!s} {} args:{}".format(Port, Script, Args)
-		if self.mode != 'Interactive':
-			command += " 2>{} 1>{}".format(ErrLog, OutLog)
+	def Close(self, Ports):
+		if type(Ports) == list: Ports = Ports.copy()
+		elif type(Ports) == int: Ports = [Ports]
 
-		Salome = Popen(PythonPath + command, shell='TRUE')
-		return Salome
+		Portstr = ""
+		for Port in Ports:
+			if Port in self.Ports:
+				Portstr += "{} ".format(Port)
+				self.Ports.remove(Port)
+			else :
+				print("Salome not open on port {}".format(Port))
 
-	def CheckProc(self,Proc,message=''):
-		if Proc.returncode != 0:
-			self.Exit('Error in subprocess:' + message)
-
-	def Exit(self,Error):
-		self.Cleanup('n')
-		sys.exit('Error: ' + Error)
-
-	def KillSalome(self, Ports):
-		print('Closing Salome on port(s) {}'.format(Ports))
-		if type(Ports) == list:
-			Portstr = " ".join(map(str,Ports))
-		elif type(Ports) == int:
-			Portstr = str(Ports)
 		Salome_close = Popen('salome kill {}'.format(Portstr), shell = 'TRUE')
+		print('Closing Salome on port(s) {}'.format(Ports))
 
 		return Salome_close
-
-	def Cleanup(self,remove = 'y'):
-		# If a port is a kwarg during setup it wont be killed, otherwise the instance set up will be killed
-		Ports = getattr(self,'__port__',[])
-		if Ports:
-			print('Closing Salome on port(s) {}'.format(Ports))
-			Salome_close = Popen('salome kill {}'.format(" ".join(map(str,Ports))), shell = 'TRUE')
-			Salome_close.wait()
-
-		# if self.__port__[1]:
-			# Salome_close = Popen('salome kill {}'.format(self.__port__[0]), shell = 'TRUE')
-			# Salome_close.wait()
-
-		if remove == 'y' and os.path.isdir(self.TMP_DIR):
-			shutil.rmtree(self.TMP_DIR)

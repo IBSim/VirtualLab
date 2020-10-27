@@ -105,12 +105,12 @@ class VLSetup():
 		Var = __import__(self.Parameters['Var']) if self.Parameters['Var'] else None
 
 		MainDict = copy.deepcopy(self.__dict__)
+		MainDict.pop('Salome')
+
 		MainMesh = getattr(Main, 'Mesh', None)
 		MainSim = getattr(Main, 'Sim', None)
 
 		self.Parameters_Master = Main
-
-		# self.Files = {'Mesh':[],'PreAster':[],'PostAster':[]}
 
 		# Create Mesh parameter files if they are required
 		self.Meshes = {}
@@ -316,7 +316,7 @@ class VLSetup():
 
 		MeshStat = {}
 		NumActive=NumComplete=0
-		SalomeReset = 1 #Close Salome session(s) & open new after this many meshes due to memory leak
+		SalomeReset = 400 #Close Salome session(s) & open new after this many meshes due to memory leak
 		for MeshName, MeshPara in self.Meshes.items():
 			print("\nStarting mesh '{}'".format(MeshName))
 

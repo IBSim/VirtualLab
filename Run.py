@@ -93,10 +93,6 @@ VirtualLab.Control() :
     RunSim : bool (optional)
         This indicates whether or not the simulation routine will be run, which
         is defined by the 'Sim' namespace in Parameters_Master. Default is True.
-    Port : int (optional)
-        Specify a port number on which SALOME is open. This will save the time
-        required to open & close an instance of SALOME. SALOME is usually opened
-        on ports starting at 2810. Default is 'None'.
 
 VirtualLab.Mesh() :
     This function is the meshing routine. The mesh(es) defined using the
@@ -105,6 +101,10 @@ VirtualLab.Mesh() :
     variables used for their creation. If RunMesh is set to False in 'Create'
     then this routine is skipped. This may be useful when different simulation
     parameters are to be used on a pre-existing mesh.
+    NumThreads: int (optional)
+        Number of meshes created simultaneously. The number specified
+        will depend on the resources available, such as number of CPUs, RAM etc.
+        Default is 1.
     ShowMesh : bool (optional)
         Indicates whether or not to open created mesh(es) in the SALOME GUI for
         visualisation to assess their suitability. VirtualLab will terminate
@@ -121,6 +121,10 @@ VirtualLab.Sim() :
     routine also runs pre/post processing scripts provided through
     Sim.PreAsterFile and Sim.PostAsterFile, both of which are optional. If
     RunSim is set to False in 'Create' then this routine is skipped.
+    NumThreads: int (optional)
+        Number of simulations run simultaneously. The number specified
+        will depend on the resources available, such as number of CPUs, RAM etc.
+        Default is 1.
     RunPreAster : bool (optional)
         Indicates whether or not to run the optional pre-processing script
         provided in Sim.PreAsterFile. Default is True.
@@ -171,7 +175,7 @@ Simulation='Tensile'
 Project='Tutorials'
 StudyName='Training'
 Parameters_Master='TrainingParameters'
-Parameters_Var='Parametric_1'
+Parameters_Var=None
 Mode='Interactive'
 
 ################################################################################
@@ -188,20 +192,21 @@ VirtualLab=VLSetup(
 
 VirtualLab.Control(
            RunMesh=True,
-           RunSim=True,
-           Port=None)
+           RunSim=True)
 
 VirtualLab.Mesh(
+           NumThreads=1,
            ShowMesh=False,
            MeshCheck=None)
 
 VirtualLab.Sim(
+           NumThreads=1,
            RunPreAster=True,
            RunAster=True,
            RunPostAster=True,
-           ShowRes=False,
-           ncpus=1,
+           ShowRes=True,
            memory=2,
+           ncpus=1,
            mpi_nbcpu=1,
            mpi_nbnoeud=1)
 

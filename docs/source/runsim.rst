@@ -164,7 +164,7 @@ Environment
     The variables detailed above are passed as arguments, making it possible to differentiate between different virtual experiments and how results are to be stored.
 
 
-  .. attribute:: Control(RunMesh=True, RunSim=True, Port=None)
+  .. attribute:: Control(RunMesh=True, RunSim=True)
 
     This function is responsible for checking that all defined files exist in the expected location. These include *Parameters_Master* and *Parameters_Var* and the files specified therein  (``Mesh.File``, ``Sim.PreAsterFile``, ``Sim.AsterFile``, ``Sim.PostAsterFile``). Once this is satisfied, output directories are created for the results, and the necessary files are created to produce mesh(es) and run simulation(s).
 
@@ -172,23 +172,25 @@ Environment
       |   Indicates whether or not the meshing routine will be run. Default is True.
       | ``RunSim``  bool (optional)
       |   Indicates whether or not the simulation routine will be run. Default is True.
-      | ``Port`` int (optional)
-      |   Specify a port number on which **SALOME** is open. This will save the time required to open & close an instance of **SALOME** in **VirtualLab**. An instance is usually opened on ports starting at 2810. Default is None.
 
-
-  .. attribute:: Mesh(ShowMesh=False, MeshCheck=None)
+  .. attribute:: Mesh(NumThreads=1, ShowMesh=False, MeshCheck=None)
 
     This function is the meshing routine. The mesh(es) defined using ``Mesh`` in *Parameters_Master* and *Parameters_Var* are created and saved to the sub-directory 'Meshes' in the project directory along with a file detailing the variables used for their creation. If RunMesh is set to False in 'Control' then this routine is skipped. This may be useful when different simulation parameters are to be used on a pre-existing mesh
 
+      | ``NumThreads`` int (optional)
+      |   Number of meshes created simultaneously. The number specified will depend on the resources available, such as number of CPUs, RAM etc. Default is 1.
       | ``ShowMesh`` bool (optional)
       |   Indicates whether or not to open created mesh(es) in the **SALOME** GUI for visualisation to assess their suitability. VirtualLab will terminate once the GUI is closed and no simulation will be carried out. Default is False.
       | ``MeshCheck`` '$MESH_NAME' (optional)
       |   '$MESH_NAME' is constructed in the **SALOME** GUI for debugging. Default is None.
 
-  .. attribute:: Sim(RunPreAster=True,RunAster=True,RunPostAster=True,ShowRes=False,ncpus=1,memory=2,mpi_nbcpu=1,mpi_nbnoeud=1)
+
+  .. attribute:: Sim(NumThreads=1, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False, memory=2, ncpus=1, mpi_nbcpu=1, mpi_nbnoeud=1)
 
     This function is the simulation routine. The simulation(s) defined using ``Sim`` in *Parameters_Master* and *Parameters_Var* are carried out with the results saved to the sub-directory '$STUDYNAME' in the project directory. This routine also runs the pre and post-processing scripts, if they are provided. If RunSim is set to False in 'Control' then this routine is skipped. 
 
+      | ``NumThreads`` int (optional)
+      |   Number of simulations run simultaneously. The number specified will depend on the resources available, such as number of CPUs, RAM etc. Default is 1.
       | ``RunPreAster`` bool (optional)
       |   Indicates whether or not to run the optional pre-processing script provided in `Sim.PreAsterFile`. Default is True.
       | ``RunAster`` bool (optional)
@@ -197,10 +199,10 @@ Environment
       |   Indicates whether or not to run the optional post-processing script provided in ``Sim.PostAsterFile``. Default is True.
       | ``ShowRes`` bool (optional)
       |   Visualises the .rmed results file(s) produced by **Code_Aster** through the **ParaVis** module in **SALOME**. Default is False.
-      | ``ncpus`` int (optional)
-      |   Number of processors used by the solver 'MULT_FRONT' in **Code_Aster**. Default is 1.
       | ``memory`` float (optional)
       |   Number of GBs of memory allocated to **Code_Aster** for simulations. Default is 2.
+      | ``ncpus`` int (optional)
+      |   Number of processors used for the solver 'MULT_FRONT' in **Code_Aster**. This is the only solver with built in parallelism in the non-MPI version. Default is 1.
       | ``mpi_nbcpu`` int (optional)
       |   Number of cpus cores for MPI parallelism. Default is 1.
       | ``mpi_nbnoeud`` int (optional)
@@ -208,11 +210,11 @@ Environment
 
     .. note:: The binary distribution of standalone **Code_Aster** and the version packaged with **Salome-Meca** does not make use of MPI. To use MPI with **Code_Aster** it must be compiled from source, in which case the solvers 'MUMPS' and 'PETSC' may be used.
 
-    .. note:: ncpus and mpi_nbcpu will not conflict because only one value is used depending on the solver utilised. That is, if both variables are set, only one is passed to the solver.
+    .. note:: If **Code_Aster** has been compiled with MPI then ncpus specifies the number of OpenMP cpus used for each mpi cpu. For example if mpi_nbcpu=8 and ncpus=6, then 48 cpus are used.
 
   .. attribute:: Cleanup()
 
-    This function removes all tmp directories created and closes the opened instance of **SALOME**.
+    This function removes all tmp directories created and closes any open instance of **SALOME**.
 
 
 

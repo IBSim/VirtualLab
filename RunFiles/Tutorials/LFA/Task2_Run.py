@@ -31,23 +31,10 @@ VirtualLab=VLSetup(
            Parameters_Var,
            Mode)
 
-VirtualLab.Control(
-           RunMesh=False,
-           RunSim=True,
-           Port=None)
+VirtualLab.Control(RunMesh=False)
 
-VirtualLab.Mesh(
-           ShowMesh=False,
-           MeshCheck=None)
+VirtualLab.Mesh()
 
-VirtualLab.Sim(
-           RunPreAster=True,
-           RunAster=True,
-           RunPostAster=True,
-           ShowRes=True,
-           ncpus=1,
-           memory=2,
-           mpi_nbcpu=1,
-           mpi_nbnoeud=1)
+VirtualLab.Sim(NumThreads=3,ShowRes=True)
 
 VirtualLab.Cleanup()

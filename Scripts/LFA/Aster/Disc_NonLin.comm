@@ -145,7 +145,10 @@ if timearr[-1] > LPend:
 # Save list of timesteps and results for the study
 np.savetxt('./REPE_OUT/TimeSteps.dat', timearr, fmt = '%.6f', delimiter = '   ')
 DEFI_FICHIER(FICHIER='./REPE_OUT/Thermal.rmed', UNITE=81)
-IMPR_RESU(RESU=_F(RESULTAT=resther), UNITE=81)
+IMPR_RESU(RESU=_F(RESULTAT=resther,
+				  NOM_CHAM=('TEMP'),
+				  NOM_CHAM_MED=('Temperature')),
+		  UNITE=81)
 
 
 FIN()

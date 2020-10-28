@@ -324,12 +324,16 @@ This can be accomplished by using the *RunMesh* ``kwarg`` in :attr:`VirtualLab.C
 .. admonition:: Action
    :class: Action
 
+   Change the material in *Parameters_Master* to 'Tungsten'::
+
+        Sim.Materials = 'Tungsten'
+
    In the *Run* file ensure that *RunMesh* is set to False::
 
       VirtualLab.Control(RunMesh=False)
 
-   Change *Sim.Materials* in *Parameters_Master* to 'Tungsten' and launch **VirtualLab**. 
-
+   Launch **VirtualLab**. 
+   
 You should notice the difference in stress and displacement for the tungsten sample compared with that of the copper sample. 
 
 .. tip:: If you have interest in developing your own scripts then it would be worthwhile looking at the scripts :file:`DogBone.py` and :file:`Tensile.comm` which have been used by **SALOME** and **Code_Aster** respectively for this analysis.
@@ -368,20 +372,21 @@ This example introduces some of the post-processing capabilities available in **
 
 	VirtualLab.Control(
 		   RunMesh=True,
-		   RunSim=True,
-		   Port=None)
+		   RunSim=True)
 
 	VirtualLab.Mesh(
+                   NumThreads=1,
 		   ShowMesh=False,
 		   MeshCheck=None)
 
 	VirtualLab.Sim(
+                   NumThreads=1,
 		   RunPreAster=True,
 		   RunAster=True,
 		   RunPostAster=True,
 		   ShowRes=True,
-		   ncpus=1,
 		   memory=2,
+		   ncpus=1,
 		   mpi_nbcpu=1,
 		   mpi_nbnoeud=1)
 
@@ -477,8 +482,8 @@ The sample is set to initially have a uniform temperature profile of 20 |deg| C.
 *Sim* also has attributes relating to the power and profile of the laser pulse. ::
 
     Sim.Energy = 5.32468714
-    Sim.LaserT= 'Trim' #Temporal profile (see Scripts/LFA/Laser for all options)
-    Sim.LaserS = 'Gauss' #Spatial profile (Gauss profile or uniform profile available)
+    Sim.LaserT= 'Trim' 
+    Sim.LaserS = 'Gauss' 
 
 *Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/LFA/Laser`. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian'.
 
@@ -488,11 +493,11 @@ A convective boundary condition (BC) is also applied by defining the heat transf
     Sim.BottomHTC = 0
     Sim.TopHTC = 0
 
-In this example the attribute *Materials* is a dictionary whose ``keys`` are the names of the mesh groups and their corresponding ``values`` are the material properties which will be applied to those groups::
+The attribute *Sim.Materials* in this example is a python `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ whose ``keys`` are the names of the mesh groups and their corresponding ``values`` are the material properties which will be applied to those groups::
 
     Sim.Materials = {'Top':'Copper', 'Bottom':'Copper'}
 
-This allows different material properties to be applied to different parts in **Code_Aster**. 
+This allows different material properties to be applied to different parts of the sample in **Code_Aster**. 
 
 As previously mentioned, this tutorial introduces post-processing in **VirtualLab**. ::
 
@@ -514,13 +519,15 @@ Suppose you are interested in seeing the meshes prior to running the simulation.
 .. admonition:: Action
    :class: Action
 
-   In the *Run* file change the *ShowMesh* ``kwarg``  to :code:`True`::
+   In the *Run* file change the ``kwargs`` *ShowMesh* to :code:`True` and *NumThreads* to 2::
 
-      VirtualLab.Mesh(ShowMesh=True)
+        VirtualLab.Mesh(NumThreads=2, ShowMesh=True)
 
-   Execute your *Run* file in the terminal CL to generate the meshes and visualise them. 
+   Launch **VirtualLab**::
 
-You will notice that each mesh has the group 'Top' and 'Bottom' in :guilabel:`Groups of Volumes` in the object browser (usually located on the left-hand side). These groups are the ``keys`` in *Sim.Materials*.
+        VirtualLab -f Run.py 
+
+You will notice that each mesh has the group 'Top' and 'Bottom' in :guilabel:`Groups of Volumes` in the object browser (usually located on the left-hand side). These groups are the ``keys`` defined in *Sim.Materials*.
 
 Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability, the script will terminate once the GUI is closed, meaning that no simulations will be run.
 
@@ -532,10 +539,13 @@ You decide that you are happy with the quality of the meshes created for your si
 .. admonition:: Action
    :class: Action
 
-   In the *Run* file set the ``kwargs`` *RunMesh* and *ShowMesh* to  :code:`False` to ensure that the simulations are run without re-meshing::  
+   In the *Run* file change *ShowMesh* back to its default value :code:`False` and set *RunMesh* to :code:`False` to ensure that the simulations are run without re-meshing. Since 3 simulations are to be run you can set *NumThreads* to 3 in *VirtualLab.Sim* if you have the resources available::  
 
       VirtualLab.Control(RunMesh=False)
+
       VirtualLab.Mesh(ShowMesh=False)
+
+      VirtualLab.Sim(NumThreads=3)
 
    Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using a Virtual Machine (VM). If you are using a VM you will need to include the attribute *PVGUI* (ParaVis GUI) to *Sim* in the PostAster setion of :file:`TrainingParameters.py`::
 
@@ -543,23 +553,31 @@ You decide that you are happy with the quality of the meshes created for your si
 
    This flag will force the **ParaVis** script to run in the GUI where the rendering works fine. You will need to manually close the GUI.
 
-   Execute the *Run* file.
+   Launch **VirtualLab**.
 
 .. note:: Creating images using **ParaVis** will produce 'Generic Warning' messages in the terminal. They're are caused by bugs within **SALOME** and can be ignored.
 
 In the *Aster* directory for each of the 3 simulations, you will find: :file:`AsterLog`; :file:`Export`; and **Code_Aster** :file:`.rmed` files, as seen in the first tutorial. You will also find the file :file:`TimeSteps.dat` which lists the timesteps used in the simulation.
 
-In the *PostAster* directory you will find the output generated by :file:`DiscPost.py`.
+In the *PostAster* directory for each simulation you will find the following files generated by :file:`DiscPost.py`:
 
-The images; :file:`LaserProfile.png`, :file:`FluxDist.png`, :file:`BaseTemp.png` and :file:`Rplot.png` are created using the python package `matplotlib <https://matplotlib.org/>`_. 
+ * :file:`LaserProfile.png`
+ * :file:`AvgTempBase.png`
+ * :file:`Capture.png`
+ * :file:`ClipCapture.png`
+ * :file:`Mesh.png`
+ * :file:`MeshCrossSection.png`
+ * :file:`Summary.txt`
 
-The first shows the normalised temporal laser profile used in the simulation, set in *Sim.LaserT*. The plot :file:`FluxDist.png` shows the spatial laser profile used (left), set by *Sim.LaserS*, and the loads that are applied to each node to produce this distribution (right). 
+The first two images are created using the python package `matplotlib <https://matplotlib.org/>`_, while the next 4 are generated using **ParaVis**. The final file is a text file containing information gathered during the post-processing step.
 
-The image :file:`Rplot.png` shows the average temperature on different sized areas of the bottom surface over time. An R value of 0.5 takes the average temperatures of nodes within a half radius of the centre point on the bottom surface. An R value of 1 would be the entire bottom surface, which is what is plotted in :file:`BaseTemp.png`. The R values used in this plot are from the attribute *Sim.Rvalues* (R=1 is always included in this plot for comparison).
+:file:`LaserProfile.png` shows the temporal laser profiles (top) along with the spatial laser profile (bottom) used in the simulation. The temporal profile shows the flux (left) and the subsequent loads applied to each node.
 
-The curves with an R value of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample i.e. directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical. This is due to the different spatial distribution of the thermal load.
+:file:`AvgTempBase.png` shows the average temperature on the base of the sample over time. If values have been specified in *Sim.Rvalues* then this plot will also contain the average temperature on differing sized areas of the bottom surface. An R value of 0.5 takes the average temperatures of nodes within a half radius of the centre point on the bottom surface. An R value of 1 would be the entire bottom surface. 
 
-The images created by **ParaVis** are; :file:`Capture.png`, :file:`ClipCapture.png`, :file:`Mesh.png` and :file:`MeshCrossSection.png`. The first two show the heat distribution in the sample at the time specified by the attribute *CaptureTime*, while the latter two show the mesh used in the simulation and its cross-section, respectively.
+The curves for an Rvale of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample i.e. directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical, which is due to the different spatial profile of the laser.
+
+The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the attribute *CaptureTime*, while :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used in the simulation and its cross-section, respectively.
 
 .. note::
 
@@ -582,7 +600,7 @@ This is possible by setting the ``kwarg`` *RunAster* to :code:`False` in :attr:`
 
       VirtualLab.Sim(RunAster=False, ShowRes=False)
 
-   Try entering your own custom values in the list *Rvalues* (between 0 and 1), execute the *Run* file and view the output again.
+   Try entering your own custom values in the list *Rvalues* (between 0 and 1) and launch **VirtualLab**.
 
 Task 4: Re-running Sub-sets of Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -607,7 +625,9 @@ Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` th
       Sim.Run = [True,False,False] 
       Sim.LaserS = ['Uniform','Gauss','Uniform']
 
-   Execute the *Run* file again.
+   There is no need to change the value for *NumThreads* in *VirtualLab.Sim*. 
+
+   Launch **VirtualLab**.
 
 .. note:: *Sim.Run* is optional and does not need to be included in the *Parameters_Master* file.
 
@@ -641,7 +661,7 @@ The collection of available materials can be found in the `Materials <structure.
       Sim.Name = ['SimNoVoid_NL','SimVoid1_NL','SimVoid2_NL']
       #Sim.Run = [True,False,False]
 
-   Execute the *Run* file again.
+   Launch **VirtualLab**.
 
 .. note :: Linear material properties can also be used in :file:`Disc_NonLin.py`
 

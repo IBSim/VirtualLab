@@ -610,7 +610,7 @@ class VLSetup():
 					time.sleep(0.1)
 					if not len(PostStat): break
 
-			if PostError: self.Exit("The following PostAster routine(s) finished with errors:\n{}".format(PreError))
+			if PostError: self.Exit("The following PostAster routine(s) finished with errors:\n{}".format(PostError))
 
 			PostAster = import_module(SimMaster.PostAsterFile)
 			if hasattr(PostAster, 'Combined'):
@@ -644,7 +644,8 @@ class VLSetup():
 						if ext == '.rmed':
 							ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
 			Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
-			self.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
+			SubProc = self.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
+			SubProc.wait()
 
 	def WriteModule(self, FileName, Dictionary, **kwargs):
 		Write = kwargs.get('Write','New')
@@ -810,9 +811,8 @@ class VLSalome():
 
 		if kwargs.get('GUI',False):
 			command = "salome {} args:{}".format(Script, Args)
-			GUI = Popen(PythonPath + command, shell='TRUE')
-			GUI.wait()
-			return
+			SubProc = Popen(PythonPath + command, shell='TRUE')
+			return SubProc
 
 		if not self.Ports:
 			self.Start()

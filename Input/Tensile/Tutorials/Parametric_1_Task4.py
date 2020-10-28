@@ -12,7 +12,7 @@ Mesh.Rad_b = [0.001,0.0005]
 ####### Simulation #######
 ##########################
 Sim = Namespace()
-Sim.Name = ['ParametricSim1', 'ParametricSim2']
+Sim.Name = ['ParametricSim1_Tungsten', 'ParametricSim2_Tungsten']
 #############
 ## Pre-Sim ##
 #############

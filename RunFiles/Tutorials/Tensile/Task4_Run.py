@@ -15,8 +15,8 @@ from Scripts.Common.VirtualLab import VLSetup
 Simulation='Tensile'
 Project='Tutorials'
 StudyName='Training'
-Parameters_Master='TrainingParameters'
-Parameters_Var='Parametric_1'
+Parameters_Master='TrainingParameters_Task4'
+Parameters_Var='Parametric_1_Task4'
 Mode='Interactive'
 
 ################################################################################
@@ -31,10 +31,10 @@ VirtualLab=VLSetup(
            Parameters_Var,
            Mode)
 
-VirtualLab.Control()
+VirtualLab.Control(RunMesh=False)
 
-VirtualLab.Mesh()
+VirtualLab.Mesh(NumThreads=2)
 
-VirtualLab.Sim(ShowRes=True)
+VirtualLab.Sim(NumThreads=2, ShowRes=True)
 
 VirtualLab.Cleanup()

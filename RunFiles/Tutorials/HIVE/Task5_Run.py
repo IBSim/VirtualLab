@@ -15,7 +15,7 @@ from Scripts.Common.VirtualLab import VLSetup
 Simulation='HIVE'
 Project='Tutorials'
 StudyName='Training'
-Parameters_Master='TrainingParameters'
+Parameters_Master='TrainingParameters_Task5'
 Parameters_Var=None
 Mode='Interactive'
 
@@ -32,15 +32,16 @@ VirtualLab=VLSetup(
            Mode)
 
 VirtualLab.Control(
-           RunMesh=True,
-           RunSim=True,
-           Port=None)
+           RunMesh=False,
+           RunSim=True)
 
 VirtualLab.Mesh(
+	   NumThreads=1,
            ShowMesh=False,
            MeshCheck=None)
 
 VirtualLab.Sim(
+	   NumThreads=1,
            RunPreAster=True,
            RunAster=True,
            RunPostAster=True,

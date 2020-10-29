@@ -101,16 +101,20 @@ resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='A
 Theta = getattr(Parameters,'Theta',0.5)
 Solver = getattr(Parameters,'Solver', 'MUMPS')
 MaxIter = getattr(Parameters,'MaxIter',10)
-
-# The AdaptSteps function is written to ensure that the simulation doesn't crash due to
-# non-convergence from singularities. If an error occurs the problem timestep is cut in
-# half and s attempted again. CodeAster has a routine similar to this inbuilt, however
-# it is only available for mechanical FE, not thermal.
+'''
+The AdaptSteps function is written to ensure that the simulation doesn't crash due to
+non-convergence from singularities. If an error occurs the problem timestep is cut in
+half and is attempted again. CodeAster has a routine similar to this in-built, however
+it is only available for mechanical FE, not thermal.
+'''
 AdaptSteps = AsterFunc.AdaptThermal(resther,Timestp,Loading,Thermat,Thermod,Theta,Solver,Storing = Savestp, MaxIter=MaxIter)
 
 ## Save the results and the full list of actual timesteps used for the simulation
 np.savetxt('./REPE_OUT/TimeSteps.dat', AdaptSteps, fmt='%.4e', delimiter = '   ')
-DEFI_FICHIER(FICHIER='./REPE_OUT/ResTher.rmed', TYPE='BINARY', UNITE=80)
-IMPR_RESU(RESU=_F(RESULTAT=resther), UNITE=80)
+DEFI_FICHIER(FICHIER='./REPE_OUT/Thermal.rmed', TYPE='BINARY', UNITE=80)
+IMPR_RESU(RESU=_F(RESULTAT=resther,
+                  NOM_CHAM=('TEMP'),
+                  NOM_CHAM_MED=('Temperature')),
+		  UNITE=80)
 
 FIN()

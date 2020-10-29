@@ -15,11 +15,11 @@ Mesh.File = 'AMAZE' # This file must be in Scripts/$SIMULATION/PreProc
 Mesh.BlockWidth = 0.03 #x
 Mesh.BlockLength = 0.05 #y
 Mesh.BlockHeight = 0.02 #z
-Mesh.PipeCentre = [0,0] #x,z, relative to centre of block
+Mesh.PipeCentre = (0,0) #x,z, relative to centre of block
 Mesh.PipeDiam = 0.01 ###Inner Diameter
 Mesh.PipeThick = 0.001
 Mesh.PipeLength = Mesh.BlockLength
-Mesh.TileCentre = [0,0]
+Mesh.TileCentre = (0,0)
 Mesh.TileWidth = Mesh.BlockWidth
 Mesh.TileLength = 0.03 #y
 Mesh.TileHeight = 0.005 #z
@@ -32,8 +32,9 @@ Mesh.SubTile = 0.002 # Mesh fineness on tile
 
 # for ERMES loading we need to create a mesh for the coil and vacuum
 if EMLoad == 'ERMES':
-    Mesh.ERMES = True
-    Mesh.Coil = {'Type':'Test', 'Displacement':[0, 0, 0.002]}
+    Mesh.CoilType = 'Test'
+    Mesh.CoilDisplacement = [0,0,0.0015]
+    Mesh.Rotation = 0
 
 ##########################
 ####### Simulation #######
@@ -51,9 +52,10 @@ Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 # Pre-processing to create EMLoads from ERMES output
 if EMLoad == 'ERMES':
     Sim.RunERMES = True
+    Sim.NbProc = 1
     Sim.Current = 1000
     Sim.Frequency = 1e4
-    Sim.EMThreshold = None
+    Sim.Threshold = None
 
 #############
 ### Aster ###

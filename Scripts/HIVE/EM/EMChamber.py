@@ -109,7 +109,7 @@ def CreateEMMesh(objMesh,Parameter):
 	RotateAngle = geompy.GetAngleRadians(CoilVect, OY)
 	Coil = geompy.MakeRotation(Coil, RotateVector, -RotateAngle)
 
-	Sample = geompy.MakeRotation(Sample, OY, Parameter.CoilRotation/180*np.pi)
+	Sample = geompy.MakeRotation(Sample, OY, Parameter.Rotation/180*np.pi)
 
 	Common = geompy.MakeCommonList([Sample,Coil], True)
 	Measure = np.array(geompy.BasicProperties(Common))

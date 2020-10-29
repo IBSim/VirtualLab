@@ -708,14 +708,15 @@ The effect of the coolant is modelled as a 1D problem using its temperature, pre
 
 	VirtualLab.Control(
 		   RunMesh=True,
-		   RunSim=True,
-		   Port=None)
+		   RunSim=True)
 
 	VirtualLab.Mesh(
+                   NumThreads=1,
 		   ShowMesh=False,
 		   MeshCheck=None)
 
 	VirtualLab.Sim(
+                   NumThreads=1,
 		   RunPreAster=True,
 		   RunAster=True,
 		   RunPostAster=True,
@@ -749,8 +750,9 @@ The file used to generate the mesh is :file:`Scripts/HIVE/Mesh/AMAZE.py`. The ge
     Mesh.TileHeight = 0.005 
 
     if EMLoad == 'ERMES':
-        Mesh.ERMES = True
-        Mesh.Coil = {'Type':'Test', 'Displacement':[0, 0, 0.002]}
+        Mesh.CoilType = 'Test'
+        Mesh.CoilDisplacement = [0,0,0.0015]
+        Mesh.Rotation = 0
 
 .. _AMAZE:
 
@@ -762,12 +764,14 @@ The centre of the pipe is offset from the centre of the co-planar block face by 
 
 Using **ERMES** for the thermal load requires a mesh of the induction coil and surrounding vacuum to be generated as well as the sample. The additional attributes declared in the :code:`if` statement signal the **ERMES** specific information required.
 
-The dictionary *Coil* provides information about the induction coil used in the simulation. The ``key`` 'Type' specifies which coil design is used in the simulation. Currently available options are:
+The attribute *CoilType* specifies the coil design to be used. Currently available options are:
 
 * 'Test'
 * 'HIVE'
 
-The ``key`` 'Displacement' dictates the x,y and z components of the displacement of the coil with respect to the sample. The z-component indicates the gap between the upper surface of the sample and the coil and must be positive. The x and y components indicate the coil's offset about the centre of the sample.
+*CoilDisplacement* dictates the x,y and z components of the displacement of the coil with respect to the sample. The z-component indicates the gap between the upper surface of the sample and the coil and must be positive. The x and y components indicate the coil's offset about the centre of the sample.
+
+The sample is fitted in HIVE using the pipe, meaning that there is an additional rotational degree of freedom available. 
 
 The attributes *Length1D*-*3D* again specify the mesh refinement::
 
@@ -775,8 +779,8 @@ The attributes *Length1D*-*3D* again specify the mesh refinement::
     Mesh.Length1D = 0.005
     Mesh.Length2D = 0.005
     Mesh.Length3D = 0.005
-    Mesh.PipeDisc = 20 # Number of segments for pipe circumference
-    Mesh.SubTile = 0.002 # Mesh refinement on tile
+    Mesh.PipeDisc = 20 
+    Mesh.SubTile = 0.002 
 
 The attribute *PipeDisc* specifies the number of segments the pipe circumference will be split into. Due to the induction heating primarily being subjected to the tile on the sample, a finer mesh is required in this location. The attribute *SubTile* specifies the mesh size (1D, 2D and 3D) on the tile.
 
@@ -789,14 +793,15 @@ You will notice in *Parameters_Master* that *Sim* has the attribute *PreAsterFil
     Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
     Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 
-The *Pipe* dictionary specifies information about the geometry of the pipe, while *Coolant* provides properties about the fluid in the pipe. *CreateHTC* is a boolean flag to indicate if this step is run or if previously calculated values are used.
+The dictionary *Pipe* specifies information about the geometry of the pipe, while *Coolant* provides properties about the fluid in the pipe. *CreateHTC* is a boolean flag to indicate if this step is run or if previously calculated values are used.
 
 If **ERMES** is to be used for the thermal loading, then this is also launched in this script using the attributes::
 
     Sim.RunERMES = True
+    Sim.NbProc = 1
     Sim.Current = 1000
     Sim.Frequency = 1e4
-    Sim.EMThreshold = 0.999
+    Sim.Threshold = 0.999
 
 *Current* and *Frequency* are used by **ERMES** to produce a range of EM results, such as the Electric field (E), the Current density (J) and Joule heating. These results are stored in the sub-directory *PreAster* within the simulation directory.
 
@@ -814,7 +819,9 @@ Since the majority of the thermal loading occurs in the region of the sample nea
 
 .. note:: The coil power percentages in :numref:`Fig. %s <EM_Thresholding>` are an example only. These values will vary drastically depending on such things as the mesh refinement, frequency in the coil etc.
 
-The attribute *EMThreshold* specifies the fraction of the total coil power that has been selected to use as a 'cut-off'. Through testing, it has been found that a value of 0.999 is generally advised for analyses similar to the one in this tutorial.
+The attribute *Threshold* specifies the fraction of the total coil power that has been selected to use as a 'cut-off'. Through testing, it has been found that a value of 0.999 is generally advised for analyses similar to the one in this tutorial.
+
+*NbProc* dictates how many cpus the solver **ERMES** is entitled to use for each simulation.
 
 The *RunERMES* flags works similarly to *CreateHTC*.
 
@@ -834,7 +841,9 @@ You will notice in *Parameters_Master* that if *EMLoad* is set to 'Uniform' the 
 .. admonition:: Action
    :class: Action
 
-   Ensure *EMLoad* is set to 'Uniform' at the top of :file:`TrainingParameters.py` and execute the *Run* file. 
+   Ensure *EMLoad* is set to 'Uniform' at the top of :file:`TrainingParameters.py` and launch **VirtualLab**::
+
+        VirtualLab -f Run.py 
 
 'Setting up data for visualisation' is outside the scope of these tutorials. The **ParaVis** module within **SALOME** is based on another piece of open-source software called **ParaView**. If you would like to learn more about how to visualise datasets with **SALOME** it is recommended that you follow the tutorials available on `feaforall.com <https://feaforall.com/salome-meca-code-aster-tutorials/>`_ and `paraview.org <https://www.paraview.org/Wiki/The_ParaView_Tutorial>`_.
 
@@ -857,7 +866,11 @@ As previously mentioned, **ERMES** requires a mesh of the coil and surrounding v
       EMLoad = 'ERMES'
       Mesh.Name='TestCoil'
 
-   In the *Run* file change *ShowMesh* ``kwarg`` to :code:`True` in :attr:`VirtualLab.Mesh <VLSetup.Mesh>` and execute it.
+   In the *Run* file change *ShowMesh* ``kwarg`` to :code:`True` in :attr:`VirtualLab.Mesh <VLSetup.Mesh>`::
+
+      VirtualLab.Mesh(ShowMesh=True)
+
+   Launch **VirtualLab**.
 
 You should notice that information about two meshes are printed in the terminal; 'Sample' and 'xERMES'. 'xERMES' is the mesh used by **ERMES** while 'Sample' is the sub-mesh used by **Code_Aster**. Both of these are saved within the same ``MED`` file, :file:`Output/HIVE/Tutorials/Meshes/TestCoil.med` since they are intrinsically linked.
 
@@ -870,30 +883,52 @@ If you import the mesh created in Task 1 for comparison, you will see that altho
 Task 3: Running an ERMES simulation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now that the mesh required by **ERMES** has been created we can use it to create the BCs. 
+Now that the mesh required by **ERMES** has been created it can be used to create the BCs. 
 
-It is possible to check the desried *EMThresholding* prior to running the simulation by setting it to :code:`None`. This will terminate **VirtualLab** after running **ERMES** but prior to creating the individual element groups. A plot of the coil power percentages similar to that above is saved to :file:`PreAster/EM_Thresholding.png` in the simulation directory. You will also find :file:`ERMES.rmed`, which are the results of **ERMES** written in a format compatible for visualisation with **ParaVis**.
+Prior to running the simulation however it would be useful to view some of the different thresholding values to judge the best value for the simulation. This can be achieved using the ``kwarg`` *RunAster* in :attr:`VirtualLab.Sim <VLSetup.Sim>` to ensure that only the pre-Aster routine is run.
 
 .. admonition:: Action
    :class: Action
 
-   In :file:`TrainingParameters.py` change *Sim.Mesh* to the **ERMES** compatible mesh and change the simulation *Name*::
+   In :file:`TrainingParameters.py` change *Sim.Mesh* to the **ERMES** compatible mesh and change *Sim.Name*. Along with this change *Threshold* to :code:`None` since we are undecided about the thresholding value::
 
       Sim.Name='Sim_ERMES'
       Sim.Mesh='TestCoil'
-      Sim.EMThreshold=None
+      Sim.Threshold=None
    
-   You will also need to change the ``kwargs`` *ShowMesh* and *RunMesh* to :code:`False` in the *Run* file.
+   You will also need to change the ``kwargs`` *RunMesh*, *ShowMesh* and *RunAster* to :code:`False` in the *Run* file.::
 
-   Execute the *Run* file and view the plot of the coil power percentages.
+      VirtualLab.Control(RunMesh=False)
 
+      VirtualLab.Mesh(ShowMesh=False)
+
+      VirtualLab.Sim(RunAster=False)
+
+   Launch **VirtualLab**.
+
+Information generated by the **ERMES** solver is printed to the terminal followed by the power which is imparted in to the sample by the coil.
+
+The results generated by **ERMES** are converted to a format compatible with **ParaVis** and saved to :file:`PreAster/ERMES.rmed`. These are the results which are displayed in the GUI, assuming the ``kwarg`` *ShowRes* is still set to :code:`True`.
+
+The results from **ERMES** show's the whole domain, which includes the volume surrounding the sample and coil, which will obscure the view of them. In order to only visualise the sample and coil, these groups must be extracted. This is accomplished by selecting ``Filters / Alphabetical / Extract Group`` from the menu, then using the checkboxes in the properties window (usually on the bottom left side) to select ``Coil`` and ``Sample`` before clicking ``Apply``.
+
+It should then be possible to visualise any of the following results:
+
+ * Joule_heating
+ * Electric field (E) - real, imaginary and modulus
+ * Magnetic field (H) - real, imaginary and modulus
+ * Current Density (J) - real, imaginary and modulus
+
+Joule_heating is the field which is used in **Code_Aster**.
+
+Also in the :file:`PreAster` directory a plot of the coil power percentages similar to that above is saved to :file:`Thresholding.png`. This plot can then be used to better inform the choice for the attribute *Threshold*.
 
 Task 4: Applying ERMES BC in Code_Aster
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You decide that, for this analysis, 99% of the coil power will be sufficient. Since the HTC data and **ERMES** results have already been generated there is no need to run these again.
 
-Individual mesh groups are created only for the specific elements required to ensure 99% of the coil power is provided. The corresponding joule heating for these elements is piped to **Code_Aster** to be applied. The amount of power the coil generates will be printed to the terminal. 
+Individual mesh groups are created only for the specific elements required to ensure 99% of the coil power is provided. The corresponding values for joule_heating for these elements is piped to **Code_Aster** to be applied. The amount of power the coil generates will be printed to the terminal. 
 
 .. admonition:: Action
    :class: Action
@@ -904,11 +939,15 @@ Individual mesh groups are created only for the specific elements required to en
       Sim.RunERMES=False
       Sim.EMThreshold=0.99
 
-   Execute the *Run* file again.
+   You will also need to change the ``kwargs`` *RunAster* back to :code:`True` in the *Run* file to run the simulation::
 
-It is possible to visualise the result of this PreAster calculation with **ParaVis** (as previously described). On opening, the whole domain will be visualised. This includes the volume surrounding the sample and coil, which will obscure the view of them. In order to only visualise the sample and coil, these groups must be extracted. This is accomplished by selecting ``Filters / Alphabetical / Extract Group`` from the menu, then using the checkboxes in the properties window (usually on the bottom left side) to select ``Coil`` and ``Sample`` before clicking ``Apply``.
+      VirtualLab.Sim(RunAster=True)
 
-By investigating the visualisation of the results in **ParaVis** you will observe that the heating profile in the sample by using this coil is more representative of 'real world' conditions. You should see that the *Joule_heating* profile is very similar to that of the temperature profile on the sample.
+   Launch **VirtualLab**.
+
+Both the **ERMES** and **Code_Aster** results are displayed in **ParaVis** with the suffix 'ERMES' and 'Thermal' respectively. 
+
+By investigating the visualisation of the **Code_Aster** results you will observe that the heating profile in the sample by using this coil is more representative of 'real world' conditions. You should also notice that the temperature profile on the sample is very similar to the *Joule_heating* profile generated by **ERMES**.
 
 Task 5: ERMES Inputs
 ~~~~~~~~~~~~~~~~~~~~
@@ -924,16 +963,18 @@ In this case, we decide that we want to run another simulation where the current
 
    Create a copy of the directory 'Sim_ERMES' in :file:`Output/HIVE/Tutorials/Training` and name it 'Sim_ERMESx2'.
 
-   In :file:`TrainingParameters.py` you will need to change *Sim.Name* to 'Sim_ERMESx2' and double the value for the attribute *Current* to 2000.
+   In :file:`TrainingParameters.py` you will need to change *Sim.Name* to 'Sim_ERMESx2' and double the value for the attribute *Current* to 2000::
 
-   Execute the *Run* file.
+      Sim.Name = 'Sim_ERMESx2'
+      Sim.Current = 2000
+
+   Launch **VirtualLab**.
 
 This will overwrite the **Code_Aster** results copied across from 'Sim_ERMES' to 'Sim_ERMESx2' with new results based on a linear scaling of the original **ERMES** calculations without re-running it.
 
-Since *Joule_heating* is the product of the current density, J, and the electric filed, E, it is proportional to the square of the *Current*. By doubling the current the power delivered by the coil will be 4 times that of the previous task.
+Since *Joule_heating* is the product of the current density, J, and the electric filed, E, it is proportional to the square of the *Current*. By doubling the current the power delivered by the coil will be 4 times that of the previous task. This is verifiable by comparing the power delievered by the coil for the previous simulation and this one (116.3W v 465.5W) which is printed to the terminal.
 
-Open the two sets of results in **ParaVis** for comparison.
-
+Open the **Code_Aster** results from 'Sim_ERMES' in **ParaVis** alongside those from 'Sim_ERMESx2' in ``File/Open ParaView File``. The maximum temperature for the sample in 'Sim_ERMESx2' will be substantially higher than that in 'Sim_ERMES' due to the increased power delivered by the coil. 
 
 References
 **********

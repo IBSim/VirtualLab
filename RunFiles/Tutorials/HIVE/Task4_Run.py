@@ -33,14 +33,15 @@ VirtualLab=VLSetup(
 
 VirtualLab.Control(
            RunMesh=False,
-           RunSim=True,
-           Port=None)
+           RunSim=True)
 
 VirtualLab.Mesh(
+	   NumThreads=1,
            ShowMesh=False,
            MeshCheck=None)
 
 VirtualLab.Sim(
+	   NumThreads=1,
            RunPreAster=True,
            RunAster=True,
            RunPostAster=True,

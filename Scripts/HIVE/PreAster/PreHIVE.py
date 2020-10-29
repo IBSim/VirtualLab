@@ -31,9 +31,6 @@ def HTC(Info, StudyDict):
 		Cooldict = StudyDict['Parameters'].Coolant
 		Coolant = ClProp(T=Cooldict['Temperature']+273, P=Cooldict['Pressure'], velocity=Cooldict['Velocity'])
 
-		# for key, val in Coolant.__dict__.items():
-		# 	print(key, val)
-
 		# Onset of Nucleat boiling
 		T_onb = get_T_onb(Coolant,Pipe)
 
@@ -62,48 +59,6 @@ def HTC(Info, StudyDict):
 
 	### Exit due to errors
 	else: Info.Exit("CreateHTC not 'True' and {} contains no HTC.dat file".format(StudyDict['PREASTER']))
-
-
-#def ErmesRun(Info,study,NNodes):
-
-##	if Info.Studies[study]['Parameters'].EMtype == 'loop':
-##		for ermfile in RunFiles:
-##			ERMES_run = Popen('ERMESv12.0 {}/{}/{}'.format(Info.TMP_DIR,study,ermfile), shell = 'TRUE')
-##			ERMES_run.wait()
-##	else :
-
-#	Erstr= ''
-#	for ERMinf in Info.Studies[study]['ERMES']:
-#		Erstr = Erstr + 'ERMESv12.5 {}/{}/{} & '.format(Info.TMP_DIR,study,ERMinf[1])
-
-#	ERMES_run = Popen(Erstr[:-2], shell = 'TRUE')
-#	ERMES_run.wait()
-#	Info.CheckProc(ERMES_run)
-
-#	Results = []
-#	for ERMinf in Info.Studies[study]['ERMES']:
-#		ERMres = [ERMinf[0]]
-#		with open('{}/{}/{}.post.res'.format(Info.TMP_DIR,study,ERMinf[1]),'r') as f:
-#			for j,line in enumerate(f):
-#				if j < 3 :
-#					continue
-#				elif j >= 3+NNodes :
-#					break
-#				else :
-#					ERMres.append(float(line.split()[1]))
-
-#		Results.append(ERMres)
-
-#	res = (np.array(Results)).transpose()
-
-#	np.savetxt('{}/{}/EM.dat'.format(Info.TMP_DIR,study),res,fmt = '%.8f',delimiter = '   ')
-#	np.savetxt('{}/EM.dat'.format(Info.Studies[study]['DATA_DIR']),res,fmt = '%.8f',delimiter = '   ')
-
-#	### Remove a file which gets created in the PWD
-#	try:
-#		os.remove('vector_Xo.dat')
-#	except :
-#		pass
 
 def CoilCurrent(EMMesh, JRes, groupname = 'CoilIn', **kwargs):
 	facesum, intJ, intJsq = 0, 0, 0
@@ -590,44 +545,12 @@ def ERMES(Info, StudyDict):
 	CoilPower = CumSum[-1]
 	CumSum = CumSum/CoilPower
 	CoilPower = CoilPower*Parameters.Current**2
-	print("Power delivered by coil: {:.4f}W".format(CoilPower))
+	print("Power delivered by coil: {:.4f} W".format(CoilPower))
 
 	CoilFace = MeshInfo("{}/{}.med".format(Info.MESH_DIR,Parameters.Mesh), meshname='Sample').GroupInfo('CoilFace')
 	CFNodes = JHNode[CoilFace.Nodes-1]
 	Std = np.std(CFNodes)
 	sqrtd = np.sqrt(CFNodes.shape[0])
-
-	# Get mesh information from {MESHNAME}.py file in MESH_DIR
-	sys.path.insert(0,Info.MESH_DIR)
-	VLMesh = import_module(Parameters.Mesh)
-
-	CoilTypes = ['Test','HIVE']
-	Ix = CoilTypes.index(VLMesh.CoilType)
-	InList = [Ix,VLMesh.CoilRotation] + VLMesh.CoilDisplacement
-	OutList = [CoilPower,Std]
-	Rlist = np.around(InList+OutList,6)
-	print(Rlist)
-
-	MLFile = "{}/ML2.hdf5".format(Info.STUDY_DIR)
-	Write = True
-	while Write:
-		try :
-			ML = h5py.File(MLFile, 'a')
-			Write = False
-		except OSError:
-			pass
-	# print('writing',Parameters.Name)
-	if 'ERMES' not in ML.keys():
-		length = Rlist.shape[0]
-		ML.create_dataset('ERMES',(length,1),data=Rlist,maxshape=(length,None))
-	else:
-		dset = ML['ERMES'][:].T
-		# tst = (dset[:,:5] == Rlist[:5]).all(axis=1)
-		if not (dset[:,:5] == Rlist[:5]).all(axis=1).any():
-			ML['ERMES'].resize(ML['ERMES'].shape[1]+1,axis=1)
-			ML['ERMES'][:,-1] = Rlist
-		else : print('skip')
-	ML.close()
 
 	## Thresholding preview
 	if getattr(Parameters,'ThresholdPreview', True):
@@ -655,7 +578,7 @@ def ERMES(Info, StudyDict):
 		plt.xlabel('Fraction of total elements required')
 		plt.ylabel('Power (scaled)')
 		# plt.show()
-		plt.savefig("{}/EM_Thresholding.png".format(StudyDict['PREASTER']))
+		plt.savefig("{}/Thresholding.png".format(StudyDict['PREASTER']))
 		plt.close()
 
 		# fig = plt.figure(figsize = (14,5))
@@ -757,7 +680,6 @@ def ERMES(Info, StudyDict):
 			ElInfo["FAM"][:] = ElFamFull
 			tmpMeshMed.close()
 			StudyDict['MeshFile'] = tmpMeshFile
-			print('Create:{}'.format(time.time()-st))
 
 		elif GroupBy == 'SALOME':
 			st = time.time()
@@ -765,7 +687,6 @@ def ERMES(Info, StudyDict):
 			EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
 			Info.SalomeRun(EMGroupFile, ArgDict=ArgDict)
 			StudyDict['MeshFile'] = tmpMeshFile
-			print('Create:{}'.format(time.time()-st))
 
 def Single(Info, StudyDict):
 	HTC(Info, StudyDict)

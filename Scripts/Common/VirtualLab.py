@@ -33,6 +33,8 @@ class VLSetup():
 		self.Project = Project
 		self.StudyName = StudyName
 
+		self.__ID__ = (datetime.datetime.now()).strftime("%y%m%d_%H%M%S")
+
 		VL_DIR = VLconfig.VL_DIR
 		if VL_DIR != sys.path[-1]: sys.path.pop(-1)
 
@@ -52,8 +54,8 @@ class VLSetup():
 
 		# tmp directory
 		TEMP_DIR = getattr(VLconfig,'TEMP_DIR',"/tmp")
+		self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, Project, self.__ID__)
 		if Project == '.dev': self.TMP_DIR = "{}/dev".format(TEMP_DIR)
-		else: self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, Project, (datetime.datetime.now()).strftime("%y%m%d%H%M%S"))
 
 		# Define variables and run some checks
 		# Script directories
@@ -69,14 +71,14 @@ class VLSetup():
 		self.MATERIAL_DIR = MATERIAL_DIR
 
 		# Output directory
-		PROJECT_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, Project)
-		self.STUDY_DIR = "{}/{}".format(PROJECT_DIR, StudyName)
-		self.MESH_DIR = "{}/Meshes".format(PROJECT_DIR)
+		self.PROJECT_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, Project)
+		self.STUDY_DIR = "{}/{}".format(self.PROJECT_DIR, StudyName)
+		self.MESH_DIR = "{}/Meshes".format(self.PROJECT_DIR)
 
 		# Create dictionary of Parameters info
 		self.Parameters = {'Master':Parameters_Master,'Var':Parameters_Var,'Dir':'{}/{}/{}'.format(INPUT_DIR, Simulation, Project)}
 
-		self.Salome = VLSalome(self.TMP_DIR, self.COM_SCRIPTS, self.SIM_SCRIPTS)
+		self.Salome = VLSalome(self)
 
 	def Control(self, **kwargs):
 		'''
@@ -87,12 +89,6 @@ class VLSetup():
 		'''
 		RunMesh = kwargs.get('RunMesh', True)
 		RunSim = kwargs.get('RunSim',True)
-		Port = kwargs.get('Port', None)
-
-		# If port is provided it assumes an open instance of salome exists on that port
-		# and will shell in to it. The second value indictates whether or not
-		# to kill the salome instance at the end of the process.
-		# self.__port__ = [Port, False]
 
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_SCRIPTS)
@@ -229,11 +225,18 @@ class VLSetup():
 				# Add StudyDict to Studies dictionary
 				self.Studies[SimName] = StudyDict.copy()
 
-		# Gather information to return to Analytics function
-
+		# Gather information about what's running in VirtualLab
 		NumSims = len(self.Studies)
 		NumMeshes = len(MeshNames) if NumSims else 0
 		NumMeshesCr = len(self.Meshes)
+
+		self.Logger('### Launching VirtualLab ###',Print=True)
+		Infostr = "Simulation Type: {}\n"\
+				  "Project: {}\n"\
+				  "StudyName: {}\n"\
+				  "Nb. Meshes: {}\n"\
+				  "Nb. Simulations: {}".format(self.Simulation,self.Project,self.StudyName,NumMeshesCr,NumSims)
+		self.Logger(Infostr)
 
 		# Using inspect and ast we can get the name of the RunFile used and the
 		# environment values which are used ()
@@ -296,16 +299,14 @@ class VLSetup():
 		elif MeshCheck and MeshCheck not in self.Meshes.keys():
 			self.Exit("MeshCheck '{}' is not one of meshes to be created.\nMeshes to be created are:{}".format(MeshCheck, list(self.Meshes.keys())))
 
-		print('### Starting Meshing ###\n')
-
-		COutFile = '' if self.mode=='Interactive' else '/dev/null'
+		self.Logger('\n### Starting Meshing ###\n',Print=True)
 
 		NumMeshes = len(self.Meshes)
 		NumThreads = min(NumThreads,NumMeshes)
 		MeshError = []
 
 		# Start #NumThreads number of Salome sessions
-		Ports = self.Salome.Start(NumThreads,OutFile = COutFile)
+		Ports = self.Salome.Start(NumThreads, OutFile=self.LogFile)
 		PortCount = {Port:0 for Port in Ports}
 
 		# Script which is used to import the necessary mesh function
@@ -314,14 +315,16 @@ class VLSetup():
 		ArgDict = {}
 		if os.path.isfile('{}/config.py'.format(self.SIM_MESH)): ArgDict["ConfigFile"] = True
 
+		tmpLogstr = "" if self.mode=='Interactive' else "{}/{}_log"
 		MeshStat = {}
 		NumActive=NumComplete=0
 		SalomeReset = 400 #Close Salome session(s) & open new after this many meshes due to memory leak
+		SalomeReset=1
 		for MeshName, MeshPara in self.Meshes.items():
-			print("\nStarting mesh '{}'".format(MeshName))
+			self.Logger("'{}' started".format(MeshName),Print=True)
 
 			port = Ports.pop(0)
-			tmpLog = '' if self.mode=='Interactive' else "{}/{}_log".format(self.GEOM_DIR,MeshName)
+			tmpLog = tmpLogstr.format(self.GEOM_DIR,MeshName)
 
 			ArgDict.update(Name=MeshName, MESH_FILE="{}/{}.med".format(self.MESH_DIR, MeshName),
 						   RCfile="{}/{}_RC.txt".format(self.GEOM_DIR,MeshName))
@@ -337,43 +340,42 @@ class VLSetup():
 					Poll = Proc.poll()
 					# If SubProc finished Poll will change from None to errorcode
 					if Poll is not None:
+						if self.mode != 'Interactive':
+							with open(tmpLogstr.format(self.GEOM_DIR,tmpMeshName),'r') as rtmpLog:
+								self.Logger("\nOutput for '{}':\n{}".format(tmpMeshName,rtmpLog.read()))
+
 						# Check if any returncode provided
 						RCfile="{}/{}_RC.txt".format(self.GEOM_DIR,tmpMeshName)
 						if os.path.isfile(RCfile):
 							with open(RCfile,'r') as f:
 								returncode=int(f.readline())
 							AffectedSims = [Name for Name, StudyDict in self.Studies.items() if StudyDict["Parameters"].Mesh == tmpMeshName]
-							print("Code {} returned during creation of mesh {}".format(returncode,tmpMeshName))
 							MeshPara = self.Meshes[tmpMeshName]
 							MeshImp = import_module('Mesh.{}'.format(MeshPara.File))
 							# Check in meshfile for error code handling
 							if hasattr(MeshImp,'HandleRC'):
-								print("ReturnCode passed to HandleRC() in mesh file")
+								self.Logger("'{}'' returned code {}. "\
+											"Passed to HandleRC function.".format(tmpMeshName,returncode),Print=True)
 								MeshImp.HandleRC(returncode,self.Studies,AffectedSims,tmpMeshName, MeshError)
 							else :
-								print("No error handling function in mesh file, mesh added to mesh error list")
+								self.Logger("'{}' returned code {}. Added to error list "\
+											"since no HandleRC function found".format(tmpMeshName,returncode),Print=True)
 								MeshError.append(tmpMeshName)
 						# SubProc returned with error code
 						elif Poll != 0:
-							print("Mesh '{}' finished with errors\n".format(tmpMeshName))
+							self.Logger("'{}' finished with errors".format(tmpMeshName), Print=True)
 							MeshError.append(tmpMeshName)
 						# SubProc returned successfully
 						else :
-							print("Mesh '{}' completed\n".format(tmpMeshName))
-							IndMeshData = "{}/{}.py".format(self.MESH_DIR, tmpMeshName)
-							with open(IndMeshData,"w") as g:
-								with open("{}/{}.py".format(self.GEOM_DIR,tmpMeshName),'r') as MeshData:
-									g.write("# Parameters used to create mesh\n{}".format(MeshData.read()))
-									if self.mode != 'Interactive':
-										with open("{}/{}_log".format(self.GEOM_DIR,tmpMeshName),'r') as rtmpLog:
-											g.write("\n'''\nMesh output:\n\n{}\n'''".format(rtmpLog.read()))
+							self.Logger("'{}' completed successfully".format(tmpMeshName), Print=True)
+							shutil.copy("{}/{}.py".format(self.GEOM_DIR,tmpMeshName), self.MESH_DIR)
 
 						# Check if a new salome sesion is needed to free up memory
 						# for the next mesh
 						if NumComplete < NumMeshes and PortCount[port] >= SalomeReset/NumThreads:
-							print("Limit reached on Salome session {}".format(port))
+							self.Logger("Limit reached on Salome session {}".format(port))
 							Salome_Close = self.Salome.Close(port)
-							port = self.Salome.Start()[0]
+							port = self.Salome.Start(OutFile=self.LogFile)[0]
 							PortCount[port] = 0
 							Salome_Close.wait()
 
@@ -387,14 +389,7 @@ class VLSetup():
 
 		if MeshError: self.Exit("The following Meshes finished with errors:\n{}".format(MeshError))
 
-			# MeshCls = import_module('Mesh.{}'.format(MeshPara.File))
-			# if hasattr(MeshCls,'ErrorHandling'):
-			# 	MeshCls.ErrorHandling(self, Proc.returncode)
-			#
-			# if self.mode == 'Interactive': print("Completed mesh '{}'\n".format(MeshName))
-			# else : print("Completed mesh '{}'. See '{}' for log\n".format(MeshName,IndMeshData))
-
-		print('\n### Meshing Completed ###\n')
+		self.Logger('\n### Meshing Completed ###',Print=True)
 		if ShowMesh:
 			print("Opening mesh files in Salome")
 			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.Meshes.keys()]
@@ -433,7 +428,7 @@ class VLSetup():
 		memory = kwargs.get('memory',2)
 		NumThreads = kwargs.get('NumThreads',1)
 
-		print('\n### Starting Simulations ###\n')
+		self.Logger('\n### Starting Simulations ###\n')
 
 		NumSim = len(self.Studies)
 		NumThreads = min(NumThreads,NumSim)
@@ -616,21 +611,6 @@ class VLSetup():
 			if hasattr(PostAster, 'Combined'):
 				PostAster.Combined(self)
 
-			# for Name, StudyDict in self.Studies.items():
-			# 	PostAsterFile = getattr(StudyDict['Parameters'],'PostAsterFile', None)
-			# 	if not PostAsterFile : continue
-			# 	PostAster = __import__(PostAsterFile)
-			# 	if hasattr(PostAster, 'Individual'):
-			# 		print("PostAster for '{}' started\n".format(Name))
-			# 		if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
-			# 		if self.mode == 'Interactive':
-			# 			PostAster.Individual(self, StudyDict)
-			# 		else:
-			# 			with open("{}/log.txt".format(StudyDict['POSTASTER']), 'w') as f:
-			# 				with contextlib.redirect_stdout(f):
-			# 					PostAster.Individual(self, StudyDict)
-			# 		print("PostAster for '{}' completed\n".format(Name))
-
 		print('\n### Simulations Completed ###')
 
 		# Opens up all results in ParaVis
@@ -680,6 +660,26 @@ class VLSetup():
 		# Start Aster subprocess
 		proc = Popen(PreCond + command , shell='TRUE')
 		return proc
+
+	def Logger(self,Text='',**kwargs):
+		Prnt = kwargs.get('Print',False)
+
+		if not hasattr(self,'LogFile'):
+			if self.mode=='Interactive':
+				self.LogFile = None
+			else:
+				self.LogFile = "{}/log/{}_{}.log".format(self.PROJECT_DIR,self.StudyName,self.__ID__)
+				os.makedirs(os.path.dirname(self.LogFile), exist_ok=True)
+				with open(self.LogFile,'w') as f:
+					pass
+		if Text:
+			if self.mode=='Interactive':
+				print(Text)
+			else:
+				if Prnt: print(Text)
+				with open(self.LogFile,'a') as f:
+					f.write(Text+"\n")
+
 
 
 	def ErrorCheck(self, Stage, **kwargs):
@@ -746,11 +746,14 @@ class VLSetup():
 		if remove == 'y' and os.path.isdir(self.TMP_DIR):
 			shutil.rmtree(self.TMP_DIR)
 
+		# self.Logger('### VirtualLab Finished###\n',Print=True)
+
 class VLSalome():
-	def __init__(self, TMP_DIR, COM_SCRIPTS, SIM_SCRIPTS):
-		self.TMP_DIR = TMP_DIR
-		self.COM_SCRIPTS = COM_SCRIPTS
-		self.SIM_SCRIPTS = SIM_SCRIPTS
+	def __init__(self, super):
+		self.TMP_DIR = super.TMP_DIR
+		self.COM_SCRIPTS = super.COM_SCRIPTS
+		self.SIM_SCRIPTS = super.SIM_SCRIPTS
+		self.Logger = super.Logger
 		self.Ports = []
 
 	def Start(self, Num=1,**kwargs):
@@ -758,8 +761,10 @@ class VLSalome():
 		ErrFile = kwargs.get('ErrFile', OutFile)
 
 		output = ''
-		if OutFile: output += "1>{} ".format(OutFile)
-		if ErrFile: output += "2>{} ".format(ErrFile)
+		if OutFile: output += " >>{}".format(OutFile)
+		if ErrFile: output += " 2>>{}".format(ErrFile)
+
+		self.Logger("Initiating Salome\n", Print=True)
 
 		SalomeSP = []
 		NewPorts = []
@@ -771,15 +776,14 @@ class VLSalome():
 		for SubProc, portfile in SalomeSP:
 			SubProc.wait()
 			if SubProc.returncode != 0:
-				print("Error during Salome initiation")
+				self.Logger("Error during Salome initiation",Print=True)
 				return False
 
 			with open(portfile,'r') as f:
 				port = int(f.readline())
-
-			print('Salome opened on port {}'.format(port))
 			NewPorts.append(port)
 
+		self.Logger('Salome opened on port(s) {}\n'.format(NewPorts))
 		self.Ports.extend(NewPorts)
 
 		return NewPorts
@@ -840,10 +844,8 @@ class VLSalome():
 			if Port in self.Ports:
 				Portstr += "{} ".format(Port)
 				self.Ports.remove(Port)
-			else :
-				print("Salome not open on port {}".format(Port))
 
 		Salome_close = Popen('salome kill {}'.format(Portstr), shell = 'TRUE')
-		print('Closing Salome on port(s) {}'.format(Ports))
+		self.Logger('Closing Salome on port(s) {}'.format(Ports))
 
 		return Salome_close

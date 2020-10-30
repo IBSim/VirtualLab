@@ -577,32 +577,17 @@ The first two images are created using the python package `matplotlib <https://m
 
 The curves for an Rvale of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample i.e. directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical, which is due to the different spatial profile of the laser.
 
-The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the attribute *CaptureTime*, while :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used in the simulation and its cross-section, respectively.
+The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the attribute *CaptureTime*. The colour bar range used in this image is the same for each simulation for ease of comparison, using the global min. and max. temperature. 
+
+The images :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used in the simulation and its cross-section, respectively.
 
 .. note::
 
    If errors have occured when creating images in **ParaVis** then include the attribute *Sim.PVGUI* in :file:`TrainingParameters.py` as advised in the 'Action' section for VMs above.
 
    Also feel free to include this attribute in the file if you are interested in seeing how **ParaVis** is used to generate images.
-  
 
-Task 3: Adapting Post-Processing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Now suppose that you wish to perform post-processing of the simulation results again, but this time with different *Rvalues*. Since the existing results are correct, there’s no need to re-run the simulation.
-
-This is possible by setting the ``kwarg`` *RunAster* to :code:`False` in :attr:`VirtualLab.Sim <VLSetup.Sim>`. These environment settings will ensure that **Code_Aster** is not called, but that other parts of :attr:`VirtualLab.Sim <VLSetup.Sim>`, such as pre/post-processing, are executed. Similarly, the ``kwargs`` *RunPreAster* and *RunPostAster* are available options to control whether those parts of **VirtualLab** are executed.
-
-.. admonition:: Action
-   :class: Action
-
-   In the *Run* file set the ``kwarg`` *RunAster*  to :code:`False`. Since the results files aren't changing, you may also set *ShowRes* to :code:`False`::
-
-      VirtualLab.Sim(RunAster=False, ShowRes=False)
-
-   Try entering your own custom values in the list *Rvalues* (between 0 and 1) and launch **VirtualLab**.
-
-Task 4: Re-running Sub-sets of Simulations
+Task 3: Re-running Sub-sets of Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You realise that you wanted to run the ‘SimNoVoid’ simulation with a uniform laser profile, rather than the Gaussian profile you used. Running particular sub-sets of simulations from *Parameters_Var* can be achieved by including *Sim.Run* in the file. This list of booleans will specify which simulations are run. For example::
@@ -613,12 +598,16 @@ included within a *Parameters_Var* file, this would signal that only the first a
 
 Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` the corresponding entry in *Sim.Run* will need to be :code:`True` with the remaining entries set to :code:`False`.
 
+Since the **ParaVis** images created use the same colour bar range for each image it is best that the post-processing is run on all simulations instead of just this one. 
+
+This is possible by setting the ``kwarg`` *RunPostAster* to :code:`False` in :attr:`VirtualLab.Sim <VLSetup.Sim>`. These environment settings will ensure that the PostAster routine is not called, but that other parts of :attr:`VirtualLab.Sim <VLSetup.Sim>`, such as **Code_Aster**, are executed. Similarly, the ``kwargs`` *RunPreAster* and *RunAster* are available options to control whether those parts of **VirtualLab** are executed.
+
 .. admonition:: Action
    :class: Action
 
-   In the *Run* file change *RunAster*  and *ShowRes* back to to :code:`True`::
+   In the *Run* file change *RunPostAster*  to :code:`False`::
 
-      VirtualLab.Sim(RunAster=True, ShowRes=True)
+      VirtualLab.Sim(RunPostAster=False)
 
    In the *Aster* section of :file:`Parametric_1.py` add *Sim.Run* with the values shown below and change the first entry in *Sim.LaserS* to 'Uniform'::
 
@@ -641,6 +630,26 @@ You should see only the simulation 'SimNoVoid' running in an xterm window. From 
 
    to :file:`Parametric_1.py` and re running the mesh would result only in 'NoVoid' being re-meshed since this is the first entry in *Mesh.Name*.
 
+Task 4: Adapting Post-Processing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Now that all the simulations are correct you wish to perform post-processing of the simulation results again. There is no need to re-run the simulation.
+
+.. admonition:: Action
+   :class: Action
+
+   In the *Run* file set the ``kwarg`` *RunAster*  to :code:`False`. Since the results files aren't changing, you may also set *ShowRes* to :code:`False`::
+
+      VirtualLab.Sim(RunAster=False, ShowRes=False)
+
+   We want to run the post-processing on all 3 of the simulations again so comment out *Sim.Run* (or remove it).
+
+      #Sim.Run = [True,False,False]
+
+   Launch **VirtualLab**.
+
+
+
 Task 5: Non-linear Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -651,15 +660,18 @@ The collection of available materials can be found in the `Materials <structure.
 .. admonition:: Action
    :class: Action
 
+   In the *Run* file *RunAster* and *ShowRes* will need to be changed back to :code:`True`::
+
+      VirtualLab.Sim(RunAster=True, ShowRes=True)
+
    In :file:`TrainingParameters.py` change *Sim.AsterFile* to 'Disc_NonLin' and modify *Sim.Materials* to use non-linear materials::
 
       Sim.AsterFile = 'Disc_NonLin'
       Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
 
-   We want to run the 3 simulations again and save the results seperately. In :file:`Parameteric_1.py` comment out *Sim.Run* (or remove it) and change the simulation names in *Sim.Names*::
+   We want to save the results of the nonlinear simulations again seperately. In :file:`Parameteric_1.py` change the simulation names in *Sim.Names*::
 
       Sim.Name = ['SimNoVoid_NL','SimVoid1_NL','SimVoid2_NL']
-      #Sim.Run = [True,False,False]
 
    Launch **VirtualLab**.
 

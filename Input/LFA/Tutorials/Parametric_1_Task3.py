@@ -22,7 +22,10 @@ Sim.Name = ['SimNoVoid','SimVoid1','SimVoid2']
 #############
 Sim.Mesh = ['NoVoid','Void', 'Void']
 Sim.LaserS = ['Uniform', 'Gauss', 'Uniform']
+Sim.Run = [True, False, False]
 
 #############
 ## Post-Sim #
 #############
+
+

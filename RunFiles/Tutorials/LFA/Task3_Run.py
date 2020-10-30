@@ -16,7 +16,7 @@ Simulation='LFA'
 Project='Tutorials'
 StudyName='Training'
 Parameters_Master='TrainingParameters'
-Parameters_Var='Parametric_1'
+Parameters_Var='Parametric_1_Task3'
 Mode='Interactive'
 
 ################################################################################
@@ -35,6 +35,6 @@ VirtualLab.Control(RunMesh=False)
 
 VirtualLab.Mesh()
 
-VirtualLab.Sim(NumThreads=3,RunAster=False)
+VirtualLab.Sim(NumThreads=3,RunPostAster=False,ShowRes=True)
 
 VirtualLab.Cleanup()

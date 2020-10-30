@@ -35,17 +35,20 @@ for Sim in PVParameters.Simulations:
 	renderView1.Background = [1,1,1]  ### White Background
 
 	animationScene1 = pvsimple.GetAnimationScene()
-	animationScene1.AnimationTime = Parameters.CaptureTime
+	if Parameters.CaptureTime > animationScene1.EndTime:
+		animationScene1.AnimationTime = animationScene1.EndTime
+	else :
+		animationScene1.AnimationTime = Parameters.CaptureTime
 	# animationScene1.UpdateAnimationUsingDataTimeSteps()
 
 	# set scalar coloring
-	pvsimple.ColorBy(thermalrmedDisplay, ('POINTS', 'resther_TEMP', 'TEMP'))
+	pvsimple.ColorBy(thermalrmedDisplay, ('POINTS', 'Temperature'))
 
 	CBmin, CBmax = PVParameters.GlobalRange
-	resther_TEMPLUT = pvsimple.GetColorTransferFunction('resther_TEMP')
+	resther_TEMPLUT = pvsimple.GetColorTransferFunction('Temperature')
 	resther_TEMPLUT.NumberOfTableValues = 12
 	resther_TEMPLUT.RescaleTransferFunction(CBmin, CBmax)
-	resther_TEMPPWF = pvsimple.GetOpacityTransferFunction('resther_TEMP')
+	resther_TEMPPWF = pvsimple.GetOpacityTransferFunction('Temperature')
 	resther_TEMPPWF.RescaleTransferFunction(CBmin, CBmax)
 
 	ColorBar = pvsimple.GetScalarBar(resther_TEMPLUT, renderView1)

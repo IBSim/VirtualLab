@@ -78,6 +78,8 @@ class VLSetup():
 		# Create dictionary of Parameters info
 		self.Parameters = {'Master':Parameters_Master,'Var':Parameters_Var,'Dir':'{}/{}/{}'.format(INPUT_DIR, Simulation, Project)}
 
+		self.Logger('### Launching VirtualLab ###',Print=True)
+
 		self.Salome = VLSalome(self)
 
 	def Control(self, **kwargs):
@@ -135,7 +137,7 @@ class VLSetup():
 
 						diff = set(NV.keys()).difference(Val)
 						if diff:
-							print("Warning: New key(s) {} specified in dictionary {} for mesh '{}'. This may lead to unexpected resutls".format(diff, VarName, MeshName))
+							self.Logger("Warning: New key(s) {} specified in dictionary {} for mesh '{}'. This may lead to unexpected resutls".format(diff, VarName, MeshName), Print=True)
 
 						Val.update(NV)
 					else :
@@ -230,7 +232,6 @@ class VLSetup():
 		NumMeshes = len(MeshNames) if NumSims else 0
 		NumMeshesCr = len(self.Meshes)
 
-		self.Logger('### Launching VirtualLab ###',Print=True)
 		Infostr = "Simulation Type: {}\n"\
 				  "Project: {}\n"\
 				  "StudyName: {}\n"\
@@ -287,7 +288,7 @@ class VLSetup():
 		# MeshCheck routine which allows you to mesh in the GUI (Used for debugging).
 		# The script will terminate after this routine
 		if MeshCheck and MeshCheck in self.Meshes.keys():
-			print('### Meshing {} in GUI ###\n'.format(MeshCheck))
+			self.Logger('### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
 
 			MeshParaFile = "{}/{}.py".format(self.GEOM_DIR,MeshCheck)
 			MeshScript = "{}/{}.py".format(self.SIM_MESH, self.Meshes[MeshCheck].File)
@@ -390,12 +391,11 @@ class VLSetup():
 
 		self.Logger('\n### Meshing Completed ###',Print=True)
 		if ShowMesh:
-			print("Opening mesh files in Salome")
+			self.Logger("Opening mesh files in Salome",Print=True)
 			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.Meshes.keys()]
 			SubProc = Popen('salome {}/ShowMesh.py args:{} '.format(self.COM_SCRIPTS,",".join(MeshPaths)), shell='TRUE')
 			SubProc.wait()
-			self.Cleanup()
-			sys.exit()
+			self.Exit("Terminating after mesh viewing")
 
 	def Sim(self, **kwargs):
 		if not self.Studies: return
@@ -427,13 +427,16 @@ class VLSetup():
 		memory = kwargs.get('memory',2)
 		NumThreads = kwargs.get('NumThreads',1)
 
-		self.Logger('\n### Starting Simulations ###\n')
+		self.Logger('\n### Starting Simulations ###\n', Print=True)
 
 		NumSim = len(self.Studies)
 		NumThreads = min(NumThreads,NumSim)
 
+		SimLogFile = "{}/Output.log"
+
 		SimMaster = self.Parameters_Master.Sim
 		if RunPreAster and hasattr(SimMaster,'PreAsterFile'):
+			self.Logger('>>> PreAster Stage', Print=True)
 			sys.path.insert(0, self.SIM_PREASTER)
 
 			count, NumActive = 0, 0
@@ -447,7 +450,7 @@ class VLSetup():
 				if not PreAsterSgl: continue
 
 
-				print("Pre-Aster for '{}' started\n".format(Name))
+				self.Logger("Pre-Aster for '{}' started\n".format(Name),Print=True)
 				if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
 
 				proc = Process(target=MPRun.main, args=(self,StudyDict,PreAsterSgl))
@@ -455,7 +458,7 @@ class VLSetup():
 				if self.mode == 'Interactive':
 					proc.start()
 				else :
-					with open("{}/Log.txt".format(StudyDict['PREASTER']), 'w') as f:
+					with open(SimLogFile.format(StudyDict['PREASTER']), 'w') as f:
 						with contextlib.redirect_stdout(f):
 							# stderr may need to be written to a seperate file and then copied over
 							with contextlib.redirect_stderr(sys.stdout):
@@ -469,15 +472,19 @@ class VLSetup():
 						EC = proc.exitcode
 						if EC == None:
 							continue
-						elif EC == 0:
-							print("Pre-Aster for '{}' completed\n".format(tmpName))
+						tmpStudyDict = self.Studies[tmpName]
+						if EC == 0:
+							self.Logger("Pre-Aster for '{}' completed\n".format(tmpName),Print=True)
 						else :
-							print("Pre-Aster for '{}' returned error code {}\n".format(tmpName,EC))
+							self.Logger("Pre-Aster for '{}' returned error code {}\n".format(tmpName,EC),Print=True)
 							PreError.append(tmpName)
+
+						if self.mode != 'Interactive':
+							self.Logger("See {} for details".format(SimLogFile.format(tmpStudyDict['PREASTER'])),Print=EC)
+
 						PreStat.pop(tmpName)
 						NumActive-=1
 
-						tmpStudyDict = self.Studies[tmpName]
 						picklefile = "{}/StudyDict.pickle".format(tmpStudyDict["TMP_CALC_DIR"])
 						if os.path.isfile(picklefile):
 							with open(picklefile, 'rb') as handle:
@@ -492,10 +499,13 @@ class VLSetup():
 
 			PreAster = import_module(SimMaster.PreAsterFile)
 			if hasattr(PreAster, 'Combined'):
+				self.Logger('\n Running PreAster Combined #\n', Print=True)
 				PreAster.Combined(self)
 
+			self.Logger('>>> PreAster Stage Complete\n', Print=True)
 
 		if RunAster and hasattr(SimMaster,'AsterFile'):
+			self.Logger('>>> Aster Stage', Print=True)
 			AsterError = []
 			AsterStat = {}
 			count, NumActive = 0, 0
@@ -522,38 +532,46 @@ class VLSetup():
 				with open(exportfile,'w+') as e:
 					e.write(exportstr)
 
+				self.Logger("Aster for '{}' started".format(Name),Print=True)
 				AsterStat[Name] = self.AsterExec(StudyDict, exportfile)
-				print("Aster for '{}' started".format(Name))
 				count +=1
 				NumActive +=1
 
 				while NumActive==NumThreads or count==NumSim:
 					for tmpName, Proc in AsterStat.copy().items():
 						Poll = Proc.poll()
-						if Poll is not None:
-							tmpStudyDict = self.Studies[tmpName]
-							err = Poll
-							if self.mode == 'Interactive':
-								with open('{}/Aster.txt'.format(tmpStudyDict['TMP_CALC_DIR']),'r') as f:
-									err = int(f.readline())
-							elif self.mode == 'Continuous':
-								os.remove('{}/ContinuousAsterLog'.format(tmpStudyDict['ASTER']))
+						if Poll == None:
+							continue
+						tmpStudyDict = self.Studies[tmpName]
+						if self.mode == 'Interactive':
+							with open('{}/Aster.txt'.format(tmpStudyDict['TMP_CALC_DIR']),'r') as f:
+								EC = int(f.readline())
+						else : EC = Poll
+						# elif self.mode == 'Continuous':
+						# 	os.remove('{}/ContinuousAsterLog'.format(tmpStudyDict['ASTER']))
 
-							if err != 0:
-								print("Aster for '{}' returned error code {}.\nCheck AsterLog in {}".format(tmpName,err,tmpStudyDict['ASTER']))
-								AsterError.append(tmpName)
-							else :
-								print("Aster for '{}' completed".format(tmpName))
-							AsterStat.pop(tmpName)
-							Proc.terminate()
+						if EC == 0:
+							self.Logger("Aster for '{}' completed".format(tmpName),Print=True)
+						else :
+							self.Logger("Aster for '{}' returned error code {}.".format(tmpName,EC))
+							AsterError.append(tmpName)
+
+						if self.mode != 'Interactive':
+							self.Logger("See {}/AsterLog for details".format(tmpStudyDict['ASTER']),Print=EC)
+
+						AsterStat.pop(tmpName)
+						Proc.terminate()
 
 					if not len(AsterStat): break
 					time.sleep(0.1)
 
 			if AsterError: self.Exit("The following simulation(s) finished with errors:\n{}".format(AsterError),KeepDirs=AsterError)
 
+			self.Logger('>>> Aster Stage Complete\n', Print=True)
+
 		if RunPostAster and hasattr(SimMaster,'PostAsterFile'):
 			sys.path.insert(0, self.SIM_POSTASTER)
+			self.Logger('>>> PostAster Stage', Print=True)
 
 			count, NumActive = 0, 0
 			PostError = []
@@ -565,14 +583,14 @@ class VLSetup():
 				PostAsterSgl = getattr(PostAster, 'Single',None)
 				if not PostAsterSgl: continue
 
-				print("PostAster for '{}' started\n".format(Name))
+				self.Logger("PostAster for '{}' started".format(Name),Print=True)
 				if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
 
 				proc = Process(target=MPRun.main, args=(self,StudyDict,PostAsterSgl))
 				if self.mode == 'Interactive':
 					proc.start()
 				else :
-					with open("{}/Log.txt".format(StudyDict['POSTASTER']), 'w') as f:
+					with open(SimLogFile.format(StudyDict['POSTASTER']), 'w') as f:
 						with contextlib.redirect_stdout(f):
 							# stderr may need to be written to a seperate file and then copied over
 							with contextlib.redirect_stderr(sys.stdout):
@@ -586,15 +604,20 @@ class VLSetup():
 						EC = proc.exitcode
 						if EC == None:
 							continue
-						elif EC == 0:
-							print("Post-Aster for '{}' completed\n".format(tmpName))
+
+						tmpStudyDict = self.Studies[tmpName]
+						if EC == 0:
+							self.Logger("Post-Aster for '{}' completed".format(tmpName),Print=True)
 						else :
-							print("Post-Aster for '{}' returned error code {}\n".format(tmpName,EC))
+							self.Logger("Post-Aster for '{}' returned error code {}".format(tmpName,EC),Print=True)
 							PostError.append(tmpName)
+
+						if self.mode != 'Interactive':
+							self.Logger("See {} for details".format(SimLogFile.format(tmpStudyDict['POSTASTER'])),Print=EC)
+
 						PostStat.pop(tmpName)
 						NumActive-=1
 
-						tmpStudyDict = self.Studies[tmpName]
 						picklefile = "{}/StudyDict.pickle".format(tmpStudyDict["TMP_CALC_DIR"])
 						if os.path.isfile(picklefile):
 							with open(picklefile, 'rb') as handle:
@@ -609,9 +632,22 @@ class VLSetup():
 
 			PostAster = import_module(SimMaster.PostAsterFile)
 			if hasattr(PostAster, 'Combined'):
-				PostAster.Combined(self)
+				self.Logger('Combined function started', Print=True)
 
-		print('\n### Simulations Completed ###')
+				if self.mode == 'Interactive':
+					PostAster.Combined(self)
+				else :
+					with open(self.LogFile, 'a') as f:
+						with contextlib.redirect_stdout(f):
+							# stderr may need to be written to a seperate file and then copied over
+							with contextlib.redirect_stderr(sys.stdout):
+								PostAster.Combined(self)
+
+				self.Logger('Combined function complete', Print=True)
+
+			self.Logger('>>> PostAster Stage Complete\n', Print=True)
+
+		self.Logger('### Simulations Completed ###',Print=True)
 
 		# Opens up all results in ParaVis
 		if ShowRes:
@@ -653,7 +689,7 @@ class VLSetup():
 			xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(StudyDict["Parameters"].Name)
 			command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
 		elif self.mode == 'Continuous':
-			command = "{} {} > {}/ContinuousAsterLog ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER'])
+			command = "{} {} > {}/Output.log ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER'])
 		else :
 			command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
 
@@ -665,20 +701,23 @@ class VLSetup():
 		Prnt = kwargs.get('Print',False)
 
 		if not hasattr(self,'LogFile'):
+			print(Text)
 			if self.mode=='Interactive':
 				self.LogFile = None
 			else:
 				self.LogFile = "{}/log/{}_{}.log".format(self.PROJECT_DIR,self.StudyName,self.__ID__)
 				os.makedirs(os.path.dirname(self.LogFile), exist_ok=True)
 				with open(self.LogFile,'w') as f:
-					pass
-		if Text:
-			if self.mode=='Interactive':
-				print(Text)
-			else:
-				if Prnt: print(Text)
-				with open(self.LogFile,'a') as f:
-					f.write(Text+"\n")
+					f.write(Text)
+				print("Detailed output written to {}".format(self.LogFile))
+			return
+
+		if self.mode=='Interactive':
+			print(Text)
+		else:
+			if Prnt: print(Text)
+			with open(self.LogFile,'a') as f:
+				f.write(Text+"\n")
 
 
 
@@ -766,10 +805,13 @@ class VLSalome():
 		self.SIM_SCRIPTS = super.SIM_SCRIPTS
 		self.Logger = super.Logger
 		self.Ports = []
+		self.LogFile = super.LogFile
+
 
 	def Start(self, Num=1,**kwargs):
-		OutFile = kwargs.get('OutFile', "")
-		ErrFile = kwargs.get('ErrFile', OutFile)
+		# If only OutFile is provided as a kwarg then ErrFile is set to this also
+		OutFile = ErrFile = kwargs.get('OutFile', self.LogFile)
+		ErrFile = kwargs.get('ErrFile',ErrFile)
 
 		output = ''
 		if OutFile: output += " >>{}".format(OutFile)
@@ -834,12 +876,12 @@ class VLSalome():
 
 		Port = kwargs.get('Port', self.Ports[0])
 
-		OutFile = kwargs.get('OutFile', "")
-		ErrFile = kwargs.get('ErrFile', OutFile)
+		OutFile = ErrFile = kwargs.get('OutFile', self.LogFile)
+		ErrFile = kwargs.get('ErrFile',ErrFile)
 
 		output = ''
-		if OutFile: output += "1>{} ".format(OutFile)
-		if ErrFile: output += "2>{} ".format(ErrFile)
+		if OutFile: output += " >>{}".format(OutFile)
+		if ErrFile: output += " 2>>{}".format(ErrFile)
 
 		command = "salome shell -p{!s} {} args:{} {}".format(Port, Script, Args, output)
 

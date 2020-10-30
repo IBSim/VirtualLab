@@ -27,7 +27,7 @@ class VLSetup():
 		if Mode in ('i', 'I', 'interactive', 'Interactive'): self.mode = 'Interactive'
 		elif Mode in ('c', 'C', 'continuous', 'Continuous'): self.mode = 'Continuous'
 		elif Mode in ('h', 'H', 'headless', 'Headless'): self.mode = 'Headless'
-		else : self.Exit("'Mode' is not in 'Interactive','Continuous' or 'Headless'")
+		else : self.Exit("Error: Mode is not in ('Interactive','Continuous','Headless')")
 
 		self.Simulation = Simulation
 		self.Project = Project
@@ -124,7 +124,7 @@ class VLSetup():
 				NewVals = getattr(ParaMesh, VarName, False)
 				# Check the number of NewVals is correct
 				NumVals = len(NewVals) if NewVals else NumMeshes
-				if NumVals != NumMeshes: self.Exit("Number of entries for 'Mesh.{}' not equal to number of meshes".format(VarName))
+				if NumVals != NumMeshes: self.Exit("Error: Number of entries for 'Mesh.{}' not equal to number of meshes".format(VarName))
 
 				for i, MeshName in enumerate(MeshNames):
 					if NewVals==False:
@@ -143,7 +143,7 @@ class VLSetup():
 					MeshDict[MeshName][VarName] = Val
 
 			if hasattr(ParaMesh,'Run'):
-				if len(ParaMesh.Run)!=NumMeshes: self.Exit("Number of entries for variable 'Mesh.Run' not equal to number of meshes")
+				if len(ParaMesh.Run)!=NumMeshes: self.Exit("Error: Number of entries for variable 'Mesh.Run' not equal to number of meshes")
 				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag]
 
 			sys.path.insert(0, self.SIM_MESH)
@@ -158,7 +158,7 @@ class VLSetup():
 		self.Studies = {}
 		if RunSim and MainSim:
 			if not os.path.exists(self.ASTER_DIR):
-				self.Exit("CodeAster location invalid")
+				self.Exit("Error: CodeAster location invalid")
 
 			if not os.path.isdir(self.STUDY_DIR): os.makedirs(self.STUDY_DIR)
 
@@ -171,7 +171,7 @@ class VLSetup():
 				NewVals = getattr(ParaSim, VarName, False)
 				# Check the number of NewVals is correct
 				NumVals = len(NewVals) if NewVals else NumSims
-				if NumVals!=NumSims: self.Exit("Number of entries for 'Sim.{}' not equal to number of simulations".format(VarName))
+				if NumVals!=NumSims: self.Exit("Error: Number of entries for 'Sim.{}' not equal to number of simulations".format(VarName))
 
 				for i, SimName in enumerate(SimNames):
 					if NewVals==False:
@@ -181,7 +181,7 @@ class VLSetup():
 						NV = NewVals[i]
 						diff = set(NV.keys()).difference(Val)
 						if diff:
-							print("Warning: New key(s) {} specified in dictionary {} for sim '{}'. This may lead to unexpected resutls".format(diff, VarName, SimName))
+							self.Logger("Warning: New key(s) {} specified in dictionary {} for sim '{}'. This may lead to unexpected resutls".format(diff, VarName, SimName),Print=True)
 
 						Val.update(NV)
 					else :
@@ -189,7 +189,7 @@ class VLSetup():
 					SimDict[SimName][VarName] = Val
 
 			if hasattr(ParaSim,'Run'):
-				if len(ParaSim.Run)!=NumSims: self.Exit("Number of entries for variable 'Sim.Run' not equal to number of simulations")
+				if len(ParaSim.Run)!=NumSims: self.Exit("Error: Number of entries for variable 'Sim.Run' not equal to number of simulations")
 				SimNames = [sim for sim, flag in zip(SimNames, ParaSim.Run) if flag]
 
 			MeshNames = []
@@ -293,11 +293,11 @@ class VLSetup():
 			MeshScript = "{}/{}.py".format(self.SIM_MESH, self.Meshes[MeshCheck].File)
 			# The file MeshParaFile is passed to MeshScript to create the mesh in the GUI
 			self.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
-			self.Cleanup()
-			sys.exit('Terminating after checking mesh')
+			self.Exit('Terminating after checking mesh')
 
 		elif MeshCheck and MeshCheck not in self.Meshes.keys():
-			self.Exit("MeshCheck '{}' is not one of meshes to be created.\nMeshes to be created are:{}".format(MeshCheck, list(self.Meshes.keys())))
+			self.Exit("Error: '{}' specified for MeshCheck is not one of meshes to be created.\n"\
+					  "Meshes to be created are:{}".format(MeshCheck, list(self.Meshes.keys())))
 
 		self.Logger('\n### Starting Meshing ###\n',Print=True)
 
@@ -319,7 +319,6 @@ class VLSetup():
 		MeshStat = {}
 		NumActive=NumComplete=0
 		SalomeReset = 400 #Close Salome session(s) & open new after this many meshes due to memory leak
-		SalomeReset=1
 		for MeshName, MeshPara in self.Meshes.items():
 			self.Logger("'{}' started".format(MeshName),Print=True)
 
@@ -387,7 +386,7 @@ class VLSetup():
 				time.sleep(0.1)
 				if not len(MeshStat): break
 
-		if MeshError: self.Exit("The following Meshes finished with errors:\n{}".format(MeshError))
+		if MeshError: self.Exit("The following Meshes finished with errors:\n{}".format(MeshError),KeepDirs=['Geom'])
 
 		self.Logger('\n### Meshing Completed ###',Print=True)
 		if ShowMesh:
@@ -489,7 +488,7 @@ class VLSetup():
 					time.sleep(0.1)
 					if not len(PreStat): break
 
-			if PreError: self.Exit("The following PreAster routine(s) finished with errors:\n{}".format(PreError))
+			if PreError: self.Exit("The following PreAster routine(s) finished with errors:\n{}".format(PreError),KeepDirs=PreError)
 
 			PreAster = import_module(SimMaster.PreAsterFile)
 			if hasattr(PreAster, 'Combined'):
@@ -529,28 +528,29 @@ class VLSetup():
 				NumActive +=1
 
 				while NumActive==NumThreads or count==NumSim:
-					for Name, Proc in AsterStat.copy().items():
+					for tmpName, Proc in AsterStat.copy().items():
 						Poll = Proc.poll()
 						if Poll is not None:
+							tmpStudyDict = self.Studies[tmpName]
 							err = Poll
 							if self.mode == 'Interactive':
-								with open('{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR']),'r') as f:
+								with open('{}/Aster.txt'.format(tmpStudyDict['TMP_CALC_DIR']),'r') as f:
 									err = int(f.readline())
 							elif self.mode == 'Continuous':
-								os.remove('{}/ContinuousAsterLog'.format(StudyDict['ASTER']))
+								os.remove('{}/ContinuousAsterLog'.format(tmpStudyDict['ASTER']))
 
 							if err != 0:
-								print("Aster for '{}' returned error code {}.\nCheck AsterLog in {}".format(Name,err,StudyDict['ASTER']))
-								AsterError.append(Name)
+								print("Aster for '{}' returned error code {}.\nCheck AsterLog in {}".format(tmpName,err,tmpStudyDict['ASTER']))
+								AsterError.append(tmpName)
 							else :
-								print("Aster for '{}' completed".format(Name))
-							AsterStat.pop(Name)
+								print("Aster for '{}' completed".format(tmpName))
+							AsterStat.pop(tmpName)
 							Proc.terminate()
 
 					if not len(AsterStat): break
 					time.sleep(0.1)
 
-			if AsterError: self.Exit("The following simulation(s) finished with errors:\n{}".format(AsterError))
+			if AsterError: self.Exit("The following simulation(s) finished with errors:\n{}".format(AsterError),KeepDirs=AsterError)
 
 		if RunPostAster and hasattr(SimMaster,'PostAsterFile'):
 			sys.path.insert(0, self.SIM_POSTASTER)
@@ -605,7 +605,7 @@ class VLSetup():
 					time.sleep(0.1)
 					if not len(PostStat): break
 
-			if PostError: self.Exit("The following PostAster routine(s) finished with errors:\n{}".format(PostError))
+			if PostError: self.Exit("The following PostAster routine(s) finished with errors:\n{}".format(PostError), KeepDirs=PostError)
 
 			PostAster = import_module(SimMaster.PostAsterFile)
 			if hasattr(PostAster, 'Combined'):
@@ -735,16 +735,27 @@ class VLSetup():
 			for mat in set(Materials):
 				if not os.path.exists('{}/{}'.format(self.MATERIAL_DIR, mat)):
 					self.Exit("Material '{}' isn't in the materials directory '{}'".format(mat, self.MATERIAL_DIR))
-	def Exit(self,Error):
-		self.Cleanup('n')
-		sys.exit('Error: ' + Error)
 
-	def Cleanup(self,remove = 'y'):
+	def Exit(self,mess='',KeepDirs=[]):
+		self.Logger(mess, Print=True)
+		self.Cleanup(KeepDirs)
+		sys.exit()
+
+	def Cleanup(self,KeepDirs=[]):
 		if self.Salome.Ports:
 			self.Salome.Close(self.Salome.Ports)
 
-		if remove == 'y' and os.path.isdir(self.TMP_DIR):
-			shutil.rmtree(self.TMP_DIR)
+		if os.path.isdir(self.TMP_DIR):
+			if KeepDirs:
+				kept = []
+				for ct in os.listdir(self.TMP_DIR):
+					SubDir = '{}/{}'.format(self.TMP_DIR,ct)
+					if os.path.isdir(SubDir):
+						if ct in KeepDirs: kept.append(SubDir)
+						else : shutil.rmtree(SubDir)
+				self.Logger("The following tmp directories have not been deleted:\n{}".format(kept),Print=True)
+			else:
+				shutil.rmtree(self.TMP_DIR)
 
 		# self.Logger('### VirtualLab Finished###\n',Print=True)
 

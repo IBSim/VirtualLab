@@ -13,6 +13,7 @@
 !SetupConfig.sh
 !requirements.txt
 !LICENSE
+!.readthedocs.yml
 
 # Whitelist these directories
 !bin/

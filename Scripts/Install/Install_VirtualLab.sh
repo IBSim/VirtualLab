@@ -13,12 +13,13 @@ VL_DIR="$USER_HOME/VirtualLab"
 SKIP=n
 PYTHON_INST="n"
 SALOME_INST="n"
+ERMES_INST="n"
 ASTER_SUBDIR="/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
 
 usage() {
   echo
   echo "Usage:"
-  echo " $0 [-d <path>] [-P {y/c/n}] [-S \"{y/n} <path>\"]"
+  echo " $0 [-d <path>] [-P {y/c/n}] [-S \"{y/n} <path>\"] [-E {y/n}]"
   echo
   echo "A script to install VirtualLab and its dependencies."
   echo
@@ -28,13 +29,16 @@ usage() {
   echo "   '-P c' Install python using conda environment"
   echo "   '-P n' Do not install python"
   echo "   '-S \"y <path>\"' Install Salome-Meca at <path> location"
-  echo "   '-S y' Install Salome-Meca at defauly location /opt/SalomeMeca"
+  echo "   '-S y' Install Salome-Meca at default location /opt/SalomeMeca"
   echo "   '-S n' Do not install Salome-Meca"
+  echo "   '-E y' Install ERMES at default location /opt/ERMES"
+  echo "   '-E n' Do not install ERMES"
   echo "   '-y' Skip install confirmation dialogue."
   echo
-  echo "Default behaviour is to not install python or salome."
+  echo "Default behaviour is to not install python, salome or ERMES."
   echo "Default install locations are: VirtualLab in the user's home directory,"
-  echo "salome in '/opt/SalomeMeca', python/conda in the recommended locations."
+  echo "salome in '/opt/SalomeMeca', ERMES in '/opt/ERMES', python/conda in the"
+  echo "recommended locations."
 }
 exit_abnormal() {
   usage
@@ -45,7 +49,7 @@ if [[ $EUID -ne 0 ]]; then
    echo 'Re-run with "sudo ./Install_VirtualLab.sh {options}".'
    exit_abnormal
 fi
-while getopts ":d:P:S:yh" options; do 
+while getopts ":d:P:S:E:yh" options; do
   case "${options}" in
     d)
       VL_DIR=$(readlink -m ${OPTARG})
@@ -86,6 +90,15 @@ while getopts ":d:P:S:yh" options; do
         exit_abnormal
       fi
       ;;
+    E)
+      ERMES_INST=${OPTARG}
+      if [ "$ERMES_INST" == "y" ]; then
+        echo " - ERMES will be installed in the default directory and configured as part of VirtualLab install."
+      else
+        echo "Error: Invalid option argument $ERMES_INST" >&2
+        exit_abnormal
+      fi
+      ;;
     y)  ### Skip install confirmation dialogue.
       SKIP=y
       ;;
@@ -108,6 +121,10 @@ if [ "$PYTHON_INST" == "n" ]; then
 fi
 if [ "$SALOME_INST" == "n" ]; then
   echo " - Salome-Meca will not be installed or configured during setup,"
+  echo "please do this manually."
+fi
+if [ "$ERMES_INST" == "n" ]; then
+  echo " - ERMES will not be installed or configured during setup,"
   echo "please do this manually."
 fi
 echo
@@ -172,19 +189,19 @@ if [[ $PATH =~ $VL_DIR ]]; then
 else
   ### If not, add VirtualLab to PATH
   echo "Adding VirtualLab to PATH."
-  
+
   sudo -u ${SUDO_USER:-$USER} echo 'if [[ ! $PATH =~ "'$VL_DIR'" ]]; then' >> $USER_HOME/.VLprofile
 #  sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR':$PATH"'  >> $USER_HOME/.VLprofile
   sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR'/bin:$PATH"'  >> $USER_HOME/.VLprofile
   sudo -u ${SUDO_USER:-$USER} echo 'fi'  >> $USER_HOME/.VLprofile
-  
+
   export PATH="$VL_DIR/bin:$PATH"
 fi
 
 ### ~/.bashrc doesn't get read by subshells in ubuntu.
 ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
 STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
-if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then 
+if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then
   echo '' >> $USER_HOME/.bashrc
   echo '# Read in environment for VirtualLab' >> $USER_HOME/.bashrc
   echo $STRING_TMP >> $USER_HOME/.bashrc
@@ -252,6 +269,15 @@ if [ "$SALOME_INST" == "y" ]; then
   source $VL_DIR/Scripts/Install/Install_Salome.sh
 else
   echo "Skipping salome installation"
+fi
+
+echo
+### Install ERMES if flagged
+if [ "$ERMES_INST" == "y" ]; then
+  echo "Installing ERMES"
+  source $VL_DIR/Scripts/Install/Install_ERMES.sh
+else
+  echo "Skipping ERMES installation"
 fi
 
 echo

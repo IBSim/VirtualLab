@@ -22,6 +22,8 @@ CONDA_VER_DEFAULT="Anaconda3-2020.02-Linux-x86_64.sh"
 SALOME_DIR_DEFAULT="/opt/SalomeMeca"
 SALOME_VER_DEFAULT="salome_meca-2019.0.3-1-universal"
 SALOME_BIN_DEFAULT="V2019.0.3_universal"
+ERMES_DIR_DEFAULT="/opt/ERMES"
+ERMES_VER_DEFAULT="ERMES-CPlas-v12.5"
 
 #########################
 
@@ -52,6 +54,8 @@ var=(
   SALOME_VER
   SALOME_BIN
   ASTER_DIR
+  ERMES_DIR
+  ERMES_VER
   InputDir
   MaterialsDir
   RunFilesDir

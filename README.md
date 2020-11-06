@@ -5,7 +5,7 @@ Series of simulations to replicate laboratory experiments as part of a 'digital 
 To set up VirtualLab you must first run 'SetupConfig.sh' from the directory to which you have downloaded the source code. If you would like to change any of the default configuration you can do this from VLconfig_DEFAULT.sh.
 
 It is possible to install VirtualLab and its dependencies by running the following command in the terminal.
-`cd ~ && wget https://ibsim.co.uk/scripts/Install_VirtualLab.sh && chmod 755 Install_VirtualLab.sh && sudo ~/./Install_VirtualLab.sh -P c -S y -y && source ~/.bashrc`
+`cd ~ && wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_VirtualLab.sh?inline=false && chmod 755 Install_VirtualLab.sh && sudo ~/./Install_VirtualLab.sh -P c -S y -y && source ~/.bashrc`
 
 See VirtualLab/docs for documentation.
 
@@ -22,4 +22,3 @@ See VirtualLab/docs for documentation.
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-   

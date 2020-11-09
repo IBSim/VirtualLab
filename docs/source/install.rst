@@ -8,7 +8,7 @@ Non-interactive Installation
 
 The easiest way to download & install **VirtualLab** and its dependencies in a conda environment on **Ubuntu** is by running the following command in a terminal::
 
-    cd ~ && wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_VirtualLab.sh?inline=false && chmod 755 Install_VirtualLab.sh && sudo ~/./Install_VirtualLab.sh -P c -S y -y && source ~/.bashrc 
+    cd ~ && wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_VirtualLab.sh?inline=false && chmod 755 Install_VirtualLab.sh && sudo ~/./Install_VirtualLab.sh -P c -S y -E y -y && source ~/.bashrc 
 
 
 Usage of 'Install_VirtualLab.sh':

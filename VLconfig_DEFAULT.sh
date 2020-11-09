@@ -166,6 +166,11 @@ else
   ASTER_DIR=$(readlink -m $ASTER_DIR_DEFAULT)
 fi
 
+### Set ERMES directories
+### Currently, no checks whether it is already installed
+ERMES_DIR=$ERMES_DIR_DEFAULT
+ERMES_VER=$ERMES_VER_DEFAULT
+
 ### PATH to various directories required as in/out for VirtualLab.
 ### Default behaviour is to locate in $VL_DIR.
 InputDir=$(readlink -m $InputDir_DEFAULT)

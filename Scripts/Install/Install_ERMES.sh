@@ -7,8 +7,8 @@ cd $THIS_DIR
 source ../../VLconfig.py
 
 ### To get from VLconfig.py
-$ERMES_DIR="/opt/ERMES"
-$ERMES_VER="ERMES-CPlas-v12.5"
+#ERMES_DIR="/opt/ERMES"
+#ERMES_VER="ERMES-CPlas-v12.5"
 
 ### Test to check if ERMES already exists in current shell's PATH
 if hash ERMESv12.5 2>/dev/null; then

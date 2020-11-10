@@ -1,4 +1,4 @@
-FROM base
+FROM quay.io/tianyikillua/base:latest
 
 # Build script amended from https://github.com/tianyikillua/code_aster_on_docker
 

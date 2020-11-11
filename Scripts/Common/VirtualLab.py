@@ -50,13 +50,10 @@ class VLSetup():
 		### it will be created relative to the TWD
 		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored.
 		OUTPUT_DIR = getattr(VLconfig,'OutputDir', "{}/Output".format(VL_DIR))
-
 		# Material directory
 		MATERIAL_DIR = getattr(VLconfig,'MaterialDir', "{}/Materials".format(VL_DIR))
-
 		# Input directory
 		INPUT_DIR = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
-
 		# Code_Aster directory
 		self.ASTER_DIR = VLconfig.ASTER_DIR
 
@@ -75,18 +72,18 @@ class VLSetup():
 		self.SIM_ASTER = "{}/Aster".format(self.SIM_SCRIPTS)
 		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
 
-		# Materials directory
 		self.MATERIAL_DIR = MATERIAL_DIR
+		self.INPUT_DIR = '{}/{}/{}'.format(INPUT_DIR, Simulation, Project)
 
 		# Output directory
 		self.PROJECT_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, Project)
 		self.STUDY_DIR = "{}/{}".format(self.PROJECT_DIR, StudyName)
 		self.MESH_DIR = "{}/Meshes".format(self.PROJECT_DIR)
 
-		# Create dictionary of Parameters info
-		self.Parameters = {'Master':Parameters_Master,'Var':Parameters_Var,'Dir':'{}/{}/{}'.format(INPUT_DIR, Simulation, Project)}
-
 		self.Logger('### Launching VirtualLab ###',Print=True)
+
+		# Create variables based on the Parameters file(s) provided
+		self.GetParams(Parameters_Master,Parameters_Var)
 
 		self.Salome = VLSalome(self)
 
@@ -105,35 +102,24 @@ class VLSetup():
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_SCRIPTS)
 
-		# Check the Parameter files exist
-		self.ErrorCheck('Parameters')
-
-		sys.path.insert(0, self.Parameters['Dir'])
-		Main = __import__(self.Parameters['Master'])
-		Var = __import__(self.Parameters['Var']) if self.Parameters['Var'] else None
-
-		MainDict = copy.deepcopy(self.__dict__)
-		MainDict.pop('Salome')
-
-		MainMesh = getattr(Main, 'Mesh', None)
-		MainSim = getattr(Main, 'Sim', None)
-
-		self.Parameters_Master = Main
+		MainDict = {key:val for key,val in self.__dict__.items() if type(val)==str}
 
 		# Create Mesh parameter files if they are required
 		self.Meshes = {}
-		if RunMesh and MainMesh:
+		if RunMesh and self.Parameters_Master.Mesh:
 			if not os.path.isdir(self.MESH_DIR): os.makedirs(self.MESH_DIR)
 			self.GEOM_DIR = '{}/Geom'.format(self.TMP_DIR)
 			if not os.path.isdir(self.GEOM_DIR): os.makedirs(self.GEOM_DIR)
 
-			ParaMesh = getattr(Var, 'Mesh', None)
-			MeshNames = getattr(ParaMesh, 'Name', [MainMesh.Name])
+			MasterMesh = self.Parameters_Master.Mesh
+			VarMesh = self.Parameters_Var.Mesh
+
+			MeshNames = getattr(VarMesh, 'Name', [MasterMesh.Name])
 			NumMeshes = len(MeshNames)
 
 			MeshDict = {MeshName:{} for MeshName in MeshNames}
-			for VarName, Value in MainMesh.__dict__.items():
-				NewVals = getattr(ParaMesh, VarName, False)
+			for VarName, Value in MasterMesh.__dict__.items():
+				NewVals = getattr(VarMesh, VarName, False)
 				# Check the number of NewVals is correct
 				NumVals = len(NewVals) if NewVals else NumMeshes
 				if NumVals != NumMeshes: self.Exit("Error: Number of entries for 'Mesh.{}' not equal to number of meshes".format(VarName))
@@ -154,33 +140,34 @@ class VLSetup():
 						Val = NewVals[i]
 					MeshDict[MeshName][VarName] = Val
 
-			if hasattr(ParaMesh,'Run'):
-				if len(ParaMesh.Run)!=NumMeshes: self.Exit("Error: Number of entries for variable 'Mesh.Run' not equal to number of meshes")
-				MeshNames = [mesh for mesh, flag in zip(MeshNames, ParaMesh.Run) if flag]
+			if hasattr(VarMesh,'Run'):
+				if len(VarMesh.Run)!=NumMeshes: self.Exit("Error: Number of entries for variable 'Mesh.Run' not equal to number of meshes")
+				MeshNames = [mesh for mesh, flag in zip(MeshNames, VarMesh.Run) if flag]
 
 			sys.path.insert(0, self.SIM_MESH)
 			for MeshName in MeshNames:
 				ParaDict=MeshDict[MeshName]
-				self.ErrorCheck('Mesh',MeshDict=ParaDict)
+				self.__Verify__('Mesh',MeshDict=ParaDict)
 				self.WriteModule("{}/{}.py".format(self.GEOM_DIR, MeshName), ParaDict)
 				self.Meshes[MeshName] = Namespace()
 				self.Meshes[MeshName].__dict__.update(ParaDict)
 
 		# Create Simulation parameter files
 		self.Studies = {}
-		if RunSim and MainSim:
+		if RunSim and self.Parameters_Master.Sim:
 			if not os.path.exists(self.ASTER_DIR):
 				self.Exit("Error: CodeAster location invalid")
-
 			if not os.path.isdir(self.STUDY_DIR): os.makedirs(self.STUDY_DIR)
 
-			ParaSim = getattr(Var, 'Sim', None)
-			SimNames = getattr(ParaSim, 'Name', [MainSim.Name])
+			MasterSim = self.Parameters_Master.Sim
+			VarSim = self.Parameters_Var.Sim
+
+			SimNames = getattr(VarSim, 'Name', [MasterSim.Name])
 			NumSims = len(SimNames)
 
 			SimDict = {SimName:{} for SimName in SimNames}
-			for VarName, Value in MainSim.__dict__.items():
-				NewVals = getattr(ParaSim, VarName, False)
+			for VarName, Value in MasterSim.__dict__.items():
+				NewVals = getattr(VarSim, VarName, False)
 				# Check the number of NewVals is correct
 				NumVals = len(NewVals) if NewVals else NumSims
 				if NumVals!=NumSims: self.Exit("Error: Number of entries for 'Sim.{}' not equal to number of simulations".format(VarName))
@@ -200,14 +187,14 @@ class VLSetup():
 						Val = NewVals[i]
 					SimDict[SimName][VarName] = Val
 
-			if hasattr(ParaSim,'Run'):
-				if len(ParaSim.Run)!=NumSims: self.Exit("Error: Number of entries for variable 'Sim.Run' not equal to number of simulations")
-				SimNames = [sim for sim, flag in zip(SimNames, ParaSim.Run) if flag]
+			if hasattr(VarSim,'Run'):
+				if len(VarSim.Run)!=NumSims: self.Exit("Error: Number of entries for variable 'Sim.Run' not equal to number of simulations")
+				SimNames = [sim for sim, flag in zip(SimNames, VarSim.Run) if flag]
 
 			MeshNames = []
 			for SimName in SimNames:
 				ParaDict = SimDict[SimName]
-				self.ErrorCheck('Simulation',SimDict=ParaDict)
+				self.__Verify__('Simulation',SimDict=ParaDict)
 				StudyDict = {}
 				# Define simulation related directories
 				StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, SimName)
@@ -255,8 +242,7 @@ class VLSetup():
 		RunFile = os.path.realpath(frame[0].f_code.co_filename)
 		RunFileSC = inspect.getsource(inspect.getmodule(frame[0]))
 		envdict = {'Simulation':self.Simulation,'Project':self.Project, \
-					'StudyName':self.StudyName, 'Parameters_Master':self.Parameters['Master'], \
-					'Parameters_Var':self.Parameters['Var'],'Mode':self.mode, \
+					'StudyName':self.StudyName, 'Mode':self.mode, \
 					'NumSims':NumSims,'NumMeshes':NumMeshes,'NumMeshesCr':NumMeshesCr}
 		keywords = {'RunMesh':RunMesh,'RunSim':RunSim,'MeshCheck':None, \
 					'ShowMesh':False, 'MeshThreads':1,'RunPreAster':True, \
@@ -730,21 +716,15 @@ class VLSetup():
 			with open(self.LogFile,'a') as f:
 				f.write(Text+"\n")
 
-
-
-	def ErrorCheck(self, Stage, **kwargs):
-		if Stage == 'Parameters':
-			# Check if the Input directory exists
-			if not os.path.isdir(self.Parameters['Dir']):
-				self.Exit("Directory '{}' does not exist".format(self.Parameters['Dir']))
-
-			# Check 'Parameters_Master' exists
-			if not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Master'])):
-				self.Exit("Parameters_Master file '{}' not in directory {}".format(self.Parameters['Master'], self.Parameters['Dir']))
-
-			# Check that 'Parameters_Var' exists (if not None)
-			if self.Parameters['Var'] and not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Var'])):
-				self.Exit("Parameters_Var file '{}' not in  directory {}".format(self.Parameters['Var'],self.Parameters['Dir']))
+	def __Verify__(self, Stage, **kwargs):
+		# if Stage == 'Parameters':
+		# 	# Check 'Parameters_Master' exists
+		# 	if not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Master'])):
+		# 		self.Exit("Parameters_Master file '{}' not in directory {}".format(self.Parameters['Master'], self.Parameters['Dir']))
+		#
+		# 	# Check that 'Parameters_Var' exists (if not None)
+		# 	if self.Parameters['Var'] and not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Var'])):
+		# 		self.Exit("Parameters_Var file '{}' not in  directory {}".format(self.Parameters['Var'],self.Parameters['Dir']))
 
 		if Stage == 'Mesh':
 			MeshDict = kwargs.get('MeshDict')
@@ -808,6 +788,32 @@ class VLSetup():
 				shutil.rmtree(self.TMP_DIR)
 
 		# self.Logger('### VirtualLab Finished###\n',Print=True)
+	def GetParams(self, Parameters_Master, Parameters_Var=None):
+		sys.path.insert(0, self.INPUT_DIR)
+		NS = ['Mesh','Sim']
+		if type(Parameters_Master)==str:
+			if not os.path.exists('{}/{}.py'.format(self.INPUT_DIR, Parameters_Master)):
+				self.Exit("Parameters_Master file '{}' not in directory {}".format(Parameters_Master, self.INPUT_DIR))
+			Main = import_module(Parameters_Master)
+		elif any(hasattr(Parameters_Master,nm) for nm in NS):
+			Main = Parameters_Master
+		else: sys.exit()
+		self.Parameters_Master = Namespace()
+		for nm in NS:
+			setattr(self.Parameters_Master, nm, getattr(Main, nm, None))
+
+		if type(Parameters_Var)==str:
+			if not os.path.exists('{}/{}.py'.format(self.INPUT_DIR, Parameters_Var)):
+				self.Exit("Parameters_Var file '{}' not in directory {}".format(Parameters_Var, self.INPUT_DIR))
+			Var = import_module(Parameters_Var)
+		elif any(hasattr(Parameters_Var,nm) for nm in NS):
+			Var = Parameters_Var
+		elif Parameters_Var==None:
+			Var = None
+		else: sys.exit()
+		self.Parameters_Var = Namespace()
+		for nm in NS:
+			setattr(self.Parameters_Var, nm, getattr(Var, nm, None))
 
 	def __ForceArgs__(self,ArgList):
 		argdict={}

@@ -27,8 +27,11 @@ if [[ $# == 0 ]]; then
   echo "Error: VirtualLab requires an option."
   exit_abnormal
 fi
-while getopts ":f:h" options; do 
+while getopts ":f:h:k:" options; do
   case "${options}" in
+    k)
+      Args="$Args ${OPTARG}"
+      ;;
     f)
       CONFIG_FNAME=${OPTARG}
       if test ! -f "$CONFIG_FNAME" ; then
@@ -47,15 +50,16 @@ while getopts ":f:h" options; do
       echo "Error: Invalid option -$OPTARG" >&2
       exit_abnormal
       ;;
+
   esac
 done
 shift $(($OPTIND - 1))
-if [[ $@ ]]; then
-  echo
-  echo "Error: Too many arguments were entered, please check usage and flags."
-  echo "Remaining arguments: \"$@\"."
-  exit_abnormal
-fi
+#if [[ $@ ]]; then
+#  echo
+#  echo "Error: Too many arguments were entered, please check usage and flags."
+#  echo "Remaining arguments: \"$@\"."
+#  exit_abnormal
+#fi
 
 ### Read in VLconfig which contains $VL_DIR
 source $BIN_DIR/../VLconfig.py
@@ -86,7 +90,7 @@ CONFIG_FNAME_exe=$(dirname $CONFIG_FNAME)"/./"$(basename $CONFIG_FNAME)
 
 ### Check whether RunFile is executable
 if [[ -x $CONFIG_FNAME_exe ]]; then
-  $CONFIG_FNAME_exe
+  $CONFIG_FNAME_exe $Args
 else
   echo
   echo 'The Run File "'$CONFIG_FNAME'" is not executable.'
@@ -96,4 +100,3 @@ else
   echo "  sudo chmod +x $CONFIG_FNAME"
   echo
 fi
-

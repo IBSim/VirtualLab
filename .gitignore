@@ -24,7 +24,6 @@ docs/build
 # Ensure that only the Example and .dev sub-directory will be included in the whitelist
 !Input/
 Input/*/*
-!Input/*/Example/
 !Input/*/Tutorials/
 !Input/*/.dev/
 !Input/Unit/*

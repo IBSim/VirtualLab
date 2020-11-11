@@ -22,6 +22,14 @@ import uuid
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode):
+		self.__force__ = self.__ForceArgs__(sys.argv[1:])
+
+		Simulation = self.__force__.get('Simulation',Simulation)
+		Project = self.__force__.get('Project',Project)
+		StudyName = self.__force__.get('StudyName',StudyName)
+		Parameters_Master = self.__force__.get('Parameters_Master',Parameters_Master)
+		Parameters_Var = self.__force__.get('Parameters_Var',Parameters_Var)
+		Mode = self.__force__.get('Mode',Mode)
 
 		# Set running mode
 		if Mode in ('i', 'I', 'interactive', 'Interactive'): self.mode = 'Interactive'
@@ -89,6 +97,8 @@ class VLSetup():
 		RunSim: Boolean to dictate whether or not to run CodeAster
 		port: Give the port number of an open Salome instance to connect to
 		'''
+		kwargs.update(self.__force__)
+
 		RunMesh = kwargs.get('RunMesh', True)
 		RunSim = kwargs.get('RunSim',True)
 
@@ -275,6 +285,7 @@ class VLSetup():
 
 	def Mesh(self, **kwargs):
 		if not self.Meshes: return
+		kwargs.update(self.__force__)
 		'''
 		kwargs available:
 		MeshCheck: input a meshname and it will open this mesh in the GUI
@@ -399,7 +410,7 @@ class VLSetup():
 
 	def Sim(self, **kwargs):
 		if not self.Studies: return
-
+		kwargs.update(self.__force__)
 		'''
 		kwargs
 		### PreAster kwargs ###
@@ -415,8 +426,8 @@ class VLSetup():
 		### PostAster kwargs ###
 		RunPostAster: Run PostAster calculations. Boolean
 		ShowRes: Opens up all results files in Salome GUI. Boolean
-
 		'''
+
 		RunPreAster = kwargs.get('RunPreAster',True)
 		RunAster = kwargs.get('RunAster', True)
 		RunPostAster = kwargs.get('RunPostAster', True)
@@ -798,6 +809,27 @@ class VLSetup():
 
 		# self.Logger('### VirtualLab Finished###\n',Print=True)
 
+	def __ForceArgs__(self,ArgList):
+		argdict={}
+		for arg in ArgList:
+			split=arg.split('=')
+			if len(split)!=2:
+				continue
+			var,value = split
+			if value=='False':value=False
+			elif value=='True':value=True
+			elif value=='None':value=None
+			elif value.isnumeric():value=int(value)
+			else:
+				try:
+					value=float(value)
+				except: ValueError
+
+			argdict[var]=value
+
+		return argdict
+
+
 class VLSalome():
 	def __init__(self, super):
 		self.TMP_DIR = super.TMP_DIR
@@ -806,6 +838,36 @@ class VLSalome():
 		self.Logger = super.Logger
 		self.Ports = []
 		self.LogFile = super.LogFile
+
+#	def WriteArgs(self,ArgDict):
+#		# Args = []
+#		# for key, value in ArgDict.items()
+#		# 	Args.append("{}={}".format(key, value))
+
+#		for key, value in ArgDict.items()
+
+
+
+
+#	def __ArgEncode__(self,val):
+#		tp = type(val)
+#		if tp == int:
+#			return "__int{}".format(val)
+#		elif tp == float:
+#			return "float{}".format(val)
+#		elif tp == str:
+#			return "__str{}".format(val)
+#		elif tp == bool:
+#			return "_bool{}".format(val)
+#		elif val == None:
+#			return "_none{}".format(val)
+#		elif tp == list:
+#			lstring = "_list"
+#			for i, lval in enumerate(val):
+#				self.__ArgEncode__(lval)
+#				string = "^{:04}^".format()
+#			lstring+=
+
 
 
 	def Start(self, Num=1,**kwargs):

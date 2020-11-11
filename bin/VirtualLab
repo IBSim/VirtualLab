@@ -12,8 +12,9 @@ usage() {
   echo "A script to run VirtualLab simulations."
   echo
   echo "Options:"
-  echo "   '-f "'$FPATH'"' Where "'$FPATH'" is the path of the python run file."
-  echo "   '-h Display this help menu."
+  echo "   -f <"'$FPATH'">       Where "'$FPATH'" is the path of the python run file."
+  echo "   -k <Name=Value>   Ovewrite the value specified for variables/keyword argument Name specified in the run file."
+  echo "   -h                Display this help menu."
   echo
   echo "Default behaviour is to exit if no "'$FPATH'" is given"
   echo
@@ -54,12 +55,12 @@ while getopts ":f:h:k:" options; do
   esac
 done
 shift $(($OPTIND - 1))
-#if [[ $@ ]]; then
-#  echo
-#  echo "Error: Too many arguments were entered, please check usage and flags."
-#  echo "Remaining arguments: \"$@\"."
-#  exit_abnormal
-#fi
+if [[ $@ ]]; then
+ echo
+ echo "Error: Too many arguments were entered, please check usage and flags."
+ echo "Remaining arguments: \"$@\"."
+ exit_abnormal
+fi
 
 ### Read in VLconfig which contains $VL_DIR
 source $BIN_DIR/../VLconfig.py

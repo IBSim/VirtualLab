@@ -102,55 +102,35 @@ class VLSetup():
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_SCRIPTS)
 
-		MainDict = {key:val for key,val in self.__dict__.items() if type(val)==str}
+		MetaInfo = {key:val for key,val in self.__dict__.items() if type(val)==str}
 
 		# Create Mesh parameter files if they are required
 		self.Meshes = {}
 		if RunMesh and self.Parameters_Master.Mesh:
-			if not os.path.isdir(self.MESH_DIR): os.makedirs(self.MESH_DIR)
 			self.GEOM_DIR = '{}/Geom'.format(self.TMP_DIR)
-			if not os.path.isdir(self.GEOM_DIR): os.makedirs(self.GEOM_DIR)
-
-			MasterMesh = self.Parameters_Master.Mesh
-			VarMesh = self.Parameters_Var.Mesh
-
-			MeshNames = getattr(VarMesh, 'Name', [MasterMesh.Name])
-			NumMeshes = len(MeshNames)
-
-			MeshDict = {MeshName:{} for MeshName in MeshNames}
-			for VarName, Value in MasterMesh.__dict__.items():
-				NewVals = getattr(VarMesh, VarName, False)
-				# Check the number of NewVals is correct
-				NumVals = len(NewVals) if NewVals else NumMeshes
-				if NumVals != NumMeshes: self.Exit("Error: Number of entries for 'Mesh.{}' not equal to number of meshes".format(VarName))
-
-				for i, MeshName in enumerate(MeshNames):
-					if NewVals==False:
-						Val = Value
-					elif type(Value)==dict:
-						Val = copy.deepcopy(Value)
-						NV = NewVals[i]
-
-						diff = set(NV.keys()).difference(Val)
-						if diff:
-							self.Logger("Warning: New key(s) {} specified in dictionary {} for mesh '{}'. This may lead to unexpected resutls".format(diff, VarName, MeshName), Print=True)
-
-						Val.update(NV)
-					else :
-						Val = NewVals[i]
-					MeshDict[MeshName][VarName] = Val
-
-			if hasattr(VarMesh,'Run'):
-				if len(VarMesh.Run)!=NumMeshes: self.Exit("Error: Number of entries for variable 'Mesh.Run' not equal to number of meshes")
-				MeshNames = [mesh for mesh, flag in zip(MeshNames, VarMesh.Run) if flag]
-
+			os.makedirs(self.MESH_DIR, exist_ok=True)
+			os.makedirs(self.GEOM_DIR, exist_ok=True)
+			# Get dictionary of mesh parameters using Parameters_Master and Parameters_Var
+			MeshDicts = self.CreateParameters(self.Parameters_Master,self.Parameters_Var,'Mesh')
 			sys.path.insert(0, self.SIM_MESH)
-			for MeshName in MeshNames:
-				ParaDict=MeshDict[MeshName]
+
+			for MeshName, ParaDict in MeshDicts.items():
+					# if not os.path.exists('{}/{}.py'.format(self.SIM_MESH,ParaDict['File'])):
+				# 	self.Exit("Mesh file '{}' does not exist in {}".format(ParaDict['File'], self.SIM_MESH))
+				# MeshFile = import_module(ParaDict['File'])
+				# try :
+				# 	ErrorFunc(Namespace(**ParaDict))
+				# except Attribute Error
+				# ErrorFunc = getattr(MeshFile, 'GeomError', None)
+				# if ErrorFunc:
+				# 	err = ErrorFunc(Namespace(**ParaDict))
+				# else : err = None
+				# if err: self.Exit("GeomError in '{}' - {}".format(MeshDict['Name'], err))
+
 				self.__Verify__('Mesh',MeshDict=ParaDict)
 				self.WriteModule("{}/{}.py".format(self.GEOM_DIR, MeshName), ParaDict)
-				self.Meshes[MeshName] = Namespace()
-				self.Meshes[MeshName].__dict__.update(ParaDict)
+				self.Meshes[MeshName] = Namespace(**ParaDict)
+
 
 		# Create Simulation parameter files
 		self.Studies = {}
@@ -159,41 +139,10 @@ class VLSetup():
 				self.Exit("Error: CodeAster location invalid")
 			if not os.path.isdir(self.STUDY_DIR): os.makedirs(self.STUDY_DIR)
 
-			MasterSim = self.Parameters_Master.Sim
-			VarSim = self.Parameters_Var.Sim
-
-			SimNames = getattr(VarSim, 'Name', [MasterSim.Name])
-			NumSims = len(SimNames)
-
-			SimDict = {SimName:{} for SimName in SimNames}
-			for VarName, Value in MasterSim.__dict__.items():
-				NewVals = getattr(VarSim, VarName, False)
-				# Check the number of NewVals is correct
-				NumVals = len(NewVals) if NewVals else NumSims
-				if NumVals!=NumSims: self.Exit("Error: Number of entries for 'Sim.{}' not equal to number of simulations".format(VarName))
-
-				for i, SimName in enumerate(SimNames):
-					if NewVals==False:
-						Val = Value
-					elif type(Value)==dict:
-						Val = copy.deepcopy(Value)
-						NV = NewVals[i]
-						diff = set(NV.keys()).difference(Val)
-						if diff:
-							self.Logger("Warning: New key(s) {} specified in dictionary {} for sim '{}'. This may lead to unexpected resutls".format(diff, VarName, SimName),Print=True)
-
-						Val.update(NV)
-					else :
-						Val = NewVals[i]
-					SimDict[SimName][VarName] = Val
-
-			if hasattr(VarSim,'Run'):
-				if len(VarSim.Run)!=NumSims: self.Exit("Error: Number of entries for variable 'Sim.Run' not equal to number of simulations")
-				SimNames = [sim for sim, flag in zip(SimNames, VarSim.Run) if flag]
+			SimDicts = self.CreateParameters(self.Parameters_Master,self.Parameters_Var,'Sim')
 
 			MeshNames = []
-			for SimName in SimNames:
-				ParaDict = SimDict[SimName]
+			for SimName, ParaDict in SimDicts.items():
 				self.__Verify__('Simulation',SimDict=ParaDict)
 				StudyDict = {}
 				# Define simulation related directories
@@ -211,15 +160,14 @@ class VLSetup():
 				MeshNames.append(ParaDict['Mesh'])
 
 				#Merge together Main and Study dict and write to file for salome/CodeAster to import
-				MergeDict = {**MainDict, **StudyDict}
-				self.WriteModule("{}/PathVL.py".format(TMP_CALC_DIR), MergeDict)
+				StudyInfo = {**MetaInfo, **StudyDict}
+				self.WriteModule("{}/PathVL.py".format(TMP_CALC_DIR), StudyInfo)
 				# Write parameter file for salome/CodeAster to import
 				self.WriteModule("{}/Parameters.py".format(TMP_CALC_DIR), ParaDict)
 				shutil.copy("{}/Parameters.py".format(TMP_CALC_DIR), CALC_DIR)
 
 				# Attach Parameters to StudyDict for ease of access
-				StudyDict['Parameters'] = Namespace()
-				StudyDict['Parameters'].__dict__.update(ParaDict)
+				StudyDict['Parameters'] = Namespace(**ParaDict)
 
 				# Add StudyDict to Studies dictionary
 				self.Studies[SimName] = StudyDict.copy()
@@ -717,14 +665,7 @@ class VLSetup():
 				f.write(Text+"\n")
 
 	def __Verify__(self, Stage, **kwargs):
-		# if Stage == 'Parameters':
-		# 	# Check 'Parameters_Master' exists
-		# 	if not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Master'])):
-		# 		self.Exit("Parameters_Master file '{}' not in directory {}".format(self.Parameters['Master'], self.Parameters['Dir']))
-		#
-		# 	# Check that 'Parameters_Var' exists (if not None)
-		# 	if self.Parameters['Var'] and not os.path.exists('{}/{}.py'.format(self.Parameters['Dir'], self.Parameters['Var'])):
-		# 		self.Exit("Parameters_Var file '{}' not in  directory {}".format(self.Parameters['Var'],self.Parameters['Dir']))
+
 
 		if Stage == 'Mesh':
 			MeshDict = kwargs.get('MeshDict')
@@ -814,6 +755,41 @@ class VLSetup():
 		self.Parameters_Var = Namespace()
 		for nm in NS:
 			setattr(self.Parameters_Var, nm, getattr(Var, nm, None))
+
+	def CreateParameters(self, Parameters_Master, Parameters_Var, Attr):
+		Master=getattr(Parameters_Master,Attr)
+		Var=getattr(Parameters_Var,Attr)
+		Names = getattr(Var, 'Name', [Master.Name])
+		NbNames = len(Names)
+
+		ParaDict = {Name:{} for Name in Names}
+
+		for VariableName, MasterValue in Master.__dict__.items():
+			# check types
+			NewValues = getattr(Var, VariableName, [MasterValue]*NbNames)
+			# Check the number of NewVals is correct
+			if len(NewValues) != NbNames:
+				self.Exit("Error: Number of entries for '{0}.{1}' not equal to '{0}.Names'".format(Attr,VariableName))
+			for Name,NewVal in zip(Names,NewValues):
+				if type(MasterValue)==dict:
+					cpdict = copy.deepcopy(MasterValue)
+					cpdict.update(NewVal)
+					NewVal=cpdict
+					DiffKeys = set(cpdict.keys()).difference(MasterValue.keys())
+					if DiffKeys:
+						self.Logger("Warning: For {0} '{1}' the key(s) {2} specified in dictionary {0}.{3}"\
+						"are not in the master dictionary. This may lead to unexpected results".format(Attr,Name,DiffKeys,VariableName), Print=True)
+				ParaDict[Name][VariableName] = NewVal
+
+		if hasattr(Var,'Run'):
+			if len(Var.Run)!=NbNames:
+				self.Exit("Error: Number of entries for {}.Run not equal to {}.Names".format(Attr))
+			for Name, flag in zip(Names, Var.Run):
+				if not flag:
+					ParaDict.pop(Name)
+
+		return ParaDict
+
 
 	def __ForceArgs__(self,ArgList):
 		argdict={}

@@ -39,7 +39,7 @@ if EMLoad == 'ERMES':
 ##########################
 ####### Simulation #######
 ##########################
-Sim.Name = 'Sim_Uniform'
+Sim.Name = 'Sim_ERMES'
 
 #############
 ## PreAster #
@@ -61,7 +61,7 @@ if EMLoad == 'ERMES':
 ### Aster ###
 #############
 Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
-Sim.Mesh = 'Uniform' # The mesh used for the simulation
+Sim.Mesh = 'TestCoil' # The mesh used for the simulation
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
 # Loading

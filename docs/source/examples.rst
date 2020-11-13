@@ -873,10 +873,14 @@ As previously mentioned, **ERMES** requires a mesh of the coil and surrounding v
 .. admonition:: Action
    :class: Action
 
-   In :file:`TrainingParameters.py` change *EMLoad* to 'ERMES' and the name of the mesh created. ::
+   In :file:`TrainingParameters.py` change *EMLoad* to 'ERMES' and the name of the mesh created. You will also need to change *Sim.Mesh* to the new **ERMES** compatible mesh along with a new name for the simulation::
 
       EMLoad = 'ERMES'
+
       Mesh.Name='TestCoil'
+
+      Sim.Name='Sim_ERMES'
+      Sim.Mesh='TestCoil'
 
    In the *Run* file change *ShowMesh* ``kwarg`` to :code:`True` in :attr:`VirtualLab.Mesh <VLSetup.Mesh>`::
 
@@ -902,10 +906,8 @@ Prior to running the simulation however it would be useful to view some of the d
 .. admonition:: Action
    :class: Action
 
-   In :file:`TrainingParameters.py` change *Sim.Mesh* to the **ERMES** compatible mesh and change *Sim.Name*. Along with this change *Threshold* to :code:`None` since we are undecided about the thresholding value::
+   In :file:`TrainingParameters.py` change *Threshold* to :code:`None` since we are undecided about the thresholding value::
 
-      Sim.Name='Sim_ERMES'
-      Sim.Mesh='TestCoil'
       Sim.Threshold=None
    
    You will also need to change the ``kwargs`` *RunMesh*, *ShowMesh* and *RunAster* to :code:`False` in the *Run* file.::

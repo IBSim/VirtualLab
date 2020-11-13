@@ -115,37 +115,51 @@ class VLSetup():
 			sys.path.insert(0, self.SIM_MESH)
 
 			for MeshName, ParaDict in MeshDicts.items():
-					# if not os.path.exists('{}/{}.py'.format(self.SIM_MESH,ParaDict['File'])):
-				# 	self.Exit("Mesh file '{}' does not exist in {}".format(ParaDict['File'], self.SIM_MESH))
-				# MeshFile = import_module(ParaDict['File'])
-				# try :
-				# 	ErrorFunc(Namespace(**ParaDict))
-				# except Attribute Error
-				# ErrorFunc = getattr(MeshFile, 'GeomError', None)
-				# if ErrorFunc:
-				# 	err = ErrorFunc(Namespace(**ParaDict))
-				# else : err = None
-				# if err: self.Exit("GeomError in '{}' - {}".format(MeshDict['Name'], err))
+				# Check that mesh file exists
+				if not os.path.exists('{}/{}.py'.format(self.SIM_MESH,ParaDict['File'])):
+					self.Exit("Mesh file '{}' does not exist in {}".format(ParaDict['File'], self.SIM_MESH))
 
-				self.__Verify__('Mesh',MeshDict=ParaDict)
+				MeshFile = import_module(ParaDict['File'])
+				try :
+					err = MeshFile.GeomError(Namespace(**ParaDict))
+					if err: self.Exit("GeomError in '{}' - {}".format(MeshDict['Name'], err))
+				except AttributeError:
+					pass
+
 				self.WriteModule("{}/{}.py".format(self.GEOM_DIR, MeshName), ParaDict)
 				self.Meshes[MeshName] = Namespace(**ParaDict)
-
 
 		# Create Simulation parameter files
 		self.Studies = {}
 		if RunSim and self.Parameters_Master.Sim:
 			if not os.path.exists(self.ASTER_DIR):
 				self.Exit("Error: CodeAster location invalid")
-			if not os.path.isdir(self.STUDY_DIR): os.makedirs(self.STUDY_DIR)
+			os.makedirs(self.STUDY_DIR, exist_ok=True)
 
 			SimDicts = self.CreateParameters(self.Parameters_Master,self.Parameters_Var,'Sim')
 
 			MeshNames = []
 			for SimName, ParaDict in SimDicts.items():
-				self.__Verify__('Simulation',SimDict=ParaDict)
+				# Check files exist
+				if not self.__CheckFile__(self.SIM_PREASTER,ParaDict.get('PreAsterFile'),'py'):
+					self.Exit("PreAsterFile '{}.py' not in directory {}".format(ParaDict['PreAsterFile'],self.SIM_PREASTER))
+				if not self.__CheckFile__(self.SIM_ASTER,ParaDict.get('AsterFile'),'comm'):
+					self.Exit("AsterFile '{}.comm' not in directory {}".format(ParaDict['AsterFile'],self.SIM_ASTER,))
+				if not self.__CheckFile__(self.SIM_POSTASTER, ParaDict.get('PostAsterFile'), 'py'):
+					self.Exit("PostAsterFile '{}.py' not in directory {}".format(ParaDict['PostAsterFile'],self.SIM_POSTASTER))
+				# Check mesh will be available
+				if not (ParaDict['Mesh'] in self.Meshes or self.__CheckFile__(self.MESH_DIR, ParaDict['Mesh'], 'med')):
+					self.Exit("Mesh '{}' isn't being created and is not in the mesh directory '{}'".format(ParaDict['Mesh'], self.MESH_DIR))
+				# Check materials used
+				Materials = ParaDict.get('Materials',[])
+				if type(Materials)==str: Materials = [Materials]
+				elif type(Materials)==dict: Materials = Materials.values()
+				for mat in set(Materials):
+					if not os.path.isdir('{}/{}'.format(self.MATERIAL_DIR, mat)):
+						self.Exit("Material '{}' isn't in the materials directory '{}'".format(mat, self.MATERIAL_DIR))
+
+				# Create dictionary of simulation specific information
 				StudyDict = {}
-				# Define simulation related directories
 				StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, SimName)
 				StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.STUDY_DIR, SimName)
 				if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
@@ -664,49 +678,6 @@ class VLSetup():
 			with open(self.LogFile,'a') as f:
 				f.write(Text+"\n")
 
-	def __Verify__(self, Stage, **kwargs):
-
-
-		if Stage == 'Mesh':
-			MeshDict = kwargs.get('MeshDict')
-			if os.path.exists('{}/{}.py'.format(self.SIM_MESH,MeshDict['File'])):
-				## import Mesh
-				## MeshFile = getattr(Mesh, MeshDict['File'])
-				MeshFile = __import__(MeshDict['File'])
-				ErrorFunc = getattr(MeshFile, 'GeomError', None)
-				if ErrorFunc:
-					ParamMesh = Namespace()
-					ParamMesh.__dict__.update(MeshDict)
-					err = ErrorFunc(ParamMesh)
-				else : err = None
-				if err: self.Exit("GeomError in '{}' - {}".format(MeshDict['Name'], err))
-			else:
-				self.Exit("Mesh file '{}' does not exist in {}".format(MeshDict['File'], self.SIM_MESH))
-
-		if Stage == 'Simulation':
-			SimDict = kwargs.get('SimDict')
-			# Check that the scripts provided exist
-			if 'PreAsterFile' in SimDict:
-				if not os.path.isfile('{}/{}.py'.format(self.SIM_PREASTER,SimDict['PreAsterFile'])):
-					self.Exit("PreAsterFile '{}' not in directory '{}'".format(SimDict['PreAsterFile'], self.SIM_PREASTER))
-			if not os.path.isfile('{}/{}.comm'.format(self.SIM_ASTER,SimDict['AsterFile'])):
-				self.Exit("AsterFile '{}' not in directory '{}'".format(SimDict['AsterFile'], self.SIM_ASTER))
-			if 'PostAsterFile' in SimDict:
-				if not os.path.isfile('{}/{}.py'.format(self.SIM_POSTASTER,SimDict['PostAsterFile'])):
-					self.Exit("PostAsterFile '{}' not in directory '{}'".format(SimDict['PostAsterFile'], self.SIM_POSTASTER))
-
-			# Check either the mesh is in the mesh directory or that it is a mesh to be created
-			if SimDict['Mesh'] in (getattr(self, 'Meshes', {})).keys(): pass
-			elif os.path.isfile("{}/{}.med".format(self.MESH_DIR, SimDict['Mesh'])): pass
-			else : self.Exit("Mesh '{}' isn't being created and is not in the mesh directory '{}'".format(SimDict['Mesh'], self.MESH_DIR))
-
-			Materials = SimDict.get('Materials',[])
-			if type(Materials)==str: Materials = [Materials]
-			elif type(Materials)==dict:Materials = Materials.values()
-			for mat in set(Materials):
-				if not os.path.exists('{}/{}'.format(self.MATERIAL_DIR, mat)):
-					self.Exit("Material '{}' isn't in the materials directory '{}'".format(mat, self.MATERIAL_DIR))
-
 	def Exit(self,mess='',KeepDirs=[]):
 		self.Logger(mess, Print=True)
 		self.Cleanup(KeepDirs)
@@ -789,6 +760,12 @@ class VLSetup():
 					ParaDict.pop(Name)
 
 		return ParaDict
+
+	def __CheckFile__(self,Directory,fname,ext):
+		if not fname:
+			return True
+		else:
+			return os.path.isfile('{}/{}.{}'.format(Directory,fname,ext))
 
 
 	def __ForceArgs__(self,ArgList):

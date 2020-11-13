@@ -82,7 +82,7 @@ class VLSetup():
 
 		self.Logger('### Launching VirtualLab ###',Print=True)
 
-		# Create variables based on the Parameters file(s) provided
+		# Create variables based on the namespaces in the Parameters file(s) provided
 		self.GetParams(Parameters_Master,Parameters_Var)
 
 		self.Salome = VLSalome(self)
@@ -98,14 +98,16 @@ class VLSetup():
 
 		RunMesh = kwargs.get('RunMesh', True)
 		RunSim = kwargs.get('RunSim',True)
+		RunML = kwargs.get('RunML',True)
 
 		sys.path.insert(0, self.COM_SCRIPTS)
 		sys.path.insert(0, self.SIM_SCRIPTS)
 
+		# Meta information about the class which will be passed to CodeAster
 		MetaInfo = {key:val for key,val in self.__dict__.items() if type(val)==str}
 
-		# Create Mesh parameter files if they are required
-		self.Meshes = {}
+		# Create MeshData which contains all of the mesh related information
+		self.MeshData = {}
 		if RunMesh and self.Parameters_Master.Mesh:
 			self.GEOM_DIR = '{}/Geom'.format(self.TMP_DIR)
 			os.makedirs(self.MESH_DIR, exist_ok=True)
@@ -115,6 +117,7 @@ class VLSetup():
 			sys.path.insert(0, self.SIM_MESH)
 
 			for MeshName, ParaDict in MeshDicts.items():
+				# Run checks
 				# Check that mesh file exists
 				if not os.path.exists('{}/{}.py'.format(self.SIM_MESH,ParaDict['File'])):
 					self.Exit("Mesh file '{}' does not exist in {}".format(ParaDict['File'], self.SIM_MESH))
@@ -125,21 +128,22 @@ class VLSetup():
 					if err: self.Exit("GeomError in '{}' - {}".format(MeshDict['Name'], err))
 				except AttributeError:
 					pass
+				# Checks complete
 
 				self.WriteModule("{}/{}.py".format(self.GEOM_DIR, MeshName), ParaDict)
-				self.Meshes[MeshName] = Namespace(**ParaDict)
+				self.MeshData[MeshName] = Namespace(**ParaDict)
 
-		# Create Simulation parameter files
-		self.Studies = {}
+		# Create SimData which contains all of the mesh related information
+		self.SimData = {}
 		if RunSim and self.Parameters_Master.Sim:
 			if not os.path.exists(self.ASTER_DIR):
 				self.Exit("Error: CodeAster location invalid")
 			os.makedirs(self.STUDY_DIR, exist_ok=True)
 
 			SimDicts = self.CreateParameters(self.Parameters_Master,self.Parameters_Var,'Sim')
-
 			MeshNames = []
 			for SimName, ParaDict in SimDicts.items():
+				# Run checks
 				# Check files exist
 				if not self.__CheckFile__(self.SIM_PREASTER,ParaDict.get('PreAsterFile'),'py'):
 					self.Exit("PreAsterFile '{}.py' not in directory {}".format(ParaDict['PreAsterFile'],self.SIM_PREASTER))
@@ -148,49 +152,51 @@ class VLSetup():
 				if not self.__CheckFile__(self.SIM_POSTASTER, ParaDict.get('PostAsterFile'), 'py'):
 					self.Exit("PostAsterFile '{}.py' not in directory {}".format(ParaDict['PostAsterFile'],self.SIM_POSTASTER))
 				# Check mesh will be available
-				if not (ParaDict['Mesh'] in self.Meshes or self.__CheckFile__(self.MESH_DIR, ParaDict['Mesh'], 'med')):
+				if not (ParaDict['Mesh'] in self.MeshData or self.__CheckFile__(self.MESH_DIR, ParaDict['Mesh'], 'med')):
 					self.Exit("Mesh '{}' isn't being created and is not in the mesh directory '{}'".format(ParaDict['Mesh'], self.MESH_DIR))
 				# Check materials used
 				Materials = ParaDict.get('Materials',[])
 				if type(Materials)==str: Materials = [Materials]
 				elif type(Materials)==dict: Materials = Materials.values()
-				for mat in set(Materials):
-					if not os.path.isdir('{}/{}'.format(self.MATERIAL_DIR, mat)):
-						self.Exit("Material '{}' isn't in the materials directory '{}'".format(mat, self.MATERIAL_DIR))
+				MatErr = [mat for mat in set(Materials) if not os.path.isdir('{}/{}'.format(self.MATERIAL_DIR, mat))]
+				if MatErr:
+						self.Exit("Material(s) {} specified for {} not available.\n"\
+						"Please see the materials directory {} for options.".format(MatErr,SimName,self.MATERIAL_DIR))
+				# Checks complete
 
-				# Create dictionary of simulation specific information
+				# Create dict of simulation specific information to be nested in SimData
 				StudyDict = {}
 				StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(self.TMP_DIR, SimName)
 				StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(self.STUDY_DIR, SimName)
-				if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
-				with open("{}/__init__.py".format(TMP_CALC_DIR),'w') as f: pass
-				if not os.path.isdir(CALC_DIR): os.makedirs(CALC_DIR)
-
 				StudyDict['PREASTER'] = "{}/PreAster".format(CALC_DIR)
 				StudyDict['ASTER'] = "{}/Aster".format(CALC_DIR)
 				StudyDict['POSTASTER'] = "{}/PostAster".format(CALC_DIR)
 				StudyDict['MeshFile'] = "{}/{}.med".format(self.MESH_DIR, ParaDict['Mesh'])
 
-				MeshNames.append(ParaDict['Mesh'])
-
-				#Merge together Main and Study dict and write to file for salome/CodeAster to import
-				StudyInfo = {**MetaInfo, **StudyDict}
-				self.WriteModule("{}/PathVL.py".format(TMP_CALC_DIR), StudyInfo)
-				# Write parameter file for salome/CodeAster to import
+				# Create tmp directory
+				if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
+				with open("{}/__init__.py".format(TMP_CALC_DIR),'w') as f: pass
+				# Combine Meta information with that from Study dict and write to file for salome/CodeAster to import
+				self.WriteModule("{}/PathVL.py".format(TMP_CALC_DIR), {**MetaInfo, **StudyDict})
+				# Write Sim Parameters to file for Salome/CodeAster to import
 				self.WriteModule("{}/Parameters.py".format(TMP_CALC_DIR), ParaDict)
-				shutil.copy("{}/Parameters.py".format(TMP_CALC_DIR), CALC_DIR)
-
 				# Attach Parameters to StudyDict for ease of access
 				StudyDict['Parameters'] = Namespace(**ParaDict)
 
-				# Add StudyDict to Studies dictionary
-				self.Studies[SimName] = StudyDict.copy()
+				# Add StudyDict to SimData dictionary
+				self.SimData[SimName] = StudyDict.copy()
+
+				os.makedirs(CALC_DIR,exist_ok=True)
+				shutil.copy("{}/Parameters.py".format(TMP_CALC_DIR), CALC_DIR)
+
+				MeshNames.append(ParaDict['Mesh'])
+
 
 		# Gather information about what's running in VirtualLab
-		NumSims = len(self.Studies)
-		NumMeshes = len(MeshNames) if NumSims else 0
-		NumMeshesCr = len(self.Meshes)
-
+		NumSims = len(self.SimData)
+		NumMeshes = len(set(MeshNames)) if NumSims else 0
+		NumMeshesCr = len(self.MeshData)
+		sys.exit()
 		Infostr = "Simulation Type: {}\n"\
 				  "Project: {}\n"\
 				  "StudyName: {}\n"\
@@ -232,7 +238,7 @@ class VLSetup():
 
 
 	def Mesh(self, **kwargs):
-		if not self.Meshes: return
+		if not self.MeshData: return
 		kwargs.update(self.__force__)
 		'''
 		kwargs available:
@@ -246,22 +252,22 @@ class VLSetup():
 
 		# MeshCheck routine which allows you to mesh in the GUI (Used for debugging).
 		# The script will terminate after this routine
-		if MeshCheck and MeshCheck in self.Meshes.keys():
+		if MeshCheck and MeshCheck in self.MeshData.keys():
 			self.Logger('### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
 
 			MeshParaFile = "{}/{}.py".format(self.GEOM_DIR,MeshCheck)
-			MeshScript = "{}/{}.py".format(self.SIM_MESH, self.Meshes[MeshCheck].File)
+			MeshScript = "{}/{}.py".format(self.SIM_MESH, self.MeshData[MeshCheck].File)
 			# The file MeshParaFile is passed to MeshScript to create the mesh in the GUI
 			self.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
 			self.Exit('Terminating after checking mesh')
 
-		elif MeshCheck and MeshCheck not in self.Meshes.keys():
+		elif MeshCheck and MeshCheck not in self.MeshData.keys():
 			self.Exit("Error: '{}' specified for MeshCheck is not one of meshes to be created.\n"\
-					  "Meshes to be created are:{}".format(MeshCheck, list(self.Meshes.keys())))
+					  "Meshes to be created are:{}".format(MeshCheck, list(self.MeshData.keys())))
 
 		self.Logger('\n### Starting Meshing ###\n',Print=True)
 
-		NumMeshes = len(self.Meshes)
+		NumMeshes = len(self.MeshData)
 		NumThreads = min(NumThreads,NumMeshes)
 		MeshError = []
 
@@ -279,7 +285,7 @@ class VLSetup():
 		MeshStat = {}
 		NumActive=NumComplete=0
 		SalomeReset = 400 #Close Salome session(s) & open new after this many meshes due to memory leak
-		for MeshName, MeshPara in self.Meshes.items():
+		for MeshName, MeshPara in self.MeshData.items():
 			self.Logger("'{}' started".format(MeshName),Print=True)
 
 			port = Ports.pop(0)
@@ -308,14 +314,14 @@ class VLSetup():
 						if os.path.isfile(RCfile):
 							with open(RCfile,'r') as f:
 								returncode=int(f.readline())
-							AffectedSims = [Name for Name, StudyDict in self.Studies.items() if StudyDict["Parameters"].Mesh == tmpMeshName]
-							MeshPara = self.Meshes[tmpMeshName]
+							AffectedSims = [Name for Name, StudyDict in self.SimData.items() if StudyDict["Parameters"].Mesh == tmpMeshName]
+							MeshPara = self.MeshData[tmpMeshName]
 							MeshImp = import_module('Mesh.{}'.format(MeshPara.File))
 							# Check in meshfile for error code handling
 							if hasattr(MeshImp,'HandleRC'):
 								self.Logger("'{}'' returned code {}. "\
 											"Passed to HandleRC function.".format(tmpMeshName,returncode),Print=True)
-								MeshImp.HandleRC(returncode,self.Studies,AffectedSims,tmpMeshName, MeshError)
+								MeshImp.HandleRC(returncode,self.SimData,AffectedSims,tmpMeshName, MeshError)
 							else :
 								self.Logger("'{}' returned code {}. Added to error list "\
 											"since no HandleRC function found".format(tmpMeshName,returncode),Print=True)
@@ -351,13 +357,13 @@ class VLSetup():
 		self.Logger('\n### Meshing Completed ###',Print=True)
 		if ShowMesh:
 			self.Logger("Opening mesh files in Salome",Print=True)
-			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.Meshes.keys()]
+			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshData.keys()]
 			SubProc = Popen('salome {}/ShowMesh.py args:{} '.format(self.COM_SCRIPTS,",".join(MeshPaths)), shell='TRUE')
 			SubProc.wait()
 			self.Exit("Terminating after mesh viewing")
 
 	def Sim(self, **kwargs):
-		if not self.Studies: return
+		if not self.SimData: return
 		kwargs.update(self.__force__)
 		'''
 		kwargs
@@ -388,7 +394,7 @@ class VLSetup():
 
 		self.Logger('\n### Starting Simulations ###\n', Print=True)
 
-		NumSim = len(self.Studies)
+		NumSim = len(self.SimData)
 		NumThreads = min(NumThreads,NumSim)
 
 		SimLogFile = "{}/Output.log"
@@ -401,7 +407,7 @@ class VLSetup():
 			count, NumActive = 0, 0
 			PreError = []
 			PreStat = {}
-			for Name, StudyDict in self.Studies.items():
+			for Name, StudyDict in self.SimData.items():
 				PreAsterFile = StudyDict['Parameters'].PreAsterFile
 				if not PreAsterFile: continue
 				PreAster = import_module(PreAsterFile)
@@ -431,7 +437,7 @@ class VLSetup():
 						EC = proc.exitcode
 						if EC == None:
 							continue
-						tmpStudyDict = self.Studies[tmpName]
+						tmpStudyDict = self.SimData[tmpName]
 						if EC == 0:
 							self.Logger("Pre-Aster for '{}' completed\n".format(tmpName),Print=True)
 						else :
@@ -468,7 +474,7 @@ class VLSetup():
 			AsterError = []
 			AsterStat = {}
 			count, NumActive = 0, 0
-			for Name, StudyDict in self.Studies.items():
+			for Name, StudyDict in self.SimData.items():
 				if not os.path.isdir(StudyDict['ASTER']): os.makedirs(StudyDict['ASTER'])
 
 				# Define location of export and Aster file
@@ -501,7 +507,7 @@ class VLSetup():
 						Poll = Proc.poll()
 						if Poll == None:
 							continue
-						tmpStudyDict = self.Studies[tmpName]
+						tmpStudyDict = self.SimData[tmpName]
 						if self.mode == 'Interactive':
 							with open('{}/Aster.txt'.format(tmpStudyDict['TMP_CALC_DIR']),'r') as f:
 								EC = int(f.readline())
@@ -535,7 +541,7 @@ class VLSetup():
 			count, NumActive = 0, 0
 			PostError = []
 			PostStat = {}
-			for Name, StudyDict in self.Studies.items():
+			for Name, StudyDict in self.SimData.items():
 				PostAsterFile = getattr(StudyDict['Parameters'],'PostAsterFile', None)
 				if not PostAsterFile : continue
 				PostAster = import_module(PostAsterFile)
@@ -564,7 +570,7 @@ class VLSetup():
 						if EC == None:
 							continue
 
-						tmpStudyDict = self.Studies[tmpName]
+						tmpStudyDict = self.SimData[tmpName]
 						if EC == 0:
 							self.Logger("Post-Aster for '{}' completed".format(tmpName),Print=True)
 						else :
@@ -612,7 +618,7 @@ class VLSetup():
 		if ShowRes:
 			print("### Opening .rmed files in ParaVis ###\n")
 			ResFiles = {}
-			for SimName, StudyDict in self.Studies.items():
+			for SimName, StudyDict in self.SimData.items():
 				for root, dirs, files in os.walk(StudyDict['CALC_DIR']):
 					for file in files:
 						fname, ext = os.path.splitext(file)
@@ -748,8 +754,8 @@ class VLSetup():
 					NewVal=cpdict
 					DiffKeys = set(cpdict.keys()).difference(MasterValue.keys())
 					if DiffKeys:
-						self.Logger("Warning: For {0} '{1}' the key(s) {2} specified in dictionary {0}.{3}"\
-						"are not in the master dictionary. This may lead to unexpected results".format(Attr,Name,DiffKeys,VariableName), Print=True)
+						self.Logger("Warning: The key(s) {2} specified in '{0}.{3}' for '{1}' are not in that dictionary "\
+						"in Parameters_Master.\nThis may lead to unexpected results.\n".format(Attr,Name,DiffKeys,VariableName), Print=True)
 				ParaDict[Name][VariableName] = NewVal
 
 		if hasattr(Var,'Run'):

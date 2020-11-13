@@ -237,7 +237,7 @@ def Combined(Info):
 	GlobalRange = [np.inf, -np.inf]
 	Simulations = []
 	CaptureTime = []
-	for Name, StudyDict in Info.Studies.items():
+	for Name, StudyDict in Info.SimData.items():
 		Simulations.append(Name)
 		StudyPV = StudyDict["ParaVis"]
 		CaptureTime.append(StudyPV["CaptureTime"])

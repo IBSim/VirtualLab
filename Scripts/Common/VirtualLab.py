@@ -196,7 +196,7 @@ class VLSetup():
 		NumSims = len(self.SimData)
 		NumMeshes = len(set(MeshNames)) if NumSims else 0
 		NumMeshesCr = len(self.MeshData)
-		sys.exit()
+
 		Infostr = "Simulation Type: {}\n"\
 				  "Project: {}\n"\
 				  "StudyName: {}\n"\

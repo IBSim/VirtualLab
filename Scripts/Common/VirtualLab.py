@@ -22,6 +22,7 @@ import uuid
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode):
+		# __force__ contains any keyword arguments passed using the -k argument when launching VirtualLab
 		self.__force__ = self.__ForceArgs__(sys.argv[1:])
 
 		Simulation = self.__force__.get('Simulation',Simulation)
@@ -32,10 +33,11 @@ class VLSetup():
 		Mode = self.__force__.get('Mode',Mode)
 
 		# Set running mode
-		if Mode in ('i', 'I', 'interactive', 'Interactive'): self.mode = 'Interactive'
-		elif Mode in ('c', 'C', 'continuous', 'Continuous'): self.mode = 'Continuous'
-		elif Mode in ('h', 'H', 'headless', 'Headless'): self.mode = 'Headless'
-		else : self.Exit("Error: Mode is not in ('Interactive','Continuous','Headless')")
+		if Mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
+		elif Mode.lower() in ('t','terminal'): self.mode = 'Terminal'
+		elif Mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
+		elif Mode.lower() in ('h', 'headless'): self.mode = 'Headless'
+		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
 
 		self.Simulation = Simulation
 		self.Project = Project
@@ -180,14 +182,11 @@ class VLSetup():
 				self.WriteModule("{}/PathVL.py".format(TMP_CALC_DIR), {**MetaInfo, **StudyDict})
 				# Write Sim Parameters to file for Salome/CodeAster to import
 				self.WriteModule("{}/Parameters.py".format(TMP_CALC_DIR), ParaDict)
+
 				# Attach Parameters to StudyDict for ease of access
 				StudyDict['Parameters'] = Namespace(**ParaDict)
-
 				# Add StudyDict to SimData dictionary
 				self.SimData[SimName] = StudyDict.copy()
-
-				os.makedirs(CALC_DIR,exist_ok=True)
-				shutil.copy("{}/Parameters.py".format(TMP_CALC_DIR), CALC_DIR)
 
 				MeshNames.append(ParaDict['Mesh'])
 
@@ -281,7 +280,7 @@ class VLSetup():
 		ArgDict = {}
 		if os.path.isfile('{}/config.py'.format(self.SIM_MESH)): ArgDict["ConfigFile"] = True
 
-		tmpLogstr = "" if self.mode=='Interactive' else "{}/{}_log"
+		tmpLogstr = "" if self.mode in ('Interactive','Terminal') else "{}/{}_log"
 		MeshStat = {}
 		NumActive=NumComplete=0
 		SalomeReset = 400 #Close Salome session(s) & open new after this many meshes due to memory leak
@@ -305,7 +304,7 @@ class VLSetup():
 					Poll = Proc.poll()
 					# If SubProc finished Poll will change from None to errorcode
 					if Poll is not None:
-						if self.mode != 'Interactive':
+						if self.mode not in ('Interactive','Terminal'):
 							with open(tmpLogstr.format(self.GEOM_DIR,tmpMeshName),'r') as rtmpLog:
 								self.Logger("\nOutput for '{}':\n{}".format(tmpMeshName,rtmpLog.read()))
 
@@ -415,12 +414,12 @@ class VLSetup():
 				if not PreAsterSgl: continue
 
 
-				self.Logger("Pre-Aster for '{}' started\n".format(Name),Print=True)
-				if not os.path.isdir(StudyDict['PREASTER']): os.makedirs(StudyDict['PREASTER'])
+				self.Logger("'{}' started\n".format(Name),Print=True)
+				os.makedirs(StudyDict['PREASTER'],exist_ok=True)
 
 				proc = Process(target=MPRun.main, args=(self,StudyDict,PreAsterSgl))
 
-				if self.mode == 'Interactive':
+				if self.mode in ('Interactive','Terminal'):
 					proc.start()
 				else :
 					with open(SimLogFile.format(StudyDict['PREASTER']), 'w') as f:
@@ -428,6 +427,10 @@ class VLSetup():
 							# stderr may need to be written to a seperate file and then copied over
 							with contextlib.redirect_stderr(sys.stdout):
 								proc.start()
+
+				# Copy the parameters file used for this simulation
+				shutil.copy("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), StudyDict['CALC_DIR'])
+				StudyDict['__write__'] = True
 
 				count +=1
 				NumActive +=1
@@ -439,12 +442,12 @@ class VLSetup():
 							continue
 						tmpStudyDict = self.SimData[tmpName]
 						if EC == 0:
-							self.Logger("Pre-Aster for '{}' completed\n".format(tmpName),Print=True)
+							self.Logger("'{}' completed\n".format(tmpName),Print=True)
 						else :
-							self.Logger("Pre-Aster for '{}' returned error code {}\n".format(tmpName,EC),Print=True)
+							self.Logger("'{}' returned error code {}\n".format(tmpName,EC),Print=True)
 							PreError.append(tmpName)
 
-						if self.mode != 'Interactive':
+						if self.mode in ('Continuous','Headless'):
 							self.Logger("See {} for details".format(SimLogFile.format(tmpStudyDict['PREASTER'])),Print=EC)
 
 						PreStat.pop(tmpName)
@@ -462,10 +465,21 @@ class VLSetup():
 
 			if PreError: self.Exit("The following PreAster routine(s) finished with errors:\n{}".format(PreError),KeepDirs=PreError)
 
+			# If the PreAster file has the function Combind it will be executed here
 			PreAster = import_module(SimMaster.PreAsterFile)
 			if hasattr(PreAster, 'Combined'):
-				self.Logger('\n Running PreAster Combined #\n', Print=True)
-				PreAster.Combined(self)
+				self.Logger('Combined function started', Print=True)
+
+				if self.mode in ('Interactive','Terminal'):
+					PreAster.Combined(self)
+				else :
+					with open(self.LogFile, 'a') as f:
+						with contextlib.redirect_stdout(f):
+							# stderr may need to be written to a seperate file and then copied over
+							with contextlib.redirect_stderr(sys.stdout):
+								PreAster.Combined(self)
+
+				self.Logger('Combined function complete', Print=True)
 
 			self.Logger('>>> PreAster Stage Complete\n', Print=True)
 
@@ -502,6 +516,11 @@ class VLSetup():
 				count +=1
 				NumActive +=1
 
+				# Copy the parameters file used for this simulation, if it's not been written previously
+				if not StudyDict.get('__write__'):
+					shutil.copy("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), StudyDict['CALC_DIR'])
+					StudyDict['__write__'] = True
+
 				while NumActive==NumThreads or count==NumSim:
 					for tmpName, Proc in AsterStat.copy().items():
 						Poll = Proc.poll()
@@ -521,7 +540,7 @@ class VLSetup():
 							self.Logger("Aster for '{}' returned error code {}.".format(tmpName,EC))
 							AsterError.append(tmpName)
 
-						if self.mode != 'Interactive':
+						if self.mode in ('Continuous','Headless'):
 							self.Logger("See {}/AsterLog for details".format(tmpStudyDict['ASTER']),Print=EC)
 
 						AsterStat.pop(tmpName)
@@ -552,7 +571,7 @@ class VLSetup():
 				if not os.path.isdir(StudyDict['POSTASTER']): os.makedirs(StudyDict['POSTASTER'])
 
 				proc = Process(target=MPRun.main, args=(self,StudyDict,PostAsterSgl))
-				if self.mode == 'Interactive':
+				if self.mode in ('Interactive','Terminal'):
 					proc.start()
 				else :
 					with open(SimLogFile.format(StudyDict['POSTASTER']), 'w') as f:
@@ -560,6 +579,11 @@ class VLSetup():
 							# stderr may need to be written to a seperate file and then copied over
 							with contextlib.redirect_stderr(sys.stdout):
 								proc.start()
+
+				# Copy the parameters file used for this simulation, if it's not been written previously
+				if not StudyDict.get('__write__'):
+					shutil.copy("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), StudyDict['CALC_DIR'])
+					StudyDict['__write__'] = True
 
 				count +=1
 				NumActive +=1
@@ -577,7 +601,7 @@ class VLSetup():
 							self.Logger("Post-Aster for '{}' returned error code {}".format(tmpName,EC),Print=True)
 							PostError.append(tmpName)
 
-						if self.mode != 'Interactive':
+						if self.mode in ('Continuous','Headless'):
 							self.Logger("See {} for details".format(SimLogFile.format(tmpStudyDict['POSTASTER'])),Print=EC)
 
 						PostStat.pop(tmpName)
@@ -599,7 +623,7 @@ class VLSetup():
 			if hasattr(PostAster, 'Combined'):
 				self.Logger('Combined function started', Print=True)
 
-				if self.mode == 'Interactive':
+				if self.mode in ('Interactive','Terminal'):
 					PostAster.Combined(self)
 				else :
 					with open(self.LogFile, 'a') as f:
@@ -653,6 +677,8 @@ class VLSetup():
 		if self.mode == 'Interactive':
 			xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(StudyDict["Parameters"].Name)
 			command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
+		elif self.mode == 'Terminal':
+			command = "{} {} ".format(self.ASTER_DIR, exportfile)
 		elif self.mode == 'Continuous':
 			command = "{} {} > {}/Output.log ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER'])
 		else :
@@ -667,7 +693,7 @@ class VLSetup():
 
 		if not hasattr(self,'LogFile'):
 			print(Text)
-			if self.mode=='Interactive':
+			if self.mode in ('Interactive','Terminal'):
 				self.LogFile = None
 			else:
 				self.LogFile = "{}/log/{}_{}.log".format(self.PROJECT_DIR,self.StudyName,self.__ID__)
@@ -677,7 +703,7 @@ class VLSetup():
 				print("Detailed output written to {}".format(self.LogFile))
 			return
 
-		if self.mode=='Interactive':
+		if self.mode in ('Interactive','Terminal'):
 			print(Text)
 		else:
 			if Prnt: print(Text)

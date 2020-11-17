@@ -208,7 +208,6 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		WaveMat += "// Special materials properties\n" + \
 		"PROPERTIES[17].COMPLEX_IBC = [0.000000000000000000,100.000000000000000000];\n" + \
 		"PROPERTIES[32].COMPLEX_IBC = [1.0,0.0];\n"
-
 		with open('{}/Wave{}.dat'.format(tmpERMESdir,Temp),'w+') as f:
 			f.write(Wave01 + strNodes + WaveMat + WaveBC + Wave05)
 
@@ -389,8 +388,12 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		print('intSurf|J|: {:.6e}'.format(CoilInCurr))
 		print('intSurf|J|^2: {:.6e}'.format(CoilInCurrsq))
 
+
+
 	# Create rmed file with ERMES results
 	ERMESrmed = h5py.File(ERMESout, 'w')
+	# Some groups require specific formatting so take an empty group from format file
+	Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
 
 	# Copy Mesh data from mesh .med file
 	MeshMed = h5py.File(StudyDict['MeshFile'], 'r')
@@ -399,10 +402,17 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	ERMESrmed.copy(MeshMed["ENS_MAA/xERMES"],"ENS_MAA/xERMES")
 	MeshMed.close()
 
-	# Some groups require specific formatting so take an empty group from format file
-	Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
+	# Scaling factor to ensure that the current measured at the coil matches Sim.Current
+	Scale = Parameters.Current/CoilInCurr
+
 	GrpFormat = Formats['ELEME']
 	for ResName, Result in ResDict.items():
+		# Scale up results and update dictionary
+		if ResName == 'Joule_heating':
+			ResDict[ResName] = Result = Result*Scale**2
+		else :
+			ResDict[ResName] = Result = Result*Scale
+
 		ERMESrmed.copy(GrpFormat,"CHA/{}".format(ResName))
 		grp = ERMESrmed["CHA/{}".format(ResName)]
 		grp.attrs.create('MAI','xERMES',dtype='S8')
@@ -429,19 +439,12 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		grp.attrs.create('NGA',1,dtype='i4')
 		grp.create_dataset("CO",data=Result.flatten(order='F'))
 
+	ERMESrmed["CHA"].attrs.create('Current',Parameters.Current)
+	ERMESrmed["CHA"].attrs.create('Frequency',Parameters.Frequency)
+
+	# Create the volumetric results Watts and Watts per volume using the joule heating
 	JH = ResDict["Joule_heating"]
 	Coor = ERMESMesh.GetNodeXYZ(list(range(1,ERMESMesh.NbNodes+1)))
-	# Volumetric results
-	ERMESrmed.copy(GrpFormat,"GAUSS")
-	grp = ERMESrmed["GAUSS"]
-	grp = grp.create_group('TE4_____FPG1')
-	grp.attrs.create('DIM',3,dtype='i4')
-	grp.attrs.create('GEO', 304, dtype='i4')
-	grp.attrs.create('INM', '', dtype='S100')
-	grp.attrs.create('NBR', 1, dtype='i4')
-	grp.create_dataset('COO',data=[0,0,0,1,1,0,0,0,0,0,1,0],dtype='f8')
-	grp.create_dataset('GAU',data=[0.25]*3,dtype='f8')
-	grp.create_dataset('VAL', data=[1/6],dtype='f8')
 
 	Sample = ERMESMesh.GroupInfo('Sample')
 	WattsPV, Watts, Volume = [], [], []
@@ -454,12 +457,12 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		WattsPV.append(Elsum)
 		Watts.append(vol*Elsum)
 
-	FWattsPV = np.zeros(ERMESMesh.NbVolumes)
-	FWattsPV[:len(WattsPV)] = WattsPV
-	FWatts = np.zeros(ERMESMesh.NbVolumes)
-	FWatts[:len(Watts)] = Watts
+	WattsPV = np.array(WattsPV)
+	Watts = np.array(Watts)
 
-	for Name, Values in zip(['WattsPV', 'Watts'],[FWattsPV, FWatts]):
+	for Name, Values in zip(['WattsPV', 'Watts'],[WattsPV, Watts]):
+		# pad values with zeros for remaining non-sample elements
+		Values = np.pad(Values,(0,ERMESMesh.NbVolumes - Values.shape[0]))
 		ERMESrmed.copy(GrpFormat,"CHA/{}".format(Name))
 		grp = ERMESrmed["CHA/{}".format(Name)]
 		grp.attrs.create('MAI','xERMES',dtype='S8')
@@ -484,26 +487,38 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		grp.attrs.create('NGA',1,dtype='i4')
 		grp.create_dataset("CO",data=Values)
 
-	grp = ERMESrmed.create_group('EM_Load')
-	# Get sorting index in descending order for WattsPV
-	WattsPV = np.array(WattsPV)
+	# Group GAUSS required for volumetric results
+	ERMESrmed.copy(GrpFormat,"GAUSS")
+	grp = ERMESrmed["GAUSS"]
+	grp = grp.create_group('TE4_____FPG1')
+	grp.attrs.create('DIM',3,dtype='i4')
+	grp.attrs.create('GEO', 304, dtype='i4')
+	grp.attrs.create('INM', '', dtype='S100')
+	grp.attrs.create('NBR', 1, dtype='i4')
+	grp.create_dataset('COO',data=[0,0,0,1,1,0,0,0,0,0,1,0],dtype='f8')
+	grp.create_dataset('GAU',data=[0.25]*3,dtype='f8')
+	grp.create_dataset('VAL', data=[1/6],dtype='f8')
+
+	# Get sorting index in descending order for WattsPV & sort arrays by this to avoid having to do so again
 	sortlist = WattsPV.argsort()[::-1]
-	# Sort by sortlist for thresholding capabilities
-	WattsPV = WattsPV[sortlist]*(1/CoilInCurr)**2
-	Watts = np.array(Watts)[sortlist]*(1/CoilInCurr)**2
+	Watts = Watts[sortlist]
+	WattsPV = WattsPV[sortlist]
 	Elements = Sample.Elements[sortlist]
-	JH = JH*(1/CoilInCurr)**2
+
 	# Save arrays to ERMES.rmed file for easy access
+	grp = ERMESrmed.create_group('EM_Load')
 	grp.create_dataset('WattsPV',data=WattsPV)
 	grp.create_dataset('Watts',data=Watts)
 	grp.create_dataset('Elements',data=Elements)
 	grp.create_dataset('JHNode',data=JH)
+	grp.attrs.create('Current',Parameters.Current)
+	grp.attrs.create('Frequency',Parameters.Frequency)
+	grp.attrs.create('NbEls',Watts.shape[0])
 
 	ERMESrmed.close()
+	Formats.close()
 
 	shutil.rmtree(tmpERMESdir)
-	time.sleep(2)
-
 
 	return Watts, WattsPV, Elements, JH
 
@@ -516,7 +531,6 @@ def ASCIIname(names):
 	res = np.array(namelist)
 	return res
 
-
 def ERMES(Info, StudyDict):
 	Parameters = StudyDict['Parameters']
 	# Name of rMED file where results will be stored. This can be opened in ParaVis
@@ -528,29 +542,31 @@ def ERMES(Info, StudyDict):
 	# Read in a previous set of ERMES results
 	elif os.path.isfile(ERMESfile):
 		ERMESres = h5py.File(ERMESfile, 'r')
-		Watts = ERMESres["EM_Load/Watts"][:]
-		WattsPV = ERMESres["EM_Load/WattsPV"][:]
+		attrs =  ERMESres["EM_Load"].attrs
 		Elements = ERMESres["EM_Load/Elements"][:]
-		JHNode =  ERMESres["EM_Load/JHNode"][:]
 
 		# Check that the results match up with the mesh
 		NbVolumes = MeshInfo("{}/{}.med".format(Info.MESH_DIR,Parameters.Mesh), meshname='Sample').NbVolumes
-		if Watts.shape[0] != NbVolumes:
+		if Elements.shape[0] != NbVolumes:
 			Info.Exit("ERMES.rmed file doesn't match with mesh used for {} simulation".format(Parameters.Name))
+		if Parameters.Frequency != attrs['Frequency']:
+			Info.Exit("Frequencies do not match")
+
+		Scale = (Parameters.Current/attrs['Current'])**2
+		Watts = ERMESres["EM_Load/Watts"][:]*Scale
+		WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
+		JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
+		ERMESres.close()
 	# exit due to error
 	else :
 		Info.Exit("ERMES results file '{}' does not exist and RunERMES flag not set to True".format(ERMESfile))
+
 	# Cumultive sum is used to find % thresholds for EMThreshold
 	CumSum = Watts.cumsum()
 	CoilPower = CumSum[-1]
+	print("Power delivered by coil: {:.4f}W".format(CoilPower))
+	# Scale CumSum to 0 and 1
 	CumSum = CumSum/CoilPower
-	CoilPower = CoilPower*Parameters.Current**2
-	print("Power delivered by coil: {:.4f} W".format(CoilPower))
-
-	CoilFace = MeshInfo("{}/{}.med".format(Info.MESH_DIR,Parameters.Mesh), meshname='Sample').GroupInfo('CoilFace')
-	CFNodes = JHNode[CoilFace.Nodes-1]
-	Std = np.std(CFNodes)
-	sqrtd = np.sqrt(CFNodes.shape[0])
 
 	## Thresholding preview
 	if getattr(Parameters,'ThresholdPreview', True):
@@ -592,7 +608,6 @@ def ERMES(Info, StudyDict):
 		# plt.ylabel('Scaled  power')
 		# plt.show()
 
-
 	Threshold = getattr(Parameters,'Threshold', 0.999)
 	if Threshold:
 		# Find position in CumSum where the threshold percentage has been reached
@@ -600,7 +615,7 @@ def ERMES(Info, StudyDict):
 		print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
 
 		# Scale values to reflect Current
-		EM_Val = WattsPV[:pos+1]*Parameters.Current**2
+		EM_Val = WattsPV[:pos+1]
 		EM_Els = Elements[:pos+1]
 
 		# If EMScale is True then the power input will be scaled to 100% for the elements used.
@@ -680,6 +695,7 @@ def ERMES(Info, StudyDict):
 			ElInfo["FAM"][:] = ElFamFull
 			tmpMeshMed.close()
 			StudyDict['MeshFile'] = tmpMeshFile
+			print('Create:{}'.format(time.time()-st))
 
 		elif GroupBy == 'SALOME':
 			st = time.time()
@@ -687,6 +703,7 @@ def ERMES(Info, StudyDict):
 			EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
 			Info.SalomeRun(EMGroupFile, ArgDict=ArgDict)
 			StudyDict['MeshFile'] = tmpMeshFile
+			print('Create:{}'.format(time.time()-st))
 
 def Single(Info, StudyDict):
 	HTC(Info, StudyDict)

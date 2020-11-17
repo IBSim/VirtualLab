@@ -4,9 +4,9 @@ from types import SimpleNamespace as Namespace
 ######## Meshing #########
 ##########################
 Mesh = Namespace()
-Mesh.Name = ['NoVoid','Void']
-Mesh.VoidRadius = [0, 0.001]
-Mesh.VoidHeight = [0, 0.0003]
+Mesh.Name = ['NoVoid','Void','Void2','Void3']
+Mesh.VoidRadius = [0, 0.001,0.001,0.001]
+Mesh.VoidHeight = [0, 0.0003,0.0003,0.0003]
 
 ##########################
 ####### Simulation #######

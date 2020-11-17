@@ -48,7 +48,7 @@ Sim.ExtTemp = 20
 Sim.BottomHTC = 0
 Sim.TopHTC = 0
 # Time-stepping and temporal discretisation
-Sim.dt = [(0.00004,20,1), (0.0005,20,1)]
+Sim.dt = [(0.00004,2,1), (0.0005,2,1)]
 Sim.Theta = 0.5
 
 #############

@@ -1,6 +1,7 @@
 from types import SimpleNamespace as Namespace
 Mesh = Namespace()
 Sim = Namespace()
+ML = Namespace()
 
 EMLoad = 'ERMES'
 
@@ -8,7 +9,7 @@ EMLoad = 'ERMES'
 ######## Meshing #########
 ##########################
 
-Mesh.Name = 'Testmesh'
+Mesh.Name = 'Testmesh111'
 Mesh.File = 'AMAZE' # This file must be in Scripts/$SIMULATION/PreProc
 # Geometrical Dimensions
 Mesh.BlockWidth = 0.03 #x
@@ -31,8 +32,10 @@ Mesh.SubTile = 0.002 # Mesh fineness on tile
 
 # for ERMES loading we need to create a mesh for the coil and vacuum
 if EMLoad == 'ERMES':
-    Mesh.ERMES = True
-    Mesh.Coil = {'Type':'Test', 'Displacement':[0, 0, 0.002]}
+    Mesh.CoilType = 'Test'
+    Mesh.CoilDisplacement = [0,0,0.0015]
+    Mesh.Rotation = 0
+
 
 ##########################
 ####### Simulation #######
@@ -42,24 +45,26 @@ Sim.Name = 'Single'
 #############
 ## PreAster #
 #############
-Sim.PreAsterFile = "PreHIVE"
+Sim.PreAsterFile = "RL_PreHIVE"
 # HTC between coolant and pipe (need Coolant and Pipe properties)
 Sim.CreateHTC = True
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 # Pre-processing to create EMLoads from ERMES output
 if EMLoad == 'ERMES':
-    Sim.RunERMES = True
+    Sim.RunERMES = 1
+    Sim.NbProc = 1
     Sim.Current = 1000
     Sim.Frequency = 1e4
-    Sim.EMThreshold = 0.9
+    Sim.Threshold = 0.5
+    Sim.ThresholdPreview = False
 
 
 #############
 ### Aster ###
 #############
 Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
-Sim.Mesh = 'TestCoil' # The mesh used for the simulation
+Sim.Mesh = Mesh.Name # The mesh used for the simulation
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
 # Loading
@@ -84,3 +89,9 @@ Sim.Convergence = {'Start':10,'Gap':5}
 #############
 # PostAster #
 #############
+
+##########################
+#### Machine Learning ####
+##########################
+ML.Name = 'Test'
+ML.File = 'NetPU'

@@ -64,18 +64,20 @@ class VLSetup():
 		self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, Project, self.__ID__)
 		if Project == '.dev': self.TMP_DIR = "{}/dev".format(TEMP_DIR)
 
+		self.MATERIAL_DIR = MATERIAL_DIR
+		self.INPUT_DIR = '{}/{}/{}'.format(INPUT_DIR, Simulation, Project)
+
 		# Define variables and run some checks
 		# Script directories
 		self.COM_SCRIPTS = "{}/Scripts/Common".format(VL_DIR)
 		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VL_DIR, Simulation)
 
+		# Scrpt directories
 		self.SIM_MESH = "{}/Mesh".format(self.SIM_SCRIPTS)
 		self.SIM_PREASTER = "{}/PreAster".format(self.SIM_SCRIPTS)
 		self.SIM_ASTER = "{}/Aster".format(self.SIM_SCRIPTS)
 		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
-
-		self.MATERIAL_DIR = MATERIAL_DIR
-		self.INPUT_DIR = '{}/{}/{}'.format(INPUT_DIR, Simulation, Project)
+		self.SIM_ML = "{}/ML".format(self.SIM_SCRIPTS)
 
 		# Output directory
 		self.PROJECT_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, Project)
@@ -84,8 +86,9 @@ class VLSetup():
 
 		self.Logger('### Launching VirtualLab ###',Print=True)
 
-		# Create variables based on the namespaces in the Parameters file(s) provided
-		self.GetParams(Parameters_Master,Parameters_Var)
+		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
+		NS = ['Mesh','Sim','ML']
+		self.GetParams(Parameters_Master,Parameters_Var,NS)
 
 		self.Salome = VLSalome(self)
 
@@ -138,6 +141,7 @@ class VLSetup():
 		# Create SimData which contains all of the mesh related information
 		self.SimData = {}
 		if RunSim and self.Parameters_Master.Sim:
+			# Check that Code Aster exists in the specified lcoation
 			if not os.path.exists(self.ASTER_DIR):
 				self.Exit("Error: CodeAster location invalid")
 			os.makedirs(self.STUDY_DIR, exist_ok=True)
@@ -175,7 +179,7 @@ class VLSetup():
 				StudyDict['POSTASTER'] = "{}/PostAster".format(CALC_DIR)
 				StudyDict['MeshFile'] = "{}/{}.med".format(self.MESH_DIR, ParaDict['Mesh'])
 
-				# Create tmp directory
+				# Create tmp directory & add __init__ file so that it can be treated as a package
 				if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
 				with open("{}/__init__.py".format(TMP_CALC_DIR),'w') as f: pass
 				# Combine Meta information with that from Study dict and write to file for salome/CodeAster to import
@@ -190,8 +194,17 @@ class VLSetup():
 
 				MeshNames.append(ParaDict['Mesh'])
 
+		# ML section
+		self.MLData = {}
+		if RunML and self.Parameters_Master.ML:
+			self.ML_DIR = "{}/ML".format(self.PROJECT_DIR)
+			os.makedirs(self.ML_DIR,exist_ok=True)
+			MLdicts = self.CreateParameters(self.Parameters_Master,self.Parameters_Var,'ML')
+			for Name, ParaDict in MLdicts.items():
+				self.MLData[Name] = Namespace(**ParaDict)
 
-		# Gather information about what's running in VirtualLab
+
+		# Gather information about what's running in VirtualLab, i.e. # Simulations, # Meshes
 		NumSims = len(self.SimData)
 		NumMeshes = len(set(MeshNames)) if NumSims else 0
 		NumMeshesCr = len(self.MeshData)
@@ -652,6 +665,13 @@ class VLSetup():
 			SubProc = self.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
 			SubProc.wait()
 
+
+	def ML(self,**kwargs):
+		for Name, MLdict in self.MLData.items():
+			MLfn = import_module("ML.{}".format(MLdict.File))
+			MLfn.main(self)
+
+
 	def WriteModule(self, FileName, Dictionary, **kwargs):
 		Write = kwargs.get('Write','New')
 		if Write == 'New':
@@ -716,8 +736,10 @@ class VLSetup():
 		sys.exit()
 
 	def Cleanup(self,KeepDirs=[]):
-		if self.Salome.Ports:
-			self.Salome.Close(self.Salome.Ports)
+
+		if hasattr(self, 'Salome'):
+			if self.Salome.Ports:
+				self.Salome.Close(self.Salome.Ports)
 
 		if os.path.isdir(self.TMP_DIR):
 			if KeepDirs:
@@ -732,9 +754,9 @@ class VLSetup():
 				shutil.rmtree(self.TMP_DIR)
 
 		# self.Logger('### VirtualLab Finished###\n',Print=True)
-	def GetParams(self, Parameters_Master, Parameters_Var=None):
+	def GetParams(self, Parameters_Master, Parameters_Var, NS):
 		sys.path.insert(0, self.INPUT_DIR)
-		NS = ['Mesh','Sim']
+
 		if type(Parameters_Master)==str:
 			if not os.path.exists('{}/{}.py'.format(self.INPUT_DIR, Parameters_Master)):
 				self.Exit("Parameters_Master file '{}' not in directory {}".format(Parameters_Master, self.INPUT_DIR))

@@ -38,10 +38,10 @@ RUN sudo chmod 755 /home/aster/patch.sh && \
     chmod 755 Install_VirtualLab.sh && \
     sudo ./Install_VirtualLab.sh -P c -S y -E y -y
 
-#RUN sudo rm /home/aster/salome_meca-2019.0.3-1-universal.run && \
-#    sudo rm /home/aster/salome_meca-2019.0.3-1-universal.tgz && \
-#    sudo rm /home/aster/Anaconda3-2020.02-Linux-x86_64.sh && \
-#    sudo rm /home/aster/VirtualLab/Scripts/Install/ERMES-CPlas-v12.5.zip
+RUN sudo rm /home/aster/salome_meca-2019.0.3-1-universal.run && \
+    sudo rm /home/aster/salome_meca-2019.0.3-1-universal.tgz && \
+    sudo rm /home/aster/Anaconda3-2020.02-Linux-x86_64.sh && \
+    sudo rm /home/aster/VirtualLab/Scripts/Install/ERMES-CPlas-v12.5.zip
 
 USER root
 

@@ -1,8 +1,5 @@
 FROM phusion/baseimage:0.11
 
-# Build script amended from:
-# https://github.com/tianyikillua/code_aster_on_docker/blob/master/base/Dockerfile
-
 # Get Ubuntu updates and basic packages
 USER root
 RUN apt-get update && \

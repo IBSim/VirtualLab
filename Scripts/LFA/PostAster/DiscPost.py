@@ -250,4 +250,5 @@ def Combined(Info):
 	ParaVisFile = "{}/ParaVis.py".format(os.path.dirname(os.path.abspath(__file__)))
 	print('Creating images using ParaViS')
 	SubProc = Info.Salome.Run(ParaVisFile, GUI=GUI, AddPath=Info.TMP_DIR)
-	SubProc.wait()
+	if not Info.Salome.Success(SubProc):
+		return "Error in Salome run"

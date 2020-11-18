@@ -285,6 +285,14 @@ class VLSetup():
 
 		# Start #NumThreads number of Salome sessions
 		Ports = self.Salome.Start(NumThreads, OutFile=self.LogFile)
+		# Exit if no Salome sessions have been created
+		if len(Ports)==0:
+			self.Exit("Salome not initiated",Print=True)
+		# Reduce NumThreads if fewer salome sessions have been created than requested
+		elif len(Ports) < NumThreads:
+			NumThreads=len(Ports)
+
+		# Keep count number of meshes each session has created due to memory leak
 		PortCount = {Port:0 for Port in Ports}
 
 		# Script which is used to import the necessary mesh function
@@ -296,7 +304,7 @@ class VLSetup():
 		tmpLogstr = "" if self.mode in ('Interactive','Terminal') else "{}/{}_log"
 		MeshStat = {}
 		NumActive=NumComplete=0
-		SalomeReset = 400 #Close Salome session(s) & open new after this many meshes due to memory leak
+		SalomeReset = 500 #Close Salome session(s) & open new after this many meshes due to memory leak
 		for MeshName, MeshPara in self.MeshData.items():
 			self.Logger("'{}' started".format(MeshName),Print=True)
 
@@ -484,13 +492,17 @@ class VLSetup():
 				self.Logger('Combined function started', Print=True)
 
 				if self.mode in ('Interactive','Terminal'):
-					PreAster.Combined(self)
+					err = PreAster.Combined(self)
 				else :
 					with open(self.LogFile, 'a') as f:
 						with contextlib.redirect_stdout(f):
 							# stderr may need to be written to a seperate file and then copied over
 							with contextlib.redirect_stderr(sys.stdout):
-								PreAster.Combined(self)
+								err = PreAster.Combined(self)
+				if err == None:
+					self.Logger('Combined function completed successfully', Print=True)
+				else :
+					self.Exit("Combined function returned error '{}'".format(err))
 
 				self.Logger('Combined function complete', Print=True)
 
@@ -637,15 +649,18 @@ class VLSetup():
 				self.Logger('Combined function started', Print=True)
 
 				if self.mode in ('Interactive','Terminal'):
-					PostAster.Combined(self)
+					err = PostAster.Combined(self)
 				else :
 					with open(self.LogFile, 'a') as f:
 						with contextlib.redirect_stdout(f):
 							# stderr may need to be written to a seperate file and then copied over
 							with contextlib.redirect_stderr(sys.stdout):
-								PostAster.Combined(self)
+								err = PostAster.Combined(self)
 
-				self.Logger('Combined function complete', Print=True)
+				if err == None:
+					self.Logger('Combined function completed successfully', Print=True)
+				else :
+					self.Exit("Combined function returned error '{}'".format(err))
 
 			self.Logger('>>> PostAster Stage Complete\n', Print=True)
 
@@ -849,6 +864,7 @@ class VLSalome():
 		self.COM_SCRIPTS = super.COM_SCRIPTS
 		self.SIM_SCRIPTS = super.SIM_SCRIPTS
 		self.Logger = super.Logger
+		self.Exit = super.Exit
 		self.Ports = []
 		self.LogFile = super.LogFile
 
@@ -902,16 +918,18 @@ class VLSalome():
 			SalomeSP.append((SubProc,portfile))
 
 		for SubProc, portfile in SalomeSP:
-			SubProc.wait()
-			if SubProc.returncode != 0:
+			if not self.Success(SubProc):
 				self.Logger("Error during Salome initiation",Print=True)
-				return False
+				continue
 
 			with open(portfile,'r') as f:
 				port = int(f.readline())
 			NewPorts.append(port)
 
-		self.Logger('Salome opened on port(s) {}\n'.format(NewPorts))
+		if NewPorts:
+			self.Logger('{} new Salome sessions opened on port(s) {}\n'.format(len(NewPorts),NewPorts))
+		else:
+			self.Logger('No new Salome sessions initiated\n')
 		self.Ports.extend(NewPorts)
 
 		return NewPorts
@@ -962,6 +980,12 @@ class VLSalome():
 
 		SubProc = Popen(PythonPath + command, shell='TRUE')
 		return SubProc
+
+	def Success(self,SubProc):
+		# If it hasn't finished it waits
+		if SubProc.poll() == None:
+			SubProc.wait()
+		return SubProc.returncode == 0
 
 	def Close(self, Ports):
 		if type(Ports) == list: Ports = Ports.copy()

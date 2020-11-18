@@ -1,4 +1,4 @@
 #!/bin/bash
-echo "applying patch"
+#echo "applying patch"
 USER=aster
 HOME=/home/$USER

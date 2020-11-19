@@ -1,0 +1,17 @@
+FROM ibsim/virtuallab:latest
+
+# Set locale environment
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    LANGUAGE=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive \
+    PATH="/home/ibsim/VirtualLab/bin:/opt/SalomeMeca/appli_V2019.0.3_universal:/opt/ERMES/ERMES-CPlas-v12.5:${PATH}" \
+    BASH_ENV=/home/ibsim/patch.sh
+    
+USER ibsim
+
+WORKDIR /home/ibsim/VirtualLab
+
+RUN git pull
+
+USER root

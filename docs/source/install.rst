@@ -63,9 +63,13 @@ Virtual Machines
 The next most straightforward method to use **VirtualLab** is to download the preprepared virtual machine (VM) image. This is a complete Ubuntu OS desktop environment with all the necessary software and dependencies pre-installed that can be run on your current computing setup. There are three steps to this method:
 
 #. Download and install the virtual machine platform `VirtualBox <https://www.virtualbox.org/wiki/Downloads>`_ following the appropriate instructions for your OS (Windows, Mac or Linux).
-#. Download the `VirtualLab image <https://www.temp.com>`_.
+#. Download the |VM_link|.
 #. Load the image :file:`File > Import Appliance...`
 #. (Optional) Amend the VM settings for your specific hardware e.g. increase allocation of CPU cores or RAM.
+
+.. |VM_link| raw:: html
+
+   <a href="https://ibsim.co.uk/VirtualLab/downloads/VM.html" target="_blank">VirtualLab image</a>
 
 These are the login details for the VM:
 

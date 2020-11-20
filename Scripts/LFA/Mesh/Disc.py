@@ -217,10 +217,10 @@ def GeomError(Parameters):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		Create(Parameter = TestDimensions(),MeshFile = None)
+		Create(TestDimensions())
 	# 1 argument provided which is the parameter file
 	elif len(sys.argv) == 2:
 		ParameterFile = sys.argv[1]
 		sys.path.insert(0, os.path.dirname(ParameterFile))
 		Parameters = __import__(os.path.splitext(os.path.basename(ParameterFile))[0])
-		Create(Parameter = Parameters,MeshFile = None)
+		Create(Parameters)

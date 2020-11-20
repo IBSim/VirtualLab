@@ -270,7 +270,8 @@ class VLSetup():
 			MeshParaFile = "{}/{}.py".format(self.GEOM_DIR,MeshCheck)
 			MeshScript = "{}/{}.py".format(self.SIM_MESH, self.MeshData[MeshCheck].File)
 			# The file MeshParaFile is passed to MeshScript to create the mesh in the GUI
-			self.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
+			SubProc = self.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
+			SubProc.wait()
 			self.Exit('Terminating after checking mesh')
 
 		elif MeshCheck and MeshCheck not in self.MeshData.keys():

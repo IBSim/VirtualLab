@@ -36,6 +36,8 @@ Simulations are initiated by launching **VirtualLab** in the command line with a
 
 	VirtualLab -f </PATH/TO/FILE>
 
+If running **VirtualLab** with a container, follow the `appropriate guidance <runsim.html#containers>`_ for your setup.
+
 ``Run.py`` in the **VirtualLab** top level directory is a template *Run* file which is given with default `setup <runsim.html#setup>`_ and `environment <runsim.html#environment>`_ values. Additional examples are available in the `RunFiles <structure.html#runfiles>`_ directory.
 
 .. note:: Each tutorial starts using the default values specified in the template file ``Run.py`` . To help with following the tutorials, the *ShowRes* keyword argument (``kwargs``) in :attr:`VirtualLab.Sim <VLSetup.Sim>` should be manually set to :code:`True`.

@@ -505,7 +505,7 @@ As previously mentioned, this tutorial introduces post-processing in **VirtualLa
     Sim.Rvalues = [0.1, 0.5]
     Sim.CaptureTime = 0.01
 
-The script :file:`Scripts/LFA/PostAster/DiscPost.py` is used to create plots of the temperature distribtuion over time, images of the heated sample and the mesh used.
+The script :file:`Scripts/LFA/PostAster/DiscPost.py` is used to create plots of the temperature distribution over time, images of the heated sample and the mesh used.
 
 Task 1: Checking Mesh Quality
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -995,5 +995,5 @@ References
 
 .. bibliography:: refs.bib
    :style: plain
-   :all:
+   :filter: docname in docnames
 

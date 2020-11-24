@@ -92,7 +92,7 @@ class VLSetup():
 		NS = ['Mesh','Sim','ML']
 		self.GetParams(Parameters_Master,Parameters_Var,NS)
 
-		self.Salome = Salome.Salome(self)
+		self.Salome = Salome.Salome(self, AddPath=[self.SIM_SCRIPTS])
 
 
 

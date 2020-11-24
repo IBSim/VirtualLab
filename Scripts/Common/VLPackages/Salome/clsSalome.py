@@ -9,14 +9,18 @@ import uuid
 __all__ = ['Salome']
 
 class Salome():
-	def __init__(self, super):
+	def __init__(self, super,**kwargs):
+
+		self.Exec = 'salome' # How to call salome (can be changed for different versions etc.)
+
 		self.TMP_DIR = super.TMP_DIR
-		self.COM_SCRIPTS = super.COM_SCRIPTS
-		self.SIM_SCRIPTS = super.SIM_SCRIPTS
+
 		self.Logger = super.Logger
 		self.Exit = super.Exit
 		self.Ports = []
 		self.LogFile = super.LogFile
+		# AddPath will always add these paths to salome environment
+		self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/Salome".format(super.COM_SCRIPTS)]
 
 #	def WriteArgs(self,ArgDict):
 #		# Args = []
@@ -59,7 +63,7 @@ class Salome():
 		NewPorts = []
 		for i in range(Num):
 			portfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
-			SubProc = Popen('cd {};salome -t --ns-port-log {} {}'.format(self.TMP_DIR, portfile, output), shell='TRUE')
+			SubProc = Popen('cd {};{} -t --ns-port-log {} {}'.format(self.TMP_DIR, self.Exec, portfile, output), shell='TRUE')
 			SalomeSP.append((SubProc,portfile))
 
 		for SubProc, portfile in SalomeSP:
@@ -95,9 +99,8 @@ class Salome():
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
-		AddPath += [self.COM_SCRIPTS, self.SIM_SCRIPTS]
-		PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
-		PythonPath.append("export PYTHONPATH;")
+		PythonPath = ["{}:".format(path) for path in AddPath+self.AddPath]
+		PythonPath = ["PYTHONPATH="] + PythonPath + ["$PYTHONPATH;export PYTHONPATH;"]
 		PythonPath = "".join(PythonPath)
 
 		# Write ArgDict and ArgList in format to pass to salome
@@ -105,7 +108,7 @@ class Salome():
 		Args = ",".join(ArgList + Args)
 
 		if kwargs.get('GUI',False):
-			command = "salome {} args:{}".format(Script, Args)
+			command = "{} {} args:{}".format(self.Exec, Script, Args)
 			SubProc = Popen(PythonPath + command, shell='TRUE')
 			return SubProc
 
@@ -121,7 +124,7 @@ class Salome():
 		if OutFile: output += " >>{}".format(OutFile)
 		if ErrFile: output += " 2>>{}".format(ErrFile)
 
-		command = "salome shell -p{!s} {} args:{} {}".format(Port, Script, Args, output)
+		command = "{} shell -p{!s} {} args:{} {}".format(self.Exec,Port, Script, Args, output)
 
 		SubProc = Popen(PythonPath + command, shell='TRUE')
 		return SubProc
@@ -142,7 +145,7 @@ class Salome():
 				Portstr += "{} ".format(Port)
 				self.Ports.remove(Port)
 
-		Salome_close = Popen('salome kill {}'.format(Portstr), shell = 'TRUE')
+		Salome_close = Popen('{} kill {}'.format(self.Exec,Portstr), shell = 'TRUE')
 		self.Logger('Closing Salome on port(s) {}'.format(Ports))
 
 		return Salome_close

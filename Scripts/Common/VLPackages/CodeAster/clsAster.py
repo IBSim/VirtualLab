@@ -4,6 +4,7 @@ import sys
 sys.dont_write_bytecode=True
 import os
 from subprocess import Popen, PIPE, STDOUT
+import uuid
 
 class CodeAster():
     def __init__(self,super,**kwargs):
@@ -14,6 +15,8 @@ class CodeAster():
         self.Logger = super.Logger
         self.Exit = super.Exit
         self.LogFile = super.LogFile
+
+        self.mode = super.mode
         # AddPath will always add these paths to salome environment
         self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/CodeAster".format(super.COM_SCRIPTS)]
 
@@ -50,5 +53,26 @@ class CodeAster():
         	e.write(Settings+Paths)
 
 
-    def Run(self,**kwargs):
-        pass
+    def Run(self, ExportFile, StudyDict, **kwargs):
+        AddPath = kwargs.get('AddPath',[])
+
+        AddPath = [AddPath] if type(AddPath) == str else AddPath
+        PythonPath = ["{}:".format(path) for path in AddPath+self.AddPath]
+        PythonPath = ["PYTHONPATH="] + PythonPath + ["$PYTHONPATH;export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
+        PythonPath = "".join(PythonPath)
+
+        OutFile = kwargs.get('OutFile', "")
+        if 'OutFile' in kwargs:
+            Output = " >{} 2>&1".format(kwargs['OutFile'])
+        else : Output = " "
+
+        if self.mode == 'Interactive':
+            errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
+            command = "xterm -hold -T 'Study: {}' -sb -si -sl 2000 "\
+            "-e '{} {}; echo $? >'{}".format(kwargs.get('Name',ExportFile),self.Exec, ExportFile, errfile)
+        else:
+            command = "{} {} {}".format(self.Exec, ExportFile, Output)
+
+        # Start Aster subprocess
+        proc = Popen(PythonPath + command , shell='TRUE')
+        return proc

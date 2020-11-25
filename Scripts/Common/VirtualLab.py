@@ -519,6 +519,7 @@ class VLSetup():
 			AsterError = []
 			AsterStat = {}
 			count, NumActive = 0, 0
+
 			for Name, StudyDict in self.SimData.items():
 				os.makedirs(StudyDict['ASTER'],exist_ok=True)
 
@@ -530,10 +531,14 @@ class VLSetup():
 											StudyDict["MeshFile"],
 											StudyDict['ASTER'], MessFile)
 
-
-
 				self.Logger("Aster for '{}' started".format(Name),Print=True)
-				AsterStat[Name] = self.AsterExec(StudyDict, ExportFile)
+
+				if self.mode == 'Headless': Outfile='/dev/null'
+				elif self.mode == 'Continuous': Outfile=SimLogFile.format(StudyDict['ASTER'])
+				else : Outfile=''
+
+				AsterStat[Name] = self.CodeAster.Run(ExportFile, StudyDict, OutFile=Outfile, AddPath=[self.TMP_DIR,StudyDict['TMP_CALC_DIR']])
+
 				count +=1
 				NumActive +=1
 
@@ -552,8 +557,6 @@ class VLSetup():
 							with open('{}/Aster.txt'.format(tmpStudyDict['TMP_CALC_DIR']),'r') as f:
 								EC = int(f.readline())
 						else : EC = Poll
-						# elif self.mode == 'Continuous':
-						# 	os.remove('{}/ContinuousAsterLog'.format(tmpStudyDict['ASTER']))
 
 						if EC == 0:
 							self.Logger("Aster for '{}' completed".format(tmpName),Print=True)
@@ -693,31 +696,6 @@ class VLSetup():
 			Pathstr = ''.join(PathList)
 			with open(FileName,'w+') as f:
 				f.write(Pathstr)
-
-	def AsterExec(self, StudyDict, exportfile, **kwargs):
-		AddPath = kwargs.get('AddPath',[])
-
-		AddPath = [AddPath] if type(AddPath) == str else AddPath
-		AddPath += [self.COM_SCRIPTS, self.TMP_DIR, StudyDict['TMP_CALC_DIR']]
-		PythonPath = ["PYTHONPATH={}:$PYTHONPATH;".format(path) for path in AddPath]
-		PreCond = PythonPath + ["export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
-		PreCond = ''.join(PreCond)
-
-		# Create different command file depending on the mode
-		errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
-		if self.mode == 'Interactive':
-			xtermset = "-hold -T 'Study: {}' -sb -si -sl 2000".format(StudyDict["Parameters"].Name)
-			command = "xterm {} -e '{} {}; echo $? >'{}".format(xtermset, self.ASTER_DIR, exportfile, errfile)
-		elif self.mode == 'Terminal':
-			command = "{} {} ".format(self.ASTER_DIR, exportfile)
-		elif self.mode == 'Continuous':
-			command = "{} {} > {}/Output.log ".format(self.ASTER_DIR, exportfile, StudyDict['ASTER'])
-		else :
-			command = "{} {} >/dev/null 2>&1".format(self.ASTER_DIR, exportfile)
-
-		# Start Aster subprocess
-		proc = Popen(PreCond + command , shell='TRUE')
-		return proc
 
 	def Logger(self,Text='',**kwargs):
 		Prnt = kwargs.get('Print',False)

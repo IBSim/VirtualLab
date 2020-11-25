@@ -56,8 +56,6 @@ class VLSetup():
 		MATERIAL_DIR = getattr(VLconfig,'MaterialDir', "{}/Materials".format(VL_DIR))
 		# Input directory
 		INPUT_DIR = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
-		# Code_Aster directory
-		self.ASTER_DIR = VLconfig.ASTER_DIR
 
 		# tmp directory
 		TEMP_DIR = getattr(VLconfig,'TEMP_DIR',"/tmp")

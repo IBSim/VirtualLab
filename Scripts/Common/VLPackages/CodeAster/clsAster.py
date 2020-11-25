@@ -5,10 +5,11 @@ sys.dont_write_bytecode=True
 import os
 from subprocess import Popen, PIPE, STDOUT
 import uuid
+import VLconfig
 
 class CodeAster():
     def __init__(self,super,**kwargs):
-        self.Exec = super.ASTER_DIR # How to call CodeAster (can be changed for different versions etc.)
+        self.Exec = VLconfig.ASTER_DIR # How to call CodeAster (can be changed for different versions etc.)
 
         self.TMP_DIR = super.TMP_DIR
 
@@ -62,9 +63,7 @@ class CodeAster():
         PythonPath = "".join(PythonPath)
 
         OutFile = kwargs.get('OutFile', "")
-        if 'OutFile' in kwargs:
-            Output = " >{} 2>&1".format(kwargs['OutFile'])
-        else : Output = " "
+        Output = " >{} 2>&1".format(OutFile) if OutFile else ""
 
         if self.mode == 'Interactive':
             errfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())

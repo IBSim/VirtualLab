@@ -301,7 +301,7 @@ class VLSetup():
 		PortCount = {Port:0 for Port in Ports}
 
 		# Script which is used to import the necessary mesh function
-		MeshScript = '{}/MeshRun.py'.format(self.COM_SCRIPTS)
+		MeshScript = '{}/VLPackages/Salome/MeshRun.py'.format(self.COM_SCRIPTS)
 		AddPath = [self.SIM_MESH, self.GEOM_DIR]
 		ArgDict = {}
 		if os.path.isfile('{}/config.py'.format(self.SIM_MESH)): ArgDict["ConfigFile"] = True
@@ -671,7 +671,7 @@ class VLSetup():
 						fname, ext = os.path.splitext(file)
 						if ext == '.rmed':
 							ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
-			Script = "{}/ShowRes.py".format(self.COM_SCRIPTS)
+			Script = "{}/VLPackages/Salome/ShowRes.py".format(self.COM_SCRIPTS)
 			SubProc = self.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
 			SubProc.wait()
 

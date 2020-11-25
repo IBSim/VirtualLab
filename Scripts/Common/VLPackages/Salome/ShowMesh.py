@@ -9,21 +9,22 @@ import os
 import salome
 import SalomePyQt
 salome.salome_init()
-
-###
-### SMESH component
-###
-
 import  SMESH, SALOMEDS
 from salome.smesh import smeshBuilder
+import SalomeFunc
+
+Meshes = SalomeFunc.GetArgs(sys.argv[1:])
+
 smesh = smeshBuilder.New()
 
 MeshDict = {}
-MeshList = sys.argv[1:]
-for Mesh in MeshList:
-	Name = os.path.splitext(os.path.basename(Mesh))[0]
-	(lstMesh, status) = smesh.CreateMeshesFromMED(Mesh)
-	MeshDict[Name] = {M.GetName():M for M in lstMesh }
+for Name, Path in Meshes.items():
+	(lstMesh, status) = smesh.CreateMeshesFromMED(Path)
+	for M in lstMesh:
+		if len(lstMesh)==1: nm=Name
+		else: nm = "{}_{}".format(Name,M.GetName())
+		M.SetName(nm)
+		MeshDict[nm] = M
 
 sg = SalomePyQt.SalomePyQt()
 sg.activateModule("Mesh") # Activate mesh module

@@ -7,7 +7,6 @@ import os
 import numpy as np
 import shutil
 import time
-from subprocess import Popen, PIPE, STDOUT
 import inspect
 import copy
 from types import SimpleNamespace as Namespace
@@ -383,8 +382,9 @@ class VLSetup():
 		self.Logger('\n### Meshing Completed ###',Print=True)
 		if ShowMesh:
 			self.Logger("Opening mesh files in Salome",Print=True)
-			MeshPaths = ["{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshData.keys()]
-			SubProc = Popen('salome {}/ShowMesh.py args:{} '.format(self.COM_SCRIPTS,",".join(MeshPaths)), shell='TRUE')
+			ArgDict = {name:"{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshData.keys()}
+			Script = '{}/VLPackages/Salome/ShowMesh.py'.format(self.COM_SCRIPTS)
+			SubProc = self.Salome.Run(Script, ArgDict=ArgDict, GUI=True)
 			SubProc.wait()
 			self.Exit("Terminating after mesh viewing")
 

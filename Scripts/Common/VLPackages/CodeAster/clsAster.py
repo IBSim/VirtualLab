@@ -53,7 +53,7 @@ class CodeAster():
         	e.write(Settings+Paths)
 
 
-    def Run(self, ExportFile, StudyDict, **kwargs):
+    def Run(self, ExportFile, **kwargs):
         AddPath = kwargs.get('AddPath',[])
 
         AddPath = [AddPath] if type(AddPath) == str else AddPath
@@ -67,9 +67,9 @@ class CodeAster():
         else : Output = " "
 
         if self.mode == 'Interactive':
-            errfile = '{}/Aster.txt'.format(StudyDict['TMP_CALC_DIR'])
-            command = "xterm -hold -T 'Study: {}' -sb -si -sl 2000 "\
-            "-e '{} {}; echo $? >'{}".format(kwargs.get('Name',ExportFile),self.Exec, ExportFile, errfile)
+            errfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
+            command = "xterm -hold -T 'Study: {0}' -sb -si -sl 2000 "\
+            "-e '{1} {2}; echo $? >{3}';exit $(cat {3})".format(kwargs.get('Name',ExportFile),self.Exec, ExportFile, errfile)
         else:
             command = "{} {} {}".format(self.Exec, ExportFile, Output)
 

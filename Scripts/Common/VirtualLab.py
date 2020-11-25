@@ -537,7 +537,7 @@ class VLSetup():
 				elif self.mode == 'Continuous': Outfile=SimLogFile.format(StudyDict['ASTER'])
 				else : Outfile=''
 
-				AsterStat[Name] = self.CodeAster.Run(ExportFile, StudyDict, OutFile=Outfile, AddPath=[self.TMP_DIR,StudyDict['TMP_CALC_DIR']])
+				AsterStat[Name] = self.CodeAster.Run(ExportFile, Name=Name, OutFile=Outfile, AddPath=[self.TMP_DIR,StudyDict['TMP_CALC_DIR']])
 
 				count +=1
 				NumActive +=1
@@ -552,20 +552,16 @@ class VLSetup():
 						Poll = Proc.poll()
 						if Poll == None:
 							continue
-						tmpStudyDict = self.SimData[tmpName]
-						if self.mode == 'Interactive':
-							with open('{}/Aster.txt'.format(tmpStudyDict['TMP_CALC_DIR']),'r') as f:
-								EC = int(f.readline())
-						else : EC = Poll
 
-						if EC == 0:
+						tmpStudyDict = self.SimData[tmpName]
+						if Poll == 0:
 							self.Logger("Aster for '{}' completed".format(tmpName),Print=True)
 						else :
-							self.Logger("Aster for '{}' returned error code {}.".format(tmpName,EC))
+							self.Logger("Aster for '{}' returned error code {}.".format(tmpName,Poll))
 							AsterError.append(tmpName)
 
 						if self.mode in ('Continuous','Headless'):
-							self.Logger("See {}/AsterLog for details".format(tmpStudyDict['ASTER']),Print=EC)
+							self.Logger("See {}/AsterLog for details".format(tmpStudyDict['ASTER']),Print=Poll)
 
 						AsterStat.pop(tmpName)
 						Proc.terminate()

@@ -5,6 +5,7 @@ sys.dont_write_bytecode=True
 import os
 from subprocess import Popen, PIPE, STDOUT
 import uuid
+import VLconfig
 
 __all__ = ['Salome']
 

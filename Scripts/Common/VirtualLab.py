@@ -19,8 +19,7 @@ from multiprocessing import Process
 
 import VLconfig
 from Scripts.Common import Analytics, MPRun
-from .VLPackages import Salome
-
+from .VLPackages import Salome, CodeAster
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode):
@@ -94,6 +93,8 @@ class VLSetup():
 
 		self.Salome = Salome.Salome(self, AddPath=[self.SIM_SCRIPTS])
 
+		self.CodeAster = CodeAster.CodeAster(self)
+
 
 
 	def Control(self, **kwargs):
@@ -146,8 +147,8 @@ class VLSetup():
 		self.SimData = {}
 		if RunSim and self.Parameters_Master.Sim:
 			# Check that Code Aster exists in the specified lcoation
-			if not os.path.exists(self.ASTER_DIR):
-				self.Exit("Error: CodeAster location invalid")
+			# if not os.path.exists(self.ASTER_DIR):
+			# 	self.Exit("Error: CodeAster location invalid")
 			os.makedirs(self.STUDY_DIR, exist_ok=True)
 
 			SimDicts = self.CreateParameters(self.Parameters_Master,self.Parameters_Var,'Sim')
@@ -519,30 +520,20 @@ class VLSetup():
 			AsterStat = {}
 			count, NumActive = 0, 0
 			for Name, StudyDict in self.SimData.items():
-				if not os.path.isdir(StudyDict['ASTER']): os.makedirs(StudyDict['ASTER'])
+				os.makedirs(StudyDict['ASTER'],exist_ok=True)
 
-				# Define location of export and Aster file
-				asterfile = '{}/{}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].AsterFile)
-				exportfile = "{}/Export".format(StudyDict['ASTER'])
+				# Create export file for CodeAster
+				ExportFile = "{}/Export".format(StudyDict['ASTER'])
+				CommFile = '{}/{}.comm'.format(self.SIM_ASTER,StudyDict['Parameters'].AsterFile)
+				MessFile = '{}/AsterLog'.format(StudyDict['ASTER'])
+				self.CodeAster.ExportWriter(ExportFile, CommFile,
+											StudyDict["MeshFile"],
+											StudyDict['ASTER'], MessFile)
 
-				# Create export file and write to file
-				exportstr = 'P actions make_etude\n' + \
-				'P mode batch\n' + \
-				'P version stable\n' + \
-				'P time_limit 99999\n' + \
-				'P mpi_nbcpu {}\n'.format(mpi_nbcpu) + \
-				'P mpi_nbnoeud {}\n'.format(mpi_nbnoeud) + \
-				'P ncpus {}\n'.format(ncpus) + \
-				'P memory_limit {!s}\n'.format(float(1024*memory)) +\
-				'F mmed {} D  20\n'.format(StudyDict["MeshFile"]) + \
-				'F comm {} D  1\n'.format(asterfile) + \
-				'F mess {}/AsterLog R  6\n'.format(StudyDict['ASTER']) + \
-				'R repe {} R  0\n'.format(StudyDict['ASTER'])
-				with open(exportfile,'w+') as e:
-					e.write(exportstr)
+
 
 				self.Logger("Aster for '{}' started".format(Name),Print=True)
-				AsterStat[Name] = self.AsterExec(StudyDict, exportfile)
+				AsterStat[Name] = self.AsterExec(StudyDict, ExportFile)
 				count +=1
 				NumActive +=1
 

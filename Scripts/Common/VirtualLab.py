@@ -251,6 +251,33 @@ class VLSetup():
 		if VLconfig.VL_ANALYTICS=="True": Analytics.event(envdict)
 
 
+	def devMesh(self,**kwargs):
+		MeshCheck = kwargs.get('MeshCheck', None)
+		ShowMesh = kwargs.get('ShowMesh', False)
+		NumThreads = kwargs.get('NumThreads',1)
+
+
+
+		NumMeshes = len(self.MeshData)
+		NumThreads = min(NumThreads,NumMeshes)
+
+		Arg0 = [self.Salome]*len(self.MeshData)
+		Arg1 = ['{}/VLPackages/Salome/MeshRun.py'.format(self.COM_SCRIPTS)]*len(self.MeshData)
+		Arg2 = []
+		for MeshName, MeshPara in self.MeshData.items():
+			dic = {}
+			dic['AddPath'] = [self.SIM_MESH, self.GEOM_DIR]
+			dic['ArgDict'] = {'Name':MeshName,
+							'MESH_FILE':"{}/{}.med".format(self.MESH_DIR, MeshName),
+							'RCfile':"{}/{}_RC.txt".format(self.GEOM_DIR,MeshName)}
+			Arg2.append(dic)
+
+		from pathos.multiprocessing import ProcessPool
+		pool = ProcessPool(nodes=NumThreads)
+		pool.map(Salome.TestRun, Arg0, Arg1, Arg2)
+
+
+
 	def Mesh(self, **kwargs):
 		if not self.MeshData: return
 		kwargs.update(self.__force__)

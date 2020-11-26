@@ -7,7 +7,7 @@ from subprocess import Popen, PIPE, STDOUT
 import uuid
 import VLconfig
 
-__all__ = ['Salome']
+__all__ = ['Salome','TestRun']
 
 class Salome():
 	def __init__(self, super,**kwargs):
@@ -15,7 +15,7 @@ class Salome():
 		self.Exec = 'salome' # How to call salome (can be changed for different versions etc.)
 
 		self.TMP_DIR = super.TMP_DIR
-
+		self.COM_SCRIPTS = super.COM_SCRIPTS
 		self.Logger = super.Logger
 		self.Exit = super.Exit
 		self.Ports = []
@@ -150,3 +150,53 @@ class Salome():
 		self.Logger('Closing Salome on port(s) {}'.format(Ports))
 
 		return Salome_close
+
+	def TestRun(self, Script, kwargs):
+		# AddPath will always add these paths to salome environment
+		self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/Salome".format(self.COM_SCRIPTS)]
+
+		'''
+		kwargs available:
+		OutFile: The log file you want to write stdout to (default is /dev/null)
+		ErrFile: The log file you want to write stderr to (default is OutLog)
+		AddPath: Additional paths that Salome will be able to import from
+		ArgDict: a dictionary of the arguments that Salome will get
+		ArgList: a list of arguments to be passed to Salome
+		GUI: Opens a new instance with GUI (useful for testing)
+		'''
+		AddPath = kwargs.get('AddPath',[])
+		ArgDict = kwargs.get('ArgDict', {})
+		ArgList = kwargs.get('ArgList',[])
+
+		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
+		AddPath = [AddPath] if type(AddPath) == str else AddPath
+		PyPath = ["{}:".format(path) for path in AddPath+self.AddPath]
+		PyPath = "".join(PyPath)
+		# PythonPath = "PYTHONPATH={}$PYTHONPATH;export PYTHONPATH;".format(PyPath)
+
+		# Write ArgDict and ArgList in format to pass to salome
+		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
+		Args = ",".join(ArgList + Args)
+
+		OutFile = ErrFile = kwargs.get('OutFile', self.LogFile)
+		ErrFile = kwargs.get('ErrFile',ErrFile)
+
+		output = ''
+		if OutFile: output += " >>{}".format(OutFile)
+		if ErrFile: output += " 2>>{}".format(ErrFile)
+
+		portfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
+		command = "{} -t --ns-port-log {} {} args:{} {}".format(self.Exec, portfile, Script, Args, output)
+
+		env = {**os.environ, 'PYTHONPATH': PyPath + os.environ['PYTHONPATH']}
+		# SubProc = Popen(command, shell='TRUE',cwd=self.TMP_DIR,env=env)
+		SubProc = Popen([self.Exec, '-t', '--ns-port-log', portfile, Script, 'args:'+Args, output],cwd=self.TMP_DIR,env=env)
+		SubProc.wait()
+		with open(portfile,'r') as f:
+			port = int(f.readline())
+		# SubProc = Popen("{} kill {}".format(self.Exec, port), shell='TRUE')
+		SubProc = Popen([self.Exec, 'kill', str(port)])
+		SubProc.wait()
+
+def TestRun(Meta,Script,kw):
+	Meta.TestRun(Script,kw)

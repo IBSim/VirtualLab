@@ -7,7 +7,7 @@ Mechanical
 Tensile Testing
 ###############
 
-A tensile test is a standard mechanical experiment where a 'dog-bone' shaped sample is loaded. The load can be applied as a constant force whilst measuring the displacement or as a constant displacement whilst measuring the required load. This provides information about mechanical properties such as Young's elastic modulus.
+A tensile test is a standard mechanical experiment where a 'dog-bone' shaped sample is loaded. The load can be applied as a constant force whilst measuring the displacement or as a constant displacement whilst measuring the required load. This provides information about mechanical properties such as `Young's elastic modulus <https://en.wikipedia.org/wiki/Young%27s_modulus>`_.
 
 Thermal
 *******

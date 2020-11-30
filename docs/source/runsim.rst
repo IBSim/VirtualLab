@@ -64,7 +64,7 @@ These commands are examples of how to shell in to the **VirtualLab** container f
 
   Code_Aster requires write access to the :file:`/tmp` and :file:`../flasheur` directories. The user should create a local :file:`../flasheur` directory before launching the container. 
 
-  The :file:`../Input` directory is where the user's custom simulation files should be kept and :file:`../Output` is where the simulation results are written. These can be customised as desired on the host system.
+  The :file:`..Input` directory is where the user's custom simulation files should be kept and :file:`..Output` is where the simulation results are written. These can be customised as desired on the host system.
 
 Non-Interactive
 ~~~~~~~~~~~~~~~
@@ -190,8 +190,10 @@ Usage:
 
 User-defined field to specify the name of the project being worked on. 
 
-All data for a project is stored in the project directory located at :file:`Output/$SIMULATION/$PROJECT`. Here you will find the sub-directory 'Meshes' which contain the meshes generated for the project, and a sub-directory for each *StudyName*.
+All data for a project is stored in the project directory located at :file:`Output/$SIMULATION/$PROJECT`. Here you will find the sub-directory 'Meshes' which contain the meshes generated for the project, and a sub-directory for each *StudyName*, that is:
 
+   | :file:`Output/$SIMULATION/$PROJECT/Meshes`
+   | :file:`Output/$SIMULATION/$PROJECT/$StudyName`
 
 StudyName
 #########
@@ -205,7 +207,7 @@ Simulation results will be stored in the *StudyName* sub-directory of the `Proje
 
 For example, if a parameter sweep of a tensile load magnitude was being conducted as part of the additive-manufacturing project, *StudyName* could be called 'LoadMagnitudeSweep'.
 
-Results from all simulations which are part of this 'study' will be saved in directory :file:`Output/Tensile/additive-manufacturing/LoadMagnitudeSweep`
+Results from all simulations which are part of this 'study' will be saved in the directory :file:`Output/Tensile/additive-manufacturing/LoadMagnitudeSweep`
 
 Parameters_Master
 #################
@@ -226,7 +228,7 @@ Variables within this namespace define the parameters required by **SALOME** to 
 
 The script :file:`$MESH.FILE.py` is executed in **SALOME** using the attributes of *Mesh* to create the geometry and subsequent mesh. This script must be in directory :file:`Scripts/$SIMULATION/Mesh`.
 
-The meshes will be stored in ``MED`` format under the name *Mesh.Name* in the 'Meshes' directory of the `Project`_.
+The meshes will be stored in ``MED`` format under the name *Mesh.Name* in the 'Meshes' directory of the `Project`_, i.e. :file:`Output/$SIMULATION/$PROJECT/Meshes`.
 
 Sim
 ~~~

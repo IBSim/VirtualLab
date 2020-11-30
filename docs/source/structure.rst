@@ -55,6 +55,11 @@ Input has a sub-directory for each simulation type, and within each of those you
 
 Here you will find :file:`$PARAMETERS_MASTER.py` and :file:`$PARAMETERS_VAR.py` files, which are explained in more detail in `Running a Simulation <runsim.html>`_.
 
+For the example of :file:`Input/Tensile/Tutorials`:
+
+ * :file:`$PARAMETERS_MASTER.py` = :file:`TrainingParameters.py`
+ * :file:`$PARAMETERS_VAR.py` = :file:`Parametric_1.py`
+
 docs
 ****
 
@@ -63,7 +68,7 @@ The files required to create this documentation.
 RunFiles
 ********
 
-The *RunFiles* directory contain the driver files to launch virtual experiments, referred to as *Run* files. This directory contains a number of templates which the user may customise for their own applications.
+The *RunFiles* directory contain the driver files to launch virtual experiments, referred to as *Run* files. This directory contains a number of templates which the user may customise for their own applications, including ones specifically for each of the tutorials in :file:`RunFiles/Tutorials`.
 
 The structure of a *Run* file is explained in `Running a Simulation <runsim.html>`_. A detailed template file :file:`Run.py` is also included in the top level directory of **VirtualLab** i.e. the installation location.
 

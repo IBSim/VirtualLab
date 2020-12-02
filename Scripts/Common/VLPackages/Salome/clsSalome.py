@@ -151,9 +151,9 @@ class Salome():
 
 		return Salome_close
 
-	def TestRun(self, Script, kwargs):
+	def TestRun(self, Script, **kwargs):
 		# AddPath will always add these paths to salome environment
-		self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/Salome".format(self.COM_SCRIPTS)]
+		# self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/Salome".format(self.COM_SCRIPTS)]
 
 		'''
 		kwargs available:
@@ -171,6 +171,7 @@ class Salome():
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
 		PyPath = ["{}:".format(path) for path in AddPath+self.AddPath]
+
 		PyPath = "".join(PyPath)
 		# PythonPath = "PYTHONPATH={}$PYTHONPATH;export PYTHONPATH;".format(PyPath)
 
@@ -190,7 +191,8 @@ class Salome():
 
 		env = {**os.environ, 'PYTHONPATH': PyPath + os.environ['PYTHONPATH']}
 		# SubProc = Popen(command, shell='TRUE',cwd=self.TMP_DIR,env=env)
-		SubProc = Popen([self.Exec, '-t', '--ns-port-log', portfile, Script, 'args:'+Args, output],cwd=self.TMP_DIR,env=env)
+		cmlst = [self.Exec, '-t', '--ns-port-log', portfile, Script, 'args:'+Args, output]
+		SubProc = Popen(cmlst,cwd=self.TMP_DIR,env=env)
 		SubProc.wait()
 		with open(portfile,'r') as f:
 			port = int(f.readline())

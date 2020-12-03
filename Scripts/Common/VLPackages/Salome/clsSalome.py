@@ -171,9 +171,7 @@ class Salome():
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
 		PyPath = ["{}:".format(path) for path in AddPath+self.AddPath]
-
 		PyPath = "".join(PyPath)
-		# PythonPath = "PYTHONPATH={}$PYTHONPATH;export PYTHONPATH;".format(PyPath)
 
 		# Write ArgDict and ArgList in format to pass to salome
 		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
@@ -187,17 +185,25 @@ class Salome():
 		if ErrFile: output += " 2>>{}".format(ErrFile)
 
 		portfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
-		command = "{} -t --ns-port-log {} {} args:{} {}".format(self.Exec, portfile, Script, Args, output)
 
 		env = {**os.environ, 'PYTHONPATH': PyPath + os.environ['PYTHONPATH']}
-		# SubProc = Popen(command, shell='TRUE',cwd=self.TMP_DIR,env=env)
-		cmlst = [self.Exec, '-t', '--ns-port-log', portfile, Script, 'args:'+Args, output]
-		SubProc = Popen(cmlst,cwd=self.TMP_DIR,env=env)
+		# Run mesh in Salome
+		if True:
+			cmlst = self.Exec.split() + ['-t', '--ns-port-log', portfile, Script, 'args:'+Args, output]
+			SubProc = Popen(cmlst, cwd=self.TMP_DIR, env=env)
+		else :
+			command = "{} -t --ns-port-log {} {} args:{} {}".format(self.Exec, portfile, Script, Args, output)
+			SubProc = Popen(command, shell='TRUE',cwd=self.TMP_DIR,env=env)
 		SubProc.wait()
+		# Get port number
 		with open(portfile,'r') as f:
 			port = int(f.readline())
-		# SubProc = Popen("{} kill {}".format(self.Exec, port), shell='TRUE')
-		SubProc = Popen([self.Exec, 'kill', str(port)])
+		# Kill the instance of Salome
+		if True:
+			cmlst = self.Exec.split() + ['kill', str(port)]
+			SubProc = Popen(cmlst)
+		else :
+			SubProc = Popen("{} kill {}".format(self.Exec, port), shell='TRUE')
 		SubProc.wait()
 
 def TestRun(Meta,Script,kw):

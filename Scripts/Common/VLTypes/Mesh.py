@@ -80,7 +80,8 @@ class Mesh():
         pool.map(self.__Run__, Arg1)
 
         # from pyina.ez_map import ez_map
-        # results = ez_map(extRun, Arg0, Arg1, nodes=NumThreads)
+        # from pyina.launchers import serial_launcher, mpirun_launcher, srun_launcher
+        # results = ez_map(extRun, Arg0, Arg1, nodes=NumThreads,launcher=mpirun_launcher)
         # for res in results: print(res)
 
         self.VL.Logger('\n### Meshing Completed ###',Print=True)

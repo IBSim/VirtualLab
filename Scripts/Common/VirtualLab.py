@@ -252,6 +252,7 @@ class VLSetup():
 
 
 	def devMesh(self,**kwargs):
+		if not self.MeshData: return
 		from .VLTypes import Mesh
 		self.__Mesh__ = Mesh.Mesh(self)
 
@@ -295,6 +296,15 @@ class VLSetup():
 		# from pyina.ez_map import ez_map
 		# results = ez_map(Test, Arg0, Arg1, nodes=NumThreads)
 		# for res in results: print(res)
+
+	def devSim(self,**kwargs):
+		if not self.SimData: return
+		from .VLTypes import Sim
+		self.__Sim__ = Sim.Sim(self)
+
+		self.__Sim__.Setup(**kwargs)
+
+		self.__Sim__.Run(**kwargs)
 
 	def Mesh(self, **kwargs):
 		if not self.MeshData: return

@@ -76,13 +76,16 @@ class Sim():
         							StudyDict['ASTER'], MessFile)
 
 
-        # if self.mode == 'Headless': Outfile='/dev/null'
-        # elif self.mode == 'Continuous': Outfile=SimLogFile.format(StudyDict['ASTER'])
-        # else : Outfile=''
-        Outfile=''
+        if self.VL.mode == 'Headless': Outfile='/dev/null'
+        elif self.VL.mode == 'Continuous': Outfile="{}/Output.log".format(StudyDict['ASTER'])
+        else : Outfile=''
+        # Outfile=''
 
         SubProc = self.CodeAster.Run(ExportFile, OutFile=Outfile, AddPath=[self.VL.TMP_DIR,StudyDict['TMP_CALC_DIR']])
+        # from subprocess import Popen
+        # SubProc = Popen(['echo','Hello World'])
         SubProc.wait()
+
 
 
     def Run(self,**kwargs):
@@ -98,8 +101,17 @@ class Sim():
 
         if RunAster and hasattr(self.VL.Parameters_Master.Sim,'AsterFile'):
 
-            Arg0 = [self]*len(self.Data)
             Arg1 = list(self.Data.values())
 
-            pool = ProcessPool(nodes=NumThreads)
-            pool.map(self.PoolRun, Arg1)
+            if True:
+                pool = ProcessPool(nodes=NumThreads)
+                pool.map(self.PoolRun, Arg1)
+            else :
+                Arg0 = [self]*len(self.Data)
+                from pyina.ez_map import ez_map
+                from pyina.launchers import mpirun_launcher, srun_launcher
+                ez_map(extRun, Arg0, Arg1, nodes=NumThreads,launcher=mpirun_launcher)
+
+
+def extRun(Meta,arg1):
+    Sim.PoolRun(Meta,arg1)

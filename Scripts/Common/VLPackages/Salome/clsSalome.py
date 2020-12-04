@@ -12,16 +12,20 @@ __all__ = ['Salome','TestRun']
 class Salome():
 	def __init__(self, super,**kwargs):
 
-		self.Exec = 'salome' # How to call salome (can be changed for different versions etc.)
-
+		# Take what's necessary from super class
+		# Variables
 		self.TMP_DIR = super.TMP_DIR
-		self.COM_SCRIPTS = super.COM_SCRIPTS
+		self.LogFile = super.LogFile
+		# Functions
 		self.Logger = super.Logger
 		self.Exit = super.Exit
-		self.Ports = []
-		self.LogFile = super.LogFile
+
+		# How to call salome (can be changed for different versions etc.)
+		self.Exec = 'salome'
 		# AddPath will always add these paths to salome environment
 		self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/Salome".format(super.COM_SCRIPTS)]
+		self.Ports = []
+
 
 #	def WriteArgs(self,ArgDict):
 #		# Args = []

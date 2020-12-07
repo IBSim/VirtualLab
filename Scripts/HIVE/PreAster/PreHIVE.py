@@ -4,13 +4,12 @@ import sys
 sys.dont_write_bytecode=True
 import numpy as np
 import h5py
-from subprocess import Popen
 from VLFunctions import MeshInfo
 import matplotlib.pyplot as plt
 import time
 from importlib import import_module
 from bisect import bisect_left as bl
-import pickle
+from VLPackages.ERMES import ERMES
 
 def HTC(Info, StudyDict):
 	CreateHTC = getattr(StudyDict['Parameters'], 'CreateHTC', True)
@@ -335,13 +334,9 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		strFace = "".join(strFace)
 	else : strFace = ""
 
-
-	ERMESwave = []
 	for Temp in Temperatures:
 		with open('{}/Wave{}-5.dat'.format(tmpERMESdir, Temp),'w+') as f:
 			f.write(Wave51 + strFace + Wave52)
-
-		ERMESwave.append("ERMESv12.5 Wave{};".format(Temp))
 
 	### -9.dat file
 	# Output file where currents calculated in the electrostatic simulation is saved to
@@ -349,9 +344,11 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	with open('{}/Static-9.dat'.format(tmpERMESdir),'w+') as f:
 		f.write('{}\n0\n'.format(name))
 
-	Ermesstr = "cd {}; ERMESv12.5 {};{}".format(tmpERMESdir,'Static',''.join(ERMESwave))
-	ERMES_run = Popen(Ermesstr, stdout=sys.stdout, stderr=sys.stdout, shell = 'TRUE')
-	ERMES_run.wait()
+
+	Ermes = ERMES()
+	err = Ermes.Run('Static',cwd=tmpERMESdir)
+	for Temp in Temperatures:
+		err = Ermes.Run('Wave{}'.format(Temp),cwd=tmpERMESdir,env=os.environ)
 
 	# Take results from dat results file and create in to .rmed file to view in ParaVis
 	ResDict = {}
@@ -531,7 +528,7 @@ def ASCIIname(names):
 	res = np.array(namelist)
 	return res
 
-def ERMES(Info, StudyDict):
+def EMI(Info, StudyDict):
 	Parameters = StudyDict['Parameters']
 	# Name of rMED file where results will be stored. This can be opened in ParaVis
 	ERMESfile = '{}/ERMES.rmed'.format(StudyDict['PREASTER'])
@@ -707,6 +704,6 @@ def ERMES(Info, StudyDict):
 
 def Single(Info, StudyDict):
 	HTC(Info, StudyDict)
-	# Only run the ERMES routine if EMLoad is set to ERMES
+	# Run EMI if EMLoad is set to ERMES
 	if StudyDict['Parameters'].EMLoad == 'ERMES':
-		ERMES(Info, StudyDict)
+		EMI(Info, StudyDict)

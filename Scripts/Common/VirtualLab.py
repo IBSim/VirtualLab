@@ -257,16 +257,22 @@ class VLSetup():
 
 		self.clsMesh = Mesh.Mesh(self)
 
+		# Create dictionaries from Mesh attribute of Parameters Master & Var
+		MeshDicts = self.CreateParameters(self.Parameters_Master, self.Parameters_Var,'Mesh')
+		self.clsMesh.Setup(MeshDicts)
+
 		self.clsMesh.Run(**kwargs)
 
 	def devSim(self,**kwargs):
 		if not self.SimData: return
 		from .VLTypes import Sim
-		self.__Sim__ = Sim.Sim(self)
+		self.clsSim = Sim.Sim(self)
 
-		self.__Sim__.Setup(**kwargs)
+		# Create dictionaries from Mesh attribute of Parameters Master & Var
+		SimDicts = self.CreateParameters(self.Parameters_Master, self.Parameters_Var,'Sim')
+		self.clsSim.Setup(SimDicts,**kwargs)
 
-		self.__Sim__.Run(**kwargs)
+		self.clsSim.Run(**kwargs)
 
 	def Mesh(self, **kwargs):
 		if not self.MeshData: return

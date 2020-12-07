@@ -11,29 +11,22 @@ from ..VLPackages import Salome
 class Mesh():
     def __init__(self,VL,**kwargs):
 
-        # Take what's necessary from VL class
-        # Variables
-        self.TMP_DIR = VL.TMP_DIR
-        self.LogFile = VL.LogFile
-        self.SIM_MESH = VL.SIM_MESH
-        self.MESH_DIR = VL.MESH_DIR
-        self.COM_SCRIPTS = VL.COM_SCRIPTS
+        self.Data = {}
+
+        self.__dict__.update(VL.__dict__)
         self.GEOM_DIR = '{}/Geom'.format(self.TMP_DIR)
+
+        # Take what's necessary from VL class
         self.Logger = VL.Logger
         self.Exit = VL.Exit
-        # Functions
-        self.Data = {}
+        self.WriteModule = VL.WriteModule
+
         self.Salome = Salome.Salome(self)
 
-        self.Setup(VL)
-
-    def Setup(self, VL,**kwargs):
+    def Setup(self, MeshDicts,**kwargs):
         os.makedirs(self.MESH_DIR, exist_ok=True)
         os.makedirs(self.GEOM_DIR, exist_ok=True)
         sys.path.insert(0, self.SIM_MESH)
-
-        # Create dictionaries from Mesh attribute of Parameters Master & Var
-        MeshDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Mesh')
 
         for MeshName, ParaDict in MeshDicts.items():
         	## Run checks ##
@@ -49,19 +42,28 @@ class Mesh():
         		pass
         	## Checks complete ##
 
-        	VL.WriteModule("{}/{}.py".format(self.GEOM_DIR, MeshName), ParaDict)
+        	self.WriteModule("{}/{}.py".format(self.GEOM_DIR, MeshName), ParaDict)
         	self.Data[MeshName] = Namespace(**ParaDict)
 
 
     def PoolRun(self,MeshName,**kwargs):
-    	script = '{}/VLPackages/Salome/MeshRun.py'.format(self.COM_SCRIPTS)
-    	AddPath = [self.SIM_MESH, self.GEOM_DIR]
-    	ArgDict = {'Name':MeshName,
-    					'MESH_FILE':"{}/{}.med".format(self.MESH_DIR, MeshName),
-    					'RCfile':"{}/{}_RC.txt".format(self.GEOM_DIR,MeshName)}
-    	if os.path.isfile('{}/config.py'.format(self.SIM_MESH)): ArgDict["ConfigFile"] = True
 
-    	self.Salome.TestRun(script, AddPath=AddPath, ArgDict=ArgDict)
+        script = '{}/VLPackages/Salome/MeshRun.py'.format(self.COM_SCRIPTS)
+        AddPath = [self.SIM_MESH, self.GEOM_DIR]
+        Returnfile = "{}/{}_RC.txt".format(self.GEOM_DIR,MeshName) # File where salome can write an exit status to
+        ArgDict = {'Name':MeshName,
+        				'MESH_FILE':"{}/{}.med".format(self.MESH_DIR, MeshName),
+        				'RCfile':Returnfile}
+        if os.path.isfile('{}/config.py'.format(self.SIM_MESH)): ArgDict["ConfigFile"] = True
+
+        err = self.Salome.TestRun(script, AddPath=AddPath, ArgDict=ArgDict)
+        if err:
+            self.Logger("Error code {} returned in Salome run".format(err))
+            return err
+
+        if os.path.isfile(Returnfile):
+            with open(Returnfile,'r') as f:
+                return int(f.readline())
 
     def Run(self,**kwargs):
         MeshCheck = kwargs.get('MeshCheck', None)
@@ -93,12 +95,20 @@ class Mesh():
 
         if True:
             pool = ProcessPool(nodes=NumThreads)
-            pool.map(self.PoolRun, Arg1)
+            Res = pool.map(self.PoolRun, Arg1)
         else :
             Arg0 = [self]*len(self.Data)
             from pyina.ez_map import ez_map
             from pyina.launchers import  mpirun_launcher, srun_launcher
-            ez_map(extRun, Arg0, Arg1, nodes=NumThreads,launcher=mpirun_launcher)
+            Res = ez_map(extRun, Arg0, Arg1, nodes=NumThreads,launcher=mpirun_launcher)
+
+        MeshErrors = []
+        for Name, RC in zip(Arg1,Res):
+            if RC:
+                MeshErrors.append(Name)
+                self.Logger("'{}' finished with errors".format(Name),Print=True)
+            else :
+                self.Logger("'{}' completed successfully".format(Name), Print=True)
 
 
         self.Logger('\n### Meshing Completed ###',Print=True)

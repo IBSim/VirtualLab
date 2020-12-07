@@ -1,3 +1,3 @@
 #usr/bin/env python
 
-from .clsSalome import Salome, TestRun
+from .clsSalome import Salome

@@ -7,7 +7,7 @@ from subprocess import Popen, PIPE, STDOUT
 import uuid
 import VLconfig
 
-__all__ = ['Salome','TestRun']
+__all__ = ['Salome']
 
 class Salome():
 	def __init__(self, super,**kwargs):
@@ -88,7 +88,7 @@ class Salome():
 
 		return NewPorts
 
-	def Run(self, Script, **kwargs):
+	def Shell(self, Script, **kwargs):
 		'''
 		kwargs available:
 		OutFile: The log file you want to write stdout to (default is /dev/null)
@@ -155,7 +155,23 @@ class Salome():
 
 		return Salome_close
 
-	def TestRun(self, Script, **kwargs):
+	def Kill(self, Port=0, PortFile=''):
+		if Port:
+			KillPort=Port
+		elif PortFile:
+			with open(PortFile,'r') as f:
+				KillPort = int(f.readline())
+		else : KillPort = 0
+
+
+		if True:
+			cmlst = self.Exec.split() + ['kill', str(KillPort)]
+			SubProc = Popen(cmlst)
+		else :
+			SubProc = Popen("{} kill {}".format(self.Exec, KillPort), shell='TRUE')
+		SubProc.wait()
+
+	def Run(self, Script, **kwargs):
 		# AddPath will always add these paths to salome environment
 		# self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/Salome".format(self.COM_SCRIPTS)]
 
@@ -171,6 +187,7 @@ class Salome():
 		AddPath = kwargs.get('AddPath',[])
 		ArgDict = kwargs.get('ArgDict', {})
 		ArgList = kwargs.get('ArgList',[])
+
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
@@ -189,26 +206,18 @@ class Salome():
 		if ErrFile: output += " 2>>{}".format(ErrFile)
 
 		portfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
+		GUIflag = '-g' if kwargs.get('GUI') else '-t'
 
 		env = {**os.environ, 'PYTHONPATH': PyPath + os.environ['PYTHONPATH']}
 		# Run mesh in Salome
 		if True:
-			cmlst = self.Exec.split() + ['-t', '--ns-port-log', portfile, Script, 'args:'+Args, output]
+			cmlst = self.Exec.split() + [GUIflag, '--ns-port-log', portfile, Script, 'args:'+Args, output]
 			SubProc = Popen(cmlst, cwd=self.TMP_DIR, env=env)
 		else :
 			command = "{} -t --ns-port-log {} {} args:{} {}".format(self.Exec, portfile, Script, Args, output)
 			SubProc = Popen(command, shell='TRUE',cwd=self.TMP_DIR,env=env)
-		SubProc.wait()
-		# Get port number
-		with open(portfile,'r') as f:
-			port = int(f.readline())
-		# Kill the instance of Salome
-		if True:
-			cmlst = self.Exec.split() + ['kill', str(port)]
-			SubProc = Popen(cmlst)
-		else :
-			SubProc = Popen("{} kill {}".format(self.Exec, port), shell='TRUE')
-		SubProc.wait()
+		ReturnCode = SubProc.wait()
 
-def TestRun(Meta,Script,kw):
-	Meta.TestRun(Script,kw)
+		self.Kill(PortFile=portfile)
+
+		return ReturnCode

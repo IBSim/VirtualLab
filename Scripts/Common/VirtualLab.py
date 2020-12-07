@@ -295,8 +295,7 @@ class VLSetup():
 			MeshParaFile = "{}/{}.py".format(self.GEOM_DIR,MeshCheck)
 			MeshScript = "{}/{}.py".format(self.SIM_MESH, self.MeshData[MeshCheck].File)
 			# The file MeshParaFile is passed to MeshScript to create the mesh in the GUI
-			SubProc = self.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
-			SubProc.wait()
+			self.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
 			self.Exit('Terminating after checking mesh')
 
 		elif MeshCheck and MeshCheck not in self.MeshData.keys():
@@ -340,7 +339,7 @@ class VLSetup():
 			ArgDict.update(Name=MeshName, MESH_FILE="{}/{}.med".format(self.MESH_DIR, MeshName),
 						   RCfile="{}/{}_RC.txt".format(self.GEOM_DIR,MeshName))
 
-			Proc = self.Salome.Run(MeshScript, Port=port, AddPath=AddPath, ArgDict=ArgDict, OutFile=tmpLog)
+			Proc = self.Salome.Shell(MeshScript, Port=port, AddPath=AddPath, ArgDict=ArgDict, OutFile=tmpLog)
 			MeshStat[MeshName] = [Proc,port]
 			PortCount[port] +=1
 			NumActive+=1
@@ -405,8 +404,7 @@ class VLSetup():
 			self.Logger("Opening mesh files in Salome",Print=True)
 			ArgDict = {name:"{}/{}.med".format(self.MESH_DIR, name) for name in self.MeshData.keys()}
 			Script = '{}/VLPackages/Salome/ShowMesh.py'.format(self.COM_SCRIPTS)
-			SubProc = self.Salome.Run(Script, ArgDict=ArgDict, GUI=True)
-			SubProc.wait()
+			self.Salome.Run(Script, ArgDict=ArgDict, GUI=True)
 			self.Exit("Terminating after mesh viewing")
 
 	def Sim(self, **kwargs):
@@ -693,8 +691,8 @@ class VLSetup():
 						if ext == '.rmed':
 							ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
 			Script = "{}/VLPackages/Salome/ShowRes.py".format(self.COM_SCRIPTS)
-			SubProc = self.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
-			SubProc.wait()
+			self.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
+
 
 
 	def ML(self,**kwargs):

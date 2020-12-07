@@ -56,7 +56,7 @@ class Mesh():
         				'RCfile':Returnfile}
         if os.path.isfile('{}/config.py'.format(self.SIM_MESH)): ArgDict["ConfigFile"] = True
 
-        err = self.Salome.TestRun(script, AddPath=AddPath, ArgDict=ArgDict)
+        err = self.Salome.Run(script, AddPath=AddPath, ArgDict=ArgDict)
         if err:
             self.Logger("Error code {} returned in Salome run".format(err))
             return err
@@ -78,8 +78,7 @@ class Mesh():
             MeshParaFile = "{}/{}.py".format(self.GEOM_DIR,MeshCheck)
             MeshScript = "{}/{}.py".format(self.SIM_MESH, self.Data[MeshCheck].File)
 
-            SubProc = self.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
-            SubProc.wait()
+            self.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
             self.Exit('Terminating after checking mesh')
 
         elif MeshCheck and MeshCheck not in self.Data.keys():
@@ -116,8 +115,7 @@ class Mesh():
             self.Logger("Opening mesh files in Salome",Print=True)
             ArgDict = {name:"{}/{}.med".format(self.MESH_DIR, name) for name in self.Data.keys()}
             Script = '{}/VLPackages/Salome/ShowMesh.py'.format(self.COM_SCRIPTS)
-            SubProc = self.Salome.Run(Script, ArgDict=ArgDict, GUI=True)
-            SubProc.wait()
+            self.Salome.Run(Script, ArgDict=ArgDict, GUI=True)
             self.Exit("Terminating after mesh viewing")
 
     def Cleanup():

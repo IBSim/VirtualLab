@@ -4,7 +4,7 @@ sys.dont_write_bytecode=True
 import salome
 import numpy as np
 from importlib import import_module
-import PVParameters
+import SalomeFunc
 '''
 import SalomePyQt
 SalomePyQt.SalomePyQt().activateModule('ParaViS')
@@ -12,9 +12,14 @@ SalomePyQt.SalomePyQt().activateModule('ParaViS')
 import pvsimple
 pvsimple.ShowParaviewView()
 
+kwargs = SalomeFunc.GetArgs(sys.argv[1:])
+CBmin = float(kwargs.pop('Rangemin'))
+CBmax = float(kwargs.pop('Rangemax'))
+
 renderView1 = pvsimple.GetActiveViewOrCreate('RenderView')
-for Sim in PVParameters.Simulations:
+for Sim, CaptureTime in kwargs.items():
 	print(Sim)
+	CaptureTime = float(CaptureTime)
 	Parameters = import_module("{}.Parameters".format(Sim))
 	PathVL = import_module("{}.PathVL".format(Sim))
 
@@ -35,16 +40,15 @@ for Sim in PVParameters.Simulations:
 	renderView1.Background = [1,1,1]  ### White Background
 
 	animationScene1 = pvsimple.GetAnimationScene()
-	if Parameters.CaptureTime > animationScene1.EndTime:
+	if CaptureTime > animationScene1.EndTime:
 		animationScene1.AnimationTime = animationScene1.EndTime
 	else :
-		animationScene1.AnimationTime = Parameters.CaptureTime
+		animationScene1.AnimationTime = CaptureTime
 	# animationScene1.UpdateAnimationUsingDataTimeSteps()
 
 	# set scalar coloring
 	pvsimple.ColorBy(thermalrmedDisplay, ('POINTS', 'Temperature'))
 
-	CBmin, CBmax = PVParameters.GlobalRange
 	resther_TEMPLUT = pvsimple.GetColorTransferFunction('Temperature')
 	resther_TEMPLUT.NumberOfTableValues = 12
 	resther_TEMPLUT.RescaleTransferFunction(CBmin, CBmax)

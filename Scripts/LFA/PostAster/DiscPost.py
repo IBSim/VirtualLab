@@ -235,20 +235,17 @@ def Single(Info, StudyDict):
 
 def Combined(Info):
 	GlobalRange = [np.inf, -np.inf]
-	Simulations = []
-	CaptureTime = []
+	ArgDict = {}
 	for Name, StudyDict in Info.SimData.items():
-		Simulations.append(Name)
 		StudyPV = StudyDict["ParaVis"]
-		CaptureTime.append(StudyPV["CaptureTime"])
+		ArgDict[Name] = StudyPV["CaptureTime"]
 		GlobalRange = [min(StudyPV["Range"][0],GlobalRange[0]), max(StudyPV["Range"][1],GlobalRange[1])]
+	ArgDict['Rangemin'] = GlobalRange[0]
+	ArgDict['Rangemax'] = GlobalRange[1]
 
-	PVDict = {"Simulations": Simulations, "GlobalRange":GlobalRange, "CaptureTime":CaptureTime}
-	Info.WriteModule("{}/{}.py".format(Info.TMP_DIR, "PVParameters"), PVDict)
-
+	print('Creating images using ParaViS')
 	GUI = getattr(Info.Parameters_Master.Sim, 'PVGUI', False)
 	ParaVisFile = "{}/ParaVis.py".format(os.path.dirname(os.path.abspath(__file__)))
-	print('Creating images using ParaViS')
-	RC = Info.Salome.Run(ParaVisFile, GUI=GUI, AddPath=Info.TMP_DIR)
+	RC = Info.Salome.Run(ParaVisFile, GUI=GUI, AddPath=Info.TMP_DIR, ArgDict=ArgDict)
 	if RC:
 		return "Error in Salome run"

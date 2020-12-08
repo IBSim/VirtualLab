@@ -13,10 +13,6 @@ class CodeAster():
 
         self.TMP_DIR = super.TMP_DIR
 
-        self.Logger = super.Logger
-        self.Exit = super.Exit
-        self.LogFile = super.LogFile
-
         self.mode = super.mode
         # AddPath will always add these paths to salome environment
         self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/CodeAster".format(super.COM_SCRIPTS)]
@@ -58,20 +54,23 @@ class CodeAster():
         AddPath = kwargs.get('AddPath',[])
 
         AddPath = [AddPath] if type(AddPath) == str else AddPath
-        PythonPath = ["{}:".format(path) for path in AddPath+self.AddPath]
-        PythonPath = ["PYTHONPATH="] + PythonPath + ["$PYTHONPATH;export PYTHONPATH;export PYTHONDONTWRITEBYTECODE=1;"]
-        PythonPath = "".join(PythonPath)
+        PyPath = ["{}:".format(path) for path in AddPath+self.AddPath]
+        PyPath = "".join(PyPath)
+
+        env = {**os.environ, 'PYTHONPATH': PyPath + os.environ['PYTHONPATH']}
 
         OutFile = kwargs.get('OutFile', "")
-        Output = " >{} 2>&1".format(OutFile) if OutFile else ""
+        Output = ">{} 2>&1".format(OutFile) if OutFile else ""
 
         if self.mode == 'Interactive':
             errfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
             command = "xterm -hold -T 'Study: {0}' -sb -si -sl 2000 "\
             "-e '{1} {2}; echo $? >{3}';exit $(cat {3})".format(kwargs.get('Name',ExportFile),self.Exec, ExportFile, errfile)
+            proc = Popen(command , shell='TRUE', env=env)
         else:
-            command = "{} {} {}".format(self.Exec, ExportFile, Output)
-
-        # Start Aster subprocess
-        proc = Popen(PythonPath + command , shell='TRUE')
+            if True:
+                proc = Popen("{} {} {}".format(self.Exec,ExportFile,Output), shell='TRUE', env=env)
+            else :
+                cmlst = [self.Exec,ExportFile] + Output
+                proc = Popen(cmlst, env=env)
         return proc

@@ -10,6 +10,9 @@ from pathos.multiprocessing import ProcessPool
 import copy
 import shutil
 import time
+import pickle
+
+from Scripts.Common import MPRun
 # from Scripts.Common.VLPackages import CodeAster
 from ..VLPackages import CodeAster
 

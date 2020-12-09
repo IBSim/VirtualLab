@@ -12,16 +12,16 @@ from ..VLPackages import Salome
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
-    os.makedirs(VL.MESH_DIR, exist_ok=True)
 
     VL.MeshData = {}
-
-    if not kwargs.get('RunMesh', True): return
-
     MeshDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Mesh')
+
+    # if either MeshDicts is empty or RunMesh is False we will return
+    if not (kwargs.get('RunMesh', True) and MeshDicts): return
 
     VL.GEOM_DIR = '{}/Geom'.format(VL.TMP_DIR)
     os.makedirs(VL.GEOM_DIR, exist_ok=True)
+    os.makedirs(VL.MESH_DIR, exist_ok=True)
 
     sys.path.insert(0, VL.SIM_MESH)
 

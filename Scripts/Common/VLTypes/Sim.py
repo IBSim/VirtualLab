@@ -8,7 +8,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from multiprocessing import Process
 from pathos.multiprocessing import ProcessPool
 import copy
-
+import shutil
+import time
 # from Scripts.Common.VLPackages import CodeAster
 from ..VLPackages import CodeAster
 
@@ -20,14 +21,13 @@ def CheckFile(Directory,fname,ext):
 
 def Setup(VL,**kwargs):
 
-    os.makedirs(VL.STUDY_DIR, exist_ok=True)
     VL.SimData = {}
-
-    if not kwargs.get('RunSim', True): return
-
-    MetaInfo = {key:val for key,val in VL.__dict__.items() if type(val)==str}
-
     SimDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Sim')
+
+    if not (kwargs.get('RunSim', True) and SimDicts): return
+
+    os.makedirs(VL.STUDY_DIR, exist_ok=True)
+    MetaInfo = {key:val for key,val in VL.__dict__.items() if type(val)==str}
     for SimName, ParaDict in SimDicts.items():
         # Run checks
         # Check files exist

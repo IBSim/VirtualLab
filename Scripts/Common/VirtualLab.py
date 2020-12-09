@@ -113,7 +113,6 @@ class VLSetup():
 
 		SimFn.Setup(self,**kwargs)
 
-
 		# # ML section
 		# self.MLData = {}
 		# if RunML and self.Parameters_Master.ML:
@@ -123,52 +122,12 @@ class VLSetup():
 		# 	for Name, ParaDict in MLdicts.items():
 		# 		self.MLData[Name] = Namespace(**ParaDict)
 
-		'''
-		# Gather information about what's running in VirtualLab, i.e. # Simulations, # Meshes
-		NumSims = len(self.SimData)
-		NumMeshes = len(set(MeshNames)) if NumSims else 0
-		NumMeshesCr = len(self.MeshData)
-
-		Infostr = "Simulation Type: {}\n"\
-				  "Project: {}\n"\
-				  "StudyName: {}\n"\
-				  "Nb. Meshes: {}\n"\
-				  "Nb. Simulations: {}".format(self.Simulation,self.Project,self.StudyName,NumMeshesCr,NumSims)
-		self.Logger(Infostr)
-
-		# Using inspect and ast we can get the name of the RunFile used and the
-		# environment values which are used ()
-		frame = inspect.stack()[1]
-		RunFile = os.path.realpath(frame[0].f_code.co_filename)
-		RunFileSC = inspect.getsource(inspect.getmodule(frame[0]))
-		envdict = {'Simulation':self.Simulation,'Project':self.Project, \
-					'StudyName':self.StudyName, 'Mode':self.mode, \
-					'NumSims':NumSims,'NumMeshes':NumMeshes,'NumMeshesCr':NumMeshesCr}
-		keywords = {'RunMesh':RunMesh,'RunSim':RunSim,'MeshCheck':None, \
-					'ShowMesh':False, 'MeshThreads':1,'RunPreAster':True, \
-					'RunAster':True, 'RunPostAster':True, 'ShowRes':True, \
-					'SimThreads':1, 'mpi_nbcpu':1, 'mpi_nbnoeud':1, \
-					'ncpus':1,'memory':2}
-		for cd in ast.parse(RunFileSC).body:
-			obj = getattr(cd,'value',None)
-			fn = getattr(getattr(obj,'func',None),'attr',None)
-			if fn in ('Mesh','Sim'):
-				for kw in obj.keywords:
-					if hasattr(kw.value,'value'): val=kw.value.value
-					elif hasattr(kw.value,'n'): val=kw.value.n
-					key = kw.arg
-					if key == 'NumThreads':
-						key = "MeshThreads" if fn == 'Mesh' else "SimThreads"
-					keywords[key] = val
-
-		envdict.update(keywords)
 
 		# Function to analyse usage of VirtualLab to evidence impact for
 		# use in future research grant applications. Can be turned off via
 		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
-		if VLconfig.VL_ANALYTICS=="True": Analytics.event(envdict)
+		if VLconfig.VL_ANALYTICS=="True": Analytics.Run(self,**kwargs)
 
-		'''
 
 	def Mesh(self,**kwargs):
 		return MeshFn.Run(self,**kwargs)

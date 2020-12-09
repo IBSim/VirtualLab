@@ -18,12 +18,12 @@ from multiprocessing import Process
 
 import VLconfig
 from Scripts.Common import Analytics, MPRun
-from .VLPackages import Salome, CodeAster
+from Scripts.Common.VLPackages import Salome, CodeAster
 
 class VLSetup():
-	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var, Mode):
+	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var=None, Mode='T'):
 		# __force__ contains any keyword arguments passed using the -k argument when launching VirtualLab
-		self.__force__ = self.__ForceArgs__(sys.argv[1:])
+		self.__force__ = self.GetArgParser()
 
 		Simulation = self.__force__.get('Simulation',Simulation)
 		Project = self.__force__.get('Project',Project)
@@ -99,7 +99,6 @@ class VLSetup():
 		kwargs available:
 		RunMesh: Boolean to dictate whether or not to create meshes
 		RunSim: Boolean to dictate whether or not to run CodeAster
-		port: Give the port number of an open Salome instance to connect to
 		'''
 		kwargs.update(self.__force__)
 
@@ -265,14 +264,12 @@ class VLSetup():
 
 	def devSim(self,**kwargs):
 		if not self.SimData: return
-		from .VLTypes import Sim
-		self.clsSim = Sim.Sim(self)
+		from Scripts.Common.VLTypes import Sim as SimFN
 
 		# Create dictionaries from Mesh attribute of Parameters Master & Var
-		SimDicts = self.CreateParameters(self.Parameters_Master, self.Parameters_Var,'Sim')
-		self.clsSim.Setup(SimDicts,**kwargs)
+		SimFN.Setup(self,**kwargs)
 
-		self.clsSim.Run(**kwargs)
+		SimFN.Run(self,**kwargs)
 
 	def Mesh(self, **kwargs):
 		if not self.MeshData: return
@@ -826,7 +823,8 @@ class VLSetup():
 			return os.path.isfile('{}/{}.{}'.format(Directory,fname,ext))
 
 
-	def __ForceArgs__(self,ArgList):
+	def GetArgParser(self):
+		ArgList=sys.argv[1:]
 		argdict={}
 		for arg in ArgList:
 			split=arg.split('=')

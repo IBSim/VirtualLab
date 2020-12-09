@@ -19,7 +19,7 @@ from multiprocessing import Process
 import VLconfig
 from Scripts.Common import Analytics, MPRun
 from Scripts.Common.VLPackages import Salome, CodeAster
-from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn
+from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, ML as MLFn
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var=None, Mode='T'):
@@ -99,29 +99,16 @@ class VLSetup():
 		'''
 		kwargs available:
 		RunMesh: Boolean to dictate whether or not to create meshes
-		RunSim: Boolean to dictate whether or not to run CodeAster
+		RunSim: Boolean to dictate whether or not to run simulation routine
+		RunMl: Boolean to dictate ML part (dev)
 		'''
 		kwargs.update(self.GetArgParser())
-
-		# RunMesh = kwargs.get('RunMesh', True)
-		# RunSim = kwargs.get('RunSim',True)
-		# RunML = kwargs.get('RunML',True)
 
 		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 
 		MeshFn.Setup(self,**kwargs)
-
 		SimFn.Setup(self,**kwargs)
-
-		# # ML section
-		# self.MLData = {}
-		# if RunML and self.Parameters_Master.ML:
-		# 	self.ML_DIR = "{}/ML".format(self.PROJECT_DIR)
-		# 	os.makedirs(self.ML_DIR,exist_ok=True)
-		# 	MLdicts = self.CreateParameters(self.Parameters_Master,self.Parameters_Var,'ML')
-		# 	for Name, ParaDict in MLdicts.items():
-		# 		self.MLData[Name] = Namespace(**ParaDict)
-
+		MLFn.Setup(self,**kwargs)
 
 		# Function to analyse usage of VirtualLab to evidence impact for
 		# use in future research grant applications. Can be turned off via
@@ -141,10 +128,9 @@ class VLSetup():
 	def devSim(self,**kwargs):
 		return SimFn.devRun(self,**kwargs)
 
-	def ML(self,**kwargs):
-		for Name, MLdict in self.MLData.items():
-			MLfn = import_module("ML.{}".format(MLdict.File))
-			MLfn.main(self)
+	def devML(self,**kwargs):
+		return MLFn.devRun(self,**kwargs)
+
 
 
 	def WriteModule(self, FileName, Dictionary, **kwargs):
@@ -232,20 +218,23 @@ class VLSetup():
 			setattr(self.Parameters_Var, nm, getattr(Var, nm, None))
 
 	def CreateParameters(self, Parameters_Master, Parameters_Var, Attr):
-		Master=getattr(Parameters_Master,Attr)
-		Var=getattr(Parameters_Var,Attr)
-		Names = getattr(Var, 'Name', [Master.Name])
-		NbNames = len(Names)
+		Master=getattr(Parameters_Master,Attr, None)
+		if not Master: return {}
+		if not hasattr(Master,'Name'): self.Exit("Error: '{}' does not have the attribute 'Name' in Parameters_Master".format(Attr))
 
-		ParaDict = {Name:{} for Name in Names}
+		Var=getattr(Parameters_Var,Attr, None)
+		if not Var: return {Master.Name : Master.__dict__}
+		if not hasattr(Var,'Name'): self.Exit("Error: '{}' does not have the attribute 'Name' in Parameters_Var".format(Attr))
 
+		NbNames = len(Var.Name)
+		ParaDict = {}
 		for VariableName, MasterValue in Master.__dict__.items():
 			# check types
 			NewValues = getattr(Var, VariableName, [MasterValue]*NbNames)
 			# Check the number of NewVals is correct
 			if len(NewValues) != NbNames:
-				self.Exit("Error: Number of entries for '{0}.{1}' not equal to '{0}.Names'".format(Attr,VariableName))
-			for Name,NewVal in zip(Names,NewValues):
+				self.Exit("Error: Number of entries for '{0}.{1}' not equal to '{0}.Names' in Parameters_Var".format(Attr,VariableName))
+			for Name,NewVal in zip(Var.Name,NewValues):
 				if type(MasterValue)==dict:
 					cpdict = copy.deepcopy(MasterValue)
 					cpdict.update(NewVal)
@@ -254,12 +243,13 @@ class VLSetup():
 					if DiffKeys:
 						self.Logger("Warning: The key(s) {2} specified in '{0}.{3}' for '{1}' are not in that dictionary "\
 						"in Parameters_Master.\nThis may lead to unexpected results.\n".format(Attr,Name,DiffKeys,VariableName), Print=True)
+				if Name not in ParaDict: ParaDict[Name] = {}
 				ParaDict[Name][VariableName] = NewVal
 
 		if hasattr(Var,'Run'):
 			if len(Var.Run)!=NbNames:
 				self.Exit("Error: Number of entries for {}.Run not equal to {}.Names".format(Attr))
-			for Name, flag in zip(Names, Var.Run):
+			for Name, flag in zip(Var.Name, Var.Run):
 				if not flag:
 					ParaDict.pop(Name)
 

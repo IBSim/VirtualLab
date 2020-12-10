@@ -10,22 +10,17 @@ import VLconfig
 __all__ = ['Salome']
 
 class Salome():
-	def __init__(self, super,**kwargs):
+	def __init__(self, super=None, **kwargs):
+		self.cwd = getattr(super, 'TMP_DIR', os.getcwd())
 
-		# Take what's necessary from super class
-		# Variables
-		self.TMP_DIR = super.TMP_DIR
-		self.LogFile = super.LogFile
-		# Functions
+		self.LogFile = getattr(super, 'LogFile', None)
 		self.Logger = super.Logger
-		self.Exit = super.Exit
 
 		# How to call salome (can be changed for different versions etc.)
 		self.Exec = getattr(VLconfig,'SalomeExec','salome')
 
-
 		# AddPath will always add these paths to salome environment
-		self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/Salome".format(super.COM_SCRIPTS)]
+		self.AddPath = kwargs.get('AddPath',[]) + [os.path.dirname(os.path.realpath(__file__))]
 		self.Ports = []
 
 
@@ -69,8 +64,8 @@ class Salome():
 		SalomeSP = []
 		NewPorts = []
 		for i in range(Num):
-			portfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
-			SubProc = Popen('cd {};{} -t --ns-port-log {} {}'.format(self.TMP_DIR, self.Exec, portfile, output), shell='TRUE')
+			portfile = "{}/{}".format(self.cwd,uuid.uuid4())
+			SubProc = Popen('cd {};{} -t --ns-port-log {} {}'.format(self.cwd, self.Exec, portfile, output), shell='TRUE')
 			SalomeSP.append((SubProc,portfile))
 
 		for SubProc, portfile in SalomeSP:
@@ -199,7 +194,7 @@ class Salome():
 		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
 		Args = ",".join(ArgList + Args)
 
-		portfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
+		portfile = "{}/{}".format(self.cwd,uuid.uuid4())
 		GUIflag = '-g' if kwargs.get('GUI') else '-t'
 
 		env = {**os.environ, 'PYTHONPATH': PyPath + os.environ['PYTHONPATH']}
@@ -207,11 +202,11 @@ class Salome():
 		if False:
 			# This is dev work, need to add in output option for this call
 			cmlst = self.Exec.split() + [GUIflag, '--ns-port-log', portfile, Script, 'args:'+Args]
-			SubProc = Popen(cmlst, cwd=self.TMP_DIR, stdout=sys.stdout, stderr=sys.stderr, env=env)
+			SubProc = Popen(cmlst, cwd=self.cwd, stdout=sys.stdout, stderr=sys.stderr, env=env)
 		else :
 			output = ">>{} 2>&1".format(OutFile) if OutFile else ''
-			command = "{} -t --ns-port-log {} {} args:{} {}".format(self.Exec, portfile, Script, Args, output)
-			SubProc = Popen(command, shell='TRUE',cwd=self.TMP_DIR,env=env)
+			command = "{} {} --ns-port-log {} {} args:{} {}".format(self.Exec, GUIflag, portfile, Script, Args, output)
+			SubProc = Popen(command, shell='TRUE',cwd=self.cwd,env=env)
 		ReturnCode = SubProc.wait()
 
 		self.Kill(PortFile=portfile)

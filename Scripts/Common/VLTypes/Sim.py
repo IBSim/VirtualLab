@@ -181,13 +181,19 @@ def devRun(VL,**kwargs):
     Arg0 = [VL]*NumSim
     Arg1 = list(VL.SimData.values())
     Arg2 = [kwargs]*NumSim
-    if 1:
+
+    launcher = kwargs.get('launcher','Process')
+    if launcher == 'Process':
         pool = ProcessPool(nodes=NumThreads)
-        Res = pool.map(PoolRun, Arg0, Arg1, Arg2)
-    else :
+    elif launcher == 'MPI':
         from pyina.launchers import MpiPool
         pool = MpiPool(nodes=NumThreads)
-        Res = pool.map(PoolRun, Arg0, Arg1, Arg2)
+    elif launcher == 'Slurm':
+        from pyina.launchers import SlurmPool
+        pool = SlurmPool(nodes=NumThreads)
+
+    onall = kwargs.get('onall',True)
+    Res = pool.map(PoolRun, Arg0, Arg1, Arg2, onall=onall)
 
     SimError = []
     for Name, Returner in zip(VL.SimData.keys(),Res):

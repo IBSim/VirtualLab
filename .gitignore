@@ -27,6 +27,7 @@ Input/*/*
 !Input/*/Tutorials/
 !Input/*/.dev/
 !Input/Unit/*
+!tests/
 
 # Ensure that only some Run files will be included in the RunFiles directory
 !RunFiles/

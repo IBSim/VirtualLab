@@ -7,7 +7,8 @@ from importlib import import_module
 from pathos.multiprocessing import ProcessPool
 import time
 import shutil
-
+import uuid
+import traceback
 from ..VLPackages import Salome
 
 def Setup(VL, **kwargs):
@@ -44,23 +45,36 @@ def Setup(VL, **kwargs):
 
 
 def PoolRun(VL,MeshName,**kwargs):
+    try:
+        Returner = Namespace(Error=None)
 
-    script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
-    AddPath = [VL.SIM_MESH, VL.GEOM_DIR]
-    Returnfile = "{}/{}_RC.txt".format(VL.GEOM_DIR,MeshName) # File where salome can write an exit status to
-    ArgDict = {'Name':MeshName,
-    				'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
-    				'RCfile':Returnfile}
-    if os.path.isfile('{}/config.py'.format(VL.SIM_MESH)): ArgDict["ConfigFile"] = True
+        script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
+        AddPath = [VL.SIM_MESH, VL.GEOM_DIR]
+        Returnfile = "{}/{}_RC.txt".format(VL.GEOM_DIR,MeshName) # File where salome can write an exit status to
+        ArgDict = {'Name':MeshName,
+        				'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
+        				'RCfile':Returnfile,
+                        'STEP':True}
+        if os.path.isfile('{}/config.py'.format(VL.SIM_MESH)): ArgDict["ConfigFile"] = True
 
-    err = VL.Salome.Run(script, AddPath=AddPath, ArgDict=ArgDict)
-    if err:
-        VL.Logger("Error code {} returned in Salome run".format(err))
-        return err
+        if VL.mode in ('Interactive','Terminal'): OutFile=None
+        else : OutFile = "{}/{}.log".format(VL.MESH_DIR,MeshName)
 
-    if os.path.isfile(Returnfile):
-        with open(Returnfile,'r') as f:
-            return int(f.readline())
+        err = VL.Salome.Run(script, AddPath=AddPath, ArgDict=ArgDict, OutFile=OutFile)
+        if err:
+            VL.Logger("Error code {} returned in Salome run".format(err))
+            Returner.Error = [err, "Error in Salome run"]
+
+        if os.path.isfile(Returnfile):
+            with open(Returnfile,'r') as f:
+                Returner.Error = [int(f.readline()), "Salome returned a value"]
+
+        return Returner
+
+    except:
+        exc = traceback.format_exc()
+        VL.Logger(exc)
+        return Namespace(Exception=exc)
 
 def devRun(VL,**kwargs):
     if not VL.MeshData: return
@@ -88,32 +102,46 @@ def devRun(VL,**kwargs):
 
     VL.Logger('\n### Starting Meshing ###\n',Print=True)
 
-    NumMeshes = len(VL.MeshData)
-    NumThreads = min(NumThreads,NumMeshes)
-
     Arg0 = [VL]*len(VL.MeshData)
     Arg1 = list(VL.MeshData.keys())
 
-    if 1:
+    launcher = kwargs.get('launcher','Process')
+    onall = kwargs.get('onall',True)
+    if launcher == 'Process':
         pool = ProcessPool(nodes=NumThreads)
-        Res = pool.map(PoolRun, Arg0, Arg1)
-    else :
+    elif launcher == 'MPI':
         from pyina.launchers import MpiPool
-        pool = MpiPool(nodes=NumThreads)
-        Res = pool.map(PoolRun, Arg0, Arg1)
+        pool = MpiPool(nodes=NumThreads,source=True)
+    elif launcher == 'Slurm':
+        from pyina.launchers import SlurmPool
+        pool = SlurmPool(nodes=NumThreads)
+
+    Res = pool.map(PoolRun, Arg0, Arg1, onall=onall)
 
     MeshError = []
-    for Name, RC in zip(Arg1,Res):
-        if RC:
+    for Name, Returner in zip(Arg1,Res):
+        if hasattr(Returner,'Exception'):
+            VL.Logger("'{}' threw an exception".format(Name),Print=True)
             MeshError.append(Name)
+            continue
+
+        if Returner.Error:
             VL.Logger("'{}' finished with errors".format(Name),Print=True)
+            MeshError.append(Name)
         else :
             VL.Logger("'{}' completed successfully".format(Name), Print=True)
+            shutil.copy("{}/{}.py".format(VL.GEOM_DIR,Name), VL.MESH_DIR)
+            # if VL.mode not in ('Interactive','Terminal'):
+                # shutil.copy()
+            	# with open(tmpLogstr.format(VL.GEOM_DIR,tmpMeshName),'r') as rtmpLog:
+            	# 	VL.Logger("\nOutput for '{}':\n{}".format(tmpMeshName,rtmpLog.read()))
 
     if MeshError:
         VL.Exit("The following Meshes finished with errors:\n{}".format(MeshError),KeepDirs=['Geom'])
 
     VL.Logger('\n### Meshing Completed ###',Print=True)
+
+
     if ShowMesh:
         VL.Logger("Opening mesh files in Salome",Print=True)
         ArgDict = {name:"{}/{}.med".format(VL.MESH_DIR, name) for name in VL.MeshData.keys()}

@@ -4,12 +4,13 @@ import sys
 sys.dont_write_bytecode=True
 import numpy as np
 import h5py
-from VLFunctions import MeshInfo
 import matplotlib.pyplot as plt
 import time
 from importlib import import_module
 from bisect import bisect_left as bl
-from VLPackages.ERMES import ERMES
+
+from Scripts.Common.VLFunctions import MeshInfo
+from Scripts.Common.VLPackages.ERMES import ERMES
 
 def HTC(Info, StudyDict):
 	CreateHTC = getattr(StudyDict['Parameters'], 'CreateHTC', True)

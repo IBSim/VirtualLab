@@ -17,48 +17,59 @@ from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, ML as MLFn
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var=None, Mode='T'):
-		# __force__ contains any keyword arguments passed using the -k argument when launching VirtualLab
-		self.__force__ = self.GetArgParser()
-
-		Simulation = self.__force__.get('Simulation',Simulation)
-		Project = self.__force__.get('Project',Project)
-		StudyName = self.__force__.get('StudyName',StudyName)
-		Parameters_Master = self.__force__.get('Parameters_Master',Parameters_Master)
-		Parameters_Var = self.__force__.get('Parameters_Var',Parameters_Var)
-		Mode = self.__force__.get('Mode',Mode)
-
-		# Set running mode
-		if Mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
-		elif Mode.lower() in ('t','terminal'): self.mode = 'Terminal'
-		elif Mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
-		elif Mode.lower() in ('h', 'headless'): self.mode = 'Headless'
-		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
 
 		self.Simulation = Simulation
 		self.Project = Project
 		self.StudyName = StudyName
-
-		self.__ID__ = (datetime.datetime.now()).strftime("%y%m%d_%H%M%S")
+		# Parameters_Master and Var will be overwritten by a namespace of the parameters using function CreateParameters
+		self.Parameters_Master = Parameters_Master
+		self.Parameters_Var = Parameters_Var
+		self.mode = Mode
 
 		VL_DIR = VLconfig.VL_DIR
-		if VL_DIR != sys.path[-1]: sys.path.pop(-1)
 
 		### Define directories for VL from config file. If directory name doesn't start with '/'
 		### it will be created relative to the TWD
 		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored.
-		OUTPUT_DIR = getattr(VLconfig,'OutputDir', "{}/Output".format(VL_DIR))
+		self.OUTPUT_DIR = getattr(VLconfig,'OutputDir', "{}/Output".format(VL_DIR))
 		# Material directory
-		MATERIAL_DIR = getattr(VLconfig,'MaterialDir', "{}/Materials".format(VL_DIR))
+		self.MATERIAL_DIR = getattr(VLconfig,'MaterialDir', "{}/Materials".format(VL_DIR))
 		# Input directory
-		INPUT_DIR = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
-
+		self.INPUT_DIR = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
 		# tmp directory
 		TEMP_DIR = getattr(VLconfig,'TEMP_DIR',"/tmp")
-		self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, Project, self.__ID__)
-		if Project == '.dev': self.TMP_DIR = "{}/dev".format(TEMP_DIR)
 
-		self.MATERIAL_DIR = MATERIAL_DIR
-		self.INPUT_DIR = '{}/{}/{}'.format(INPUT_DIR, Simulation, Project)
+		# Update above with parsed arguments
+		for key, val in self.GetArgParser().items():
+			if key in self.__dict__:
+				setattr(self,key,val)
+			if key == 'Mode':
+				self.mode = val
+			if key == 'TEMP_DIR':
+				TEMP_DIR = val
+
+		# Update running mode as shorthand version can be given
+		if self.mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
+		elif self.mode.lower() in ('t','terminal'): self.mode = 'Terminal'
+		elif self.mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
+		elif self.mode.lower() in ('h', 'headless'): self.mode = 'Headless'
+		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
+
+		# Remove RunFiles directory from path if a scrit was launched there.
+		if VL_DIR != sys.path[-1]: sys.path.pop(-1)
+
+		self.__ID__ = (datetime.datetime.now()).strftime("%y%m%d_%H%M%S")
+
+		# Update Input, Output and Temp directories with simulation specific ones
+		self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, Project, self.__ID__)
+
+		self.INPUT_DIR = '{}/{}/{}'.format(self.INPUT_DIR, Simulation, Project)
+
+		# Output directory
+		self.PROJECT_DIR = "{}/{}/{}".format(self.OUTPUT_DIR, Simulation, Project)
+		self.STUDY_DIR = "{}/{}".format(self.PROJECT_DIR, StudyName)
+		self.MESH_DIR = "{}/Meshes".format(self.PROJECT_DIR)
+
 
 		# Define variables and run some checks
 		# Script directories
@@ -72,22 +83,7 @@ class VLSetup():
 		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
 		self.SIM_ML = "{}/ML".format(self.SIM_SCRIPTS)
 
-		# Output directory
-		self.PROJECT_DIR = "{}/{}/{}".format(OUTPUT_DIR, Simulation, Project)
-		self.STUDY_DIR = "{}/{}".format(self.PROJECT_DIR, StudyName)
-		self.MESH_DIR = "{}/Meshes".format(self.PROJECT_DIR)
-
 		self.Logger('### Launching VirtualLab ###',Print=True)
-
-		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
-		self.NS = ['Mesh','Sim','ML']
-		self.GetParams(Parameters_Master,Parameters_Var,self.NS)
-
-		self.Salome = Salome.Salome(self, AddPath=[self.SIM_SCRIPTS])
-
-		self.CodeAster = CodeAster.CodeAster(self)
-
-
 
 	def Control(self, **kwargs):
 		'''
@@ -97,6 +93,13 @@ class VLSetup():
 		RunMl: Boolean to dictate ML part (dev)
 		'''
 		kwargs.update(self.GetArgParser())
+
+		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
+		self.NS = ['Mesh','Sim','ML']
+		self.GetParams(self.Parameters_Master, self.Parameters_Var, self.NS)
+
+		self.Salome = Salome.Salome(self, AddPath=[self.SIM_SCRIPTS])
+		self.CodeAster = CodeAster.CodeAster(self)
 
 		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 

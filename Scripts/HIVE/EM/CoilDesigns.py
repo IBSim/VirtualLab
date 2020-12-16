@@ -4,7 +4,7 @@ from salome.geom import geomBuilder
 from salome.smesh import smeshBuilder
 import  SMESH
 import salome_version
-import SalomeFunc
+from Scripts.Common.VLPackages.Salome import SalomeFunc
 import numpy as np
 from subprocess import Popen
 
@@ -101,8 +101,13 @@ def Test():
 	return CoilMesh
 
 
-def HIVE():
-	dirname = os.path.dirname(__file__)
+def HIVE(**kwargs):
+	if 'FileName' in kwargs:
+		FileName = kwargs['FileName']
+	else :
+		FileName = os.path.abspath(__file__)
+
+	dirname = os.path.dirname(FileName)
 	Coil = geompy.ImportSTEP("{}/HIVE_COIL.stp".format(dirname), False, True)
 	geompy.addToStudy(Coil,'Coil')
 
@@ -154,17 +159,8 @@ def HIVE():
 
 	return CoilMesh
 
-
-#if __name__ == "__main__":
-#	__SalomeExe__ = True if sys.argv[1]=='__SalomeExe__' else False
-#	print(__SalomeExe__)
-#	if __SalomeExe__: pass
-#	else:
-#		Run = Popen("PYTHONPATH={}:$PYTHONPATH;export PYTHONPATH;salome {} args:__SalomeExe__".format(os.path.dirname(__file__), __file__))
-#		Run.wait()
-
-
-
-
+if __name__ == "__main__":
+	Test()
+	HIVE(FileName = sys.argv[0])
 
 

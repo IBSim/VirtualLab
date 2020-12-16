@@ -183,3 +183,6 @@ class MeshInfo():
 			xyz = np.reshape(xyz, (len(nodes), 3), order = 'F')
 
 		return xyz
+
+	def Close(self):
+		self.g.close()

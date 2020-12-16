@@ -187,6 +187,8 @@ def devRun(VL,**kwargs):
     ShowRes = kwargs.get('ShowRes', False)
     NumThreads = kwargs.get('NumThreads',1)
 
+    VL.Logger('\n### Starting Simulations ###\n', Print=True)
+
     # Run high throughput part in parallel
     NumSim = len(VL.SimData)
 
@@ -197,13 +199,13 @@ def devRun(VL,**kwargs):
     launcher = kwargs.get('launcher','Process')
     onall = kwargs.get('onall',True)
     if launcher == 'Process':
-        pool = ProcessPool(nodes=NumThreads)
+        pool = ProcessPool(nodes=NumThreads, workdir=VL.TMP_DIR)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
-        pool = MpiPool(nodes=NumThreads,source=True)
+        pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TMP_DIR)
     elif launcher == 'Slurm':
         from pyina.launchers import SlurmPool
-        pool = SlurmPool(nodes=NumThreads)
+        pool = SlurmPool(nodes=NumThreads, source=True, workdir=VL.TMP_DIR)
 
     Res = pool.map(PoolRun, Arg0, Arg1, Arg2, onall=onall)
 
@@ -213,13 +215,14 @@ def devRun(VL,**kwargs):
             VL.Logger("'{}' threw an exception".format(Name),Print=True)
             SimError.append(Name)
             continue
-            
+
         if Returner.Error:
             SimError.append(Name)
             VL.Logger("'{}' finished with errors".format(Name),Print=True)
         else :
             VL.Logger("'{}' completed successfully".format(Name), Print=True)
             # Copy the parameters file used for this simulation
+            StudyDict = VL.SimData[Name]
             shutil.copy("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), StudyDict['CALC_DIR'])
 
         if hasattr(Returner,'StudyDict'):
@@ -245,6 +248,8 @@ def devRun(VL,**kwargs):
                 VL.Logger('Combined function completed successfully', Print=True)
             else :
                 VL.Exit("Combined function returned error '{}'".format(err))
+
+    VL.Logger('### Simulations Completed ###',Print=True)
 
 def Run(VL, **kwargs):
     if not VL.SimData: return

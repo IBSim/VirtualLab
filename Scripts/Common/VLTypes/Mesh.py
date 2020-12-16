@@ -9,7 +9,7 @@ import time
 import shutil
 import uuid
 import traceback
-from ..VLPackages import Salome
+# from ..VLPackages import Salome
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
@@ -108,13 +108,13 @@ def devRun(VL,**kwargs):
     launcher = kwargs.get('launcher','Process')
     onall = kwargs.get('onall',True)
     if launcher == 'Process':
-        pool = ProcessPool(nodes=NumThreads)
+        pool = ProcessPool(nodes=NumThreads, workdir=VL.TMP_DIR)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
-        pool = MpiPool(nodes=NumThreads,source=True)
+        pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TMP_DIR)
     elif launcher == 'Slurm':
         from pyina.launchers import SlurmPool
-        pool = SlurmPool(nodes=NumThreads)
+        pool = SlurmPool(nodes=NumThreads,workdir=VL.TMP_DIR)
 
     Res = pool.map(PoolRun, Arg0, Arg1, onall=onall)
 

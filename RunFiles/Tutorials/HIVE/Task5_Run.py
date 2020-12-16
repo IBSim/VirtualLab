@@ -19,14 +19,6 @@ Parameters_Master='TrainingParameters_Task5'
 Parameters_Var=None
 Mode='Interactive'
 
-## Copy files created in task 4
-import shutil
-import VLconfig
-import os
-ResDir="{}/{}/{}/{}".format(VLconfig.OutputDir,Simulation,Project,StudyName)
-if isdir("{}/Sim_ERMESx2".format(ResDir)): shutil.rmtree("{}/Sim_ERMESx2".format(ResDir))
-shutil.copytree("{}/Sim_ERMES".format(ResDir),"{}/Sim_ERMESx2".format(ResDir))
-
 ################################################################################
 ### ENVIRONMENT
 ################################################################################
@@ -38,6 +30,13 @@ VirtualLab=VLSetup(
            Parameters_Master,
            Parameters_Var,
            Mode)
+
+## Copy files created in task 4
+import shutil
+NewResDir = "{}/Sim_ERMESx2".format(VirtualLab.STUDY_DIR)
+if isdir(NewResDir): shutil.rmtree(NewResDir)
+shutil.copytree("{}/Sim_ERMES".format(VirtualLab.STUDY_DIR), NewResDir)
+
 
 VirtualLab.Control(
            RunMesh=False,

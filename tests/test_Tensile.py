@@ -10,10 +10,11 @@ import VLconfig
 sys.path.pop(0)
 
 Name='Tensile'
+tmpdir = '/tmp/Tensileunit'
 
-tmpInput = '/tmp/unit/Input'
-tmpOutput = '/tmp/unit/Output'
-tmpTemp = '/tmp/unit/Temp'
+tmpInput = '{}/Input'.format(tmpdir)
+tmpOutput = '{}/Output'.format(tmpdir)
+tmpTemp = '{}/Temp'.format(tmpdir)
 
 sys.path.insert(0,"{}/RunFiles/Tutorials/{}".format(dirname,Name))
 tmpdirs = ['INPUT_DIR={}'.format(tmpInput),'TEMP_DIR={}'.format(tmpTemp),'OUTPUT_DIR={}'.format(tmpOutput)]
@@ -37,4 +38,4 @@ def test_Task4():
 	import Task4_Run
 
 def test_Cleanup():
-	shutil.rmtree('/tmp/unit')
+	shutil.rmtree(tmpdir)

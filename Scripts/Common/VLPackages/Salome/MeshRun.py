@@ -14,11 +14,12 @@ Create = __import__(Parameters.File).Create
 
 MeshRn = Create(Parameters)
 
+RCfile = kwargs.pop('RCfile')
 if kwargs.get('ConfigFile'):
     import config
-    config.MeshStore(MeshRn, kwargs['MESH_FILE'], kwargs['RCfile'], Parameters=Parameters)
+    config.MeshStore(MeshRn, kwargs['MESH_FILE'], RCfile, Parameters=Parameters,**kwargs)
 else :
-    SalomeFunc.MeshStore(MeshRn, kwargs['MESH_FILE'], kwargs['RCfile'])
+    SalomeFunc.MeshStore(MeshRn, kwargs['MESH_FILE'], RCfile,**kwargs)
 
-salome.myStudy.Clear()
-salome.salome_close()
+# salome.myStudy.Clear()
+# salome.salome_close()

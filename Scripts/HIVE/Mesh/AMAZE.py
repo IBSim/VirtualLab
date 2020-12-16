@@ -11,11 +11,11 @@ def Create(Parameter):
 	from salome.smesh import smeshBuilder
 	import  SMESH
 	import salome_version
-	import SalomeFunc
 	import salome
 
+	from Scripts.Common.VLPackages.Salome import SalomeFunc
+
 	if salome_version.getVersions()[0] < 9:
-		import salome
 		theStudy = salome.myStudy
 		geompy = geomBuilder.New(theStudy)
 		smesh = smeshBuilder.New(theStudy)
@@ -229,9 +229,9 @@ def Create(Parameter):
 
 	globals().update(locals()) ### This adds all variables created in this function
 
-	return Mesh_1
-
-
+	# return Mesh_1
+	return Mesh_1, [Sample, GrpCoilFace, GrpPipeIn, GrpPipeOut, GrpSampleSurface]
+	# return Mesh_1, [Sample,GrpTile,GrpPipe,GrpBlock,GrpCoilFace,GrpPipeFace,GrpPipeIn,GrpPipeOut,GrpSampleSurface]
 
 
 class TestDimensions():

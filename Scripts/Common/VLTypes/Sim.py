@@ -6,7 +6,7 @@ from types import SimpleNamespace as Namespace
 from importlib import import_module
 from contextlib import redirect_stderr, redirect_stdout
 from multiprocessing import Process
-from pathos.multiprocessing import ProcessPool
+
 import copy
 import shutil
 import time
@@ -199,6 +199,7 @@ def devRun(VL,**kwargs):
     launcher = kwargs.get('launcher','Process')
     onall = kwargs.get('onall',True)
     if launcher == 'Process':
+        from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=NumThreads, workdir=VL.TMP_DIR)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool

@@ -4,12 +4,11 @@ import sys
 sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
 from importlib import import_module
-from pathos.multiprocessing import ProcessPool
 import time
 import shutil
 import uuid
 import traceback
-# from ..VLPackages import Salome
+
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
@@ -108,6 +107,7 @@ def devRun(VL,**kwargs):
     launcher = kwargs.get('launcher','Process')
     onall = kwargs.get('onall',True)
     if launcher == 'Process':
+        from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=NumThreads, workdir=VL.TMP_DIR)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool

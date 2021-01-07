@@ -58,10 +58,14 @@ class VLSetup():
 		# Remove RunFiles directory from path if a scrit was launched there.
 		if VL_DIR != sys.path[-1]: sys.path.pop(-1)
 
-		self.__ID__ = (datetime.datetime.now()).strftime("%y%m%d_%H%M%S")
+		self.__ID__ = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
 
 		# Update Input, Output and Temp directories with simulation specific ones
-		self.TMP_DIR = '{}/{}_{}'.format(TEMP_DIR, Project, self.__ID__)
+		self.TMP_DIR = '{}/VL_{}'.format(TEMP_DIR, self.__ID__)
+		try:
+			os.makedirs(self.TMP_DIR)
+		except FileExistsError:
+			pass
 
 		self.INPUT_DIR = '{}/{}/{}'.format(self.INPUT_DIR, Simulation, Project)
 
@@ -149,7 +153,7 @@ class VLSetup():
 			if self.mode in ('Interactive','Terminal'):
 				self.LogFile = None
 			else:
-				self.LogFile = "{}/log/{}_{}.log".format(self.PROJECT_DIR,self.StudyName,self.__ID__)
+				self.LogFile = "{}/.log/{}_{}.log".format(self.PROJECT_DIR,self.StudyName,self.__ID__)
 				os.makedirs(os.path.dirname(self.LogFile), exist_ok=True)
 				with open(self.LogFile,'w') as f:
 					f.write(Text)

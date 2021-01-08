@@ -56,7 +56,7 @@ def Setup(VL,**kwargs):
 
         # Create dict of simulation specific information to be nested in SimData
         StudyDict = {}
-        StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(VL.TMP_DIR, SimName)
+        StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(VL.TEMP_DIR, SimName)
         StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(VL.STUDY_DIR, SimName)
         StudyDict['PREASTER'] = "{}/PreAster".format(CALC_DIR)
         StudyDict['ASTER'] = "{}/Aster".format(CALC_DIR)
@@ -138,7 +138,7 @@ def PoolRun(VL, StudyDict, kwargs):
             # else : AsterOut=''
 
             SubProc = VL.CodeAster.Run(ExportFile, Name=Parameters.Name,
-                                         AddPath=[VL.TMP_DIR,StudyDict['TMP_CALC_DIR']],
+                                         AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']],
                                          OutFile=Log)
             err = SubProc.wait()
             if err:
@@ -200,13 +200,13 @@ def devRun(VL,**kwargs):
     onall = kwargs.get('onall',True)
     if launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
-        pool = ProcessPool(nodes=NumThreads, workdir=VL.TMP_DIR)
+        pool = ProcessPool(nodes=NumThreads, workdir=VL.TEMP_DIR)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
-        pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TMP_DIR)
+        pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
     elif launcher == 'Slurm':
         from pyina.launchers import SlurmPool
-        pool = SlurmPool(nodes=NumThreads, source=True, workdir=VL.TMP_DIR)
+        pool = SlurmPool(nodes=NumThreads, source=True, workdir=VL.TEMP_DIR)
 
     Res = pool.map(PoolRun, Arg0, Arg1, Arg2, onall=onall)
 
@@ -401,7 +401,7 @@ def Run(VL, **kwargs):
     		elif VL.mode == 'Continuous': Outfile=SimLogFile.format(StudyDict['ASTER'])
     		else : Outfile=''
 
-    		AsterStat[Name] = VL.CodeAster.Run(ExportFile, Name=Name, OutFile=Outfile, AddPath=[VL.TMP_DIR,StudyDict['TMP_CALC_DIR']])
+    		AsterStat[Name] = VL.CodeAster.Run(ExportFile, Name=Name, OutFile=Outfile, AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
 
     		count +=1
     		NumActive +=1

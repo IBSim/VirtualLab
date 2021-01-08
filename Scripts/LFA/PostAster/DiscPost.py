@@ -246,6 +246,6 @@ def Combined(Info):
 	print('Creating images using ParaViS')
 	GUI = getattr(Info.Parameters_Master.Sim, 'PVGUI', False)
 	ParaVisFile = "{}/ParaVis.py".format(os.path.dirname(os.path.abspath(__file__)))
-	RC = Info.Salome.Run(ParaVisFile, GUI=GUI, AddPath=Info.TMP_DIR, ArgDict=ArgDict)
+	RC = Info.Salome.Run(ParaVisFile, GUI=GUI, AddPath=Info.TEMP_DIR, ArgDict=ArgDict)
 	if RC:
 		return "Error in Salome run"

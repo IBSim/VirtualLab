@@ -11,7 +11,7 @@ __all__ = ['Salome']
 
 class Salome():
 	def __init__(self, VL, **kwargs):
-		self.cwd = getattr(super, 'TMP_DIR', os.getcwd())
+		self.cwd = getattr(VL, 'TEMP_DIR', os.getcwd())
 
 		self.Logger = VL.Logger
 

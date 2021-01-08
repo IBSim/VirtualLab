@@ -9,5 +9,6 @@ class ERMES():
     def Run(self,Name,**kwargs):
         cwd = kwargs.get('cwd',None)
         ERMES_run = Popen([self.Exec, Name], stdout=sys.stdout, stderr=sys.stderr, cwd=cwd)
+        # ERMES_run = Popen("{} {}".format(self.Exec,Name),stdout=sys.stdout,stderr=sys.stderr,cwd=cwd,shell='TRUE')
         err = ERMES_run.wait()
         return err

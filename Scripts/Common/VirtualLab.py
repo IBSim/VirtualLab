@@ -37,7 +37,7 @@ class VLSetup():
 		# Input directory
 		self.INPUT_DIR = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
 		# tmp directory
-		TEMP_DIR = getattr(VLconfig,'TEMP_DIR',"/tmp")
+		self.TEMP_DIR = getattr(VLconfig,'TEMP_DIR',"/tmp")
 
 		# Update above with parsed arguments
 		for key, val in self.GetArgParser().items():
@@ -45,8 +45,6 @@ class VLSetup():
 				setattr(self,key,val)
 			if key == 'Mode':
 				self.mode = val
-			if key == 'TEMP_DIR':
-				TEMP_DIR = val
 
 		# Update running mode as shorthand version can be given
 		if self.mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
@@ -61,9 +59,9 @@ class VLSetup():
 		self.__ID__ = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
 
 		# Update Input, Output and Temp directories with simulation specific ones
-		self.TMP_DIR = '{}/VL_{}'.format(TEMP_DIR, self.__ID__)
+		self.TEMP_DIR = '{}/VL_{}'.format(self.TEMP_DIR, self.__ID__)
 		try:
-			os.makedirs(self.TMP_DIR)
+			os.makedirs(self.TEMP_DIR)
 		except FileExistsError:
 			pass
 
@@ -178,17 +176,17 @@ class VLSetup():
 			if self.Salome.Ports:
 				self.Salome.Close(self.Salome.Ports)
 
-		if os.path.isdir(self.TMP_DIR):
+		if os.path.isdir(self.TEMP_DIR):
 			if KeepDirs:
 				kept = []
-				for ct in os.listdir(self.TMP_DIR):
-					SubDir = '{}/{}'.format(self.TMP_DIR,ct)
+				for ct in os.listdir(self.TEMP_DIR):
+					SubDir = '{}/{}'.format(self.TEMP_DIR,ct)
 					if os.path.isdir(SubDir):
 						if ct in KeepDirs: kept.append(SubDir)
 						else : shutil.rmtree(SubDir)
 				self.Logger("The following tmp directories have not been deleted:\n{}".format(kept),Print=True)
 			else:
-				shutil.rmtree(self.TMP_DIR)
+				shutil.rmtree(self.TEMP_DIR)
 
 		# self.Logger('### VirtualLab Finished###\n',Print=True)
 	def GetParams(self, Parameters_Master, Parameters_Var, NS):

@@ -19,7 +19,7 @@ def Setup(VL, **kwargs):
     # if either MeshDicts is empty or RunMesh is False we will return
     if not (kwargs.get('RunMesh', True) and MeshDicts): return
 
-    VL.GEOM_DIR = '{}/Geom'.format(VL.TMP_DIR)
+    VL.GEOM_DIR = '{}/Geom'.format(VL.TEMP_DIR)
     os.makedirs(VL.GEOM_DIR, exist_ok=True)
     os.makedirs(VL.MESH_DIR, exist_ok=True)
 
@@ -128,13 +128,13 @@ def devRun(VL,**kwargs):
     onall = kwargs.get('onall',True)
     if launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
-        pool = ProcessPool(nodes=NumThreads, workdir=VL.TMP_DIR)
+        pool = ProcessPool(nodes=NumThreads, workdir=VL.TEMP_DIR)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
-        pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TMP_DIR)
+        pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
     elif launcher == 'Slurm':
         from pyina.launchers import SlurmPool
-        pool = SlurmPool(nodes=NumThreads,workdir=VL.TMP_DIR)
+        pool = SlurmPool(nodes=NumThreads,workdir=VL.TEMP_DIR)
 
     Res = pool.map(PoolRun, Arg0, MeshDicts, onall=onall)
 

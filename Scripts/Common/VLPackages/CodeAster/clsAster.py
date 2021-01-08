@@ -8,14 +8,13 @@ import uuid
 import VLconfig
 
 class CodeAster():
-    def __init__(self,super,**kwargs):
+    def __init__(self,VL,**kwargs):
         self.Exec = VLconfig.ASTER_DIR # How to call CodeAster (can be changed for different versions etc.)
+        self.cwd = getattr(VL, 'TEMP_DIR', os.getcwd())
 
-        self.TMP_DIR = super.TMP_DIR
-
-        self.mode = super.mode
+        self.mode = VL.mode
         # AddPath will always add these paths to salome environment
-        self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/CodeAster".format(super.COM_SCRIPTS)]
+        self.AddPath = kwargs.get('AddPath',[]) + ["{}/VLPackages/CodeAster".format(VL.COM_SCRIPTS)]
 
     def ExportWriter(self,ExportFile,CommFile,MeshFile,ResultsDir,MessFile,**kwargs):
         # Create export file and write to file
@@ -63,7 +62,7 @@ class CodeAster():
         Output = ">{} 2>&1".format(OutFile) if OutFile else ""
 
         if self.mode == 'Interactive':
-            errfile = "{}/{}".format(self.TMP_DIR,uuid.uuid4())
+            errfile = "{}/{}".format(self.cwd, uuid.uuid4())
             command = "xterm -hold -T 'Study: {0}' -sb -si -sl 2000 "\
             "-e '{1} {2}; echo $? >{3}';exit $(cat {3})".format(kwargs.get('Name',ExportFile),self.Exec, ExportFile, errfile)
             proc = Popen(command , shell='TRUE', env=env)

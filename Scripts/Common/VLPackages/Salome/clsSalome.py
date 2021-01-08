@@ -10,11 +10,10 @@ import VLconfig
 __all__ = ['Salome']
 
 class Salome():
-	def __init__(self, super=None, **kwargs):
+	def __init__(self, VL, **kwargs):
 		self.cwd = getattr(super, 'TMP_DIR', os.getcwd())
 
-		self.LogFile = getattr(super, 'LogFile', None)
-		self.Logger = super.Logger
+		self.Logger = VL.Logger
 
 		# How to call salome (can be changed for different versions etc.)
 		self.Exec = getattr(VLconfig,'SalomeExec','salome')
@@ -52,7 +51,7 @@ class Salome():
 
 	def Start(self, Num=1,**kwargs):
 		# If only OutFile is provided as a kwarg then ErrFile is set to this also
-		OutFile = ErrFile = kwargs.get('OutFile', self.LogFile)
+		OutFile = ErrFile = kwargs.get('OutFile', None)
 		ErrFile = kwargs.get('ErrFile',ErrFile)
 
 		output = ''
@@ -119,7 +118,7 @@ class Salome():
 
 		Port = kwargs.get('Port', self.Ports[0])
 
-		OutFile = ErrFile = kwargs.get('OutFile', self.LogFile)
+		OutFile = ErrFile = kwargs.get('OutFile', None)
 		ErrFile = kwargs.get('ErrFile',ErrFile)
 
 		output = ''
@@ -183,7 +182,7 @@ class Salome():
 		AddPath = kwargs.get('AddPath',[])
 		ArgDict = kwargs.get('ArgDict', {})
 		ArgList = kwargs.get('ArgList',[])
-		OutFile = kwargs.get('OutFile', self.LogFile)
+		OutFile = kwargs.get('OutFile', None)
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath

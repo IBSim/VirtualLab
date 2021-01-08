@@ -229,9 +229,8 @@ def Create(Parameter):
 
 	globals().update(locals()) ### This adds all variables created in this function
 
-	# return Mesh_1
-	return Mesh_1, [Sample, GrpCoilFace, GrpPipeIn, GrpPipeOut, GrpSampleSurface]
-	# return Mesh_1, [Sample,GrpTile,GrpPipe,GrpBlock,GrpCoilFace,GrpPipeFace,GrpPipeIn,GrpPipeOut,GrpSampleSurface]
+	return Mesh_1
+	# return Mesh_1, [Sample, GrpCoilFace, GrpPipeIn, GrpPipeOut, GrpSampleSurface]
 
 
 class TestDimensions():

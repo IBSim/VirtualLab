@@ -14,12 +14,12 @@ Create = __import__(Parameters.File).Create
 
 MeshRn = Create(Parameters)
 
-RCfile = kwargs.pop('RCfile')
-if kwargs.get('ConfigFile'):
-    import config
-    config.MeshStore(MeshRn, kwargs['MESH_FILE'], RCfile, Parameters=Parameters,**kwargs)
-else :
-    SalomeFunc.MeshStore(MeshRn, kwargs['MESH_FILE'], RCfile,**kwargs)
+if type(MeshRn)==salome.smesh.smeshBuilder.Mesh:
+    isDone = MeshRn.Compute()
+    SalomeFunc.MeshExport(MeshRn, kwargs['MESH_FILE'])
+elif type(MeshRn) == int:
+    with open(kwargs['RCfile'], 'w') as f:
+    	f.write(str(MeshRn))
 
 # salome.myStudy.Clear()
 # salome.salome_close()

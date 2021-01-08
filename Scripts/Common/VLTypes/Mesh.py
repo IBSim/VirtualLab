@@ -56,13 +56,16 @@ def PoolRun(VL, MeshDict,**kwargs):
     Returner = Namespace(Error=None)
     try:
         script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
+        # if MeshRun is Mesh folder this is used instead
+        if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
+            script = '{}/MeshRun.py'.format(VL.SIM_MESH)
+
         AddPath = [VL.SIM_MESH, VL.GEOM_DIR]
         Returnfile = "{}/{}_RC.txt".format(VL.GEOM_DIR,MeshName) # File where salome can write an exit status to
         ArgDict = {'Name':MeshName,
                     'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
                     'RCfile':Returnfile,
                     'STEP':True}
-        if os.path.isfile('{}/config.py'.format(VL.SIM_MESH)): ArgDict["ConfigFile"] = True
 
         err = VL.Salome.Run(script, AddPath=AddPath, ArgDict=ArgDict, OutFile=MeshDict['LogFile'])
 
@@ -209,9 +212,12 @@ def Run(VL, **kwargs):
 
     # Script which is used to import the necessary mesh function
     MeshScript = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
+    # if MeshRun is in Mesh folder this is used instead
+    if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
+        MeshScript = '{}/MeshRun.py'.format(VL.SIM_MESH)
+
     AddPath = [VL.SIM_MESH, VL.GEOM_DIR]
     ArgDict = {}
-    if os.path.isfile('{}/config.py'.format(VL.SIM_MESH)): ArgDict["ConfigFile"] = True
 
     MeshStat = {}
     NumActive=NumComplete=0

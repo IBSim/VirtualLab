@@ -59,7 +59,7 @@ class CodeAster():
         env = {**os.environ, 'PYTHONPATH': PyPath + os.environ['PYTHONPATH']}
 
         OutFile = kwargs.get('OutFile', "")
-        Output = ">{} 2>&1".format(OutFile) if OutFile else ""
+        Output = ">>{} 2>&1".format(OutFile) if OutFile else ""
 
         if self.mode == 'Interactive':
             errfile = "{}/{}".format(self.cwd, uuid.uuid4())

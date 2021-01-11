@@ -22,42 +22,44 @@ geompy = geomBuilder.New()
 smesh = smeshBuilder.New()
 
 class GetMesh():
-	def __init__(self, Mesh):
+    def __init__(self, Mesh):
 
-		self.Geom = Mesh.GetShape()
+        self.Geom = Mesh.GetShape()
 
-		self.MainMesh = {'Ix':geompy.SubShapeAllIDs(self.Geom, geompy.ShapeType["SOLID"])}
-		MeshInfo = Mesh.GetHypothesisList(self.Geom)
-		MeshAlgo, MeshHypoth = MeshInfo[::2], MeshInfo[1::2]
-		for algo, hypoth in zip(MeshAlgo, MeshHypoth):
-			self.MainMesh[algo.GetName()] = hypoth
+        self.MainMesh = {'Ix':geompy.SubShapeAllIDs(self.Geom, geompy.ShapeType["SOLID"])}
+        MeshInfo = Mesh.GetHypothesisList(self.Geom)
+        MeshAlgo, MeshHypoth = MeshInfo[::2], MeshInfo[1::2]
+        for algo, hypoth in zip(MeshAlgo, MeshHypoth):
+            self.MainMesh[algo.GetName()] = hypoth
 
-		SubMeshes = Mesh.GetMeshOrder() if Mesh.GetMeshOrder() else Mesh.GetMesh().GetSubMeshes()
-		self.SubMeshes = []
-		for sm in SubMeshes:
-			Geom = sm.GetSubShape()
-			dict = {"Ix":Geom.GetSubShapeIndices()}
+        SubMeshes = Mesh.GetMeshOrder() if Mesh.GetMeshOrder() else Mesh.GetMesh().GetSubMeshes()
+        self.SubMeshes = []
+        for sm in SubMeshes:
+            Geom = sm.GetSubShape()
+            dict = {"Ix":Geom.GetSubShapeIndices()}
 
-			smInfo = Mesh.GetHypothesisList(Geom)
-			smAlgo, smHypoth = smInfo[::2], smInfo[1::2]
-			for algo, hypoth in zip(smAlgo, smHypoth):
-				dict[algo.GetName()] = hypoth
+            smInfo = Mesh.GetHypothesisList(Geom)
+            smAlgo, smHypoth = smInfo[::2], smInfo[1::2]
+            for algo, hypoth in zip(smAlgo, smHypoth):
+                dict[algo.GetName()] = hypoth
 
-			self.SubMeshes.append(dict)
+            self.SubMeshes.append(dict)
 
-		self.Groups = {'NODE':{},'EDGE':{},'FACE':{}, 'VOLUME':{}}
-		for grp in Mesh.GetGroups():
-			GrpType = str(grp.GetType())
-			shape = grp.GetShape()
+        self.Groups = {'NODE':{},'EDGE':{},'FACE':{}, 'VOLUME':{}}
+        for grp in Mesh.GetGroups():
+            GrpType = str(grp.GetType())
+            shape = grp.GetShape()
 
-			Ix = self.MainMesh['Ix'] if shape.IsMainShape() else shape.GetSubShapeIndices()
-			Name = str(grp.GetName())
+            Ix = self.MainMesh['Ix'] if shape.IsMainShape() else shape.GetSubShapeIndices()
+            Name = str(grp.GetName())
 
-			self.Groups[GrpType][Name] = Ix
+            self.Groups[GrpType][Name] = Ix
 
-def EMCreate(**kwargs):
-    MeshFile = kwargs['MeshFile']
-    XAOfile = "{}.xao".format(os.path.splitext(MeshFile)[0])
+def EMCreate(SampleMesh, SampleGeom, **kwargs):
+    # Default parameters
+    VacuumRadius = getattr(Parameters,'VacuumRadius',0.2)
+    VacuumSegment = getattr(Parameters,'VacuumSegment', 25)
+
 
     ###
     ### GEOM component
@@ -72,14 +74,9 @@ def EMCreate(**kwargs):
     geompy.addToStudy( OY, 'OY' )
     geompy.addToStudy( OZ, 'OZ' )
 
-    XAO = geompy.ImportXAO(XAOfile)
-    SampleGeom = XAO[1]
-    SampleGroups = XAO[3]
-    geompy.addToStudy( SampleGeom, 'SampleGeom' )
-
-    GroupDict = {}
-    for grp in SampleGroups:
-        GroupDict[str(grp.GetName())] = grp
+    SampleGroups = geompy.GetExistingSubObjects(SampleGeom,True)
+    # Create dictionary of groups to easily find
+    GroupDict = {str(grp.GetName()):grp for grp in SampleGroups}
 
     cPipeIn = geompy.MakeCDG(GroupDict['PipeIn'])
     cPipeOut = geompy.MakeCDG(GroupDict['PipeOut'])
@@ -91,7 +88,6 @@ def EMCreate(**kwargs):
     CrdPipeOut = np.array(geompy.PointCoordinates(cPipeOut))
     PipeMid = (CrdPipeIn + CrdPipeOut)/2
 
-    # from EM import CoilDesigns
     from EM import CoilDesigns
     CoilFnc = getattr(CoilDesigns, Parameters.CoilType)
     CoilMesh = GetMesh(CoilFnc())
@@ -125,14 +121,16 @@ def EMCreate(**kwargs):
     if not all(Measure < 1e-9):
         return 2319
 
-    #TODO
-    # Compound = geompy.MakeCompound([Sample, Coil])
-    # CompoundBB = geompy.BoundingBox(Compound)
-
-    VacuumRad = 0.2
-    VertexPipeMid = geompy.MakeVertex(*PipeMid)
-    Vacuum = geompy.MakeSpherePntR(VertexPipeMid, VacuumRad)
-    Vacuum = geompy.MakeCutList(Vacuum, [SampleGeom], True)
+    if True:
+        VertexPipeMid = geompy.MakeVertex(*PipeMid)
+        Vacuum = geompy.MakeSpherePntR(VertexPipeMid, VacuumRadius)
+        Vacuum = geompy.MakeCutList(Vacuum, [SampleGeom], True)
+    else:
+        pass
+        #TODO
+        # move centre point of sphere to centre point of bounding box
+        # Compound = geompy.MakeCompound([Sample, Coil])
+        # CompoundBB = geompy.BoundingBox(Compound)
 
     Chamber = geompy.MakePartition([Vacuum], [Coil], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
     geompy.addToStudy( Chamber, 'Chamber' )
@@ -150,17 +148,16 @@ def EMCreate(**kwargs):
 
     ### Main Mesh
     # Mesh Parameters
-    VacCirc = 2*np.pi*VacuumRad
-    VacSeg = 25
-    Vac1D = VacCirc/VacSeg
-    Vac2D = Vac1D
-    Vac3D = Vac1D
+    Vacuum1D = getattr(Parameters,'Vacuum1D',2*np.pi*VacuumRadius/VacuumSegment)
+    Vacuum2D = getattr(Parameters,'Vacuum2D',Vacuum1D)
+    Vacuum3D = getattr(Parameters,'Vacuum3D',Vacuum1D)
 
+    # This will be a mesh only of the coil and vacuum
     ERMES = smesh.Mesh(Chamber)
-
+    # 1D
     Vacuum_1D = ERMES.Segment()
-    Vacuum_1D_Parameters = Vacuum_1D.LocalLength(Vac1D,None,1e-07)
-
+    Vacuum_1D_Parameters = Vacuum_1D.LocalLength(Vacuum1D,None,1e-07)
+    # 2D
     Vacuum_2D = ERMES.Triangle(algo=smeshBuilder.NETGEN_2D)
     Vacuum_2D_Parameters = Vacuum_2D.Parameters()
     Vacuum_2D_Parameters.SetOptimize( 1 )
@@ -169,14 +166,14 @@ def EMCreate(**kwargs):
     Vacuum_2D_Parameters.SetChordalErrorEnabled( 0 )
     Vacuum_2D_Parameters.SetUseSurfaceCurvature( 1 )
     Vacuum_2D_Parameters.SetQuadAllowed( 0 )
-    Vacuum_2D_Parameters.SetMaxSize( Vac2D )
+    Vacuum_2D_Parameters.SetMaxSize( Vacuum2D )
     Vacuum_2D_Parameters.SetMinSize( 0.001 )
-
+    # 3D
     Vacuum_3D = ERMES.Tetrahedron()
     Vacuum_3D_Parameters = Vacuum_3D.Parameters()
     Vacuum_3D_Parameters.SetOptimize( 1 )
     Vacuum_3D_Parameters.SetFineness( 3 )
-    Vacuum_3D_Parameters.SetMaxSize( Vac3D )
+    Vacuum_3D_Parameters.SetMaxSize( Vacuum3D )
     Vacuum_3D_Parameters.SetMinSize( 0.001 )
 
     smesh.SetName(ERMES, 'ERMES')
@@ -184,13 +181,12 @@ def EMCreate(**kwargs):
     smesh.SetName(Vacuum_2D_Parameters, 'Vacuum_2D_Parameters')
     smesh.SetName(Vacuum_3D_Parameters, 'Vacuum_3D_Parameters')
 
+    # Add 'Vacuum' and 'VacuumSurface' groups to mesh
     ERMES.GroupOnGeom(geomVacuumSurface, 'VacuumSurface', SMESH.FACE)
     ERMES.GroupOnGeom(geomVacuum, 'Vacuum', SMESH.VOLUME)
-    ### Sample sub-mesh
 
-    (HIVEMesh, status) = smesh.CreateMeshesFromMED(MeshFile)
-    HIVEMesh=HIVEMesh[0]
-    meshSampleSurface = HIVEMesh.GetGroupByName('SampleSurface')
+    # Ensure conformal mesh at sample surface
+    meshSampleSurface = SampleMesh.GetGroupByName('SampleSurface')
     Import_1D2D = ERMES.UseExisting2DElements(geom=geomSampleSurface)
     Source_Faces_1 = Import_1D2D.SourceFaces(meshSampleSurface,0,0)
 
@@ -198,47 +194,88 @@ def EMCreate(**kwargs):
     smesh.SetName(SampleSub, 'Sample')
 
     ### Coil sub-mesh & related groups
-
     # Coil Mesh parameters which will be added as a sub-mesh
-    # CoilOrder = []
     Ix = SalomeFunc.ObjIndex(Chamber, Coil, CoilMesh.MainMesh['Ix'], Strict=False)[0]
-    Geom = geompy.GetSubShape(Chamber, Ix)
+    Geom = geompy.GetSubShape(Chamber, Ix) # GEOM object of the coil
 
+    # Get hypothesis used in original coil mesh
     Param1D = CoilMesh.MainMesh.get('Regular_1D', None)
-    Coil1D = ERMES.Segment(geom=Geom)
-    ERMES.AddHypothesis(Param1D, geom=Geom)
-
     Param2D = CoilMesh.MainMesh.get('NETGEN_2D_ONLY', None)
-    Coil2D = ERMES.Triangle(algo=smeshBuilder.NETGEN_2D,geom=Geom)
-    ERMES.AddHypothesis(Param2D, geom=Geom)
-
     Param3D = CoilMesh.MainMesh.get('NETGEN_3D', None)
-    Coil3D = ERMES.Tetrahedron(geom=Geom)
+
+    # Update hypothesis with values from parameters (if provided)
+    if hasattr(Parameters,'Coil1D'):
+        Param1D.SetLength(Parameters.Coil1D)
+
+    if hasattr(Parameters,'Coil2D'):
+        if type(Parameters.Coil2D) in (int,float):
+            Max2D = Min2D = Parameters.Coil2D
+        if type(Parameters.Coil2D) in (list,tuple):
+            Min2D,Max2D = Parameters.Coil2D[:2]
+        Param2D.SetMinSize(Min2D)
+        Param2D.SetMaxSize(Max2D)
+
+    if hasattr(Parameters,'Coil3D'):
+        if type(Parameters.Coil3D) in (int,float):
+            Max3D = Min3D = Parameters.Coil3D
+        if type(Parameters.Coil3D) in (list,tuple):
+            Min3D,Max3D = Parameters.Coil3D[:2]
+        Param3D.SetMinSize(Min3D)
+        Param3D.SetMaxSize(Max3D)
+
+    # Apply hypothesis to ERMES mesh
+    ERMES.AddHypothesis(Param1D, geom=Geom)
+    ERMES.AddHypothesis(Param2D, geom=Geom)
     ERMES.AddHypothesis(Param3D, geom=Geom)
 
-    CoilSub = Coil1D.GetSubMesh()
+    CoilSub = ERMES.GetSubMesh(Geom,'')
     smesh.SetName(CoilSub, 'Coil')
+
     # CoilOrder.append(CoilSub)
     # ERMES.SetMeshOrder([CoilOrder])
 
-    # Groups for Coil
+    # Add groups from original coil mesh
     for grptype, grpdict in CoilMesh.Groups.items():
-    	for Name, Ix in grpdict.items():
-    		NewIx = SalomeFunc.ObjIndex(Chamber, Coil, Ix,Strict=False)[0]
-    		grp = SalomeFunc.AddGroup(Chamber, Name, NewIx)
-    		ERMES.GroupOnGeom(grp, Name, getattr(SMESH, grptype))
+        for Name, Ix in grpdict.items():
+            NewIx = SalomeFunc.ObjIndex(Chamber, Coil, Ix,Strict=False)[0]
+            grp = SalomeFunc.AddGroup(Chamber, Name, NewIx)
+            ERMES.GroupOnGeom(grp, Name, getattr(SMESH, grptype))
 
+    # Compute the mesh for the coil and vacuum
     ERMES.Compute()
 
-    ERMESmesh = smesh.Concatenate([HIVEMesh.GetMesh(),ERMES.GetMesh()], 1, 1, 1e-05, False, 'ERMES')
+    # Combine the mesh of the sample with the coil & vacuum. This is the mesh used by ERMES
+    ERMESmesh = smesh.Concatenate([SampleMesh.GetMesh(),ERMES.GetMesh()], 1, 1, 1e-05, False, 'ERMES')
 
-    SalomeFunc.MeshExport(ERMESmesh, kwargs['OutFile'])
+    globals().update(locals()) # Useful for dev work
+
+    return ERMESmesh
+
+
+
 
 if __name__ == '__main__':
-    kwargs = SalomeFunc.GetArgs(sys.argv[1:])
-    err = EMCreate(**kwargs)
-    if err == 2319:
-        sys.exit("Impossible configuration")
+    #### TODO: Add in easy geometry & mesh for testing
 
-# if salome.sg.hasDesktop():
-#   salome.sg.updateObjBrowser()
+    kwargs = SalomeFunc.GetArgs(sys.argv[1:])
+
+    MeshFile = kwargs['MeshFile']
+    # Get sample mesh from .med file
+    (SampleMesh, status) = smesh.CreateMeshesFromMED(MeshFile)
+    SampleMesh=SampleMesh[0]
+    # Get the sample geometry from the .xao file saved alongside the .med file
+    XAO = geompy.ImportXAO("{}.xao".format(os.path.splitext(MeshFile)[0]))
+    SampleGeom, SampleGroups = XAO[1],XAO[3]
+    geompy.addToStudy( SampleGeom, 'SampleGeom' )
+    for grp in SampleGroups:
+        geompy.addToStudyInFather(SampleGeom, grp, str(grp.GetName()))
+
+    # Create ERMES mesh using the sample mesh and geometry
+    ERMESmesh = EMCreate(SampleMesh, SampleGeom, **kwargs)
+
+    # Export ERMESmesh if mesh type
+    if type(ERMESmesh) == salome.smesh.smeshBuilder.Mesh:
+        SalomeFunc.MeshExport(ERMESmesh, kwargs['OutFile'])
+    # Check return vaue from EMCreate
+    elif ERMESmesh == 2319:
+        sys.exit("\nImpossible configuration: Coil intersects sample\n")

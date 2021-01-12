@@ -56,7 +56,7 @@ class CodeAster():
         PyPath = ["{}:".format(path) for path in AddPath+self.AddPath]
         PyPath = "".join(PyPath)
 
-        env = {**os.environ, 'PYTHONPATH': PyPath + os.environ['PYTHONPATH']}
+        env = {**os.environ, 'PYTHONPATH': PyPath + os.environ.get('PYTHONPATH','')}
 
         OutFile = kwargs.get('OutFile', "")
         Output = ">>{} 2>&1".format(OutFile) if OutFile else ""

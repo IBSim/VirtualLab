@@ -195,8 +195,8 @@ class Salome():
 
 		portfile = "{}/{}".format(self.cwd,uuid.uuid4())
 		GUIflag = '-g' if kwargs.get('GUI') else '-t'
+		env = {**os.environ, 'PYTHONPATH': PyPath + os.environ.get('PYTHONPATH','')}
 
-		env = {**os.environ, 'PYTHONPATH': PyPath + os.environ['PYTHONPATH']}
 		# Run mesh in Salome
 		if False:
 			# This is dev work, need to add in output option for this call

@@ -3,6 +3,7 @@ import os
 import sys
 sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
+from importlib import import_module
 
 def Setup(VL, **kwargs):
     VL.MLData = {}
@@ -14,10 +15,12 @@ def Setup(VL, **kwargs):
     VL.ML_DIR = "{}/ML".format(VL.PROJECT_DIR)
     os.makedirs(VL.ML_DIR,exist_ok=True)
 
-    for Name, ParaDict in MLdicts.items():
+    for Name, ParaDict in MLDicts.items():
     	VL.MLData[Name] = Namespace(**ParaDict)
 
-def devRun(self,**kwargs):
-    for Name, MLdict in self.MLData.items():
-    	MLmod = import_module("ML.{}".format(MLdict.File))
-    	MLmod.main(self)
+def devRun(VL,**kwargs):
+    if not VL.MLData: return
+    sys.path.insert(0,VL.SIM_ML)
+    for Name, MLdict in VL.MLData.items():
+    	MLmod = import_module(MLdict.File)
+    	MLmod.main(VL, MLdict)

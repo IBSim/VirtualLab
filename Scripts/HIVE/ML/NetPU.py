@@ -11,6 +11,7 @@ import torch.utils.data as Data
 import copy
 from pathos.multiprocessing import ProcessPool
 import matplotlib.pyplot as plt
+from prettytable import PrettyTable
 
 from Scripts.Common.VLFunctions import MeshInfo
 
@@ -49,7 +50,7 @@ class NetPU(nn.Module):
         # de-normalize
         return (yn[None, :] * (ymax - ymin) + ymin)[0]
 
-    def predict(self,xn,device,GPU=False):
+    def predict(self,xn,device=None,GPU=False):
         if GPU:
             self = self.to(device)
             xn = xn.to(device)
@@ -129,91 +130,7 @@ def train(model, train_rxyz_norm, train_mu_sigma_norm, test_rxyz_norm, test_mu_s
     # return history
     return hist, epoch
 
-# unstructured data to structured
-def to_structured(rxyz, data):
-    # find grid locations
-    rxyz_np = rxyz.detach().numpy()
-    grid_loc = []
-    grid_loc_dict = []
-    for ipar in np.arange(4):
-        grid_loc.append(np.unique(rxyz_np[:, ipar]))
-        grid_loc_dict.append({})
-        for loc, val in enumerate(grid_loc[-1]):
-            grid_loc_dict[-1][val] = loc
-
-    # fill grid values
-    grid_data = np.zeros((len(grid_loc[0]), len(grid_loc[1]),
-                          len(grid_loc[2]), len(grid_loc[3]),
-                          data.shape[-1]), dtype=np.float32)
-    for i, irxyz in enumerate(rxyz_np):
-        loc = [0, 0, 0, 0]
-        for ipar in np.arange(4):
-            loc[ipar] = grid_loc_dict[ipar][irxyz[ipar]]
-        grid_data[loc[0], loc[1], loc[2], loc[3], :] = data[i, :].detach().numpy()
-    return grid_loc, grid_data
-
-# compute objective and sort
-def compute_sort(model, rxyz, range, rxyz_grid=None, GPU=False):
-    # constrain range
-    if rxyz_grid is not None:
-        rxyz_use = rxyz.detach().numpy().copy()
-        for ipar in np.arange(4):
-            loc = np.where((rxyz_use[:, ipar] >= rxyz_grid[ipar][0]) *
-                           (rxyz_use[:, ipar] <= rxyz_grid[ipar][-1]))[0]
-            rxyz_use = rxyz_use[loc, :]
-        rxyz_use = torch.from_numpy(rxyz_use)
-    else:
-        rxyz_use = rxyz
-
-    # sort objective
-    obj = compute_objective(model, rxyz_use, range, GPU)
-    arg = torch.argsort(obj, descending=True)
-    return obj[arg], rxyz_use[arg, :]
-
-# parameter update based on gradient descent
-def gradient_update(model, rxyz, range, fintie_steps=[.001, 0.000005, 0.000005, 0.0000005],
-                    lr=.0000001, GPU=False):
-    rxyz_updated = rxyz.clone()
-    for ipar in np.arange(4):
-        # gradient by finite difference
-        rxyz_dpar_p = rxyz.clone()
-        rxyz_dpar_m = rxyz.clone()
-        rxyz_dpar_p[:, ipar] += fintie_steps[ipar]
-        rxyz_dpar_m[:, ipar] -= fintie_steps[ipar]
-        dobj_dpar = (compute_objective(model, rxyz_dpar_p, range, GPU) -
-                     compute_objective(model, rxyz_dpar_m, range, GPU)) / (fintie_steps[ipar] * 2)
-        # update by learning rate
-        rxyz_updated[:, ipar] += dobj_dpar * lr
-    return rxyz_updated
-
-
-# plot structured data
-def plot_structured(rxyz_grid, data_grid, data_index, plot_norm=1, title=''):
-    fig, ax = plt.subplots(nrows=len(rxyz_grid[0]), ncols=len(rxyz_grid[3]), dpi=200, figsize=(4,6))
-    for iR, R in enumerate(rxyz_grid[0]):
-        for iZ, Z in enumerate(rxyz_grid[3]):
-            ax[iR, iZ].imshow(np.abs(data_grid[iR, :, :, iZ, data_index]),
-                              vmin=0, vmax=plot_norm, origin='lower')
-            ax[iR, iZ].set_xticks([])
-            ax[iR, iZ].set_yticks([])
-    for iR, R in enumerate(rxyz_grid[0]):
-        ax[iR, 0].set_ylabel('%.1f' % R, fontsize=6)
-    for iZ, Z in enumerate(rxyz_grid[3]):
-        ax[-1, iZ].set_xlabel('%.4f' % Z, fontsize=6)
-    fig.suptitle(title, fontsize=10, y=.08)
-    plt.show()
-
-# define the objective function
-def objective(mu_sigma):
-    return mu_sigma[:, 0] - mu_sigma[:, 1]
-
-# compute objective by model
-def compute_objective(model, rxyz, range, GPU=False):
-    mu_sigma = model.predict_denorm(rxyz, *range)
-    return objective(mu_sigma)
-
 def DataPool(ResDir, MeshDir):
-
     sys.path.insert(0,ResDir)
     Parameters = reload(import_module('Parameters'))
     sys.path.pop(0)
@@ -237,7 +154,6 @@ def DataPool(ResDir, MeshDir):
 
     return Input+Output
 
-
 def GetData(VL,MLdict):
     ResDirs = []
     for SubDir in os.listdir(VL.STUDY_DIR):
@@ -250,6 +166,52 @@ def GetData(VL,MLdict):
     Data = Pool.map(DataPool,ResDirs,[VL.MESH_DIR]*len(ResDirs))
 
     return Data
+
+def Optima(Start,model,dir,num):
+    OldCoord = BestCoord = torch.tensor(Start, dtype=torch.float32) # Starting point
+    OldObj = BestObj = model.predict(OldCoord)[num]
+
+    ds = 0.00001
+    lr=0.0005
+    for it in range(200):
+        grads = []
+        for ipar in np.arange(4):
+            FDp = OldCoord.clone()
+            FDm = OldCoord.clone()
+            FDp[ipar]+=ds
+            FDm[ipar]-=ds
+
+            with torch.no_grad():
+                grad = (model.predict(FDp) - model.predict(FDm))/(2*ds)
+            grads.append(grad[num])
+
+        if dir=='max':
+            NewCoord = OldCoord + lr*torch.tensor(grads, dtype=torch.float32)
+        else:
+            NewCoord = OldCoord - lr*torch.tensor(grads, dtype=torch.float32)
+
+        if any(NewCoord < 0):
+            NewCoord[NewCoord < 0] = 0
+        if any(NewCoord > 1):
+            NewCoord[NewCoord > 1] = 1
+
+        with torch.no_grad():
+            NewObj = model.predict(NewCoord)[num]
+
+        # grd = (NewObj[0] - OldObj)/torch.norm(NewCoord-Coord)
+        if it != 0 and it % 10 == 0:
+            print(it, NewObj)
+        # if grd < 0:
+        #     break
+
+        if NewObj > BestObj:
+            BestObj = NewObj
+            BestCoord = NewCoord
+
+        OldCoord = NewCoord
+        OldObj = NewObj
+
+    return BestCoord
 
 def main(VL, MLdict):
     # print(torch.get_num_threads())
@@ -279,32 +241,25 @@ def main(VL, MLdict):
     TrainData = Data[:NbTrain,:]
     TestData = Data[NbTrain:Total,:]
 
-    NNInput, NNOutput = 4,2
+    DataMin = TrainData.min(axis=0)
+    DataMax = TrainData.max(axis=0)
 
-    # input: (r, x, y, z)
-    train_rxyz = torch.from_numpy(TrainData[:,:4])
-    test_rxyz  = torch.from_numpy(TestData[:,:4])
+    InputRange = np.array([DataMin[:4],DataMax[:4]])
+    OutputRange = np.array([DataMin[4:],DataMax[4:]])
+
+    # normalize data to training data range
+    TrainData_norm = (TrainData - DataMin)/(DataMax - DataMin)
+    TestData_norm = (TestData - DataMin)/(DataMax - DataMin)
+
+    # input: (x, y, z, r)
+    In_train = torch.from_numpy(TrainData_norm[:,:4])
+    In_test  = torch.from_numpy(TestData_norm[:,:4])
 
     # output: (mu, sigma)
-    train_mu_sigma = torch.from_numpy(TrainData[:,4:])
-    test_mu_sigma  = torch.from_numpy(TestData[:,4:])
+    Out_train = torch.from_numpy(TrainData_norm[:,4:])
+    Out_test  = torch.from_numpy(TestData_norm[:,4:])
 
-    # normalized data for training
-    min_rxyz = train_rxyz.min(axis=0).values
-    max_rxyz = train_rxyz.max(axis=0).values
-
-    train_rxyz_norm = ((train_rxyz[None, :] - min_rxyz) / (max_rxyz - min_rxyz))[0]
-    test_rxyz_norm  = ((test_rxyz[None, :] - min_rxyz) / (max_rxyz - min_rxyz))[0]
-
-    min_mu_sigma = train_mu_sigma.min(axis=0).values
-    max_mu_sigma = train_mu_sigma.max(axis=0).values
-    train_mu_sigma_norm = ((train_mu_sigma[None, :] - min_mu_sigma) / (max_mu_sigma - min_mu_sigma))[0]
-    test_mu_sigma_norm  = ((test_mu_sigma[None, :] - min_mu_sigma) / (max_mu_sigma - min_mu_sigma))[0]
-
-    ModelFile = '{}/model_{}.h5'.format(VL.ML_DIR, MLdict.Name)
-
-    range = [min_rxyz, max_rxyz, min_mu_sigma, max_mu_sigma]
-
+    ModelFile = '{}/model_{}.h5'.format(VL.ML_DIR, MLdict.Name) # File model will be saved to/loaded from
     if MLdict.NewModel:
         torch.manual_seed(123)
         # create model instance
@@ -313,8 +268,8 @@ def main(VL, MLdict):
         # train the model
         model.train()
 
-        history, epoch_stop = train(model, train_rxyz_norm, train_mu_sigma_norm,
-        		            test_rxyz_norm, test_mu_sigma_norm, device,
+        history, epoch_stop = train(model, In_train, Out_train,
+        		            In_test, Out_test, device,
                             batch_size=500, epochs=2000, lr=.0001, check_epoch=50,
                             GPU=False)
 
@@ -333,119 +288,329 @@ def main(VL, MLdict):
 
     model.eval()
 
-    # prediction
-    pred_train_mu_sigma = model.predict_denorm(train_rxyz, min_rxyz, max_rxyz, min_mu_sigma, max_mu_sigma)
-    pred_test_mu_sigma  = model.predict_denorm(test_rxyz, min_rxyz, max_rxyz, min_mu_sigma, max_mu_sigma)
+    # prediction & scale to actual value
+    NN_train = model.predict(In_train)*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
+    NN_test = model.predict(In_test)*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
 
-    # error
-    train_error = (pred_train_mu_sigma - train_mu_sigma) / train_mu_sigma
-    test_error  = (pred_test_mu_sigma - test_mu_sigma) / test_mu_sigma
+    # Error percentage for test & train using NN
+    train_error = (100*(NN_train - TrainData[:,4:])/TrainData[:,4:]).detach().numpy()
+    test_error = (100*(NN_test - TestData[:,4:])/TestData[:,4:]).detach().numpy()
 
-    # plot error histograms
-    fig,ax = plt.subplots(2, 2)
-    ax[0,0].hist(train_error[:, 0].detach().numpy(),bins=20)
-    ax[0,0].set_title('Power_train')
-    ax[0,0].set_xlabel('Error')
-    ax[0,0].set_ylabel('Count')
-    Xlim = max(np.absolute(ax[0,0].get_xlim()))
-    ax[0,1].hist(test_error[:, 0].detach().numpy(),bins=20)
-    ax[0,1].set_title('Power_test')
-    ax[0,1].set_xlabel('Error')
-    ax[0,1].set_ylabel('Count')
-    Xlim = max(max(np.absolute(ax[0,1].get_xlim())),Xlim)
-    ax[1,0].hist(train_error[:, 1].detach().numpy(),bins=20)
-    ax[1,0].set_title('Uniform_train')
-    ax[1,0].set_xlabel('Error')
-    ax[1,0].set_ylabel('Count')
-    Xlim = max(max(np.absolute(ax[1,0].get_xlim())),Xlim)
-    ax[1,1].hist(test_error[:, 1].detach().numpy(),bins=20)
-    ax[1,1].set_title('Uniform_test')
-    ax[1,1].set_xlabel('Error')
-    ax[1,1].set_ylabel('Count')
-    Xlim = max(max(np.absolute(ax[1,1].get_xlim())),Xlim)
+    if getattr(MLdict,'ShowMetric',False):
+        bins = list(range(-20,21))
+        range5 = np.arange(bins.index(-5),bins.index(5))
+        range10 = np.arange(bins.index(-10),bins.index(10))
 
-    plt.setp(ax, xlim=(-Xlim,Xlim))
-    # plt.show()
+        # Testing metrics
+        Ptest_Hist = np.histogram(test_error[:,0],bins=bins)[0]
+        Utest_Hist = np.histogram(test_error[:,1],bins=bins)[0]
+        Cmbtest_Hist = np.histogram(np.abs(test_error).mean(axis=1),bins=bins)[0]
+        Ptest5 = 100*Ptest_Hist[range5].sum()/NbTest
+        Ptest10 = 100*Ptest_Hist[range10].sum()/NbTest
+        Utest5 = 100*Utest_Hist[range5].sum()/NbTest
+        Utest10 = 100*Utest_Hist[range10].sum()/NbTest
+        Cmbtest5 = 100*Cmbtest_Hist[range5].sum()/NbTest
+        Cmbtest10 = 100*Cmbtest_Hist[range10].sum()/NbTest
 
-    with torch.no_grad():
-        NNtrain_mu_sigma_norm = model(train_rxyz_norm)
-        NNtest_mu_sigma_norm = model(test_rxyz_norm)
+        TestTb = PrettyTable(['Output','+-5%','+-10%'],float_format=".3")
+        TestTb.title = "Metric for test data"
+        TestTb.add_row(["Power", Ptest5, Ptest10])
+        TestTb.add_row(["Uniformity", Utest5, Utest10])
+        TestTb.add_row(["Combined", Cmbtest5, Cmbtest10])
+        print()
+        print(TestTb)
+        print()
 
-    trainSqE = (NNtrain_mu_sigma_norm - train_mu_sigma_norm).detach().numpy()**2
-    trainMSE = np.sum(trainSqE,axis=0)/trainSqE.shape[0]
-    print("Train errors\nPower:{}\nUniformity:{}".format(trainMSE[0],trainMSE[1]))
+        # Training metrics
+        Ptrain_Hist = np.histogram(train_error[:,0],bins=bins)[0]
+        Utrain_Hist = np.histogram(train_error[:,1],bins=bins)[0]
+        Cmbtrain_Hist = np.histogram(np.abs(train_error).mean(axis=1),bins=bins)[0]
+        Ptrain5 = 100*Ptrain_Hist[range5].sum()/NbTrain
+        Ptrain10 = 100*Ptrain_Hist[range10].sum()/NbTrain
+        Utrain5 = 100*Utrain_Hist[range5].sum()/NbTrain
+        Utrain10 = 100*Utrain_Hist[range10].sum()/NbTrain
+        Cmbtrain5 = 100*Cmbtrain_Hist[range5].sum()/NbTrain
+        Cmbtrain10 = 100*Cmbtrain_Hist[range10].sum()/NbTrain
 
-    testSqE = (NNtest_mu_sigma_norm - test_mu_sigma_norm).detach().numpy()**2
-    testMSE = np.sum(testSqE,axis=0)/testSqE.shape[0]
-    print("Test errors\nPower:{}\nUniformity:{}".format(testMSE[0],testMSE[1]))
-    # import time
-    # st = time.time()
+        TrainTb = PrettyTable(['Output','+-5%','+-10%'],float_format=".3")
+        TrainTb.title = "Metric for training data"
+        TrainTb.add_row(["Power", Ptrain5, Ptrain10])
+        TrainTb.add_row(["Uniformity", Utrain5, Utrain10])
+        TrainTb.add_row(["Combined", Cmbtrain5, Cmbtrain10])
+        print()
+        print(TrainTb)
+        print()
 
-    disc = np.linspace(0, 1, 10)
+        fig,ax = plt.subplots(2, 2,figsize=(10,15))
+        ax[0,0].hist(train_error[:, 0],bins=bins)
+        ax[0,0].set_title('Power_train')
+        ax[0,0].set_xlabel('Error')
+        ax[0,0].set_ylabel('Count')
+        Xlim = max(np.absolute(ax[0,0].get_xlim()))
+        ax[0,1].hist(test_error[:, 0],bins=bins)
+        ax[0,1].set_title('Power_test')
+        ax[0,1].set_xlabel('Error')
+        ax[0,1].set_ylabel('Count')
+        Xlim = max(max(np.absolute(ax[0,1].get_xlim())),Xlim)
+        ax[1,0].hist(train_error[:, 1],bins=bins)
+        ax[1,0].set_title('Uniform_train')
+        ax[1,0].set_xlabel('Error')
+        ax[1,0].set_ylabel('Count')
+        Xlim = max(max(np.absolute(ax[1,0].get_xlim())),Xlim)
+        ax[1,1].hist(test_error[:, 1],bins=bins)
+        ax[1,1].set_title('Uniform_test')
+        ax[1,1].set_xlabel('Error')
+        ax[1,1].set_ylabel('Count')
+        Xlim = max(max(np.absolute(ax[1,1].get_xlim())),Xlim)
+
+        plt.setp(ax, xlim=(-Xlim,Xlim))
+        plt.show()
+
+
+    GridSeg = 2
+    disc = np.linspace(0, 1, GridSeg+1)
+    # Stores data in a logical mesh grid
     grid = np.meshgrid(disc, disc, disc, disc,indexing='ij')
     grid = np.moveaxis(np.array(grid),0,-1) #grid point is now the last axis
     ndim = grid.ndim - 1
-
-    grid_1 = grid.reshape([disc.shape[0]**ndim,ndim])
-    grid_1 = torch.tensor(grid_1, dtype=torch.float32)
+    # unroll grid so it can be passed to model
+    grid = grid.reshape([disc.shape[0]**ndim,ndim])
 
     with torch.no_grad():
-        vals = model.predict(grid_1,device,GPU=False)
+        NNGrid = model.predict(torch.tensor(grid, dtype=torch.float32))
+    NNGrid = NNGrid.detach().numpy()
 
-    npvals = vals.detach().numpy()
-    npvals = npvals.reshape([disc.shape[0]]*ndim+[npvals.shape[1]])
+    # # convert grid points and results back to grid format (if desired)
+    # # Could be useful for querying
+    # grid = grid.reshape([disc.shape[0]]*ndim+[grid.shape[1]])
+    # NNGrid = NNGrid.detach().numpy()
+    # NNGrid = NNGrid.reshape([disc.shape[0]]*ndim+[NNGrid.shape[1]])
 
-    # Power
-    print_count = 5
-    print('')
-    sort1 = np.argsort(-npvals[:,:,:,:,0],axis=None)
-    sort1 = np.unravel_index(sort1,npvals.shape[:-1])
-    Powsrt, loc1 = npvals[sort1][:,0], grid[sort1]
-    for pow,coord in zip(Powsrt[:print_count],loc1):
-        print(coord, '==>', pow)
+    # get location of min & max for outputs
+    MaxPower_Ix, MaxVar_Ix  = np.argmax(NNGrid,axis=0)
+    MinPower_Ix, MinVar_Ix  = np.argmin(NNGrid,axis=0)
 
-    print('')
-    sort2 = np.argsort(npvals[:,:,:,:,1],axis=None)
-    sort2 = np.unravel_index(sort2,npvals.shape[:-1])
-    Unisrt, loc2 = npvals[sort2][:,1], grid[sort2]
-    for pow,coord in zip(Unisrt[:print_count],loc2):
-        print(coord, '==>', pow)
+    # Get the value for power & variation at max. power & variation points
+    _Power, Max_Var = (NNGrid[MaxVar_Ix,:]*(OutputRange[1]-OutputRange[0]) + OutputRange[0])
+
+    PMaxGridCd = grid[MaxPower_Ix,:]
+    # Start at this point and find optima
+    PMaxCd = Optima(PMaxGridCd, model, 'max', 0)
+    PMax, VarPMax = (model.predict(PMaxCd)*(OutputRange[1] - OutputRange[0]) + OutputRange[0]).detach().numpy()
+    PMin = NNGrid[MinPower_Ix,:]
+    print("Maximum power available is {:.3f} watts".format(PMax))
+
+    # VMaxGridCd = grid[MaxVar_Ix,:]
+    # VMaxCd = Optima(VMaxGridCd, model, 'max', 1)
+    # VMax = model.predict(VMaxCd)[1]
+    # VMin = NNGrid[MinVar_Ix,:]
+
+    ds = 0.001
+    lr=0.0005
+
+    alpha=1
+    mu=0.5
+
+    DesPower = 500
+    P_norm = ((DesPower - OutputRange[0])/(OutputRange[1]-OutputRange[0]))[0]
+
+    print("Targeting {} watts of power".format(DesPower))
+    print(P_norm)
+
+    def Grad1(model, input):
+        input = input.detach().numpy()
+        for i in range(1,5):
+            fc = getattr(model,'fc{}'.format(i))
+            w = fc.weight.detach().numpy()
+            b = fc.bias.detach().numpy()
+            out = w.dot(input)+b
+            diag = np.copy(out)
+            diag[diag>=0] = 1
+            diag[diag<0] = 0.01
+            gd = diag[:,None]*w
+            if i==1:
+                cumul = gd
+            else :
+                cumul = gd.dot(cumul)
+
+            out[out<0] = out[out<0]*0.01
+            input = out
+
+        return cumul
+
+    def GradLagr(model, x, mu, P_norm, alpha):
+        Sgrad = Grad1(model, x)
+        Lgrads = -(alpha*Sgrad[0,:]-(1-alpha)*Sgrad[1,:]) + mu*Sgrad[0,:]
+        mugrad = model.predict(x)[0]-P_norm
+        return np.append(Lgrads,mugrad.detach().numpy())
 
 
+    Mag = np.linalg.norm
+    # Ix = np.argmin(np.abs(NNGrid[:,0]-P_norm))
+    # OldCoord = torch.tensor(grid[Ix,:],dtype=torch.float32)
+    OldCoord = torch.tensor([0.5,0.5,0.5,0.5], dtype=torch.float32)
+    Output = model.predict(OldCoord)
+    Score = alpha*Output[0] + (1-alpha)*(1-Output[1])
+    print(Output, Score)
+
+    for i in range(3200):
+        G_grads = []
+        for ipar in np.arange(4):
+            FDp = OldCoord.clone()
+            FDm = OldCoord.clone()
+            FDp[ipar]+=ds
+            FDm[ipar]-=ds
+
+            G_grad = (Mag(GradLagr(model,FDp,mu,P_norm,alpha)) - Mag(GradLagr(model,FDm,mu,P_norm,alpha)))/(2*ds)
+            G_grads.append(G_grad)
+
+        mp = (Mag(GradLagr(model,FDp,mu+ds,P_norm,alpha)) - Mag(GradLagr(model,FDp,mu-ds,P_norm,alpha)))/(2*ds)
+
+        OldCoord = OldCoord - lr*torch.tensor(G_grads, dtype=torch.float32)
+        mu = mu - lr*mp
+
+        if i % 50 == 0 and i!=0:
+            print(i, Mag(GradLagr(model,OldCoord,mu,P_norm,alpha)), model.predict(OldCoord).detach().numpy())
+            print(model.predict(OldCoord)[0]>P_norm)
+
+
+    # L_grads = []
+    # for ipar in np.arange(4):
+    #     FDp = OldCoord.clone()
+    #     FDm = OldCoord.clone()
+    #     FDp[ipar]+=ds
+    #     FDm[ipar]-=ds
+    #     with torch.no_grad():
+    #         grad = (model.predict(FDp) - model.predict(FDm))/(2*ds)
+    #     L_grads.append(grad.detach().numpy())
+    #
+    # print(np.array(L_grads))
+    # gd = 1
+    # input = np.array([0.5,0.5,0.5,0.5])
     #
     #
-    #
-    # rxyz = np.meshgrid(disc, disc, disc, disc)
-    # rxyz = [rxyz[0].reshape(-1), rxyz[1].reshape(-1), rxyz[2].reshape(-1), rxyz[3].reshape(-1)]
-    # rxyz = torch.tensor(np.array(rxyz).T, dtype=torch.float32)
-    #
-    # with torch.no_grad():
-    #     vals = model.predict(rxyz,device,GPU=False)
-    #
-    # # Power
-    # print('')
-    # sort1 = torch.argsort(vals[:,0], descending=True)
-    # Powsrt, loc1 = vals[sort1,0],rxyz[sort1,:]
-    # for i in np.arange(print_count):
-    #     print(loc1[i].detach().numpy(), '==>', Powsrt[i].detach().numpy())
-    #
-    # print('')
-    # sort2 = torch.argsort(vals[:,1], descending=False)
-    # Unisrt, loc2 = vals[sort2,1],rxyz[sort2,:]
-    # for i in np.arange(print_count):
-    #     print(loc2[i].detach().numpy(), '==>', Unisrt[i].detach().numpy())
+    # print(cumul.T)
 
 
-    # val,loc = obj[arg],rxyz[arg,:]
-    # print_count = 10
-    # for i in np.arange(print_count):
-    #     print(loc[i].detach().numpy(), '==>', val[i].detach().numpy())
+    # test = w1*np.array([0.5,0.5,0.5,0.5]) + b1[:,None]
+    # print(test)
 
+    # def grads(model, x, mu, P_norm):
+    #     ds = 0.00001
+    #     L_grads = []
+    #     for ipar in np.arange(4):
+    #         FDp = x.clone()
+    #         FDm = x.clone()
+    #         FDp[ipar]+=ds
+    #         FDm[ipar]-=ds
+    #         with torch.no_grad():
+    #             grad = (model.predict(FDp) - model.predict(FDm))/(2*ds)
     #
-    # trainSqE = (pred_train_mu_sigma - train_mu_sigma).detach().numpy()**2
-    # trainMSE = np.sum(trainSqE,axis=0)/trainSqE.shape[0]
-    # print("Train errors\nPower:{}\nUniformity:{}".format(trainMSE[0],trainMSE[1]))
+    #         L_grad = -(alpha*grad[0]-(1-alpha)*grad[1]) + mu*grad[0]
+    #         L_grads.append(L_grad)
     #
-    # testSqE = (pred_test_mu_sigma - test_mu_sigma).detach().numpy()**2
-    # testMSE = np.sum(testSqE,axis=0)/testSqE.shape[0]
-    # print("Test errors\nPower:{}\nUniformity:{}".format(testMSE[0],testMSE[1]))
+    #     L_grads.append(model.predict(x)[0]-P_norm)
+    #
+    #     return L_grads
+    #
+    # print(np.linalg.norm(grads(model,OldCoord,mu,P_norm)))
+    #
+
+
+    # MaxGridCd = MaxGridCd*(InputRange[1]-InputRange[0]) + InputRange[0]
+    # MaxGridPower, Variation = GridOut_norm[MaxPower_Ix,:]*(OutputRange[1]-OutputRange[0]) + OutputRange[0]
+    # print("Best power based on grid point")
+    # print(MaxGridCd, MaxGridPower, Variation)
+    #
+    # MaxCd = (BestCoord*(InputRange[1]-InputRange[0]) + InputRange[0]).detach().numpy()
+    # MaxPower, Variation = (model.predict(BestCoord, device)*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
+    # print("Best power after gradient ascent")
+    # print(MaxCd, MaxPower, Variation)
+
+
+    '''
+
+    # MaxCd = MaxGridCd
+    # BestCoord = torch.tensor(xyzr[MaxPower_Ix,:], dtype=torch.float32)
+    from types import SimpleNamespace as Namespace
+
+    ParaDict = {'CoilType':'HIVE',
+                'CoilDisplacement':MaxCd[:3].tolist(),
+                'Rotation':MaxCd[3],
+                'Current':1000,
+                'Frequency':1e4,
+                'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
+
+    VL.WriteModule("{}/Parameters.py".format(VL.tmpML_DIR), ParaDict)
+
+    Parameters = Namespace(**ParaDict)
+
+    tstDict = {'TMP_CALC_DIR':VL.tmpML_DIR, 'MeshFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),'LogFile':None,'Parameters':Parameters}
+    ERMESfile = '{}/maxERMES.rmed'.format(VL.ML_DIR)
+    from PreAster import devPreHIVE
+    Watts, WattsPV, Elements, JHNode = devPreHIVE.SetupERMES(VL, tstDict,ERMESfile)
+
+    # ERMESres = h5py.File(ERMESfile, 'r')
+    # attrs =  ERMESres["EM_Load"].attrs
+    # Elements = ERMESres["EM_Load/Elements"][:]
+    #
+    # Scale = (Parameters.Current/attrs['Current'])**2
+    # Watts = ERMESres["EM_Load/Watts"][:]*Scale
+    # WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
+    # JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
+    # ERMESres.close()
+
+    Meshcls = MeshInfo(tstDict['MeshFile'])
+    CoilFace = Meshcls.GroupInfo('CoilFace')
+    Meshcls.Close()
+    Std = np.std(JHNode[CoilFace.Nodes-1])
+
+    Pred = (model.predict(BestCoord, device)*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
+    Act = np.array([Watts.sum(),Std])
+    print(Pred, Act)
+    err = 100*(Pred - Act)/Act
+    print(err)
+
+    val = torch.argmax(train_mu_sigma, axis=0)
+    # point = train_rxyz[val[0],:]
+    # model.predict_denorm()
+    point_norm = train_rxyz_norm[val[0],:]
+    pred = (model.predict(point_norm,device)*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
+    act = train_mu_sigma[val[0],:].detach().numpy()
+    err = 100*(pred - act)/act
+    print(err)
+    '''
+
+    '''
+    # gradient ascent descent method which doesnt seem to work
+    for i in range(50000):
+        L_grads = []
+        for ipar in np.arange(4):
+            FDp = OldCoord.clone()
+            FDm = OldCoord.clone()
+            FDp[ipar]+=ds
+            FDm[ipar]-=ds
+
+            with torch.no_grad():
+                grad = (model.predict(FDp) - model.predict(FDm))/(2*ds)
+
+            L_grad = -(alpha*grad[0]-(1-alpha)*grad[1]) + mu*grad[0]
+            L_grads.append(L_grad)
+
+        NewCoord = OldCoord - lr*torch.tensor(L_grads, dtype=torch.float32)
+        # if any(NewCoord < 0):
+        #     NewCoord[NewCoord < 0] = 0
+        # if any(NewCoord > 1):
+        #     NewCoord[NewCoord > 1] = 1
+        mu = mu + (lr/10)*(Output[0] - P_norm)
+
+        Output = model.predict(NewCoord)
+        Score = alpha*Output[0] + (1-alpha)*(1-Output[1])
+        if i % 1000 == 0 and i!=0:
+            # _sc = (-(alpha*Output[0] + (1-alpha)*(1-Output[1])) + mu*(Output[0]-P_norm)).detach().numpy()
+            print(i, Score, Output.detach().numpy(), mu)
+
+        OldCoord = NewCoord
+
+    print(Output.detach().numpy())
+    '''

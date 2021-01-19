@@ -12,8 +12,11 @@ def Setup(VL, **kwargs):
     # if either MLDicts is empty or RunML is False we will return
     if not (kwargs.get('RunML', True) and MLDicts): return
 
+    VL.tmpML_DIR = "{}/ML".format(VL.TEMP_DIR)
+    os.makedirs(VL.tmpML_DIR, exist_ok=True)
+
     VL.ML_DIR = "{}/ML".format(VL.PROJECT_DIR)
-    os.makedirs(VL.ML_DIR,exist_ok=True)
+    os.makedirs(VL.ML_DIR, exist_ok=True)
 
     for Name, ParaDict in MLDicts.items():
     	VL.MLData[Name] = Namespace(**ParaDict)

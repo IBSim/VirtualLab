@@ -36,76 +36,131 @@ def Create(Parameter):
 	geompy.addToStudy( OY, 'OY' )
 	geompy.addToStudy( OZ, 'OZ' )
 
-	Cylinder_b = geompy.MakeCylinder(O, OZ, Parameter.Radius, Parameter.HeightB)
+
+	## Bottom half of dics
+	Cylinder_b_orig = geompy.MakeCylinder(O, OZ, Parameter.Radius, Parameter.HeightB)
+	geompy.addToStudy(Cylinder_b_orig,'Cylinder_b_orig')
+
+	# add groups
+	Bottom_Face = geompy.CreateGroup(Cylinder_b_orig, geompy.ShapeType["FACE"])
+	geompy.UnionIDs(Bottom_Face, [12])
+	geompy.addToStudyInFather( Cylinder_b_orig, Bottom_Face, 'Bottom_Face' )
+
+	Bottom_Ext = geompy.CreateGroup(Cylinder_b_orig, geompy.ShapeType["FACE"])
+	geompy.UnionIDs(Bottom_Ext, [12,3])
+	geompy.addToStudyInFather( Cylinder_b_orig, Bottom_Ext, 'Bottom_Ext' )
+
+
+	## Top half of disc
 	Vertex_1 = geompy.MakeVertexWithRef(O, 0, 0, Parameter.HeightB)
-	Cylinder_t = geompy.MakeCylinder(Vertex_1, OZ, Parameter.Radius, Parameter.HeightT)
-	Cylinder_ext = geompy.MakeCylinder(O, OZ, Parameter.Radius, Parameter.HeightB + Parameter.HeightT)
-	Cylinder_ext = geompy.MakePartition([Cylinder_ext], [Cylinder_b], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
-	geompy.addToStudy(Cylinder_ext,'Cylinder_ext')
+	Cylinder_t_orig = geompy.MakeCylinder(Vertex_1, OZ, Parameter.Radius, Parameter.HeightT)
+	geompy.addToStudy(Cylinder_t_orig,'Cylinder_t_orig')
+
+	# add groups
+	Top_Face = geompy.CreateGroup(Cylinder_t_orig, geompy.ShapeType["FACE"])
+	geompy.UnionIDs(Top_Face, [10])
+	geompy.addToStudyInFather( Cylinder_t_orig, Top_Face, 'Top_Face' )
+
+	Top_Ext = geompy.CreateGroup(Cylinder_t_orig, geompy.ShapeType["FACE"])
+	geompy.UnionIDs(Top_Ext, [3,10])
+	geompy.addToStudyInFather( Cylinder_t_orig, Top_Ext, 'Top_Ext' )
+
+	#Name these with extension _orig since we may change them depending on the
+	#location of the void
+
+
+	# Add void in to disc if needed
+	if Parameter.VoidHeight > 0:
+		# Void is in the top half of the disc
+		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.HeightB)
+		Void = geompy.MakeCylinder(Vertex_2, OZ, Parameter.VoidRadius, Parameter.VoidHeight)
+		Cylinder_t = geompy.MakeCutList(Cylinder_t_orig,[Void], True)
+		Cylinder_b = Cylinder_b_orig
+
+	elif Parameter.VoidHeight < 0:
+		# Void is in the bottom half of the dics
+		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.HeightB)
+		OZm = geompy.MakeVectorDXDYDZ(0, 0, -1)
+		Void = geompy.MakeCylinder(Vertex_2, OZm, Parameter.VoidRadius, -Parameter.VoidHeight)
+		Cylinder_b = geompy.MakeCutList(Cylinder_b_orig,[Void], True)
+		Cylinder_t = Cylinder_t_orig
+
+	else:
+		Cylinder_t = Cylinder_t_orig
+		Cylinder_b = Cylinder_b_orig
+
+	# Fuse together top and bottom disk & partition
+	Cylinder_full = geompy.MakeFuseList([Cylinder_b, Cylinder_t], True, True)
+	Testpiece = geompy.MakePartition([Cylinder_full], [Cylinder_b], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
+
+	geompy.addToStudy(Cylinder_full,'Cylinder_full')
 	geompy.addToStudy(Cylinder_b,'Cylinder_b')
 	geompy.addToStudy(Cylinder_t,'Cylinder_t')
-
-
-	if isVoid:
-		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.HeightB)
-		if Parameter.VoidHeight > 0:
-			vect = OZ
-		else :
-			vect = geompy.MakeVectorDXDYDZ(0, 0, -1)
-		Void = geompy.MakeCylinder(Vertex_2, vect, Parameter.VoidRadius, abs(Parameter.VoidHeight))
-		geompy.addToStudy(Void, 'Void')
-		Testpiece = geompy.MakeCutList(Cylinder_ext,[Void], True)
-	else :
-		Testpiece = Cylinder_ext
-
 	geompy.addToStudy(Testpiece, 'Testpiece')
 
+
 	### Add solid groups
+	# List of solid objects IDs. This will have 2 numbers which represent
+	# the IDs for the top and bottom disc
 	Vollst = geompy.SubShapeAllIDs(Testpiece,geompy.ShapeType['SOLID'])
-	DiskT = geompy.CreateGroup(Testpiece, geompy.ShapeType["SOLID"])
-	geompy.UnionIDs(DiskT, [Vollst[0]])
-	geompy.addToStudyInFather( Testpiece, DiskT, 'Top' )
+
+	# Get geom object & ID of the bottom disc which was used to make the partition
+	# This is the same as ObjIndex in salome func
+	objDiskB = geompy.GetInPlace(Testpiece, Cylinder_b, False)
+	DiskB_ID = objDiskB.GetSubShapeIndices()
 
 	DiskB = geompy.CreateGroup(Testpiece, geompy.ShapeType["SOLID"])
-	geompy.UnionIDs(DiskB, [Vollst[1]])
+	geompy.UnionIDs(DiskB, DiskB_ID)
 	geompy.addToStudyInFather( Testpiece, DiskB, 'Bottom' )
+
+	# The geom object of the top disc is then the remaining ID in Vollst
+	Vollst.remove(DiskB_ID[0])
+	DiskT = geompy.CreateGroup(Testpiece, geompy.ShapeType["SOLID"])
+	geompy.UnionIDs(DiskT, Vollst)
+	geompy.addToStudyInFather( Testpiece, DiskT, 'Top' )
 
 
 	### Add Faces
+	# get the necessary groups from Cylinder_b_orig and Cylinder_t_orig
+	# and get them as sub shapes of Testpiece
+
 	# Top_Face - The face which the laser pulse will be applied
-	# Find Ix of the face corresponding to number 10 in Cylinder_t
-	Ix = SalomeFunc.ObjIndex(Testpiece, Cylinder_t, [10])[0]
+	Top_Face_ID = Top_Face.GetSubShapeIndices()
+	ID = SalomeFunc.ObjIndex(Testpiece, Cylinder_t_orig, Top_Face_ID)[0]
 	Top_Face = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Top_Face, Ix)
+	geompy.UnionIDs(Top_Face, ID)
 	geompy.addToStudyInFather( Testpiece, Top_Face, 'Top_Face' )
 
 	# Top_Ext - External surfaces for the top disk for HTC
-	# Find Ix of the face corresponding to number 10 and 3 in Cylinder_t
-	Ix = SalomeFunc.ObjIndex(Testpiece, Cylinder_t, [10, 3])[0]
+	Top_Ext_ID = Top_Ext.GetSubShapeIndices()
+	ID = SalomeFunc.ObjIndex(Testpiece, Cylinder_t_orig, Top_Ext_ID)[0]
 	Top_Ext = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Top_Ext, Ix)
+	geompy.UnionIDs(Top_Ext, ID)
 	geompy.addToStudyInFather( Testpiece, Top_Ext, 'Top_Ext' )
 
 	# Bottom_Face - Used to measure thermal conductivity during post processing
-	# Find the face corresponding to number 12 in Cylinder_b
-	Ix = SalomeFunc.ObjIndex(Testpiece, Cylinder_b, [12])[0]
+	Bottom_Face_ID = Bottom_Face.GetSubShapeIndices()
+	ID = SalomeFunc.ObjIndex(Testpiece, Cylinder_b_orig, Bottom_Face_ID)[0]
 	Bottom_Face = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Bottom_Face, Ix)
+	geompy.UnionIDs(Bottom_Face, ID)
 	geompy.addToStudyInFather( Testpiece, Bottom_Face, 'Bottom_Face' )
 
 	# Bottom_Ext - External surfaces for the bottom disk for HTC
-	# Find the face corresponding to number 3 and 12 in Cylinder_b
-	Ix = SalomeFunc.ObjIndex(Testpiece, Cylinder_b, [3, 12])[0]
+	Bottom_Ext_ID = Bottom_Ext.GetSubShapeIndices()
+	ID = SalomeFunc.ObjIndex(Testpiece, Cylinder_b_orig, Bottom_Ext_ID)[0]
 	Bottom_Ext = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Bottom_Ext, Ix)
+	geompy.UnionIDs(Bottom_Ext, ID)
 	geompy.addToStudyInFather( Testpiece, Bottom_Ext, 'Bottom_Ext' )
 
 	if isVoid:
+		# On void created previously the surfaces are made up of from the
+		# geometric IDs [3,10,12]
 		# VoidExt - Find the faces corresponding to 3(side), 10(top) and 12(bottom) in Void
 		Ix = SalomeFunc.ObjIndex(Testpiece, Void, [3, 10, 12])[0]
 		VoidExt = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
 		geompy.UnionIDs(VoidExt, Ix)
 		geompy.addToStudyInFather( Testpiece, VoidExt, 'Void_Ext' )
+
 
 	###
 	### SMESH component

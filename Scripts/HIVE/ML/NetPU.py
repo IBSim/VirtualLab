@@ -12,6 +12,8 @@ import copy
 from pathos.multiprocessing import ProcessPool
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
+from scipy.optimize import minimize, differential_evolution, shgo, basinhopping
+from types import SimpleNamespace as Namespace
 
 from Scripts.Common.VLFunctions import MeshInfo
 
@@ -63,6 +65,34 @@ class NetPU(nn.Module):
         # de-normalize
         return yn
 
+    def GradNN(self, input):
+        '''
+        Function which returns the NN gradient at N input points
+        Input: 2-d array of points with dimension (N ,NbInput)
+        Output: 3-d array of partial derivatives (NbOutput, NbInput, N)
+        '''
+        input = np.atleast_2d(input)
+        for i in range(1,5):
+            fc = getattr(self,'fc{}'.format(i))
+            w = fc.weight.detach().numpy()
+            b = fc.bias.detach().numpy()
+            out = np.einsum('ij,kj->ik',input, w) + b
+
+            # create relu function
+            out[out<0] = out[out<0]*0.01
+            input = out
+            # create relu gradients
+            diag = np.copy(out)
+            diag[diag>=0] = 1
+            diag[diag<0] = 0.01
+
+            layergrad = np.einsum('ij,jk->ijk',diag,w)
+            if i==1:
+                Cumul = layergrad
+            else :
+                Cumul = np.einsum('ikj,ilk->ilj', Cumul, layergrad)
+
+        return Cumul
 
 def train(model, train_rxyz_norm, train_mu_sigma_norm, test_rxyz_norm, test_mu_sigma_norm,device,
           batch_size=32, epochs=1000, loss_func=nn.MSELoss(reduction='mean'),
@@ -131,6 +161,7 @@ def train(model, train_rxyz_norm, train_mu_sigma_norm, test_rxyz_norm, test_mu_s
     return hist, epoch
 
 def DataPool(ResDir, MeshDir):
+    # function which is used by ProcessPool map
     sys.path.insert(0,ResDir)
     Parameters = reload(import_module('Parameters'))
     sys.path.pop(0)
@@ -142,15 +173,20 @@ def DataPool(ResDir, MeshDir):
 
     # Calculate power
     CoilPower = np.sum(Watts)
+
     # Calculate uniformity
+    # get top surface nodes
     Meshcls = MeshInfo("{}/{}.med".format(MeshDir,Parameters.Mesh))
     CoilFace = Meshcls.GroupInfo('CoilFace')
     Meshcls.Close()
-
-    Std = np.std(JHNode[CoilFace.Nodes-1])
+    # Scale JH to 0 to 2 so that StDev must be in range [0,1]
+    JHMax, JHMin = JHNode.max(), JHNode.min()
+    JHNode = 2*(JHNode - JHMin)/(JHMax-JHMin)
+    # flips StDev so that 1 is best score and 0 is the worst
+    Uniformity = 1 - np.std(JHNode[CoilFace.Nodes-1])
 
     Input = Parameters.CoilDisplacement+[Parameters.Rotation]
-    Output = [CoilPower,Std]
+    Output = [CoilPower,Uniformity]
 
     return Input+Output
 
@@ -162,74 +198,90 @@ def GetData(VL,MLdict):
 
         ResDirs.append(ResDir)
 
-    Pool = ProcessPool(nodes=6, workdir=VL.TMP_DIR)
+    Pool = ProcessPool(nodes=10, workdir=VL.TEMP_DIR)
     Data = Pool.map(DataPool,ResDirs,[VL.MESH_DIR]*len(ResDirs))
 
     return Data
 
-def Optima(Start,model,dir,num):
-    OldCoord = BestCoord = torch.tensor(Start, dtype=torch.float32) # Starting point
-    OldObj = BestObj = model.predict(OldCoord)[num]
+def Gradold(model, input):
+    # one at a time here
+    # input = input.detach().numpy()
+    input = np.array(input)
+    for i in range(1,5):
+        fc = getattr(model,'fc{}'.format(i))
+        w = fc.weight.detach().numpy()
+        b = fc.bias.detach().numpy()
+        out = w.dot(input)+b
+        diag = np.copy(out)
+        diag[diag>=0] = 1
+        diag[diag<0] = 0.01
+        gd = diag[:,None]*w
+        # print(gd.shape)
+        if i==1:
+            cumul = gd
+        else :
+            cumul = gd.dot(cumul)
+        # print(cumul.shape)
+        out[out<0] = out[out<0]*0.01
+        input = out
+    return cumul
 
-    ds = 0.00001
-    lr=0.0005
-    for it in range(200):
-        grads = []
-        for ipar in np.arange(4):
-            FDp = OldCoord.clone()
-            FDm = OldCoord.clone()
-            FDp[ipar]+=ds
-            FDm[ipar]-=ds
+def func(X, model, alpha):
+    X = torch.tensor(X, dtype=torch.float32)
+    PV = model.predict(X).detach().numpy()
+    score = alpha*PV[0] + (1-alpha)*(PV[1])
+    return -(score)
 
-            with torch.no_grad():
-                grad = (model.predict(FDp) - model.predict(FDm))/(2*ds)
-            grads.append(grad[num])
+def dfunc(X, model, alpha):
+    # Grad = Gradold(model, X)
+    Grad = model.GradNN(X)[0]
+    dscore = alpha*Grad[0,:] + (1-alpha)*Grad[1,:]
+    return -dscore
 
-        if dir=='max':
-            NewCoord = OldCoord + lr*torch.tensor(grads, dtype=torch.float32)
-        else:
-            NewCoord = OldCoord - lr*torch.tensor(grads, dtype=torch.float32)
+def constraint(X, model, DesPower):
+    # print(DesPower)
+    X = torch.tensor(X, dtype=torch.float32)
+    P,V = model.predict(X).detach().numpy()
+    return (P - DesPower)
 
-        if any(NewCoord < 0):
-            NewCoord[NewCoord < 0] = 0
-        if any(NewCoord > 1):
-            NewCoord[NewCoord > 1] = 1
+def dconstraint(X, model, DesPower):
+    # Grad = Gradold(model, X)
+    Grad = model.GradNN(X)[0]
+    dcon = Grad[0,:]
+    return dcon
 
-        with torch.no_grad():
-            NewObj = model.predict(NewCoord)[num]
+def MinMax(X, model, sign, Ix):
+    X = torch.tensor(X,dtype=torch.float32)
+    Pred = model.predict(X).detach().numpy()[Ix]
+    return -sign*Pred
 
-        # grd = (NewObj[0] - OldObj)/torch.norm(NewCoord-Coord)
-        if it != 0 and it % 10 == 0:
-            print(it, NewObj)
-        # if grd < 0:
-        #     break
+def dMinMax(X, model, sign, Ix):
+    # Grad = Gradold(model, X)[Ix,:]
+    Grad = model.GradNN(X)[0]
+    dMM = Grad[Ix,:]
+    return -sign*dMM
 
-        if NewObj > BestObj:
-            BestObj = NewObj
-            BestCoord = NewCoord
-
-        OldCoord = NewCoord
-        OldObj = NewObj
-
-    return BestCoord
 
 def main(VL, MLdict):
     # print(torch.get_num_threads())
     DataFile = "{}/Data.hdf5".format(VL.ML_DIR)
     if MLdict.NewData:
         Data = GetData(VL,MLdict)
-        Data = np.array(Data).astype(np.float32)
+        Data = np.array(Data)
         MLfile = h5py.File(DataFile,'w')
         MLfile.create_dataset('HIVE_Random',data=Data)
         MLfile.close()
 
     else :
         MLfile = h5py.File(DataFile,'r')
-        Data = MLfile['HIVE_Random'][...].astype(np.float32)
+        Data = MLfile['HIVE_Random'][...]
         MLfile.close()
 
     # shuffle data here if needed
     # np.random.shuffle(Data)
+
+    # Convert data to float32 for PyTorch
+    Data = Data.astype('float32')
 
     device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
     device = torch.device('cpu')
@@ -270,7 +322,7 @@ def main(VL, MLdict):
 
         history, epoch_stop = train(model, In_train, Out_train,
         		            In_test, Out_test, device,
-                            batch_size=500, epochs=2000, lr=.0001, check_epoch=50,
+                            batch_size=500, epochs=3000, lr=.0001, check_epoch=50,
                             GPU=False)
 
         model.eval()
@@ -366,7 +418,6 @@ def main(VL, MLdict):
         plt.setp(ax, xlim=(-Xlim,Xlim))
         plt.show()
 
-
     GridSeg = 2
     disc = np.linspace(0, 1, GridSeg+1)
     # Stores data in a logical mesh grid
@@ -374,106 +425,276 @@ def main(VL, MLdict):
     grid = np.moveaxis(np.array(grid),0,-1) #grid point is now the last axis
     ndim = grid.ndim - 1
     # unroll grid so it can be passed to model
-    grid = grid.reshape([disc.shape[0]**ndim,ndim])
 
+    grid = grid.reshape([disc.shape[0]**ndim,ndim])
     with torch.no_grad():
         NNGrid = model.predict(torch.tensor(grid, dtype=torch.float32))
     NNGrid = NNGrid.detach().numpy()
 
-    # # convert grid points and results back to grid format (if desired)
-    # # Could be useful for querying
-    # grid = grid.reshape([disc.shape[0]]*ndim+[grid.shape[1]])
-    # NNGrid = NNGrid.detach().numpy()
-    # NNGrid = NNGrid.reshape([disc.shape[0]]*ndim+[NNGrid.shape[1]])
+    if False:
+        # convert grid points and results back to grid format (if desired)
+        # Could be useful for querying
+        grid = grid.reshape([disc.shape[0]]*ndim+[grid.shape[1]])
+        NNGrid = NNGrid.detach().numpy()
+        NNGrid = NNGrid.reshape([disc.shape[0]]*ndim+[NNGrid.shape[1]])
 
-    # get location of min & max for outputs
+    # get location of min & max from grid
     MaxPower_Ix, MaxVar_Ix  = np.argmax(NNGrid,axis=0)
     MinPower_Ix, MinVar_Ix  = np.argmin(NNGrid,axis=0)
 
-    # Get the value for power & variation at max. power & variation points
-    _Power, Max_Var = (NNGrid[MaxVar_Ix,:]*(OutputRange[1]-OutputRange[0]) + OutputRange[0])
+    # print(grid.shape)
+    # tst = model.GradNN(grid)
+    # print(tst.shape)
+    # sys.exit()
 
-    PMaxGridCd = grid[MaxPower_Ix,:]
-    # Start at this point and find optima
-    PMaxCd = Optima(PMaxGridCd, model, 'max', 0)
-    PMax, VarPMax = (model.predict(PMaxCd)*(OutputRange[1] - OutputRange[0]) + OutputRange[0]).detach().numpy()
-    PMin = NNGrid[MinPower_Ix,:]
-    print("Maximum power available is {:.3f} watts".format(PMax))
 
-    # VMaxGridCd = grid[MaxVar_Ix,:]
-    # VMaxCd = Optima(VMaxGridCd, model, 'max', 1)
-    # VMax = model.predict(VMaxCd)[1]
-    # VMin = NNGrid[MinVar_Ix,:]
+    # optimisation with constraints
+    b = (0.0,1.0)
+    bnds = (b, b, b, b)
 
-    ds = 0.001
-    lr=0.0005
+    # Get min max output range from NN. requires starting point
+    X0 = [0.1,0.5,0.5,0.5]
+    MaxP = minimize(MinMax, X0, args=(model,1,0), jac=dMinMax, method='SLSQP', bounds=bnds)
+    MaxV = minimize(MinMax, X0, args=(model,1,1), jac=dMinMax, method='SLSQP', bounds=bnds)
+    MinP = minimize(MinMax, X0, args=(model,-1,0), jac=dMinMax, method='SLSQP', bounds=bnds)
+    MinV = minimize(MinMax, X0, args=(model,-1,1), jac=dMinMax, method='SLSQP', bounds=bnds)
+    NNRange = np.array([[MinP.fun,MinV.fun],[-MaxP.fun,-MaxV.fun]])
+    # print('Global Max/Min')
+    # print(NNRange)
 
-    alpha=1
-    mu=0.5
+    NNExtrema = NNRange*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
+    # print(NNExtrema)
+
+
+    # SHGO find all local minimums and global min
+    MaxP = shgo(MinMax, bnds, args=(model,1,0), n=100, iters=1, sampling_method='sobol',minimizer_kwargs={'method':'SLSQP','jac':dMinMax,'args':(model,1,0)})
+    MaxV = shgo(MinMax, bnds, args=(model,1,1), n=100, iters=1, sampling_method='sobol',minimizer_kwargs={'method':'SLSQP','jac':dMinMax,'args':(model,1,1)})
+    MinP = shgo(MinMax, bnds, args=(model,-1,0), n=100, iters=1, sampling_method='sobol',minimizer_kwargs={'method':'SLSQP','jac':dMinMax,'args':(model,-1,0)})
+    MinV = shgo(MinMax, bnds, args=(model,-1,1), n=100, iters=1, sampling_method='sobol',minimizer_kwargs={'method':'SLSQP','jac':dMinMax,'args':(model,-1,1)})
+    GlobRange = np.array([[MinP.fun,MinV.fun],[-MaxP.fun,-MaxV.fun]])
+    GlobExtrem = GlobRange*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
+
+    print("Power range: {:.2f} - {:.2f} W".format(*GlobExtrem[:,0]))
+    print("Unifortmity score range: {:.2f} - {:.2f}\n".format(*GlobExtrem[:,1]))
 
     DesPower = 500
-    P_norm = ((DesPower - OutputRange[0])/(OutputRange[1]-OutputRange[0]))[0]
+    alpha = 0
 
-    print("Targeting {} watts of power".format(DesPower))
-    print(P_norm)
+    print("A minimum of {:.2f} W of power is required".format(DesPower))
+    print("Power weighted by {}, Variation weighted by {}".format(alpha,1-alpha))
 
-    def Grad1(model, input):
-        input = input.detach().numpy()
-        for i in range(1,5):
-            fc = getattr(model,'fc{}'.format(i))
-            w = fc.weight.detach().numpy()
-            b = fc.bias.detach().numpy()
-            out = w.dot(input)+b
-            diag = np.copy(out)
-            diag[diag>=0] = 1
-            diag[diag<0] = 0.01
-            gd = diag[:,None]*w
-            if i==1:
-                cumul = gd
-            else :
-                cumul = gd.dot(cumul)
+    # Define constraints
+    DesPower_norm = ((DesPower - OutputRange[0])/(OutputRange[1]-OutputRange[0]))[0]
+    con1 = {'type': 'ineq', 'fun': constraint,'jac':dconstraint, 'args':(model, DesPower_norm)}
+    cnstr = ([con1])
 
-            out[out<0] = out[out<0]*0.01
-            input = out
+    print()
+    NbInit = 100
+    rnd = np.random.uniform(0,1,size=(NbInit,4))
+    score = []
+    # rnd = [[[-3.39784310e-03,  4.63700822e-03,  1.50244462e-03, -4.99919271e+00]]]
+    for X0 in rnd:
+        OptScore = minimize(func, X0, args=(model, alpha), method='SLSQP',jac=dfunc, bounds=bnds, constraints=cnstr, options={'maxiter':100})
+        if not OptScore.success:
+            continue
+        '''
+        Todo - check if there is a point close to this been found already
+        '''
+        # score.append(-OptScore.fun)
 
-        return cumul
+    # shgo doesn't seem to work as well with constraints - often numbers lower than des power are generated as optimum
+    # I think this is because of max iter in solver however no return of success for each run with shgo
+    # OptScore = shgo(func, bnds, args=(model,alpha), n=100, iters=5, sampling_method='sobol',minimizer_kwargs={'method':'SLSQP','jac':dfunc,'args':(model, alpha),'constraints':cnstr})
+    # print(OptScore)
 
-    def GradLagr(model, x, mu, P_norm, alpha):
-        Sgrad = Grad1(model, x)
-        Lgrads = -(alpha*Sgrad[0,:]-(1-alpha)*Sgrad[1,:]) + mu*Sgrad[0,:]
-        mugrad = model.predict(x)[0]-P_norm
-        return np.append(Lgrads,mugrad.detach().numpy())
-
-
-    Mag = np.linalg.norm
-    # Ix = np.argmin(np.abs(NNGrid[:,0]-P_norm))
-    # OldCoord = torch.tensor(grid[Ix,:],dtype=torch.float32)
-    OldCoord = torch.tensor([0.5,0.5,0.5,0.5], dtype=torch.float32)
-    Output = model.predict(OldCoord)
-    Score = alpha*Output[0] + (1-alpha)*(1-Output[1])
-    print(Output, Score)
-
-    for i in range(3200):
-        G_grads = []
-        for ipar in np.arange(4):
-            FDp = OldCoord.clone()
-            FDm = OldCoord.clone()
-            FDp[ipar]+=ds
-            FDm[ipar]-=ds
-
-            G_grad = (Mag(GradLagr(model,FDp,mu,P_norm,alpha)) - Mag(GradLagr(model,FDm,mu,P_norm,alpha)))/(2*ds)
-            G_grads.append(G_grad)
-
-        mp = (Mag(GradLagr(model,FDp,mu+ds,P_norm,alpha)) - Mag(GradLagr(model,FDp,mu-ds,P_norm,alpha)))/(2*ds)
-
-        OldCoord = OldCoord - lr*torch.tensor(G_grads, dtype=torch.float32)
-        mu = mu - lr*mp
-
-        if i % 50 == 0 and i!=0:
-            print(i, Mag(GradLagr(model,OldCoord,mu,P_norm,alpha)), model.predict(OldCoord).detach().numpy())
-            print(model.predict(OldCoord)[0]>P_norm)
+    print('Optimum score is {:.4f}'.format(-OptScore.fun))
+    OptCoord = OptScore.x*(InputRange[1]-InputRange[0]) + InputRange[0]
+    pred_norm = model.predict(torch.tensor(OptScore.x, dtype=torch.float32))
+    NNOptOutput = (pred_norm*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
+    print("The location for this optimum is {}\n".format(OptCoord))
+    print("The predicted power at this point is {:.2f} W with uniformity score {:.2f}".format(*NNOptOutput))
 
 
+    if ML.Verify:
+        ParaDict = {'CoilType':'HIVE',
+                    'CoilDisplacement':OptCoord[:3].tolist(),
+                    'Rotation':OptCoord[3],
+                    'Current':1000,
+                    'Frequency':1e4,
+                    'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
+
+        VL.WriteModule("{}/Parameters.py".format(VL.tmpML_DIR), ParaDict)
+
+        Parameters = Namespace(**ParaDict)
+
+        tstDict = {'TMP_CALC_DIR':VL.tmpML_DIR, 'MeshFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),'LogFile':None,'Parameters':Parameters}
+        ERMESfile = '{}/maxERMES.rmed'.format(VL.ML_DIR)
+
+
+        from PreAster import devPreHIVE
+        Watts, WattsPV, Elements, JHNode = devPreHIVE.SetupERMES(VL, tstDict,ERMESfile)
+        #
+        # ERMESres = h5py.File(ERMESfile, 'r')
+        # attrs =  ERMESres["EM_Load"].attrs
+        # Elements = ERMESres["EM_Load/Elements"][:]
+        #
+        # Scale = (Parameters.Current/attrs['Current'])**2
+        # Watts = ERMESres["EM_Load/Watts"][:]*Scale
+        # WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
+        # JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
+        # ERMESres.close()
+
+        Meshcls = MeshInfo(tstDict['MeshFile'])
+        CoilFace = Meshcls.GroupInfo('CoilFace')
+        Meshcls.Close()
+
+        Power = Watts.sum()
+        JHMax, JHMin = JHNode.max(), JHNode.min()
+        JHNode = 2*(JHNode - JHMin)/(JHMax-JHMin)
+        Uniformity = 1 - np.std(JHNode[CoilFace.Nodes-1])
+
+        ActOptOutput = np.array([Power, Uniformity])
+
+        print("The correct power at this point is {:.2f} W with uniformity score {:.2f}".format(*ActOptOutput))
+
+        err = 100*(NNOptOutput - ActOptOutput)/ActOptOutput
+        print("Prediction errors are: {:.3f} & {:.3f}".format(*err))
+
+    # val = torch.argmax(train_mu_sigma, axis=0)
+    # # point = train_rxyz[val[0],:]
+    # # model.predict_denorm()
+    # point_norm = train_rxyz_norm[val[0],:]
+    # pred = (model.predict(point_norm,device)*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
+    # act = train_mu_sigma[val[0],:].detach().numpy()
+    # err = 100*(pred - act)/act
+    # print(err)
+
+
+
+
+
+    # def GradLagr(model, x, mu, DesPower_norm, alpha):
+    #     Sgrad = Grad1(model, x)
+    #     Lgrads = -(alpha*Sgrad[0,:]-(1-alpha)*Sgrad[1,:]) + mu*Sgrad[0,:]
+    #     mugrad = Constraint(model, x, DesPower_norm)
+    #     return np.append(Lgrads,mugrad.detach().numpy())
+
+    # ds = 0.001
+    # lr=0.0005
+    # alpha=1
+    # mu=0.5
+    #
+    # DesPower = 500
+    # DesPower_norm = ((DesPower - OutputRange[0])/(OutputRange[1]-OutputRange[0]))[0]
+    #
+    # print("Requiring a minimum power of {} W".format(DesPower))
+    # print(DesPower_norm)
+    #
+    # Mag = np.linalg.norm
+    #
+    # # OldCoord = torch.tensor(PMaxGridCd, dtype=torch.float32)
+    # # Output = model.predict(OldCoord)
+    # # print(Output)
+    # # Score = alpha*Output[0,:] + (1-alpha)*(1-Output[1,:])
+    # # print(Output, Score)
+    #
+    # StartCds = grid[NNGrid[:,0] > DesPower_norm,:]
+    # Coords = torch.tensor(StartCds, dtype=torch.float32)
+
+    # print('Maximise PowerUniformity score')
+    # for i in range(1):
+    #     Sgrad = torch.tensor(Grad1(model, Coords), dtype=torch.float32)
+    #     Coords = Coords - lr*(-(alpha*Sgrad[:,:,0]-(1-alpha)*Sgrad[:,:,1]))
+    #
+    #     mask = Coords < 0
+    #     if mask.byte().any():  Coords[mask] = 0
+    #     mask = Coords > 1
+    #     if mask.byte().any(): Coords[mask] = 1
+    #
+    #     if i % 50 == 0:
+    #         pred = model.predict(Coords)
+    #         Score = alpha*pred[:,0] + (1-alpha)*(1-pred[:,1])
+    #         # print("{}: {:.5f}".format(i,Score))
+    #         print(Score)
+
+    # if Constraint(model,OldCoord,DesPower_norm)<0:
+    #     print("Minimise mag. lagrange function to satisfy constraint")
+    #     for i in range(50):
+    #         Mag = Mag(GradLagr(model,OldCoord,mu,DesPower_norm,alpha),axis=1)
+    #         # Constraint is not satisfied so looking to find min point
+    #         # of mangitude of lagrange partials
+    #         G_grads = []
+    #         for ipar in np.arange(4):
+    #             FDp = OldCoord.clone()
+    #             FDm = OldCoord.clone()
+    #             FDp[ipar]+=ds
+    #             FDm[ipar]-=ds
+    #
+    #             G_grad = (Mag(GradLagr(model,FDp,mu,DesPower_norm,alpha)) - Mag(GradLagr(model,FDm,mu,DesPower_norm,alpha)))/(2*ds)
+    #             G_grads.append(G_grad)
+    #
+    #         mp = (Mag(GradLagr(model,FDp,mu+ds,DesPower_norm,alpha)) - Mag(GradLagr(model,FDp,mu-ds,DesPower_norm,alpha)))/(2*ds)
+    #
+    #         OldCoord = OldCoord - lr*torch.tensor(G_grads, dtype=torch.float32)
+    #         mu = mu - lr*mp
+    #         NewMag = Mag(GradLagr(model,OldCoord,mu,DesPower_norm,alpha))
+    #         if i % 10 == 0:
+    #             print("{}: {:.5f}".format(i, Mag(GradLagr(model,OldCoord,mu,DesPower_norm,alpha))))
+    #         if Constraint(model,OldCoord,DesPower_norm)>=0:
+    #             break
+
+
+
+    # Satisfied = False
+    # NbUnsat, NbSat = 0,0
+    # for i in range(20000):
+    #     if not Satisfied and Constraint(model,OldCoord,DesPower_norm)>=0:
+    #         Satisfied = True
+    #
+    #     if not Satisfied:
+    #         if NbUnsat == 0:
+    #             print("Minimise mag. lagrange function to satisfy constraint")
+    #             NbUnsat=1
+    #         # Constraint is not satisfied so looking to find min point
+    #         # of mangitude of lagrange partials
+    #         G_grads = []
+    #         for ipar in np.arange(4):
+    #             FDp = OldCoord.clone()
+    #             FDm = OldCoord.clone()
+    #             FDp[ipar]+=ds
+    #             FDm[ipar]-=ds
+    #
+    #             G_grad = (Mag(GradLagr(model,FDp,mu,DesPower_norm,alpha)) - Mag(GradLagr(model,FDm,mu,DesPower_norm,alpha)))/(2*ds)
+    #             G_grads.append(G_grad)
+    #
+    #         mp = (Mag(GradLagr(model,FDp,mu+ds,DesPower_norm,alpha)) - Mag(GradLagr(model,FDp,mu-ds,DesPower_norm,alpha)))/(2*ds)
+    #         print(Constraint(model,OldCoord,DesPower_norm))
+    #         OldCoord = OldCoord - lr*torch.tensor(G_grads, dtype=torch.float32)
+    #         mu = mu - lr*mp
+    #
+    #         if i % 1 == 0 :
+    #             print("{}: {:.5f}".format(i, Mag(GradLagr(model,OldCoord,mu,DesPower_norm,alpha))))
+    #             print(mu, Constraint(model,OldCoord,DesPower_norm))
+    #     else:
+    #         if NbSat == 0:
+    #             print('Maximise PowerUniformity score')
+    #             NbSat=1
+    #         Sgrad = torch.tensor(Grad1(model, OldCoord), dtype=torch.float32)
+    #         OldCoord = OldCoord - lr*(-(alpha*Sgrad[0,:]-(1-alpha)*Sgrad[1,:]))
+    #         if any(OldCoord < 0): OldCoord[OldCoord < 0] = 0
+    #         if any(OldCoord > 1): OldCoord[OldCoord > 1] = 1
+    #
+    #         if i % 50 == 0 and i!=0:
+    #             pred = model.predict(OldCoord)
+    #             Score = alpha*pred[0] + (1-alpha)*(1-pred[1])
+    #             print(i, Score)
+
+        # if i % 100 == 0 and i!=0:
+        #     pred = model.predict(OldCoord)
+        #     print(i, alpha*pred[0] + (1-alpha)*(1-pred[1]), OldCoord)
+
+    # optimum = (model.predict(OldCoord)*(OutputRange[1] - OutputRange[0]) + OutputRange[0]).detach().numpy()
+    # print(optimum)
     # L_grads = []
     # for ipar in np.arange(4):
     #     FDp = OldCoord.clone()
@@ -495,7 +716,7 @@ def main(VL, MLdict):
     # test = w1*np.array([0.5,0.5,0.5,0.5]) + b1[:,None]
     # print(test)
 
-    # def grads(model, x, mu, P_norm):
+    # def grads(model, x, mu, DesPower_norm):
     #     ds = 0.00001
     #     L_grads = []
     #     for ipar in np.arange(4):
@@ -509,11 +730,11 @@ def main(VL, MLdict):
     #         L_grad = -(alpha*grad[0]-(1-alpha)*grad[1]) + mu*grad[0]
     #         L_grads.append(L_grad)
     #
-    #     L_grads.append(model.predict(x)[0]-P_norm)
+    #     L_grads.append(model.predict(x)[0]-DesPower_norm)
     #
     #     return L_grads
     #
-    # print(np.linalg.norm(grads(model,OldCoord,mu,P_norm)))
+    # print(np.linalg.norm(grads(model,OldCoord,mu,DesPower_norm)))
     #
 
 
@@ -526,91 +747,3 @@ def main(VL, MLdict):
     # MaxPower, Variation = (model.predict(BestCoord, device)*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
     # print("Best power after gradient ascent")
     # print(MaxCd, MaxPower, Variation)
-
-
-    '''
-
-    # MaxCd = MaxGridCd
-    # BestCoord = torch.tensor(xyzr[MaxPower_Ix,:], dtype=torch.float32)
-    from types import SimpleNamespace as Namespace
-
-    ParaDict = {'CoilType':'HIVE',
-                'CoilDisplacement':MaxCd[:3].tolist(),
-                'Rotation':MaxCd[3],
-                'Current':1000,
-                'Frequency':1e4,
-                'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
-
-    VL.WriteModule("{}/Parameters.py".format(VL.tmpML_DIR), ParaDict)
-
-    Parameters = Namespace(**ParaDict)
-
-    tstDict = {'TMP_CALC_DIR':VL.tmpML_DIR, 'MeshFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),'LogFile':None,'Parameters':Parameters}
-    ERMESfile = '{}/maxERMES.rmed'.format(VL.ML_DIR)
-    from PreAster import devPreHIVE
-    Watts, WattsPV, Elements, JHNode = devPreHIVE.SetupERMES(VL, tstDict,ERMESfile)
-
-    # ERMESres = h5py.File(ERMESfile, 'r')
-    # attrs =  ERMESres["EM_Load"].attrs
-    # Elements = ERMESres["EM_Load/Elements"][:]
-    #
-    # Scale = (Parameters.Current/attrs['Current'])**2
-    # Watts = ERMESres["EM_Load/Watts"][:]*Scale
-    # WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
-    # JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
-    # ERMESres.close()
-
-    Meshcls = MeshInfo(tstDict['MeshFile'])
-    CoilFace = Meshcls.GroupInfo('CoilFace')
-    Meshcls.Close()
-    Std = np.std(JHNode[CoilFace.Nodes-1])
-
-    Pred = (model.predict(BestCoord, device)*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
-    Act = np.array([Watts.sum(),Std])
-    print(Pred, Act)
-    err = 100*(Pred - Act)/Act
-    print(err)
-
-    val = torch.argmax(train_mu_sigma, axis=0)
-    # point = train_rxyz[val[0],:]
-    # model.predict_denorm()
-    point_norm = train_rxyz_norm[val[0],:]
-    pred = (model.predict(point_norm,device)*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
-    act = train_mu_sigma[val[0],:].detach().numpy()
-    err = 100*(pred - act)/act
-    print(err)
-    '''
-
-    '''
-    # gradient ascent descent method which doesnt seem to work
-    for i in range(50000):
-        L_grads = []
-        for ipar in np.arange(4):
-            FDp = OldCoord.clone()
-            FDm = OldCoord.clone()
-            FDp[ipar]+=ds
-            FDm[ipar]-=ds
-
-            with torch.no_grad():
-                grad = (model.predict(FDp) - model.predict(FDm))/(2*ds)
-
-            L_grad = -(alpha*grad[0]-(1-alpha)*grad[1]) + mu*grad[0]
-            L_grads.append(L_grad)
-
-        NewCoord = OldCoord - lr*torch.tensor(L_grads, dtype=torch.float32)
-        # if any(NewCoord < 0):
-        #     NewCoord[NewCoord < 0] = 0
-        # if any(NewCoord > 1):
-        #     NewCoord[NewCoord > 1] = 1
-        mu = mu + (lr/10)*(Output[0] - P_norm)
-
-        Output = model.predict(NewCoord)
-        Score = alpha*Output[0] + (1-alpha)*(1-Output[1])
-        if i % 1000 == 0 and i!=0:
-            # _sc = (-(alpha*Output[0] + (1-alpha)*(1-Output[1])) + mu*(Output[0]-P_norm)).detach().numpy()
-            print(i, Score, Output.detach().numpy(), mu)
-
-        OldCoord = NewCoord
-
-    print(Output.detach().numpy())
-    '''

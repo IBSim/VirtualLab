@@ -104,16 +104,16 @@ def devRun(VL,**kwargs):
 
     # MeshCheck routine which allows you to mesh in the GUI (Used for debugging).
     # The script will terminate after this routine
-    if MeshCheck and MeshCheck in VL.Data.keys():
+    if MeshCheck and MeshCheck in VL.MeshData.keys():
         VL.Logger('### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
         # The file MeshParaFile is passed to MeshScript to create the mesh in the GUI
         MeshParaFile = "{}/{}.py".format(VL.GEOM_DIR,MeshCheck)
-        MeshScript = "{}/{}.py".format(VL.SIM_MESH, VL.Data[MeshCheck].File)
+        MeshScript = "{}/{}.py".format(VL.SIM_MESH, VL.MeshData[MeshCheck]['Parameters'].File)
 
         VL.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
         VL.Exit('Terminating after checking mesh')
 
-    elif MeshCheck and MeshCheck not in VL.Data.keys():
+    elif MeshCheck and MeshCheck not in VL.MeshData.keys():
         VL.Exit("Error: '{}' specified for MeshCheck is not one of meshes to be created.\n"\
                      "Meshes to be created are:{}".format(MeshCheck, list(VL.Data.keys())))
 

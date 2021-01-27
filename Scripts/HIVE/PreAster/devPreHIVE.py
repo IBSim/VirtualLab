@@ -82,31 +82,22 @@ def CoilCurrent(EMMesh, JRes, groupname = 'CoilIn', **kwargs):
 
 	return intJ
 
-def MeshERMES(VL, StudyDict, OutFile, **kwargs):
-	# from Scripts.Common.VLPackages import Salome
+def ERMES_Mesh(VL, SampleMesh, ERMESMesh, AddPath=[], LogFile=None, GUI=0, **kwargs):
 	script = "{}/EM/NewEM.py".format(VL.SIM_SCRIPTS)
-	AddPath = [StudyDict['TMP_CALC_DIR']]
-	ArgDict = {'MeshFile':StudyDict['MeshFile'],'OutFile':OutFile}
-	err = VL.Salome.Run(script, ArgDict=ArgDict, AddPath=AddPath, OutFile=StudyDict['LogFile'], GUI=0)
+	ArgDict = {'InputFile':SampleMesh, 'OutputFile':ERMESMesh}
+	err = VL.Salome.Run(script, ArgDict=ArgDict, AddPath=AddPath, OutFile=LogFile, GUI=GUI)
 	return err
 
-def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
-	check = kwargs.get('check', False)
-	Parameters = StudyDict['Parameters']
+def SetupERMES(Info, Parameters, ERMESMeshFile, ERMESResFile, tmpERMESdir, **kwargs):
 	# Create the .dat files needed by ERMES for a simulation.
 	# Since the coil is non-symmetric an electrostatic simulation is required before
 	# the full wave simulation.
 
-	tmpERMESdir = "{}/ERMES".format(StudyDict["TMP_CALC_DIR"])
-	os.makedirs(tmpERMESdir,exist_ok=True)
-
-	EMmeshfile = "{}/Mesh.med".format(tmpERMESdir)
-	err = MeshERMES(Info,StudyDict,EMmeshfile)
-	if err: return sys.exit('Issue creating mesh')
-
+	check = kwargs.get('check', False)
 	Temperatures = [20]
+
 	# Get mesh info using the MeshInfo class written using h5py
-	ERMESMesh = MeshInfo(EMmeshfile)
+	ERMESMesh = MeshInfo(ERMESMeshFile)
 
 	# Define duplicate nodes for contact surfaces, which is on the SampleSurface and CoilSurface
 	CoilSurface = ERMESMesh.GroupInfo('CoilSurface')
@@ -399,10 +390,10 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 		print('intSurf|J|^2: {:.6e}'.format(CoilInCurrsq))
 
 
-	shutil.copy2(EMmeshfile,ERMESout)
+	shutil.copy2(ERMESMeshFile,ERMESResFile)
 
 	# Create rmed file with ERMES results
-	ERMESrmed = h5py.File(ERMESout, 'a')
+	ERMESrmed = h5py.File(ERMESResFile, 'a')
 	# Some groups require specific formatting so take an empty group from format file
 	Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
 
@@ -523,8 +514,6 @@ def SetupERMES(Info, StudyDict, ERMESout, **kwargs):
 	Formats.close()
 	ERMESMesh.Close()
 
-	shutil.rmtree(tmpERMESdir)
-
 	return Watts, WattsPV, Elements, JH
 
 def ASCIIname(names):
@@ -539,14 +528,29 @@ def ASCIIname(names):
 def EMI(Info, StudyDict):
 	Parameters = StudyDict['Parameters']
 	# Name of rMED file where results will be stored. This can be opened in ParaVis
-	ERMESfile = '{}/ERMES.rmed'.format(StudyDict['PREASTER'])
+	ERMESresfile = '{}/ERMES.rmed'.format(StudyDict['PREASTER'])
 
 	# Create a new set of ERMES results
 	if getattr(Parameters,'RunERMES',True):
-		Watts, WattsPV, Elements, JHNode = SetupERMES(Info, StudyDict, ERMESfile)
+		# create ERMES directory so that it can be deleted as it contains large files
+		ERMESdir = "{}/ERMES".format(StudyDict["TMP_CALC_DIR"])
+		os.makedirs(ERMESdir)
+
+		# Create ERMES mesh
+		ERMESmeshfile = "{}/Mesh.med".format(ERMESdir)
+		err = ERMES_Mesh(Info,StudyDict['MeshFile'], ERMESmeshfile,
+						AddPath = StudyDict['TMP_CALC_DIR'],
+						LogFile = StudyDict['LogFile'],
+						GUI=0)
+		if err: return sys.exit('Issue creating mesh')
+
+		Watts, WattsPV, Elements, JHNode = SetupERMES(Info, Parameters, ERMESmeshfile, ERMESresfile, ERMESdir)
+
+		shutil.rmtree(ERMESdir)
+
 	# Read in a previous set of ERMES results
-	elif os.path.isfile(ERMESfile):
-		ERMESres = h5py.File(ERMESfile, 'r')
+	elif os.path.isfile(ERMESresfile):
+		ERMESres = h5py.File(ERMESresfile, 'r')
 		attrs =  ERMESres["EM_Load"].attrs
 		Elements = ERMESres["EM_Load/Elements"][:]
 

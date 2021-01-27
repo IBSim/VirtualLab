@@ -259,7 +259,7 @@ if __name__ == '__main__':
 
     kwargs = SalomeFunc.GetArgs(sys.argv[1:])
 
-    MeshFile = kwargs['MeshFile']
+    MeshFile = kwargs['InputFile']
     # Get sample mesh from .med file
     (SampleMesh, status) = smesh.CreateMeshesFromMED(MeshFile)
     SampleMesh=SampleMesh[0]
@@ -275,7 +275,7 @@ if __name__ == '__main__':
 
     # Export ERMESmesh if mesh type
     if type(ERMESmesh) == salome.smesh.smeshBuilder.Mesh:
-        SalomeFunc.MeshExport(ERMESmesh, kwargs['OutFile'])
+        SalomeFunc.MeshExport(ERMESmesh, kwargs['OutputFile'])
     # Check return vaue from EMCreate
     elif ERMESmesh == 2319:
         sys.exit("\nImpossible configuration: Coil intersects sample\n")

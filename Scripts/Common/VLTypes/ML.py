@@ -18,12 +18,20 @@ def Setup(VL, **kwargs):
     VL.ML_DIR = "{}/ML".format(VL.PROJECT_DIR)
     os.makedirs(VL.ML_DIR, exist_ok=True)
 
-    for Name, ParaDict in MLDicts.items():
-    	VL.MLData[Name] = Namespace(**ParaDict)
+    for MLName, ParaDict in MLDicts.items():
+
+        Mdict = {'CALC_DIR':"{}/{}".format(VL.ML_DIR, MLName),
+                 'TMP_CALC_DIR':"{}/{}".format(VL.tmpML_DIR, MLName),
+                 'Parameters':Namespace(**ParaDict)}
+
+        os.makedirs(Mdict["CALC_DIR"], exist_ok=True)
+        os.makedirs(Mdict["TMP_CALC_DIR"])
+
+        VL.MLData[MLName] = Mdict
 
 def devRun(VL,**kwargs):
     if not VL.MLData: return
     sys.path.insert(0,VL.SIM_ML)
     for Name, MLdict in VL.MLData.items():
-    	MLmod = import_module(MLdict.File)
+    	MLmod = import_module(MLdict["Parameters"].File)
     	MLmod.main(VL, MLdict)

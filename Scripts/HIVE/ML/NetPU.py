@@ -109,8 +109,10 @@ def train(model, train_rxyz_norm, train_mu_sigma_norm, test_rxyz_norm, test_mu_s
     # optimizer
     optimizer = optim.AdamW(model.parameters(), lr=lr)
 
+    # loss tensor
+    IndLoss = nn.MSELoss(reduction='none')
     # history
-    hist = {'loss': [], 'loss_val': []}
+    hist = {'loss_batch': [], 'loss_train': [], 'loss_val': []}
     # epoch loop
     old=True
     for epoch in np.arange(epochs):
@@ -129,11 +131,17 @@ def train(model, train_rxyz_norm, train_mu_sigma_norm, test_rxyz_norm, test_mu_s
         # validate
         model.eval()
         loss_val = loss_func(model(test_rxyz_norm), test_mu_sigma_norm)
+        loss_train = loss_func(model(train_rxyz_norm), train_mu_sigma_norm)
         model.train()
 
+        # # loss value for power and uniformity seperately
+        # loss_val_sep = torch.mean(IndLoss(model(test_rxyz_norm), test_mu_sigma_norm),dim=0)
+        # loss_train_sep = torch.mean(IndLoss(model(train_rxyz_norm), train_mu_sigma_norm),dim=0)
+
         # info epoch loop
-        hist['loss'].append(loss.cpu().detach().numpy().tolist())
+        hist['loss_batch'].append(loss.cpu().detach().numpy().tolist())
         hist['loss_val'].append(loss_val.cpu().detach().numpy().tolist())
+        hist['loss_train'].append(loss_train.cpu().detach().numpy().tolist())
 
         if epoch==0:
             oldavg = loss_val
@@ -190,9 +198,9 @@ def DataPool(ResDir, MeshDir):
 
     return Input+Output
 
-def GetData(VL,MLdict):
+def GetData(VL, ML):
     ResDirs = []
-    for SubDir in os.listdir(VL.STUDY_DIR):
+    for SubDir in os.listdir("{}/{}".format(VL.PROJECT_DIR, ML.DataLocation)):
         ResDir = "{}/{}".format(VL.STUDY_DIR,SubDir)
         if not os.path.isdir(ResDir): continue
 
@@ -226,55 +234,80 @@ def Gradold(model, input):
         input = out
     return cumul
 
+
 def func(X, model, alpha):
+    '''
+    This is the function which we look to optimise, which is a weighted geometric
+    average of power & uniformity
+    '''
     X = torch.tensor(X, dtype=torch.float32)
     PV = model.predict(X).detach().numpy()
     score = alpha*PV[0] + (1-alpha)*(PV[1])
     return -(score)
 
 def dfunc(X, model, alpha):
+    '''
+    Derivative of 'func' w.r.t. the inputs x,y,z,r
+    '''
     # Grad = Gradold(model, X)
     Grad = model.GradNN(X)[0]
     dscore = alpha*Grad[0,:] + (1-alpha)*Grad[1,:]
     return -dscore
 
 def constraint(X, model, DesPower):
+    '''
+    Constraint which must be met during the optimisation of func. This specifies
+    that the power must be greater than or equal to 'DesPower'
+    '''
     # print(DesPower)
     X = torch.tensor(X, dtype=torch.float32)
     P,V = model.predict(X).detach().numpy()
     return (P - DesPower)
 
 def dconstraint(X, model, DesPower):
+    '''
+    Derivative of constraint function
+    '''
     # Grad = Gradold(model, X)
     Grad = model.GradNN(X)[0]
     dcon = Grad[0,:]
     return dcon
 
 def MinMax(X, model, sign, Ix):
+    '''
+    Function which can be called to find min/max of power/uniform
+    Sign = 1 => Max Value, Sign = -1 => Min Value
+    Ix = 0 corresponds to power, Ix = 1 correspons to uniformity
+    '''
     X = torch.tensor(X,dtype=torch.float32)
     Pred = model.predict(X).detach().numpy()[Ix]
     return -sign*Pred
 
 def dMinMax(X, model, sign, Ix):
+    '''
+    Derivative of function MinMax
+    '''
     # Grad = Gradold(model, X)[Ix,:]
     Grad = model.GradNN(X)[0]
     dMM = Grad[Ix,:]
     return -sign*dMM
 
-
 def main(VL, MLdict):
+    ML = MLdict["Parameters"]
     # print(torch.get_num_threads())
+
+    # Either generate data or get data from file DataFile
     DataFile = "{}/Data.hdf5".format(VL.ML_DIR)
-    if MLdict.NewData:
-        Data = GetData(VL,MLdict)
+    if ML.NewData:
+        Data = GetData(VL, ML)
         Data = np.array(Data)
         MLfile = h5py.File(DataFile,'w')
-        MLfile.create_dataset('HIVE_Random',data=Data)
+        MLfile.create_dataset(ML.DataName, data=Data)
         MLfile.close()
 
     else :
         MLfile = h5py.File(DataFile,'r')
-        Data = MLfile['HIVE_Random'][...]
+        Data = MLfile[ML.DataName][...]
         MLfile.close()
 
     # shuffle data here if needed
@@ -283,11 +316,11 @@ def main(VL, MLdict):
     # Convert data to float32 for PyTorch
     Data = Data.astype('float32')
 
-    device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+    # device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
     device = torch.device('cpu')
 
-    Total = int(np.ceil(Data.shape[0]*MLdict.DataPrcnt))
-    NbTrain = int(np.ceil(Total*MLdict.SplitRatio))
+    Total = int(np.ceil(Data.shape[0]*ML.DataPrcnt))
+    NbTrain = int(np.ceil(Total*ML.SplitRatio))
     NbTest = Total-NbTrain
 
     TrainData = Data[:NbTrain,:]
@@ -311,8 +344,8 @@ def main(VL, MLdict):
     Out_train = torch.from_numpy(TrainData_norm[:,4:])
     Out_test  = torch.from_numpy(TestData_norm[:,4:])
 
-    ModelFile = '{}/model_{}.h5'.format(VL.ML_DIR, MLdict.Name) # File model will be saved to/loaded from
-    if MLdict.NewModel:
+    ModelFile = '{}/model.h5'.format(MLdict["CALC_DIR"]) # File model will be saved to/loaded from
+    if ML.Train:
         torch.manual_seed(123)
         # create model instance
         model = NetPU()
@@ -322,18 +355,19 @@ def main(VL, MLdict):
 
         history, epoch_stop = train(model, In_train, Out_train,
         		            In_test, Out_test, device,
-                            batch_size=500, epochs=3000, lr=.0001, check_epoch=50,
+                            batch_size=ML.BatchSize, epochs=ML.NbEpoch, lr=.0001, check_epoch=50,
                             GPU=False)
 
-        model.eval()
+        # model.eval()
 
         torch.save(model, ModelFile)
 
         plt.figure(dpi=100)
-        plt.plot(history['loss'][0:epoch_stop], label='loss')
+        plt.plot(history['loss_train'][0:epoch_stop], label='loss_train')
         plt.plot(history['loss_val'][0:epoch_stop], label='loss_val')
         plt.legend()
-        plt.show()
+        plt.savefig("{}/ModelConvergence.png".format(MLdict["CALC_DIR"]))
+        plt.close()
 
     else:
         model = torch.load(ModelFile)
@@ -348,7 +382,7 @@ def main(VL, MLdict):
     train_error = (100*(NN_train - TrainData[:,4:])/TrainData[:,4:]).detach().numpy()
     test_error = (100*(NN_test - TestData[:,4:])/TestData[:,4:]).detach().numpy()
 
-    if getattr(MLdict,'ShowMetric',False):
+    if getattr(ML,'ShowMetric',False):
         bins = list(range(-20,21))
         range5 = np.arange(bins.index(-5),bins.index(5))
         range10 = np.arange(bins.index(-10),bins.index(10))
@@ -442,11 +476,6 @@ def main(VL, MLdict):
     MaxPower_Ix, MaxVar_Ix  = np.argmax(NNGrid,axis=0)
     MinPower_Ix, MinVar_Ix  = np.argmin(NNGrid,axis=0)
 
-    # print(grid.shape)
-    # tst = model.GradNN(grid)
-    # print(tst.shape)
-    # sys.exit()
-
 
     # optimisation with constraints
     b = (0.0,1.0)
@@ -478,10 +507,10 @@ def main(VL, MLdict):
     print("Unifortmity score range: {:.2f} - {:.2f}\n".format(*GlobExtrem[:,1]))
 
     DesPower = 500
-    alpha = 0
+    alpha = 1
 
     print("A minimum of {:.2f} W of power is required".format(DesPower))
-    print("Power weighted by {}, Variation weighted by {}".format(alpha,1-alpha))
+    print("Power weighted by {:.3f}, Variation weighted by {:.3f}".format(alpha,1-alpha))
 
     # Define constraints
     DesPower_norm = ((DesPower - OutputRange[0])/(OutputRange[1]-OutputRange[0]))[0]
@@ -489,36 +518,65 @@ def main(VL, MLdict):
     cnstr = ([con1])
 
     print()
-    NbInit = 100
+    NbInit = 5
     rnd = np.random.uniform(0,1,size=(NbInit,4))
-    score = []
-    # rnd = [[[-3.39784310e-03,  4.63700822e-03,  1.50244462e-03, -4.99919271e+00]]]
-    for X0 in rnd:
+    OptScores = []
+    for i, X0 in enumerate(rnd):
         OptScore = minimize(func, X0, args=(model, alpha), method='SLSQP',jac=dfunc, bounds=bnds, constraints=cnstr, options={'maxiter':100})
-        if not OptScore.success:
+        OptScores.append(OptScore)
+
+    Score = []
+    tol = 0.001
+    for Opt in OptScores:
+        if not Opt.success:
             continue
-        '''
-        Todo - check if there is a point close to this been found already
-        '''
-        # score.append(-OptScore.fun)
+        # print(Opt.x)
+        if not Score:
+            Score, Coord = [-Opt.fun], np.array([Opt.x])
+        else :
+            D = np.linalg.norm(Coord-np.array(Opt.x),axis=1)
+            # print(D.min())
+            # bl = D < tol
+            # if any(bl):
+            #     print(Opt.x,Coord[bl,:])
+            if all(D > tol):
+                Coord = np.vstack((Coord,Opt.x))
+                Score.append(-Opt.fun)
+
+    Score = np.array(Score)
+    # print(Score, Coord)
+    sortlist = np.argsort(Score)[::-1]
+    Score = Score[sortlist]
+    Coord = Coord[sortlist,:]
+
+    NNOptOutput = model.predict(torch.tensor(Coord, dtype=torch.float32))
+    NNOptOutput = (NNOptOutput*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
+    OptCoord = Coord*(InputRange[1]-InputRange[0]) + InputRange[0]
+    BestCoord, BestPred = OptCoord[0,:], NNOptOutput[0,:]
+    print("Optimum configuration:")
+    print("x,y,z,r ---> ({:.4f},{:.4f},{:.4f},{:.4f})".format(*BestCoord))
+    print("Power, Uniformity ---> {:.2f} W, {:.3f}\n".format(*BestPred))
+    print()
+
+    if OptCoord.shape[0]>1:
+        Nb = 5 # Max number of other configurations to show
+        print("Other configurations:")
+        for Cd, Pred in zip(OptCoord[1:Nb+1,:],NNOptOutput[1:,:]):
+            print("x,y,z,r ---> ({:.4f},{:.4f},{:.4f},{:.4f})".format(*Cd))
+            print("Power, Uniformity ---> {:.2f} W, {:.3f}\n".format(*Pred))
+
 
     # shgo doesn't seem to work as well with constraints - often numbers lower than des power are generated as optimum
-    # I think this is because of max iter in solver however no return of success for each run with shgo
+    # This is because of max iter in solver however no return of success for each run with shgo
     # OptScore = shgo(func, bnds, args=(model,alpha), n=100, iters=5, sampling_method='sobol',minimizer_kwargs={'method':'SLSQP','jac':dfunc,'args':(model, alpha),'constraints':cnstr})
     # print(OptScore)
 
-    print('Optimum score is {:.4f}'.format(-OptScore.fun))
-    OptCoord = OptScore.x*(InputRange[1]-InputRange[0]) + InputRange[0]
-    pred_norm = model.predict(torch.tensor(OptScore.x, dtype=torch.float32))
-    NNOptOutput = (pred_norm*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
-    print("The location for this optimum is {}\n".format(OptCoord))
-    print("The predicted power at this point is {:.2f} W with uniformity score {:.2f}".format(*NNOptOutput))
-
-
     if ML.Verify:
+        from PreAster.devPreHIVE import ERMES_Mesh, SetupERMES
+
         ParaDict = {'CoilType':'HIVE',
-                    'CoilDisplacement':OptCoord[:3].tolist(),
-                    'Rotation':OptCoord[3],
+                    'CoilDisplacement':BestCoord[:3].tolist(),
+                    'Rotation':BestCoord[3],
                     'Current':1000,
                     'Frequency':1e4,
                     'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
@@ -527,24 +585,34 @@ def main(VL, MLdict):
 
         Parameters = Namespace(**ParaDict)
 
-        tstDict = {'TMP_CALC_DIR':VL.tmpML_DIR, 'MeshFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),'LogFile':None,'Parameters':Parameters}
-        ERMESfile = '{}/maxERMES.rmed'.format(VL.ML_DIR)
+        ERMESdir = "{}/ERMES".format(VL.tmpML_DIR)
+        os.makedirs(ERMESdir)
 
+        # Create ERMES mesh
+        SampleMeshFile = "{}/AMAZEsample.med".format(VL.MESH_DIR)
+        ERMESmeshfile = "{}/Mesh.med".format(ERMESdir)
+        err = ERMES_Mesh(VL,SampleMeshFile, ERMESmeshfile,
+        				AddPath = VL.tmpML_DIR,
+        				LogFile = None,
+        				GUI=0)
+        if err: return sys.exit('Issue creating mesh')
 
-        from PreAster import devPreHIVE
-        Watts, WattsPV, Elements, JHNode = devPreHIVE.SetupERMES(VL, tstDict,ERMESfile)
-        #
+        ERMESresfile = '{}/maxERMES.rmed'.format(VL.ML_DIR)
+        Watts, WattsPV, Elements, JHNode = SetupERMES(VL, Parameters, ERMESmeshfile, ERMESresfile, ERMESdir)
+
+		# shutil.rmtree(ERMESdir)
+
         # ERMESres = h5py.File(ERMESfile, 'r')
         # attrs =  ERMESres["EM_Load"].attrs
         # Elements = ERMESres["EM_Load/Elements"][:]
-        #
+
         # Scale = (Parameters.Current/attrs['Current'])**2
         # Watts = ERMESres["EM_Load/Watts"][:]*Scale
         # WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
         # JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
         # ERMESres.close()
 
-        Meshcls = MeshInfo(tstDict['MeshFile'])
+        Meshcls = MeshInfo(SampleMeshFile)
         CoilFace = Meshcls.GroupInfo('CoilFace')
         Meshcls.Close()
 
@@ -555,19 +623,12 @@ def main(VL, MLdict):
 
         ActOptOutput = np.array([Power, Uniformity])
 
-        print("The correct power at this point is {:.2f} W with uniformity score {:.2f}".format(*ActOptOutput))
+        print("Actual power & uniformity at optimum configuration is {:.2f} W, {:.3f}".format(*ActOptOutput))
 
-        err = 100*(NNOptOutput - ActOptOutput)/ActOptOutput
+        err = 100*(BestPred - ActOptOutput)/ActOptOutput
         print("Prediction errors are: {:.3f} & {:.3f}".format(*err))
 
-    # val = torch.argmax(train_mu_sigma, axis=0)
-    # # point = train_rxyz[val[0],:]
-    # # model.predict_denorm()
-    # point_norm = train_rxyz_norm[val[0],:]
-    # pred = (model.predict(point_norm,device)*(OutputRange[1]-OutputRange[0]) + OutputRange[0]).detach().numpy()
-    # act = train_mu_sigma[val[0],:].detach().numpy()
-    # err = 100*(pred - act)/act
-    # print(err)
+
 
 
 

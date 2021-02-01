@@ -574,6 +574,8 @@ def EMI(Info, StudyDict):
 	CumSum = Watts.cumsum()
 	CoilPower = CumSum[-1]
 	print("Power delivered by coil: {:.4f}W".format(CoilPower))
+	StudyDict['CoilPower'] = CoilPower
+
 	# Scale CumSum to 0 and 1
 	CumSum = CumSum/CoilPower
 

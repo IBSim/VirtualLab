@@ -438,8 +438,9 @@ def main(VL, MLdict):
     	out = model.predict(xyzr).detach().numpy()
     	return out*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
 
-    Total = 1000
-    batch = 10
+    Total = 3000
+    batch = 30
+
     bins = 11
     LossMetric = 'triangle' # uniform, value, triangle
 

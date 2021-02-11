@@ -19,7 +19,7 @@ class Salome():
 		self.Exec = getattr(VLconfig,'SalomeExec','salome')
 
 		# AddPath will always add these paths to salome environment
-		self.AddPath = kwargs.get('AddPath',[]) + [os.path.dirname(os.path.realpath(__file__))]
+		self.AddPath = kwargs.get('AddPath',[]) + [os.path.dirname(os.path.abspath(__file__))]
 		self.Ports = []
 
 

@@ -437,10 +437,10 @@ def main(VL, MLdict):
     	xyzr = torch.tensor(xyzr, dtype=torch.float32)
     	out = model.predict(xyzr).detach().numpy()
     	return out*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
-    # test comment
-    # test comment on branch
-    Total = 2000
-    batch = 50
+
+    Total = 3000
+    batch = 30
+
     bins = 11
     LossMetric = 'triangle' # uniform, value, triangle
 
@@ -450,19 +450,41 @@ def main(VL, MLdict):
 
     learner = LearnerND(lambda l:1, bounds=[(0, 1),(0, 1),(0,1),(0,1)], loss_per_simplex=LossMet)
 
-    while learner.npoints<Total:
-        print(learner.npoints)
-        Xs,ls = learner.ask(batch)
-        for x in Xs:
-            y = fn(x)[0]
-            learner.tell(x,y)
+    brk = False
+    while True:
+    	if learner.npoints > Total:
+    		break
+
+    	if learner.npoints==0:
+    		Xs,Ls = learner.ask(2**4)
+    	else:
+    		Xs,Ls = learner.ask(batch)
+    #	print(Ls)
+    	for x,ls in zip(Xs,Ls):
+    		y = fn(x)[0]
+    		learner.tell(x,y)
+    		L_loss = learner.loss()
+    		if L_loss == float('inf'): continue
+    		if ls == 0 or ls == float('inf'): continue
+    		if abs(L_loss) < 1e-8:
+    			brk = True
+    	print(learner.npoints,L_loss)
+    	if brk: break
 
     fig, ax = plt.subplots(nrows=4, ncols=1, sharex=True, sharey=True, dpi=200, figsize=(4,10))
     arr = np.array(list(learner.data.keys()))
 
-    for i in range(4):
-    	ax[i].hist(arr[:,i], color = "skyblue", bins=bins)
-    # plt.show()
+    if 1:
+    	for j in range(arr.shape[0] // batch+1):
+    		for i in range(4):
+    			ax[i].hist(arr[:(j+1)*batch,i], color = "skyblue", bins=bins)
+    		plt.pause(0.1)
+    	plt.show()
+    else :
+    	for i in range(4):
+    		ax[i].hist(arr[:,i], color = "skyblue", bins=bins)
+    	plt.show()
+
 
     Slice = 'xy'
     Res = 'Power' # 'Uniformity'

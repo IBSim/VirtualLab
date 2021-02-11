@@ -11,12 +11,13 @@ import torch.utils.data as Data
 import copy
 from pathos.multiprocessing import ProcessPool
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from prettytable import PrettyTable
 from scipy.optimize import minimize, differential_evolution, shgo, basinhopping
 from types import SimpleNamespace as Namespace
-
+from natsort import natsorted
 from Scripts.Common.VLFunctions import MeshInfo
-
+import scipy
 
 # NetPU architecture
 class NetPU(nn.Module):
@@ -153,8 +154,8 @@ def train(model, train_rxyz_norm, train_mu_sigma_norm, test_rxyz_norm, test_mu_s
                 print('old model copied')
                 oldmodel=copy.deepcopy(model)
                 old=False
-            if avg>oldavg:
-                break
+            # if avg>oldavg:
+            #     break
             oldavg=avg
 
     # info end
@@ -168,7 +169,8 @@ def train(model, train_rxyz_norm, train_mu_sigma_norm, test_rxyz_norm, test_mu_s
     # return history
     return hist, epoch
 
-def DataPool(ResDir, MeshDir):
+
+def DataPool(ResDir, MeshDir,):
     # function which is used by ProcessPool map
     sys.path.insert(0,ResDir)
     Parameters = reload(import_module('Parameters'))
@@ -178,20 +180,48 @@ def DataPool(ResDir, MeshDir):
     Watts = ERMESres["EM_Load/Watts"][:]
     JHNode =  ERMESres["EM_Load/JHNode"][:]
     ERMESres.close()
-
+    print(ResDir)
     # Calculate power
     CoilPower = np.sum(Watts)
 
-    # Calculate uniformity
-    # get top surface nodes
+    # # method 1 looks at the stdev
+    # Meshcls = MeshInfo("{}/{}.med".format(MeshDir,Parameters.Mesh))
+    # CoilFace = Meshcls.GroupInfo('CoilFace')
+    # Meshcls.Close()
+    # Uniformity = np.std(JHNode[CoilFace.Nodes-1])
+
+    # method 2
+    # Meshcls = MeshInfo("{}/{}.med".format(MeshDir,Parameters.Mesh))
+    # CoilFace = Meshcls.GroupInfo('CoilFace')
+    # Meshcls.Close()
+    # Issue here is that it scales each sample individually
+    # Scale JH to 0 to 2 so that StDev must be in range [0,1]
+    # JHMax, JHMin = JHNode.max(), JHNode.min()
+    # JHNode = 2*(JHNode - JHMin)/(JHMax-JHMin)
+    # # flips StDev so that 1 is best score and 0 is the worst
+    # Uniformity = 1 - np.std(JHNode[CoilFace.Nodes-1])
+    tst = np.inf
+    JHNode /= Parameters.Current **2
     Meshcls = MeshInfo("{}/{}.med".format(MeshDir,Parameters.Mesh))
     CoilFace = Meshcls.GroupInfo('CoilFace')
+    Area, JHArea = 0, 0 # Actual area and area of triangles with JH
+    for nodes in CoilFace.Connect:
+        vertices = Meshcls.GetNodeXYZ(nodes)
+        # Heron's formula
+        a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
+        s = 0.5 * (a + b + c)
+        area = np.sqrt(s * (s - a) * (s - b) * (s - c))
+        Area += area
+
+        vertices[:,2] += JHNode[nodes - 1].flatten()
+
+        a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
+        s = 0.5 * (a + b + c)
+        area1 = np.sqrt(s * (s - a) * (s - b) * (s - c))
+        JHArea += area1
+
     Meshcls.Close()
-    # Scale JH to 0 to 2 so that StDev must be in range [0,1]
-    JHMax, JHMin = JHNode.max(), JHNode.min()
-    JHNode = 2*(JHNode - JHMin)/(JHMax-JHMin)
-    # flips StDev so that 1 is best score and 0 is the worst
-    Uniformity = 1 - np.std(JHNode[CoilFace.Nodes-1])
+    Uniformity = JHArea/Area
 
     Input = Parameters.CoilDisplacement+[Parameters.Rotation]
     Output = [CoilPower,Uniformity]
@@ -200,8 +230,9 @@ def DataPool(ResDir, MeshDir):
 
 def GetData(VL, ML):
     ResDirs = []
-    for SubDir in os.listdir("{}/{}".format(VL.PROJECT_DIR, ML.DataLocation)):
-        ResDir = "{}/{}".format(VL.STUDY_DIR,SubDir)
+    DataDir = VL.STUDY_DIR
+    for SubDir in natsorted(os.listdir(DataDir)):
+        ResDir = "{}/{}".format(DataDir,SubDir)
         if not os.path.isdir(ResDir): continue
 
         ResDirs.append(ResDir)
@@ -296,35 +327,59 @@ def main(VL, MLdict):
     ML = MLdict["Parameters"]
     # print(torch.get_num_threads())
 
-    # Either generate data or get data from file DataFile
+    # File where all data is stored
     DataFile = "{}/Data.hdf5".format(VL.ML_DIR)
-    if ML.NewData:
+
+    # Create new data
+    if ML.CreateData:
         Data = GetData(VL, ML)
         Data = np.array(Data)
-        MLfile = h5py.File(DataFile,'w')
-        MLfile.create_dataset(ML.DataName, data=Data)
+        MLfile = h5py.File(DataFile,'a')
+        if VL.StudyName not in MLfile.keys():
+            StudyGrp = MLfile.create_group(VL.StudyName)
+        else :
+            StudyGrp = MLfile[VL.StudyName]
+        if ML.DataName in StudyGrp.keys():
+            del StudyGrp[ML.DataName]
+        StudyGrp.create_dataset(ML.DataName, data=Data)
         MLfile.close()
 
+    # Get Train and Test Data
+    DataPrcnt = getattr(ML,'DataPrcnt',1)
+    DataSplit = getattr(ML,'DataSplit',0.7)
+
+    MLData = h5py.File(DataFile,'r')
+
+    if ML.TrainData in MLData:
+        TrainData = MLData[ML.TrainData][:]
+    elif "{}/{}".format(VL.StudyName,ML.TrainData) in MLData:
+        TrainData = MLData["{}/{}".format(VL.StudyName,ML.TrainData)][:]
     else :
-        MLfile = h5py.File(DataFile,'r')
-        Data = MLfile[ML.DataName][...]
-        MLfile.close()
+        sys.exit("Data not found")
+    TrainNb = int(np.ceil(TrainData.shape[0]*DataPrcnt))
+
+    if hasattr(ML,'TestData'):
+        # Get data from elsewhere
+        TestNb = int(np.ceil(TrainNb*(1-DataSplit)/DataSplit))
+        TestData = MLData[ML.TestData][:]
+        TestData = TestData[:TestNb,:]
+    else :
+        TestNb = int(np.ceil(TrainNb*(1-DataSplit)))
+        TrainNb -= TestNb
+        TestData = TrainData[TrainNb:,:]
+        TrainData = TrainData[:TrainNb,:]
+
+    MLData.close()
 
     # shuffle data here if needed
     # np.random.shuffle(Data)
 
     # Convert data to float32 for PyTorch
-    Data = Data.astype('float32')
+    TrainData = TrainData.astype('float32')
+    TestData = TestData.astype('float32')
 
     # device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
     device = torch.device('cpu')
-
-    Total = int(np.ceil(Data.shape[0]*ML.DataPrcnt))
-    NbTrain = int(np.ceil(Total*ML.SplitRatio))
-    NbTest = Total-NbTrain
-
-    TrainData = Data[:NbTrain,:]
-    TestData = Data[NbTrain:Total,:]
 
     DataMin = TrainData.min(axis=0)
     DataMax = TrainData.max(axis=0)
@@ -374,13 +429,164 @@ def main(VL, MLdict):
 
     model.eval()
 
+
+    from adaptive import LearnerND
+    import adaptive.learner.learnerND as LND
+
+    def fn(xyzr):
+    	xyzr = torch.tensor(xyzr, dtype=torch.float32)
+    	out = model.predict(xyzr).detach().numpy()
+    	return out*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
+
+    Total = 2000
+    batch = 50
+    bins = 11
+    LossMetric = 'triangle' # uniform, value, triangle
+
+    if LossMetric == 'uniform': LossMet = LND.uniform_loss
+    elif LossMetric == 'value': LossMet = LND.default_loss
+    elif LossMetric == 'triangle': LossMet = LND.triangle_loss
+
+    learner = LearnerND(lambda l:1, bounds=[(0, 1),(0, 1),(0,1),(0,1)], loss_per_simplex=LossMet)
+
+    while learner.npoints<Total:
+        print(learner.npoints)
+        Xs,ls = learner.ask(batch)
+        for x in Xs:
+            y = fn(x)[0]
+            learner.tell(x,y)
+
+    fig, ax = plt.subplots(nrows=4, ncols=1, sharex=True, sharey=True, dpi=200, figsize=(4,10))
+    arr = np.array(list(learner.data.keys()))
+
+    for i in range(4):
+    	ax[i].hist(arr[:,i], color = "skyblue", bins=bins)
+    # plt.show()
+
+    Slice = 'xy'
+    Res = 'Power' # 'Uniformity'
+    Component = 'va'
+    MajorN = 7
+    MinorN = 20
+
+    InTag, OutTag = ['x','y','z','r'],['power','uniformity']
+    imslice = [InTag.index(ax.lower()) for ax in Slice]
+    ResAx = OutTag.index(Res.lower())
+
+    DiscSl = np.linspace(0+0.5*1/MinorN,1-0.5*1/MinorN,MinorN)
+    DiscAx = np.linspace(0,1,MajorN)
+    # DiscAx = np.linspace(0+0.5*1/MajorN,1-0.5*1/MajorN,MajorN)
+
+    disc = [DiscAx]*4
+    disc[imslice[0]] = disc[imslice[1]] = DiscSl
+    grid = np.meshgrid(*disc, indexing='ij')
+    grid = np.moveaxis(np.array(grid),0,-1) #grid point is now the last axis
+    ndim = grid.ndim - 1
+
+    # unroll grid so it can be passed to model
+    _disc = [dsc.shape[0] for dsc in disc]
+    grid = grid.reshape([np.prod(_disc),ndim])
+
+    # decide what component of Res to print - gradient (magnitude or individual) or the value
+    if Component.lower() == 'grad':
+        imres = model.GradNN(grid)
+        imres = np.linalg.norm(imres, axis=2)
+    elif Component.lower().startswith('grad'):
+        ax = InTag.index(Component[-1].lower())
+        imres = model.GradNN(grid)
+        imres = imres[:,:,ax]
+    else :
+        with torch.no_grad():
+            imres = model.predict(torch.tensor(grid, dtype=torch.float32)).detach().numpy()
+            imres = imres*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
+
+    IMMin, IMMax = imres.min(axis=0), imres.max(axis=0)
+
+    grid = grid.reshape(_disc+[grid.shape[1]])
+    grid = grid*(InputRange[1]-InputRange[0]) + InputRange[0]
+
+    imres = imres.reshape(_disc+[*imres.shape[1:]])
+
+    _ix = [i for i in range(len(InTag)) if i not in imslice]
+
+    _sl = [0]*len(InTag) + [_ix[0]]
+    _sl[_ix[0]] = slice(None)
+    arr1 = grid[tuple(_sl)]
+    # arr1 = arr1[:1]
+    _sl = [0]*len(InTag) + [_ix[1]]
+    _sl[_ix[1]] = slice(None)
+    arr2 = grid[tuple(_sl)]
+
+    fig, ax = plt.subplots(nrows=arr1.size, ncols=arr2.size, sharex=True, sharey=True, dpi=200, figsize=(4,6))
+    ax = np.atleast_2d(ax)
+
+    fig.subplots_adjust(right=0.8)
+    for it1,nb1 in enumerate(arr1):
+        ax[-(it1+1), 0].set_ylabel('{:.4f}'.format(nb1), fontsize=6)
+        for it2,nb2 in enumerate(arr2):
+            sl = [slice(None)]*len(InTag) + [ResAx]
+            sl[_ix[0]],sl[_ix[1]]  = it1, it2
+            tst = imres[tuple(sl)].T
+            m1,m2 = tst.max(),tst.min()
+
+            Im = ax[-(it1+1),it2].imshow(imres[tuple(sl)].T, cmap = 'coolwarm', vmin=IMMin[ResAx], vmax=IMMax[ResAx], origin='lower')
+            ax[-(it1+1),it2].set_xticks([])
+            ax[-(it1+1),it2].set_yticks([])
+
+            ax[-1, it2].set_xlabel("{} {:.4f}".format(InTag[_ix[1]],nb2), fontsize=6)
+
+    if 1:
+        batch = 90000
+        for j in range(arr.shape[0] // batch + 1):
+            _batch = arr[:(j+1)*batch,:]*(InputRange[1]-InputRange[0]) + InputRange[0]
+
+            for it1,nb1 in enumerate(arr1):
+                if it1 == 0: bl1 = _batch[:,_ix[0]] <= np.mean(arr1[:2])
+                elif it1 == arr1.shape[0]-1: bl1 = _batch[:,_ix[0]] > np.mean(arr1[-2:])
+                else: bl1 = (np.mean(arr1[it1-1:it1+1]) < _batch[:,_ix[0]])*(_batch[:,_ix[0]] <= np.mean(arr1[it1:it1+2]))
+                for it2,nb2 in enumerate(arr2):
+                    if it2 == 0: bl2 = _batch[:,_ix[1]] <= np.mean(arr2[:2])
+                    elif it2 == arr2.shape[0]-1: bl2 = _batch[:,_ix[1]] > np.mean(arr2[-2:])
+                    else: bl2 = (np.mean(arr2[it2-1:it2+1]) < _batch[:,_ix[1]])*(_batch[:,_ix[1]] <= np.mean(arr2[it2:it2+2]))
+                    bl = bl1*bl2
+                    dat = _batch[bl,:]
+
+                    sl1 = (dat[:,imslice[0]] - InputRange[0,imslice[0]])/(InputRange[1,imslice[0]] - InputRange[0,imslice[0]])
+                    min1, max1 = ax[it1,it2].get_xlim()
+                    sl1 = min1 + sl1*(max1 - min1)
+
+                    sl2 = (dat[:,imslice[1]] - InputRange[0,imslice[1]])/(InputRange[1,imslice[1]] - InputRange[0,imslice[1]])
+                    min2, max2 = ax[it1,it2].get_ylim()
+                    sl2 = min2 + sl2*(max2 - min2)
+
+                    Sc = ax[-(it1+1),it2].scatter(sl1,sl2, c='r', marker = 'x', s=2)
+            plt.pause(0.1)
+        cbar_ax = fig.add_axes([0.85, 0.05, 0.05, 0.4])
+        fig.colorbar(Sc, cax=cbar_ax)
+
+    cbar_ax = fig.add_axes([0.85, 0.55, 0.05, 0.4])
+    bnds = np.linspace(*Im.get_clim(),12)
+    ticks = np.linspace(*Im.get_clim(),6)
+    fig.colorbar(Im, boundaries=bnds, ticks=ticks, cax=cbar_ax)
+
+    fig.suptitle(Res.capitalize())
+    fig.text(0.5, 0.04, Slice[0].capitalize(), ha='center')
+    fig.text(0.04, 0.5, Slice[1].capitalize(), va='center', rotation='vertical')
+
+    plt.show()
+
+    sys.exit()
+
     # prediction & scale to actual value
     NN_train = model.predict(In_train)*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
     NN_test = model.predict(In_test)*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
 
     # Error percentage for test & train using NN
-    train_error = (100*(NN_train - TrainData[:,4:])/TrainData[:,4:]).detach().numpy()
-    test_error = (100*(NN_test - TestData[:,4:])/TestData[:,4:]).detach().numpy()
+    train_error = (NN_train - TrainData[:,4:]).detach().numpy()
+    test_error = (NN_test - TestData[:,4:]).detach().numpy()
+
+    train_error_perc = 100*train_error/TrainData[:,4:]
+    test_error_perc = 100*test_error/TestData[:,4:]
 
     if getattr(ML,'ShowMetric',False):
         bins = list(range(-20,21))
@@ -388,15 +594,15 @@ def main(VL, MLdict):
         range10 = np.arange(bins.index(-10),bins.index(10))
 
         # Testing metrics
-        Ptest_Hist = np.histogram(test_error[:,0],bins=bins)[0]
-        Utest_Hist = np.histogram(test_error[:,1],bins=bins)[0]
-        Cmbtest_Hist = np.histogram(np.abs(test_error).mean(axis=1),bins=bins)[0]
-        Ptest5 = 100*Ptest_Hist[range5].sum()/NbTest
-        Ptest10 = 100*Ptest_Hist[range10].sum()/NbTest
-        Utest5 = 100*Utest_Hist[range5].sum()/NbTest
-        Utest10 = 100*Utest_Hist[range10].sum()/NbTest
-        Cmbtest5 = 100*Cmbtest_Hist[range5].sum()/NbTest
-        Cmbtest10 = 100*Cmbtest_Hist[range10].sum()/NbTest
+        Ptest_Hist = np.histogram(test_error_perc[:,0],bins=bins)[0]
+        Utest_Hist = np.histogram(test_error_perc[:,1],bins=bins)[0]
+        Cmbtest_Hist = np.histogram(np.abs(test_error_perc).mean(axis=1),bins=bins)[0]
+        Ptest5 = 100*Ptest_Hist[range5].sum()/TestNb
+        Ptest10 = 100*Ptest_Hist[range10].sum()/TestNb
+        Utest5 = 100*Utest_Hist[range5].sum()/TestNb
+        Utest10 = 100*Utest_Hist[range10].sum()/TestNb
+        Cmbtest5 = 100*Cmbtest_Hist[range5].sum()/TestNb
+        Cmbtest10 = 100*Cmbtest_Hist[range10].sum()/TestNb
 
         TestTb = PrettyTable(['Output','+-5%','+-10%'],float_format=".3")
         TestTb.title = "Metric for test data"
@@ -408,15 +614,15 @@ def main(VL, MLdict):
         print()
 
         # Training metrics
-        Ptrain_Hist = np.histogram(train_error[:,0],bins=bins)[0]
-        Utrain_Hist = np.histogram(train_error[:,1],bins=bins)[0]
-        Cmbtrain_Hist = np.histogram(np.abs(train_error).mean(axis=1),bins=bins)[0]
-        Ptrain5 = 100*Ptrain_Hist[range5].sum()/NbTrain
-        Ptrain10 = 100*Ptrain_Hist[range10].sum()/NbTrain
-        Utrain5 = 100*Utrain_Hist[range5].sum()/NbTrain
-        Utrain10 = 100*Utrain_Hist[range10].sum()/NbTrain
-        Cmbtrain5 = 100*Cmbtrain_Hist[range5].sum()/NbTrain
-        Cmbtrain10 = 100*Cmbtrain_Hist[range10].sum()/NbTrain
+        Ptrain_Hist = np.histogram(train_error_perc[:,0],bins=bins)[0]
+        Utrain_Hist = np.histogram(train_error_perc[:,1],bins=bins)[0]
+        Cmbtrain_Hist = np.histogram(np.abs(train_error_perc).mean(axis=1),bins=bins)[0]
+        Ptrain5 = 100*Ptrain_Hist[range5].sum()/TrainNb
+        Ptrain10 = 100*Ptrain_Hist[range10].sum()/TrainNb
+        Utrain5 = 100*Utrain_Hist[range5].sum()/TrainNb
+        Utrain10 = 100*Utrain_Hist[range10].sum()/TrainNb
+        Cmbtrain5 = 100*Cmbtrain_Hist[range5].sum()/TrainNb
+        Cmbtrain10 = 100*Cmbtrain_Hist[range10].sum()/TrainNb
 
         TrainTb = PrettyTable(['Output','+-5%','+-10%'],float_format=".3")
         TrainTb.title = "Metric for training data"
@@ -427,6 +633,31 @@ def main(VL, MLdict):
         print(TrainTb)
         print()
 
+        fig,ax = plt.subplots(2, 2,figsize=(10,15))
+        ax[0,0].hist(train_error_perc[:, 0],bins=bins)
+        ax[0,0].set_title('Power_train')
+        ax[0,0].set_xlabel('Error')
+        ax[0,0].set_ylabel('Count')
+        Xlim = max(np.absolute(ax[0,0].get_xlim()))
+        ax[0,1].hist(test_error_perc[:, 0],bins=bins)
+        ax[0,1].set_title('Power_test')
+        ax[0,1].set_xlabel('Error')
+        ax[0,1].set_ylabel('Count')
+        Xlim = max(max(np.absolute(ax[0,1].get_xlim())),Xlim)
+        ax[1,0].hist(train_error_perc[:, 1],bins=bins)
+        ax[1,0].set_title('Uniform_train')
+        ax[1,0].set_xlabel('Error')
+        ax[1,0].set_ylabel('Count')
+        Xlim = max(max(np.absolute(ax[1,0].get_xlim())),Xlim)
+        ax[1,1].hist(test_error_perc[:, 1],bins=bins)
+        ax[1,1].set_title('Uniform_test')
+        ax[1,1].set_xlabel('Error')
+        ax[1,1].set_ylabel('Count')
+        Xlim = max(max(np.absolute(ax[1,1].get_xlim())),Xlim)
+
+        plt.setp(ax, xlim=(-Xlim,Xlim))
+        plt.show()
+        bins = 20
         fig,ax = plt.subplots(2, 2,figsize=(10,15))
         ax[0,0].hist(train_error[:, 0],bins=bins)
         ax[0,0].set_title('Power_train')
@@ -449,8 +680,137 @@ def main(VL, MLdict):
         ax[1,1].set_ylabel('Count')
         Xlim = max(max(np.absolute(ax[1,1].get_xlim())),Xlim)
 
-        plt.setp(ax, xlim=(-Xlim,Xlim))
+        # plt.setp(ax, xlim=(-Xlim,Xlim))
         plt.show()
+
+
+        Slice = 'xy'
+        Res = 'Power' # 'Uniformity'
+        Component = 'va'
+        MajorN = 7
+        MinorN = 20
+
+        InTag, OutTag = ['x','y','z','r'],['power','uniformity']
+        imslice = [InTag.index(ax.lower()) for ax in Slice]
+        ResAx = OutTag.index(Res.lower())
+
+        DiscSl = np.linspace(0+0.5*1/MinorN,1-0.5*1/MinorN,MinorN)
+        DiscAx = np.linspace(0,1,MajorN)
+        # DiscAx = np.linspace(0+0.5*1/MajorN,1-0.5*1/MajorN,MajorN)
+
+        disc = [DiscAx]*4
+        disc[imslice[0]] = disc[imslice[1]] = DiscSl
+        grid = np.meshgrid(*disc, indexing='ij')
+        grid = np.moveaxis(np.array(grid),0,-1) #grid point is now the last axis
+        ndim = grid.ndim - 1
+
+        # unroll grid so it can be passed to model
+        _disc = [dsc.shape[0] for dsc in disc]
+        grid = grid.reshape([np.prod(_disc),ndim])
+
+        # decide what component of Res to print - gradient (magnitude or individual) or the value
+        if Component.lower() == 'grad':
+            imres = model.GradNN(grid)
+            imres = np.linalg.norm(imres, axis=2)
+        elif Component.lower().startswith('grad'):
+            ax = InTag.index(Component[-1].lower())
+            imres = model.GradNN(grid)
+            imres = imres[:,:,ax]
+        else :
+            with torch.no_grad():
+                imres = model.predict(torch.tensor(grid, dtype=torch.float32)).detach().numpy()
+                imres = imres*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
+
+        IMMin, IMMax = imres.min(axis=0), imres.max(axis=0)
+
+        grid = grid.reshape(_disc+[grid.shape[1]])
+        grid = grid*(InputRange[1]-InputRange[0]) + InputRange[0]
+
+        imres = imres.reshape(_disc+[*imres.shape[1:]])
+
+        _ix = [i for i in range(len(InTag)) if i not in imslice]
+
+        _sl = [0]*len(InTag) + [_ix[0]]
+        _sl[_ix[0]] = slice(None)
+        arr1 = grid[tuple(_sl)]
+        # arr1 = arr1[:1]
+        _sl = [0]*len(InTag) + [_ix[1]]
+        _sl[_ix[1]] = slice(None)
+        arr2 = grid[tuple(_sl)]
+
+        fig, ax = plt.subplots(nrows=arr1.size, ncols=arr2.size, sharex=True, sharey=True, dpi=200, figsize=(4,6))
+        ax = np.atleast_2d(ax)
+
+        fig.subplots_adjust(right=0.8)
+        for it1,nb1 in enumerate(arr1):
+            ax[-(it1+1), 0].set_ylabel('{:.4f}'.format(nb1), fontsize=6)
+            for it2,nb2 in enumerate(arr2):
+                sl = [slice(None)]*len(InTag) + [ResAx]
+                sl[_ix[0]],sl[_ix[1]]  = it1, it2
+                tst = imres[tuple(sl)].T
+                m1,m2 = tst.max(),tst.min()
+                print(m1,m2,m1-m2)
+
+                Im = ax[-(it1+1),it2].imshow(imres[tuple(sl)].T, cmap = 'coolwarm', vmin=IMMin[ResAx], vmax=IMMax[ResAx], origin='lower')
+                ax[-(it1+1),it2].set_xticks([])
+                ax[-(it1+1),it2].set_yticks([])
+
+                ax[-1, it2].set_xlabel("{} {:.4f}".format(InTag[_ix[1]],nb2), fontsize=6)
+
+        if 0:
+            errmin, errmax = train_error.min(axis=0)[ResAx], train_error.max(axis=0)[ResAx]
+            errbnd = max(abs(errmin),abs(errmax))
+            batch = 90000
+            for j in range(TrainData.shape[0] // batch + 1):
+                _batch = TrainData[:(j+1)*batch,:]
+                for it1,nb1 in enumerate(arr1):
+                    if it1 == 0: bl1 = _batch[:,_ix[0]] <= np.mean(arr1[:2])
+                    elif it1 == arr1.shape[0]-1: bl1 = _batch[:,_ix[0]] > np.mean(arr1[-2:])
+                    else: bl1 = (np.mean(arr1[it1-1:it1+1]) < _batch[:,_ix[0]])*(_batch[:,_ix[0]] <= np.mean(arr1[it1:it1+2]))
+                    for it2,nb2 in enumerate(arr2):
+                        if it2 == 0: bl2 = _batch[:,_ix[1]] <= np.mean(arr2[:2])
+                        elif it2 == arr2.shape[0]-1: bl2 = _batch[:,_ix[1]] > np.mean(arr2[-2:])
+                        else: bl2 = (np.mean(arr2[it2-1:it2+1]) < _batch[:,_ix[1]])*(_batch[:,_ix[1]] <= np.mean(arr2[it2:it2+2]))
+                        bl = bl1*bl2
+                        dat = _batch[bl,:]
+
+                        sl1 = (dat[:,imslice[0]] - InputRange[0,imslice[0]])/(InputRange[1,imslice[0]] - InputRange[0,imslice[0]])
+                        min1, max1 = ax[it1,it2].get_xlim()
+                        sl1 = min1 + sl1*(max1 - min1)
+
+                        sl2 = (dat[:,imslice[1]] - InputRange[0,imslice[1]])/(InputRange[1,imslice[1]] - InputRange[0,imslice[1]])
+                        min2, max2 = ax[it1,it2].get_ylim()
+                        sl2 = min2 + sl2*(max2 - min2)
+
+                        cl = train_error[:(j+1)*batch,ResAx][bl]
+                        cmap = cm.get_cmap('PiYG')
+
+                        Sc = ax[-(it1+1),it2].scatter(sl1,sl2, c=cl, marker = 'x', cmap=cmap, vmin = -errbnd, vmax = errbnd, s=2)
+                plt.pause(0.1)
+            cbar_ax = fig.add_axes([0.85, 0.05, 0.05, 0.4])
+            fig.colorbar(Sc, cax=cbar_ax)
+
+        cbar_ax = fig.add_axes([0.85, 0.55, 0.05, 0.4])
+        bnds = np.linspace(*Im.get_clim(),12)
+        ticks = np.linspace(*Im.get_clim(),6)
+        fig.colorbar(Im, boundaries=bnds, ticks=ticks, cax=cbar_ax)
+
+        fig.suptitle(Res.capitalize())
+        fig.text(0.5, 0.04, Slice[0].capitalize(), ha='center')
+        fig.text(0.04, 0.5, Slice[1].capitalize(), va='center', rotation='vertical')
+
+        plt.show()
+
+    # In = TrainData[:,:4]
+
+    # print(grid[0,0,0,0],grads[0,0,0,0])
+    # print(grid[0,1,0,0],grads[0,1,0,0])
+    # print(grid[0,0,0,1],grads[0,0,0,1])
+    # with torch.no_grad():
+    #     NNGrid = model.predict(torch.tensor(grid, dtype=torch.float32))
+    # NNGrid = NNGrid.detach().numpy()
+    # print(NNGrid)
+
 
     GridSeg = 2
     disc = np.linspace(0, 1, GridSeg+1)
@@ -585,41 +945,59 @@ def main(VL, MLdict):
 
         Parameters = Namespace(**ParaDict)
 
-        ERMESdir = "{}/ERMES".format(VL.tmpML_DIR)
-        os.makedirs(ERMESdir)
-
-        # Create ERMES mesh
+        ERMESresfile = '{}/maxERMES.rmed'.format(MLdict["CALC_DIR"])
         SampleMeshFile = "{}/AMAZEsample.med".format(VL.MESH_DIR)
-        ERMESmeshfile = "{}/Mesh.med".format(ERMESdir)
-        err = ERMES_Mesh(VL,SampleMeshFile, ERMESmeshfile,
-        				AddPath = VL.tmpML_DIR,
-        				LogFile = None,
-        				GUI=0)
-        if err: return sys.exit('Issue creating mesh')
 
-        ERMESresfile = '{}/maxERMES.rmed'.format(VL.ML_DIR)
-        Watts, WattsPV, Elements, JHNode = SetupERMES(VL, Parameters, ERMESmeshfile, ERMESresfile, ERMESdir)
+        if ML.NewSim:
+            ERMESdir = "{}/ERMES".format(VL.tmpML_DIR)
+            os.makedirs(ERMESdir)
+            # Create ERMES mesh
+            ERMESmeshfile = "{}/Mesh.med".format(ERMESdir)
+            err = ERMES_Mesh(VL,SampleMeshFile, ERMESmeshfile,
+            				AddPath = VL.tmpML_DIR,
+            				LogFile = None,
+            				GUI=0)
+            if err: return sys.exit('Issue creating mesh')
 
-		# shutil.rmtree(ERMESdir)
+            Watts, WattsPV, Elements, JHNode = SetupERMES(VL, Parameters, ERMESmeshfile, ERMESresfile, ERMESdir)
 
-        # ERMESres = h5py.File(ERMESfile, 'r')
-        # attrs =  ERMESres["EM_Load"].attrs
-        # Elements = ERMESres["EM_Load/Elements"][:]
+            # shutil.rmtree(ERMESdir)
+        else :
+            ERMESres = h5py.File(ERMESresfile, 'r')
+            attrs =  ERMESres["EM_Load"].attrs
+            Elements = ERMESres["EM_Load/Elements"][:]
 
-        # Scale = (Parameters.Current/attrs['Current'])**2
-        # Watts = ERMESres["EM_Load/Watts"][:]*Scale
-        # WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
-        # JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
-        # ERMESres.close()
+            Scale = (Parameters.Current/attrs['Current'])**2
+            Watts = ERMESres["EM_Load/Watts"][:]*Scale
+            WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
+            JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
+            ERMESres.close()
 
+        # Power
+        Power = np.sum(Watts)
+        # Uniformity
+
+        JHNode /= Parameters.Current**2
         Meshcls = MeshInfo(SampleMeshFile)
         CoilFace = Meshcls.GroupInfo('CoilFace')
-        Meshcls.Close()
+        Area, JHArea = 0, 0 # Actual area and area of triangles with JH
+        for nodes in CoilFace.Connect:
+            vertices = Meshcls.GetNodeXYZ(nodes)
+            # Heron's formula
+            a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
+            s = 0.5 * (a + b + c)
+            area = np.sqrt(s * (s - a) * (s - b) * (s - c))
+            Area += area
 
-        Power = Watts.sum()
-        JHMax, JHMin = JHNode.max(), JHNode.min()
-        JHNode = 2*(JHNode - JHMin)/(JHMax-JHMin)
-        Uniformity = 1 - np.std(JHNode[CoilFace.Nodes-1])
+            vertices[:,2] += JHNode[nodes - 1].flatten()
+
+            a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
+            s = 0.5 * (a + b + c)
+            area1 = np.sqrt(s * (s - a) * (s - b) * (s - c))
+            JHArea += area1
+
+        Meshcls.Close()
+        Uniformity = JHArea/Area
 
         ActOptOutput = np.array([Power, Uniformity])
 

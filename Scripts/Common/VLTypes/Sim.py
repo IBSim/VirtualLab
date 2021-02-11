@@ -81,6 +81,7 @@ def Setup(VL,**kwargs):
         VL.SimData[SimName] = StudyDict.copy()
 
 
+
 def PoolRun(VL, StudyDict, kwargs):
     try:
         RunPreAster = kwargs.get('RunPreAster',True)
@@ -197,18 +198,21 @@ def devRun(VL,**kwargs):
     Arg2 = [kwargs]*NumSim
 
     launcher = kwargs.get('launcher','Process')
-    onall = kwargs.get('onall',True)
+
     if launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=NumThreads, workdir=VL.TEMP_DIR)
+        Res = pool.map(PoolRun, Arg0, Arg1, Arg2)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
+        onall = kwargs.get('onall',True)
         pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
+        Res = pool.map(PoolRun, Arg0, Arg1, Arg2, onall=onall)
     elif launcher == 'Slurm':
         from pyina.launchers import SlurmPool
         pool = SlurmPool(nodes=NumThreads, source=True, workdir=VL.TEMP_DIR)
+        Res = pool.map(PoolRun, Arg0, Arg1, Arg2)
 
-    Res = pool.map(PoolRun, Arg0, Arg1, Arg2, onall=onall)
 
     SimError = []
     for Name, Returner in zip(VL.SimData.keys(),Res):

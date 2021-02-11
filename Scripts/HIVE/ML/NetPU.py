@@ -437,7 +437,7 @@ def main(VL, MLdict):
     	xyzr = torch.tensor(xyzr, dtype=torch.float32)
     	out = model.predict(xyzr).detach().numpy()
     	return out*(OutputRange[1] - OutputRange[0]) + OutputRange[0]
-
+    # test comment
     Total = 2000
     batch = 50
     bins = 11

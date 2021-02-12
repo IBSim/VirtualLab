@@ -123,8 +123,10 @@ def EMCreate(SampleMesh, SampleGeom, **kwargs):
 
     if True:
         VertexPipeMid = geompy.MakeVertex(*PipeMid)
-        Vacuum = geompy.MakeSpherePntR(VertexPipeMid, VacuumRadius)
-        Vacuum = geompy.MakeCutList(Vacuum, [SampleGeom], True)
+        Vacuum_orig = geompy.MakeSpherePntR(VertexPipeMid, VacuumRadius)
+        gm = geompy.MakeShell(GroupDict["SampleSurface"])
+        Solid_1 = geompy.MakeSolid([gm])
+        Vacuum = geompy.MakeCutList(Vacuum_orig, [Solid_1], True)
     else:
         pass
         #TODO
@@ -139,7 +141,8 @@ def EMCreate(SampleMesh, SampleGeom, **kwargs):
     Ix = SalomeFunc.ObjIndex(Chamber, SampleGeom, SampleSurfaceIx, Strict=True)[0]
     geomSampleSurface = SalomeFunc.AddGroup(Chamber, 'SampleSurface', Ix)
 
-    Ix = SalomeFunc.ObjIndex(Chamber, Vacuum, [3])[0]
+    Ix = SalomeFunc.ObjIndex(Chamber, Vacuum_orig, [3])[0]
+
     geomVacuumSurface = SalomeFunc.AddGroup(Chamber, 'VacuumSurface', Ix)
 
     geomVacuum = SalomeFunc.AddGroup(Chamber, 'Vacuum', [2])

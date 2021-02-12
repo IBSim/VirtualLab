@@ -1,6 +1,7 @@
 from types import SimpleNamespace as Namespace
 Mesh = Namespace()
 Sim = Namespace()
+ML = Namespace()
 
 EMLoad = 'ERMES'
 
@@ -8,8 +9,8 @@ EMLoad = 'ERMES'
 ######## Meshing #########
 ##########################
 
-Mesh.Name = 'Testmeshdev'
-Mesh.File = 'AMAZE' # This file must be in Scripts/$SIMULATION/PreProc
+Mesh.Name = 'Mesh_void'
+Mesh.File = 'AMAZE_SingleVoid' # This file must be in Scripts/$SIMULATION/PreProc
 # Geometrical Dimensions
 Mesh.BlockWidth = 0.03 #x
 Mesh.BlockLength = 0.05 #y
@@ -26,14 +27,22 @@ Mesh.TileHeight = 0.005 #z
 Mesh.Length1D = 0.005
 Mesh.Length2D = 0.005
 Mesh.Length3D = 0.005
-Mesh.PipeDisc = 20 # Number of segments for pipe circumference
+
 Mesh.SubTile = 0.002 # Mesh fineness on tile
+
+Mesh.VoidCentre = (Mesh.BlockWidth*0.5 ,Mesh.BlockLength*0.5) # Void centre relative to centre of block - (0, 0) is at the centre
+Mesh.VoidDiam = 0.001 # Diameter of void
+Mesh.VoidHeight = 0.001 # Height of Void. Positive/negative number gives a void in the top/bottom
+###############################################################################
+# Mesh parameters
+Mesh.PipeSegmentN = 20 # Number of segments for pipe circumference
+Mesh.VoidSegmentN = 32 # Number of segments for hole circumference (for sub-mesh) (ES) 16-24-28-32..
 
 
 ##########################
 ####### Simulation #######
 ##########################
-Sim.Name = 'Test_8'
+Sim.Name = 'Test_Meshvoid'
 
 #############
 ## PreAster #
@@ -43,13 +52,24 @@ Sim.PreAsterFile = "devPreHIVE"
 Sim.CreateHTC = True
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
-# Pre-processing to create EMLoads from ERMES output
+# Pre-processing to create EMLoads using ERMES
 if EMLoad == 'ERMES':
-    Sim.RunERMES = 1
-
+    Sim.RunERMES = 1 #Boolean flag to run ERMES or not
+    # ERMES setup - coil type & location
     Sim.CoilType = 'HIVE'
     Sim.CoilDisplacement = [0,0,0.0015]
-    Sim.Rotation = 15
+    Sim.Rotation = 0
+    Sim.VacuumRadius = 0.2
+    # ERMES meshing parameters
+    # Coil
+    Sim.Coil1D = 0.001
+    Sim.Coil2D = 0.001
+    Sim.Coil3D = 0.001
+    # Vacuum
+    Sim.VacuumSegment = 25
+    # Sim.Vacuum1D = 1
+    # Sim.Vacuum2D = 1
+    # Sim.Vacuum3D = 1
 
     Sim.NbProc = 1
     Sim.Current = 1000
@@ -89,3 +109,16 @@ Sim.Convergence = {'Start':10,'Gap':5}
 #############
 # PostAster #
 #############
+
+##########################
+#### Machine Learning ####
+##########################
+
+ML.Name = 'Test'
+ML.File = 'NetPU'
+
+ML.NewData = True
+ML.Device = 'cpu'
+ML.DataPrcnt = 1
+ML.SplitRatio = 0.7
+ML.ShowMetric = 1

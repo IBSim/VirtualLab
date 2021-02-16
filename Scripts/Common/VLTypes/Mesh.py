@@ -125,18 +125,22 @@ def devRun(VL,**kwargs):
     Arg0 = [VL]*len(VL.MeshData)
 
     launcher = kwargs.get('launcher','Process')
-    onall = kwargs.get('onall',True)
     if launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=NumThreads, workdir=VL.TEMP_DIR)
+        Res = pool.map(PoolRun, Arg0, MeshDicts)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
+        onall = kwargs.get('onall',True)
+        addpath = set(sys.path) - set(VL._pypath) # group subtraction
+        addpath = ":".join(addpath) # write in unix style
+        PyPath_orig = os.environ.get('PYTHONPATH',"")
+        os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
         pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
-    elif launcher == 'Slurm':
-        from pyina.launchers import SlurmPool
-        pool = SlurmPool(nodes=NumThreads,workdir=VL.TEMP_DIR)
+        Res = pool.map(PoolRun, Arg0, MeshDicts, onall=onall)
+        os.environ["PYTHONPATH"] = PyPath_orig
 
-    Res = pool.map(PoolRun, Arg0, MeshDicts, onall=onall)
+
 
     MeshError = []
     for Name,Returner in zip(MeshNames,Res):

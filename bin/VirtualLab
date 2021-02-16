@@ -64,7 +64,7 @@ fi
 
 ### Read in VLconfig which contains $VL_DIR
 source $BIN_DIR/../VLconfig.py
-
+export PYTHONPATH="$VL_DIR:${PYTHONPATH}"
 ### Check if Conda is installed
 search_var=anaconda*
 conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")

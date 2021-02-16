@@ -198,7 +198,6 @@ def devRun(VL,**kwargs):
     Arg2 = [kwargs]*NumSim
 
     launcher = kwargs.get('launcher','Process')
-
     if launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=NumThreads, workdir=VL.TEMP_DIR)
@@ -206,13 +205,13 @@ def devRun(VL,**kwargs):
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
         onall = kwargs.get('onall',True)
+        addpath = set(sys.path) - set(VL._pypath) # group subtraction
+        addpath = ":".join(addpath) # write in unix style
+        PyPath_orig = os.environ.get('PYTHONPATH',"")
+        os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
         pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
         Res = pool.map(PoolRun, Arg0, Arg1, Arg2, onall=onall)
-    elif launcher == 'Slurm':
-        from pyina.launchers import SlurmPool
-        pool = SlurmPool(nodes=NumThreads, source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(PoolRun, Arg0, Arg1, Arg2)
-
+        os.environ["PYTHONPATH"] = PyPath_orig
 
     SimError = []
     for Name, Returner in zip(VL.SimData.keys(),Res):

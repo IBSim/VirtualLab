@@ -85,6 +85,8 @@ class VLSetup():
 		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
 		self.SIM_ML = "{}/ML".format(self.SIM_SCRIPTS)
 
+		self._pypath = sys.path.copy() # Needed for MPI run to match sys.path
+
 		self.Logger('### Launching VirtualLab ###',Print=True)
 
 	def Control(self, **kwargs):

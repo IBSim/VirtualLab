@@ -255,6 +255,19 @@ def devRun(VL,**kwargs):
 
     VL.Logger('### Simulations Completed ###',Print=True)
 
+    # Opens up all results in ParaVis
+    if ShowRes:
+    	print("### Opening .rmed files in ParaVis ###\n")
+    	ResFiles = {}
+    	for SimName, StudyDict in VL.SimData.items():
+    		for root, dirs, files in os.walk(StudyDict['CALC_DIR']):
+    			for file in files:
+    				fname, ext = os.path.splitext(file)
+    				if ext == '.rmed':
+    					ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
+    	Script = "{}/VLPackages/Salome/ShowRes.py".format(VL.COM_SCRIPTS)
+    	VL.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
+
 def Run(VL, **kwargs):
     if not VL.SimData: return
     kwargs.update(VL.GetArgParser()) # Update with any kwarg passed in the call

@@ -34,5 +34,6 @@ Input/*/*
 RunFiles/*
 !RunFiles/Run.py
 !RunFiles/.devRun.py
+!RunFiles/.devRunHIVE.py
 !RunFiles/UnitRun.py
 !RunFiles/Tutorials/

@@ -66,10 +66,16 @@ class CodeAster():
             command = "xterm -hold -T 'Study: {0}' -sb -si -sl 2000 "\
             "-e '{1} {2}; echo $? >{3}';exit $(cat {3})".format(kwargs.get('Name',ExportFile),self.Exec, ExportFile, errfile)
             proc = Popen(command , shell='TRUE', env=env)
-        else:
-            if True:
-                proc = Popen("{} {} {}".format(self.Exec,ExportFile,Output), shell='TRUE', env=env)
-            else :
-                cmlst = [self.Exec,ExportFile] + Output
-                proc = Popen(cmlst, env=env)
+            return proc
+
+        if True:
+            if OutFile:
+                with open(OutFile,'w') as f:
+                    proc = Popen("{} {} ".format(self.Exec,ExportFile), shell='TRUE', stdout=f, stderr=f, env=env)
+            else:
+                proc = Popen("{} {} ".format(self.Exec,ExportFile), shell='TRUE', stdout=sys.stdout, stderr=sys.stderr, env=env)
+        else :
+            cmlst = [self.Exec,ExportFile] + Output
+            proc = Popen(cmlst, env=env)
+
         return proc

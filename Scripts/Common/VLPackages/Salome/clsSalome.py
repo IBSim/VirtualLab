@@ -203,9 +203,12 @@ class Salome():
 			cmlst = self.Exec.split() + [GUIflag, '--ns-port-log', portfile, Script, 'args:'+Args]
 			SubProc = Popen(cmlst, cwd=self.cwd, stdout=sys.stdout, stderr=sys.stderr, env=env)
 		else :
-			output = ">>{} 2>&1".format(OutFile) if OutFile else ''
-			command = "{} {} --ns-port-log {} {} args:{} {}".format(self.Exec, GUIflag, portfile, Script, Args, output)
-			SubProc = Popen(command, shell='TRUE',cwd=self.cwd,env=env)
+			command = "{} {} --ns-port-log {} {} args:{} ".format(self.Exec, GUIflag, portfile, Script, Args)
+			if OutFile:
+				with open(OutFile,'w') as f:
+					SubProc = Popen(command, shell='TRUE',cwd=self.cwd, stdout=f, stderr=f,env=env)
+			else :
+				SubProc = Popen(command, shell='TRUE',cwd=self.cwd, stdout=sys.stdout, stderr=sys.stderr,env=env)
 		ReturnCode = SubProc.wait()
 
 		self.Kill(PortFile=portfile)

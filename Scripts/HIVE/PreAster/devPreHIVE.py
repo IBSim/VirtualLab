@@ -540,7 +540,6 @@ def EMI(Info, StudyDict):
 		ERMESmeshfile = "{}/Mesh.med".format(ERMESdir)
 		err = ERMES_Mesh(Info,StudyDict['MeshFile'], ERMESmeshfile,
 						AddPath = StudyDict['TMP_CALC_DIR'],
-						LogFile = StudyDict['LogFile'],
 						GUI=0)
 		if err: return sys.exit('Issue creating mesh')
 

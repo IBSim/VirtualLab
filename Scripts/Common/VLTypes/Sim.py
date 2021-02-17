@@ -14,8 +14,8 @@ import pickle
 import traceback
 
 from Scripts.Common import MPRun
-# from Scripts.Common.VLPackages import CodeAster
-from ..VLPackages import CodeAster
+from Scripts.Common.VLPackages import CodeAster
+from Scripts.Common.VLFunctions import VLPool
 
 def CheckFile(Directory,fname,ext):
     if not fname:
@@ -55,27 +55,30 @@ def Setup(VL,**kwargs):
         # Checks complete
 
         # Create dict of simulation specific information to be nested in SimData
-        StudyDict = {}
-        StudyDict['TMP_CALC_DIR'] = TMP_CALC_DIR = "{}/{}".format(VL.TEMP_DIR, SimName)
-        StudyDict['CALC_DIR'] = CALC_DIR = "{}/{}".format(VL.STUDY_DIR, SimName)
-        StudyDict['PREASTER'] = "{}/PreAster".format(CALC_DIR)
-        StudyDict['ASTER'] = "{}/Aster".format(CALC_DIR)
-        StudyDict['POSTASTER'] = "{}/PostAster".format(CALC_DIR)
-        StudyDict['MeshFile'] = "{}/{}.med".format(VL.MESH_DIR, ParaDict['Mesh'])
+        CALC_DIR = "{}/{}".format(VL.STUDY_DIR, SimName)
+        StudyDict = {'Name':SimName,
+                    'TMP_CALC_DIR':"{}/{}".format(VL.TEMP_DIR, SimName),
+                    'CALC_DIR':CALC_DIR,
+                    'PREASTER':"{}/PreAster".format(CALC_DIR),
+                    'ASTER':"{}/Aster".format(CALC_DIR),
+                    'POSTASTER':"{}/PostAster".format(CALC_DIR),
+                    'MeshFile':"{}/{}.med".format(VL.MESH_DIR, ParaDict['Mesh'])
+                    }
+
         if VL.mode in ('Headless','Continuous'):
             StudyDict['LogFile'] = "{}/Output.log".format(StudyDict['CALC_DIR'])
         else : StudyDict['LogFile'] = None
 
         # Create tmp directory & add __init__ file so that it can be treated as a package
-        if not os.path.isdir(TMP_CALC_DIR): os.makedirs(TMP_CALC_DIR)
-        with open("{}/__init__.py".format(TMP_CALC_DIR),'w') as f: pass
+        os.makedirs(StudyDict['TMP_CALC_DIR'])
+        os.makedirs(StudyDict['CALC_DIR'],exist_ok=True)
+        with open("{}/__init__.py".format(StudyDict['TMP_CALC_DIR']),'w') as f: pass
+
         # Combine Meta information with that from Study dict and write to file for salome/CodeAster to import
-        VL.WriteModule("{}/PathVL.py".format(TMP_CALC_DIR), {**MetaInfo, **StudyDict})
+        VL.WriteModule("{}/PathVL.py".format(StudyDict['TMP_CALC_DIR']), {**MetaInfo, **StudyDict})
         # Write Sim Parameters to file for Salome/CodeAster to import
-        VL.WriteModule("{}/Parameters.py".format(TMP_CALC_DIR), ParaDict)
+        VL.WriteModule("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), ParaDict)
 
-
-        # Attach Parameters to StudyDict for ease of access
         StudyDict['Parameters'] = Namespace(**ParaDict)
         # Add StudyDict to SimData dictionary
         VL.SimData[SimName] = StudyDict.copy()
@@ -83,102 +86,65 @@ def Setup(VL,**kwargs):
 
 
 def PoolRun(VL, StudyDict, kwargs):
-    try:
-        RunPreAster = kwargs.get('RunPreAster',True)
-        RunAster = kwargs.get('RunAster', True)
-        RunPostAster = kwargs.get('RunPostAster', True)
+    RunPreAster = kwargs.get('RunPreAster',True)
+    RunAster = kwargs.get('RunAster', True)
+    RunPostAster = kwargs.get('RunPostAster', True)
 
-        Parameters = StudyDict["Parameters"]
+    Parameters = StudyDict["Parameters"]
+    Returner = Namespace(Error=None)
+    # Copy original dictionary so that we can tell if anything gets added to it
+    OrigDict = copy.deepcopy(StudyDict)
 
-        sys.path = [VL.COM_SCRIPTS,VL.SIM_SCRIPTS] + sys.path
+    if RunPreAster and hasattr(Parameters,'PreAsterFile'):
+        sys.path.insert(0, VL.SIM_PREASTER)
+        PreAster = import_module(Parameters.PreAsterFile)
+        PreAsterSgl = getattr(PreAster, 'Single',None)
 
-        # Copy original dictionary so that we can tell if anything gets added to it
-        OrigDict = copy.deepcopy(StudyDict)
-        Error=None
+        VL.Logger("Running PreAster for '{}'\n".format(Parameters.Name),Print=True)
+        os.makedirs(StudyDict['PREASTER'],exist_ok=True)
 
-        Log = StudyDict['LogFile']
-        # Create a blank file
-        os.makedirs(StudyDict['CALC_DIR'],exist_ok=True)
-        if Log:
-            with open(Log,'w') as f: pass
+        err = PreAsterSgl(VL,StudyDict)
+        if err:
+            Returner.Error = 'PreAster Error:'.format(err)
+            RunAster=RunPostAster=False
 
-        if RunPreAster and hasattr(Parameters,'PreAsterFile'):
-            sys.path.insert(0, VL.SIM_PREASTER)
-            PreAster = import_module(Parameters.PreAsterFile)
-            PreAsterSgl = getattr(PreAster, 'Single',None)
+    if RunAster and hasattr(Parameters,'AsterFile'):
+        VL.Logger("Running Aster for '{}'\n".format(Parameters.Name),Print=True)
 
-            VL.Logger("Running PreAster for '{}'\n".format(Parameters.Name),Print=True)
-            os.makedirs(StudyDict['PREASTER'],exist_ok=True)
+        os.makedirs(StudyDict['ASTER'],exist_ok=True)
+        # Create export file for CodeAster
+        ExportFile = "{}/Export".format(StudyDict['ASTER'])
+        CommFile = '{}/{}.comm'.format(VL.SIM_ASTER, Parameters.AsterFile)
+        MessFile = '{}/AsterLog'.format(StudyDict['ASTER'])
+        VL.CodeAster.ExportWriter(ExportFile, CommFile,
+        							StudyDict["MeshFile"],
+        							StudyDict['ASTER'],
+                                    MessFile, **kwargs)
 
-            if Log:
-                with open(Log,'a') as f:
-                    with redirect_stdout(f), redirect_stderr(f):
-                        err = PreAsterSgl(VL,StudyDict)
-            else :
-                err = PreAsterSgl(VL,StudyDict)
+        SubProc = VL.CodeAster.Run(ExportFile, Name=Parameters.Name,
+                                   AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
+        err = SubProc.wait()
+        if err:
+            Returner.Error = "Aster Error: Code {} returned".format(err)
+            RunPostAster=False
 
-            if err:
-                Error = ['PreAster',err]
-                RunAster=RunPostAster=False
+    if RunPostAster and hasattr(Parameters,'PostAsterFile'):
+        sys.path.insert(0, VL.SIM_POSTASTER)
+        PostAster = import_module(Parameters.PostAsterFile)
+        PostAsterSgl = getattr(PostAster, 'Single', None)
 
-        if RunAster and hasattr(Parameters,'AsterFile'):
-            VL.Logger("Running Aster for '{}'\n".format(Parameters.Name),Print=True)
+        VL.Logger("Running PostAster for '{}'\n".format(Parameters.Name),Print=True)
+        os.makedirs(StudyDict['POSTASTER'],exist_ok=True)
 
-            os.makedirs(StudyDict['ASTER'],exist_ok=True)
-            # Create export file for CodeAster
-            ExportFile = "{}/Export".format(StudyDict['ASTER'])
-            CommFile = '{}/{}.comm'.format(VL.SIM_ASTER, Parameters.AsterFile)
-            MessFile = '{}/AsterLog'.format(StudyDict['ASTER'])
-            VL.CodeAster.ExportWriter(ExportFile, CommFile,
-            							StudyDict["MeshFile"],
-            							StudyDict['ASTER'],
-                                        MessFile, **kwargs)
+        err = PostAsterSgl(VL,StudyDict)
+        if err:
+            Returner.Error = 'PostAster Error:'.format(err)
 
-            # if VL.mode == 'Headless': AsterOut='/dev/null'
-            # elif VL.mode == 'Continuous': AsterOut = OutFile
-            # else : AsterOut=''
+    # Add StudyDict to returned if it's changed
+    if not OrigDict == StudyDict: Returner.StudyDict = StudyDict
 
-            SubProc = VL.CodeAster.Run(ExportFile, Name=Parameters.Name,
-                                         AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']],
-                                         OutFile=Log)
-            err = SubProc.wait()
-            if err:
-                Error = ['Aster',"Aster SubProc returned code {}".format(err)]
-                RunPostAster=False
+    return Returner
 
-            # from subprocess import Popen
-            # SubProc = Popen(['echo','Hello World'])
-            # SubProc.wait()
-
-        if RunPostAster and hasattr(Parameters,'PostAsterFile'):
-            sys.path.insert(0, VL.SIM_POSTASTER)
-            PostAster = import_module(Parameters.PostAsterFile)
-            PostAsterSgl = getattr(PostAster, 'Single', None)
-
-            VL.Logger("Running PostAster for '{}'\n".format(Parameters.Name),Print=True)
-            os.makedirs(StudyDict['POSTASTER'],exist_ok=True)
-
-            if Log:
-                with open(Log,'a') as f:
-                    with redirect_stdout(f), redirect_stderr(f):
-                        err = PostAsterSgl(VL,StudyDict)
-            else:
-                err = PostAsterSgl(VL,StudyDict)
-
-            if err:
-                Error = ['PostAster',err]
-
-        # Data structure which can be easily returned holdign additional information
-        Returner = Namespace(Error=Error)
-        # Add StudyDict to returned if it's changed
-        if not OrigDict == StudyDict: Returner.StudyDict = StudyDict
-
-        return Returner
-
-    except :
-        exc = traceback.format_exc()
-        VL.Logger(exc)
-        return Namespace(Exception=exc)
 
 
 def devRun(VL,**kwargs):
@@ -191,41 +157,43 @@ def devRun(VL,**kwargs):
     VL.Logger('\n### Starting Simulations ###\n', Print=True)
 
     # Run high throughput part in parallel
-    NumSim = len(VL.SimData)
-
-    Arg0 = [VL]*NumSim
-    Arg1 = list(VL.SimData.values())
-    Arg2 = [kwargs]*NumSim
+    NbSim = len(VL.SimData)
+    SimDicts = list(VL.SimData.values())
+    PoolArgs = [[VL]*NbSim,SimDicts,[kwargs]*NbSim]
 
     launcher = kwargs.get('launcher','Process')
     if launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=NumThreads, workdir=VL.TEMP_DIR)
-        Res = pool.map(PoolRun, Arg0, Arg1, Arg2)
+        Res = pool.map(VLPool,[PoolRun]*NbSim, *PoolArgs)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
-        onall = kwargs.get('onall',True)
+        # Ensure that all paths added to sys.path are visible pyinas MPI subprocess
         addpath = set(sys.path) - set(VL._pypath) # group subtraction
         addpath = ":".join(addpath) # write in unix style
         PyPath_orig = os.environ.get('PYTHONPATH',"")
         os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
+
+        onall = kwargs.get('onall',True) # Do we want 1 mpi worked to delegate and not compute (False if so)
         pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(PoolRun, Arg0, Arg1, Arg2, onall=onall)
+        # TryPathos gives a try and except block around the function to prevent
+        # hanging which can occur with mpi4py
+        Res = pool.map(VLPool,[PoolRun]*NbSim, *PoolArgs, onall=onall)
+
+        # reset environment back to original
         os.environ["PYTHONPATH"] = PyPath_orig
 
     SimError = []
-    for Name, Returner in zip(VL.SimData.keys(),Res):
-        if hasattr(Returner,'Exception'):
-            VL.Logger("'{}' threw an exception".format(Name),Print=True)
+    for SimDict, Returner in zip(SimDicts,Res):
+        Name = SimDict['Name']
+        if isinstance(Returner,Exception) or isinstance(Returner,SystemExit):
             SimError.append(Name)
             continue
 
         if Returner.Error:
             SimError.append(Name)
-            VL.Logger("'{}' finished with errors".format(Name),Print=True)
         else :
-            VL.Logger("'{}' completed successfully".format(Name), Print=True)
-            # Copy the parameters file used for this simulation
+            # Copy the parameters file used for this simulation ##TODO do this if error or not??
             StudyDict = VL.SimData[Name]
             shutil.copy("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), StudyDict['CALC_DIR'])
 
@@ -236,11 +204,12 @@ def devRun(VL,**kwargs):
         VL.Exit("The following Simulation routine(s) finished with errors:\n{}".format(SimError))
 
     PostAster = getattr(VL.Parameters_Master.Sim, 'PostAsterFile', None)
-    if PostAster:
+    if PostAster and kwargs.get('RunPostAster', True):
         sys.path.insert(0, VL.SIM_POSTASTER)
         PostAster = import_module(PostAster)
         if hasattr(PostAster, 'Combined'):
             VL.Logger('Combined function started', Print=True)
+            # sort this log part out to add to each log file
             if VL.mode in ('Interactive','Terminal'):
                 err = PostAster.Combined(VL)
             else :

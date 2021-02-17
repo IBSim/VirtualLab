@@ -7,8 +7,8 @@ from importlib import import_module
 import time
 import shutil
 import uuid
-import traceback
 
+from Scripts.Common.VLFunctions import VLPool
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
@@ -41,7 +41,7 @@ def Setup(VL, **kwargs):
 
         VL.WriteModule("{}/{}.py".format(VL.GEOM_DIR, MeshName), ParaDict)
 
-        Mdict = {'Parameters':Namespace(**ParaDict)}
+        Mdict = {'Name':MeshName, 'Parameters':Namespace(**ParaDict)}
         if VL.mode in ('Headless','Continuous'):
             Mdict['LogFile'] = "{}/{}.log".format(VL.MESH_DIR,MeshName)
         else : Mdict['LogFile'] = None
@@ -49,48 +49,32 @@ def Setup(VL, **kwargs):
 
 
 def PoolRun(VL, MeshDict,**kwargs):
-    MeshName = MeshDict['Parameters'].Name
-    VL.Logger("{} started".format(MeshName),Print=True)
+    MeshName = MeshDict['Name']
 
     # Returner is a namespace to store data to return to VL
     Returner = Namespace(Error=None)
-    try:
-        script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
-        # if MeshRun is Mesh folder this is used instead
-        if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
-            script = '{}/MeshRun.py'.format(VL.SIM_MESH)
 
-        AddPath = [VL.SIM_MESH, VL.GEOM_DIR]
-        Returnfile = "{}/{}_RC.txt".format(VL.GEOM_DIR,MeshName) # File where salome can write an exit status to
-        ArgDict = {'Name':MeshName,
-                    'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
-                    'RCfile':Returnfile,
-                    'STEP':True}
+    script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
+    # if MeshRun is Mesh folder this is used instead
+    if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
+        script = '{}/MeshRun.py'.format(VL.SIM_MESH)
 
-        err = VL.Salome.Run(script, AddPath=AddPath, ArgDict=ArgDict, OutFile=MeshDict['LogFile'])
+    AddPath = [VL.SIM_MESH, VL.GEOM_DIR]
+    Returnfile = "{}/{}_RC.txt".format(VL.GEOM_DIR,MeshName) # File where salome can write an exit status to
+    ArgDict = {'Name':MeshName,
+                'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
+                'RCfile':Returnfile,
+                'STEP':True}
 
-        if err:
-            Returner.Error = "Error in Salome run"
+    err = VL.Salome.Run(script, AddPath=AddPath, ArgDict=ArgDict)
+    if err:
+        Returner.Error = "Error in Salome run"
 
-        # if os.path.isfile(Returnfile):
-        #     with open(Returnfile,'r') as f:
-        #         Returner.Code = int(f.readline())
+    # if os.path.isfile(Returnfile):
+    #     with open(Returnfile,'r') as f:
+    #         Returner.Code = int(f.readline())
 
-        if not Returner.Error:
-            Message = "{} completed successfully.".format(MeshName)
-        else:
-            Message = "{} failed. {}.".format(MeshName,Returner.Error)
-        if MeshDict['LogFile']:
-            Message += " See the output file {} for more details".format(MeshDict['LogFile'])
-        VL.Logger(Message,Print=True)
-
-        return Returner
-
-    except:
-        exc = traceback.format_exc()
-        VL.Logger("{} raised an exception:\n{}".format(MeshName,exc),Print=True)
-        Returner.Error = exc
-        return Returner
+    return Returner
 
 
 def devRun(VL,**kwargs):
@@ -119,31 +103,41 @@ def devRun(VL,**kwargs):
 
     VL.Logger('\n### Starting Meshing ###\n',Print=True)
 
-    MeshNames = list(VL.MeshData.keys())
     MeshDicts = list(VL.MeshData.values())
+    NbMeshes = len(VL.MeshData)
 
-    Arg0 = [VL]*len(VL.MeshData)
+    PoolArgs = [[VL]*NbMeshes, MeshDicts]
 
     launcher = kwargs.get('launcher','Process')
     if launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=NumThreads, workdir=VL.TEMP_DIR)
-        Res = pool.map(PoolRun, Arg0, MeshDicts)
+        Res = pool.map(VLPool,[PoolRun]*NbMeshes, *PoolArgs)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
-        onall = kwargs.get('onall',True)
+        # Ensure that all paths added to sys.path are visible pyinas MPI subprocess
         addpath = set(sys.path) - set(VL._pypath) # group subtraction
         addpath = ":".join(addpath) # write in unix style
         PyPath_orig = os.environ.get('PYTHONPATH',"")
         os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
+
+        onall = kwargs.get('onall',True) # Do we want 1 mpi worked to delegate and not compute (False if so)
         pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(PoolRun, Arg0, MeshDicts, onall=onall)
+        # TryPathos gives a try and except block around the function to prevent
+        # hanging which can occur with mpi4py
+        Res = pool.map(VLPool,[PoolRun]*NbMeshes, *PoolArgs, onall=onall)
+
+        # reset environment back to original
         os.environ["PYTHONPATH"] = PyPath_orig
 
 
-
     MeshError = []
-    for Name,Returner in zip(MeshNames,Res):
+    for MeshDict,Returner in zip(MeshDicts,Res):
+        Name = MeshDict['Name']
+        if isinstance(Returner,Exception) or isinstance(Returner,SystemExit):
+            MeshError.append(Name)
+            continue
+
         if Returner.Error:
             MeshError.append(Name)
         else :

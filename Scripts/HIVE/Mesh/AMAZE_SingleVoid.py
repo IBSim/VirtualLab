@@ -23,10 +23,24 @@ def Create(Parameter):
 		smesh = smeshBuilder.New()
 ###############################################################################
 ## if there is one or multiple artificial defect, check here.
-	if Parameter.VoidDiam and Parameter.VoidHeight:
-		isVoid = True
+	if Parameter.VoidRad_a and Parameter.VoidRad_b and Parameter.VoidHeight:
+		isVoid = True #
+		if Parameter.VoidRad_a > Parameter.VoidRad_b: # scale the void in y-axis
+			LargestVoidRad= Parameter.VoidRad_a # elliptical cylinder void
+			SmallestVoidRad = Parameter.VoidRad_b
+			ScalingFactor = Parameter.VoidRad_b/Parameter.VoidRad_a
+			ScalingFlag = 'AxisY'
+		elif Parameter.VoidRad_b > Parameter.VoidRad_a: # scale the void in x-axis
+			LargestVoidRad= Parameter.VoidRad_b # elliptical cylinder void
+			SmallestVoidRad = Parameter.VoidRad_a
+			ScalingFactor = Parameter.VoidRad_a/Parameter.VoidRad_b
+			ScalingFlag = 'AxisX'
+		else: # circular void; no scaling!
+			LargestVoidRad, SmallestVoidRad = Parameter.VoidRad_a, Parameter.VoidRad_a
+			ScalingFlag = 'None'
 	else:
-		isVoid = False   
+		isVoid = False
+		 
 ###############################################################################    
 	###
 	### GEOM component
@@ -74,13 +88,26 @@ def Create(Parameter):
 	if Parameter.VoidHeight > 0:
         # Void is at the top half of the tile
 		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.BlockHeight)
-		Void = geompy.MakeCylinder(Vertex_2, OZ, Parameter.VoidDiam, Parameter.VoidHeight)
+		Void_Temp = geompy.MakeCylinder(Vertex_2, OZ, LargestVoidRad, Parameter.VoidHeight)
+                # if void has elliptical base, then...
+		if ScalingFlag == 'AxisY':
+			Void = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, 1, ScalingFactor, 1)
+		elif ScalingFlag == 'AxisX':
+			Void = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, ScalingFactor, 1, 1)
+		else: 
+			Void = Void_Temp
 		Tile = geompy.MakeCutList(Tile_orig,[Void], True)
 	elif Parameter.VoidHeight < 0:
         # Void is at the bottom half of the tile
 		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.HeightB)
 		OZm = geompy.MakeVectorDXDYDZ(0, 0, -1)
-		Void = geompy.MakeCylinder(Vertex_2, OZm, Parameter.VoidDiam, -Parameter.VoidHeight)
+		Void_Temp = geompy.MakeCylinder(Vertex_2, OZm, LargestVoidRad, -Parameter.VoidHeight)
+		if ScalingFlag == 'AxisY':
+			Void = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, 1, ScalingFactor, 1)
+		elif ScalingFlag == 'AxisX':
+			Void = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, ScalingFactor, 1, 1)
+		else: 
+			Void = Void_Temp
 		Tile = geompy.MakeCutList(Tile_orig,[Void], True)
 	else:
 		Tile = Tile_orig 
@@ -261,7 +288,7 @@ def Create(Parameter):
 
 	#local (fine) meshing around voids/cracks in order to improve accuracy 
 	if isVoid:
-		local_mesh_size = (np.pi*Parameter.VoidDiam)/Parameter.VoidSegmentN
+		local_mesh_size = (np.pi*SmallestVoidRad)/Parameter.VoidSegmentN
     ### Sub Mesh creation
     ## Sub-Mesh 3
 		Regular_1D_3 = Mesh_1.Segment(geom=VoidSurfaces)

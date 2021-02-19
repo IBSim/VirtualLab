@@ -5,7 +5,7 @@ ML = Namespace()
 
 Mesh.Name = 'SingleVoid'  # if no void, 'NoVoid', 
                           # if single void, 'SingleVoid',
-                          # if Multiple void, 'MultipleVoid'(ES)
+                          # if Multiple void, 'MultipleVoid'
 EMLoad = 'ERMES'
 
 ##########################
@@ -28,11 +28,12 @@ Mesh.TileLength = 0.03 #y
 Mesh.TileHeight = 0.005 #z
 
 ###############################################################################
-# Geometrical Dimensions for Single Void (Cylindrical Void for current case!!)
+# Geometrical Dimensions for Single Void in Elliptical Cylinder Geometry
 # Void centre/location is a geometric parameter!!
 Mesh.VoidCentre = (Mesh.BlockWidth*0.5 ,Mesh.BlockLength*0.5) # Void centre relative to centre of block - (0, 0) is at the centre
-Mesh.VoidDiam = 0.00 # Diameter of void
-Mesh.VoidHeight = 0.00 # Height of Void. Positive/negative number gives a void in the top/bottom
+Mesh.VoidRad_a = 0.003 # length of void in horizontal axis X
+Mesh.VoidRad_b = 0.002 # height of void in vertical axis Y
+Mesh.VoidHeight = 0.001 # Height of Void. Positive/negative number gives a void in the top/bottom
 ###############################################################################
 # Mesh parameters
 Mesh.Length1D = 0.005
@@ -41,7 +42,7 @@ Mesh.Length3D = 0.005
 
 Mesh.SubTile = 0.002 # Mesh fineness on tile
 Mesh.PipeSegmentN = 32 # Number of segments for pipe circumference
-Mesh.VoidSegmentN = 32 # Number of segments for hole circumference (for sub-mesh) (ES) 16-24-28-32..
+Mesh.VoidSegmentN = 8 # Number of segments for hole circumference (for sub-mesh) (ES) 16-24-28-32..
 
 
 ##########################

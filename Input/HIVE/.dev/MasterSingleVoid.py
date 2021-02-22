@@ -19,8 +19,8 @@ Mesh.BlockWidth = 0.03 #x
 Mesh.BlockLength = 0.05 #y
 Mesh.BlockHeight = 0.02 #z
 Mesh.PipeCentre = [0,0] #x,z, relative to centre of block
-Mesh.PipeDiam = 0.01 #Pipe inner Diameter
-Mesh.PipeThick = 0.001 #pipe wall thickness
+Mesh.PipeDiam = 0.01 #Pipe inner diameter
+Mesh.PipeThick = 0.001 #Pipe wall thickness
 Mesh.PipeLength = Mesh.BlockLength
 Mesh.TileCentre = [0,0]
 Mesh.TileWidth = Mesh.BlockWidth
@@ -32,8 +32,9 @@ Mesh.TileHeight = 0.005 #z
 # Void centre/location is a geometric parameter!!
 Mesh.VoidCentre = (Mesh.BlockWidth*0.5 ,Mesh.BlockLength*0.5) # Void centre relative to centre of block - (0, 0) is at the centre
 Mesh.VoidRad_a = 0.003 # length of void in horizontal axis X
-Mesh.VoidRad_b = 0.002 # height of void in vertical axis Y
-Mesh.VoidHeight = 0.001 # Height of Void. Positive/negative number gives a void in the top/bottom
+Mesh.VoidRad_b = 0.002 # width of void in vertical axis Y
+Mesh.VoidHeight = 0.001 # height of void < TileHeigth
+Mesh.VoidRotation = 45 # amount of rotation in degree 
 ###############################################################################
 # Mesh parameters
 Mesh.Length1D = 0.005
@@ -42,7 +43,7 @@ Mesh.Length3D = 0.005
 
 Mesh.SubTile = 0.002 # Mesh fineness on tile
 Mesh.PipeSegmentN = 32 # Number of segments for pipe circumference
-Mesh.VoidSegmentN = 8 # Number of segments for hole circumference (for sub-mesh) (ES) 16-24-28-32..
+Mesh.VoidSegmentN = 8 # Number of segments for hole circumference (for sub-mesh) 16-24-28-32..
 
 
 ##########################

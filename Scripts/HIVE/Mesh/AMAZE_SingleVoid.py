@@ -37,7 +37,7 @@ def Create(Parameter):
 			ScalingFlag = 'AxisX'
 		else: # circular void; no scaling!
 			LargestVoidRad, SmallestVoidRad = Parameter.VoidRad_a, Parameter.VoidRad_a
-			ScalingFlag = 'None'
+			ScalingFlag = None
 	else:
 		isVoid = False
 		 
@@ -85,29 +85,28 @@ def Create(Parameter):
 ###############################################################################
 ## if there is one or multiple artificial defect, add here.
     ##Single Void Case
-	if Parameter.VoidHeight > 0:
+	if isVoid:
         # Void is at the top half of the tile
-		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.BlockHeight)
+		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.BlockHeight) # extrusion vector
 		Void_Temp = geompy.MakeCylinder(Vertex_2, OZ, LargestVoidRad, Parameter.VoidHeight)
+
                 # if void has elliptical base, then...
 		if ScalingFlag == 'AxisY':
-			Void = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, 1, ScalingFactor, 1)
+			Void_Scaled = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, 1, ScalingFactor, 1)
+
 		elif ScalingFlag == 'AxisX':
-			Void = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, ScalingFactor, 1, 1)
+			Void_Scaled = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, ScalingFactor, 1, 1)
+
 		else: 
 			Void = Void_Temp
-		Tile = geompy.MakeCutList(Tile_orig,[Void], True)
-	elif Parameter.VoidHeight < 0:
-        # Void is at the bottom half of the tile
-		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.HeightB)
-		OZm = geompy.MakeVectorDXDYDZ(0, 0, -1)
-		Void_Temp = geompy.MakeCylinder(Vertex_2, OZm, LargestVoidRad, -Parameter.VoidHeight)
-		if ScalingFlag == 'AxisY':
-			Void = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, 1, ScalingFactor, 1)
-		elif ScalingFlag == 'AxisX':
-			Void = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, ScalingFactor, 1, 1)
-		else: 
-			Void = Void_Temp
+
+		# rotate the void with respect to the local coordinate system
+		if Parameter.VoidRotation != 0 and ScalingFlag != None: 
+			Point_1 = geompy.MakeVertex(Parameter.VoidCentre[0], Parameter.VoidCentre[1], 0)
+			Point_2 = geompy.MakeVertex(Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.BlockHeight)
+			VectorRotation = geompy.MakeVector(Point_1, Point_2)
+			Void = geompy.Rotate(Void_Scaled, VectorRotation, Parameter.VoidRotation*np.pi/180.0)
+
 		Tile = geompy.MakeCutList(Tile_orig,[Void], True)
 	else:
 		Tile = Tile_orig 
@@ -288,7 +287,7 @@ def Create(Parameter):
 
 	#local (fine) meshing around voids/cracks in order to improve accuracy 
 	if isVoid:
-		local_mesh_size = (np.pi*SmallestVoidRad)/Parameter.VoidSegmentN
+		local_mesh_size = (2.0*np.pi*SmallestVoidRad)/Parameter.VoidSegmentN
     ### Sub Mesh creation
     ## Sub-Mesh 3
 		Regular_1D_3 = Mesh_1.Segment(geom=VoidSurfaces)

@@ -8,7 +8,7 @@ import time
 import shutil
 import uuid
 
-from Scripts.Common.VLFunctions import VLPool
+from Scripts.Common.VLFunctions import VLPool, VLPoolReturn
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
@@ -50,6 +50,8 @@ def Setup(VL, **kwargs):
 
 def PoolRun(VL, MeshDict,**kwargs):
     MeshName = MeshDict['Name']
+    # Write Parameters used to make the mesh to the mesh directory
+    shutil.copy("{}/{}.py".format(VL.GEOM_DIR,MeshName), VL.MESH_DIR)
 
     script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
     # if MeshRun is Mesh folder this is used instead
@@ -125,26 +127,9 @@ def devRun(VL,**kwargs):
         # reset environment back to original
         os.environ["PYTHONPATH"] = PyPath_orig
 
-
-    MeshError = []
-    for MeshDict,Returner in zip(MeshDicts,Res):
-        Name = MeshDict['Name']
-        if isinstance(Returner,Exception) or isinstance(Returner,SystemExit):
-            MeshError.append(Name)
-            continue
-
-        if Returner.Error:
-            MeshError.append(Name)
-        else :
-            shutil.copy("{}/{}.py".format(VL.GEOM_DIR,Name), VL.MESH_DIR)
-
-            # if VL.mode not in ('Interactive','Terminal'):
-                # shutil.copy()
-                # with open(tmpLogstr.format(VL.GEOM_DIR,tmpMeshName),'r') as rtmpLog:
-                #     VL.Logger("\nOutput for '{}':\n{}".format(tmpMeshName,rtmpLog.read()))
-
-    if MeshError:
-        VL.Exit("\nThe following meshes finished with errors:\n{}".format(MeshError),KeepDirs=['Geom'])
+    Errorfnc = VLPoolReturn(MeshDicts,Res)
+    if Errorfnc:
+        VL.Exit("\nThe following meshes finished with errors:\n{}".format(Errorfnc),KeepDirs=['Geom'])
 
     VL.Logger('\n### Meshing Complete ###',Print=True)
 

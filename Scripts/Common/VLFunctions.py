@@ -242,3 +242,18 @@ def VLPool(fn,VL,Dict,*args):
             mess += "\n{}".format(err)
 
         print(mess)
+
+def VLPoolReturn(Dicts,Returners):
+    cpDicts = copy.deepcopy(Dicts)
+    PlError = []
+    for i, (Dict,Returner) in enumerate(zip(cpDicts,Returners)):
+        Name = Dict['Name']
+        if isinstance(Returner,Exception) or isinstance(Returner,SystemExit):
+            PlError.append(Name)
+            continue
+        if Returner.Error:
+            PlError.append(Name)
+        if hasattr(Returner,'Dict'):
+            Dicts[i].update(Returner.Dict)
+
+    return PlError

@@ -14,7 +14,7 @@ import pickle
 
 from Scripts.Common import MPRun
 from Scripts.Common.VLPackages import CodeAster
-from Scripts.Common.VLFunctions import VLPool
+from Scripts.Common.VLFunctions import VLPool, VLPoolReturn
 
 def CheckFile(Directory,fname,ext):
     if not fname:
@@ -70,7 +70,6 @@ def Setup(VL,**kwargs):
 
         # Create tmp directory & add __init__ file so that it can be treated as a package
         os.makedirs(StudyDict['TMP_CALC_DIR'])
-        os.makedirs(StudyDict['CALC_DIR'],exist_ok=True)
         with open("{}/__init__.py".format(StudyDict['TMP_CALC_DIR']),'w') as f: pass
 
         # Combine Meta information with that from Study dict and write to file for salome/CodeAster to import
@@ -90,6 +89,10 @@ def PoolRun(VL, StudyDict, kwargs):
     RunPostAster = kwargs.get('RunPostAster', True)
 
     Parameters = StudyDict["Parameters"]
+    # Create CALC_DIR where results for this sim will be stored
+    os.makedirs(StudyDict['CALC_DIR'],exist_ok=True)
+    # Write Parameters used for this sim to CALC_DIR
+    shutil.copy("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), StudyDict['CALC_DIR'])
 
     if RunPreAster and hasattr(Parameters,'PreAsterFile'):
         sys.path.insert(0, VL.SIM_PREASTER)
@@ -101,8 +104,7 @@ def PoolRun(VL, StudyDict, kwargs):
 
         err = PreAsterSgl(VL,StudyDict)
         if err:
-            err = 'PreAster Error: {}'.format(err)
-            RunAster=RunPostAster=False
+            return 'PreAster Error: {}'.format(err)
 
     if RunAster and hasattr(Parameters,'AsterFile'):
         VL.Logger("Running Aster for '{}'\n".format(Parameters.Name),Print=True)
@@ -121,8 +123,7 @@ def PoolRun(VL, StudyDict, kwargs):
                                    AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
         err = SubProc.wait()
         if err:
-            err = "Aster Error: Code {} returned".format(err)
-            RunPostAster=False
+            return "Aster Error: Code {} returned".format(err)
 
     if RunPostAster and hasattr(Parameters,'PostAsterFile'):
         sys.path.insert(0, VL.SIM_POSTASTER)
@@ -134,9 +135,9 @@ def PoolRun(VL, StudyDict, kwargs):
 
         err = PostAsterSgl(VL,StudyDict)
         if err:
-            err = 'PostAster Error: {}'.format(err)
+             return 'PostAster Error: {}'.format(err)
 
-    return err
+
 
 def devRun(VL,**kwargs):
     if not VL.SimData: return
@@ -174,25 +175,11 @@ def devRun(VL,**kwargs):
         # reset environment back to original
         os.environ["PYTHONPATH"] = PyPath_orig
 
-    SimError = []
-    for SimDict, Returner in zip(SimDicts,Res):
-        Name = SimDict['Name']
-        if isinstance(Returner,Exception) or isinstance(Returner,SystemExit):
-            SimError.append(Name)
-            continue
+    # Errorfnc is a list of the pooled functions which returned errors
+    Errorfnc = VLPoolReturn(SimDicts,Res)
 
-        if Returner.Error:
-            SimError.append(Name)
-        else :
-            # Copy the parameters file used for this simulation ##TODO do this if error or not??
-            StudyDict = VL.SimData[Name]
-            shutil.copy("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), StudyDict['CALC_DIR'])
-
-        if hasattr(Returner,'Dict'):
-            VL.SimData[Name].update(Returner.Dict)
-
-    if SimError:
-        VL.Exit("The following Simulation routine(s) finished with errors:\n{}".format(SimError))
+    if Errorfnc:
+        VL.Exit("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc))
 
     PostAster = getattr(VL.Parameters_Master.Sim, 'PostAsterFile', None)
     if PostAster and kwargs.get('RunPostAster', True):

@@ -11,7 +11,6 @@ import copy
 import shutil
 import time
 import pickle
-import traceback
 
 from Scripts.Common import MPRun
 from Scripts.Common.VLPackages import CodeAster
@@ -91,9 +90,6 @@ def PoolRun(VL, StudyDict, kwargs):
     RunPostAster = kwargs.get('RunPostAster', True)
 
     Parameters = StudyDict["Parameters"]
-    Returner = Namespace(Error=None)
-    # Copy original dictionary so that we can tell if anything gets added to it
-    OrigDict = copy.deepcopy(StudyDict)
 
     if RunPreAster and hasattr(Parameters,'PreAsterFile'):
         sys.path.insert(0, VL.SIM_PREASTER)
@@ -105,7 +101,7 @@ def PoolRun(VL, StudyDict, kwargs):
 
         err = PreAsterSgl(VL,StudyDict)
         if err:
-            Returner.Error = 'PreAster Error:'.format(err)
+            err = 'PreAster Error: {}'.format(err)
             RunAster=RunPostAster=False
 
     if RunAster and hasattr(Parameters,'AsterFile'):
@@ -125,7 +121,7 @@ def PoolRun(VL, StudyDict, kwargs):
                                    AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
         err = SubProc.wait()
         if err:
-            Returner.Error = "Aster Error: Code {} returned".format(err)
+            err = "Aster Error: Code {} returned".format(err)
             RunPostAster=False
 
     if RunPostAster and hasattr(Parameters,'PostAsterFile'):
@@ -138,14 +134,9 @@ def PoolRun(VL, StudyDict, kwargs):
 
         err = PostAsterSgl(VL,StudyDict)
         if err:
-            Returner.Error = 'PostAster Error:'.format(err)
+            err = 'PostAster Error: {}'.format(err)
 
-    # Add StudyDict to returned if it's changed
-    if not OrigDict == StudyDict: Returner.StudyDict = StudyDict
-
-    return Returner
-
-
+    return err
 
 def devRun(VL,**kwargs):
     if not VL.SimData: return
@@ -176,7 +167,7 @@ def devRun(VL,**kwargs):
 
         onall = kwargs.get('onall',True) # Do we want 1 mpi worked to delegate and not compute (False if so)
         pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
-        # TryPathos gives a try and except block around the function to prevent
+        # VLPool gives a try and except block around the function to prevent
         # hanging which can occur with mpi4py
         Res = pool.map(VLPool,[PoolRun]*NbSim, *PoolArgs, onall=onall)
 
@@ -197,8 +188,8 @@ def devRun(VL,**kwargs):
             StudyDict = VL.SimData[Name]
             shutil.copy("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), StudyDict['CALC_DIR'])
 
-        if hasattr(Returner,'StudyDict'):
-            VL.SimData[Name].update(Returner.StudyDict)
+        if hasattr(Returner,'Dict'):
+            VL.SimData[Name].update(Returner.Dict)
 
     if SimError:
         VL.Exit("The following Simulation routine(s) finished with errors:\n{}".format(SimError))

@@ -51,9 +51,6 @@ def Setup(VL, **kwargs):
 def PoolRun(VL, MeshDict,**kwargs):
     MeshName = MeshDict['Name']
 
-    # Returner is a namespace to store data to return to VL
-    Returner = Namespace(Error=None)
-
     script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
     # if MeshRun is Mesh folder this is used instead
     if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
@@ -68,13 +65,11 @@ def PoolRun(VL, MeshDict,**kwargs):
 
     err = VL.Salome.Run(script, AddPath=AddPath, ArgDict=ArgDict)
     if err:
-        Returner.Error = "Error in Salome run"
+        return "Error in Salome run"
 
     # if os.path.isfile(Returnfile):
     #     with open(Returnfile,'r') as f:
     #         Returner.Code = int(f.readline())
-
-    return Returner
 
 
 def devRun(VL,**kwargs):

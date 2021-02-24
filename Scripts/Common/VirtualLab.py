@@ -16,7 +16,8 @@ from Scripts.Common.VLPackages import Salome, CodeAster
 from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, ML as MLFn
 
 class VLSetup():
-	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var=None, Mode='T'):
+	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var=None, Mode='T',
+				 InputDir=None, OutputDir=None, MaterialDir=None, TempDir=None):
 
 		self.Simulation = Simulation
 		self.Project = Project
@@ -26,18 +27,23 @@ class VLSetup():
 		self.Parameters_Var = Parameters_Var
 		self.mode = Mode
 
-		VL_DIR = VLconfig.VL_DIR
-
-		### Define directories for VL from config file. If directory name doesn't start with '/'
-		### it will be created relative to the TWD
+		### Define required directories for VL from config file. If directory name doesn't start with '/'
+		### it will be created relative to the TWD.
 		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored.
-		self.OUTPUT_DIR = getattr(VLconfig,'OutputDir', "{}/Output".format(VL_DIR))
 		# Material directory
-		self.MATERIAL_DIR = getattr(VLconfig,'MaterialDir', "{}/Materials".format(VL_DIR))
 		# Input directory
-		self.INPUT_DIR = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
-		# tmp directory
-		self.TEMP_DIR = getattr(VLconfig,'TEMP_DIR',"/tmp")
+		# Temp directory
+		VL_DIR = VLconfig.VL_DIR
+		_InputDir = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
+		_OutputDir = getattr(VLconfig,'OutputDir', "{}/Output".format(VL_DIR))
+		_MaterialDir = getattr(VLconfig,'MaterialDir', "{}/Materials".format(VL_DIR))
+		_TempDir = getattr(VLconfig,'TEMP_DIR',"/tmp")
+
+		# Set directories to those set in kwargs if given else
+		self.INPUT_DIR=InputDir if InputDir else _InputDir
+		self.OUTPUT_DIR=OutputDir if OutputDir else _OutputDir
+		self.MATERIAL_DIR=MaterialDir if MaterialDir else _MaterialDir
+		self.TEMP_DIR=TempDir if TempDir else _TempDir
 
 		# Update above with parsed arguments
 		for key, val in self.GetArgParser().items():
@@ -161,9 +167,9 @@ class VLSetup():
 			return
 
 		if self.mode in ('Interactive','Terminal'):
-			print(Text)
+			print(Text,flush=True)
 		else:
-			if Prnt: print(Text)
+			if Prnt: print(Text,flush=True)
 			with open(self.LogFile,'a') as f:
 				f.write(Text+"\n")
 

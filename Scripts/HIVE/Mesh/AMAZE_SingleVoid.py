@@ -21,27 +21,32 @@ def Create(Parameter):
 	else :
 		geompy = geomBuilder.New()
 		smesh = smeshBuilder.New()
-###############################################################################
-## if there is one or multiple artificial defect, check here.
-	if Parameter.VoidRad_a and Parameter.VoidRad_b and Parameter.VoidHeight:
-		isVoid = True #
-		if Parameter.VoidRad_a > Parameter.VoidRad_b: # scale the void in y-axis
-			LargestVoidRad= Parameter.VoidRad_a # elliptical cylinder void
-			SmallestVoidRad = Parameter.VoidRad_b
-			ScalingFactor = Parameter.VoidRad_b/Parameter.VoidRad_a
-			ScalingFlag = 'AxisY'
-		elif Parameter.VoidRad_b > Parameter.VoidRad_a: # scale the void in x-axis
-			LargestVoidRad= Parameter.VoidRad_b # elliptical cylinder void
-			SmallestVoidRad = Parameter.VoidRad_a
-			ScalingFactor = Parameter.VoidRad_a/Parameter.VoidRad_b
-			ScalingFlag = 'AxisX'
-		else: # circular void; no scaling!
-			LargestVoidRad, SmallestVoidRad = Parameter.VoidRad_a, Parameter.VoidRad_a
-			ScalingFlag = None
-	else:
-		isVoid = False
-		 
-###############################################################################    
+# =============================================================================
+## if there is one or multiple artificial defect..
+	isVoid, LargestVoidRad, SmallestVoidRad  = [], [], []
+	ScalingFactor, ScalingFlag   = [], []
+
+	for i in range(len(Parameter.Void)): 
+		if Parameter.Void[i][0] and Parameter.Void[i][1] and Parameter.Void[i][2]: 
+			isVoid.append(True) 
+			if Parameter.Void[i][0] > Parameter.Void[i][1]: # scale the void in y-axis
+				LargestVoidRad.append(Parameter.Void[i][0]) # elliptical cylinder void
+				SmallestVoidRad.append(Parameter.Void[i][1])
+				ScalingFactor.append((Parameter.Void[i][1]/Parameter.Void[i][0]))
+				ScalingFlag.append('AxisY')
+			elif Parameter.Void[i][1] > Parameter.Void[i][0]: # scale the void in x-axis
+				LargestVoidRad.append(Parameter.Void[i][1]) # elliptical cylinder void
+				SmallestVoidRad.append(Parameter.Void[i][0])
+				ScalingFactor.append((Parameter.Void[i][0]/Parameter.Void[i][1]))
+				ScalingFlag.append('AxisX')
+			else: # circular void; no scaling!
+				LargestVoidRad.append(Parameter.Void[i][0])
+				SmallestVoidRad.append(Parameter.Void[i][0])
+				ScalingFactor.append(None)
+				ScalingFlag.append(None)
+		else:
+			isVoid.append(False)
+# =============================================================================    
 	###
 	### GEOM component
 	###
@@ -82,40 +87,57 @@ def Create(Parameter):
 	Tile_orig = geompy.MakeBoxTwoPnt(TileCorner1, TileCorner2)
 	geompy.addToStudy( Tile_orig, 'Tile_orig')
 
-###############################################################################
+# =============================================================================
 ## if there is one or multiple artificial defect, add here.
-    ##Single Void Case
-	if isVoid:
-        # Void is at the top half of the tile
-		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.BlockHeight) # extrusion vector
-		Void_Temp = geompy.MakeCylinder(Vertex_2, OZ, LargestVoidRad, Parameter.VoidHeight)
+    ##MultiVoid Case
+	Void_List=[] # void objects
 
-                # if void has elliptical base, then...
-		if ScalingFlag == 'AxisY':
-			Void_Scaled = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, 1, ScalingFactor, 1)
+	for i in range (len (isVoid)):
+		if isVoid[i]:
+        	# Void is at the top half of the tile 
+			Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[i][0], Parameter.VoidCentre[i][1], Parameter.BlockHeight) # extrusion vector
+			Void_Temp = geompy.MakeCylinder(Vertex_2, OZ, LargestVoidRad[i], Parameter.Void[i][2])
 
-		elif ScalingFlag == 'AxisX':
-			Void_Scaled = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, ScalingFactor, 1, 1)
+                	# if void has elliptical base, then...
+			if ScalingFlag[i] == 'AxisY':
+				Void_Scaled = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, 1, ScalingFactor[i], 1)
 
-		else: 
-			Void = Void_Temp
+			elif ScalingFlag[i] == 'AxisX':
+				Void_Scaled = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, ScalingFactor[i], 1, 1)
 
-		# rotate the void with respect to the local coordinate system
-		if Parameter.VoidRotation != 0 and ScalingFlag != None: 
-			Point_1 = geompy.MakeVertex(Parameter.VoidCentre[0], Parameter.VoidCentre[1], 0)
-			Point_2 = geompy.MakeVertex(Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.BlockHeight)
-			VectorRotation = geompy.MakeVector(Point_1, Point_2)
-			Void = geompy.Rotate(Void_Scaled, VectorRotation, Parameter.VoidRotation*np.pi/180.0)
+			else:  # if void has circular base
+				Void = Void_Temp
 
-		Tile = geompy.MakeCutList(Tile_orig,[Void], True)
-	else:
+			# elliptic void and rotation with respect to the void centre
+			if Parameter.Void[i][3] != 0.0 and ScalingFlag[i] != None: 
+				Point_1 = geompy.MakeVertex(Parameter.VoidCentre[i][0], Parameter.VoidCentre[i][1], 0)
+				Point_2 = geompy.MakeVertex(Parameter.VoidCentre[i][0], Parameter.VoidCentre[i][1], Parameter.BlockHeight)
+				VectorRotation = geompy.MakeVector(Point_1, Point_2)
+				Void = geompy.Rotate(Void_Scaled, VectorRotation, Parameter.Void[i][3]*np.pi/180.0)
+
+			# no rotation but elliptic void
+			if Parameter.Void[i][3] == 0 and ScalingFlag[i] != None: 
+				Void = Void_Scaled
+
+			Void_List.append(Void)
+
+	if len (isVoid) != 0:   # void(s) case
+		Tile = geompy.MakeCutList(Tile_orig, Void_List, True)  
+
+	else:   # no void case
 		Tile = Tile_orig 
-###############################################################################
+
+# =============================================================================
 ## Merge the parts
 	Fuse = geompy.MakeFuseList([Pipe, Block, Tile], True, True)
 	Sample = geompy.MakePartition([Fuse], [Pipe, Block, Tile], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
-	if isVoid:
-		geompy.addToStudy(Void,'Void')
+
+	Void_Name = [] # void geometry list (solid bodies)
+
+	for j in range (len (isVoid)): 
+		Void_Name.append('Void_' + str (j))
+		geompy.addToStudy(Void_List[j], Void_Name[j])
+
 	geompy.addToStudy(Tile,'Tile')
 	geompy.addToStudy(Sample, 'Sample')
 # =============================================================================
@@ -168,13 +190,20 @@ def Create(Parameter):
 	GrpSampleSurface = SalomeFunc.AddGroup(Sample, 'SampleSurface', Ix)
 
 #============================================================================
-	if isVoid:
-	#VoidSurfaces- Find the faces corresponding to 3(side), 10(top) and 12(bottom) in Void
-		Ix = SalomeFunc.ObjIndex(Sample, Void, [3, 10, 12])[0]
-		VoidSurfaces = geompy.CreateGroup(Sample, geompy.ShapeType["FACE"])
-		geompy.UnionIDs(VoidSurfaces, Ix)
-		geompy.addToStudyInFather( Sample, VoidSurfaces, 'VoidSurfaces' )
+# Store the void surfaces for feature local meshing
+	VoidSurfaces = []
+	VoidSurfaces_Names = []	
 
+	for k in range (len (isVoid)):
+	#VoidSurfaces- Find the faces corresponding to 3(side), 10(top) and 12(bottom) in Void
+		Ix = SalomeFunc.ObjIndex(Sample, Void_List[k], [3, 10, 12])[0]
+		VoidSurfaces_obj = geompy.CreateGroup(Sample, geompy.ShapeType["FACE"])
+		geompy.UnionIDs(VoidSurfaces_obj, Ix)
+		VoidSurfaces_Names.append('Void_' + str(k) + '_Surfaces')
+		VoidSurfaces.append(VoidSurfaces_obj)
+		geompy.addToStudyInFather( Sample, VoidSurfaces[k], VoidSurfaces_Names[k] )
+
+#============================================================================
 	###
 	### SMESH component
 	###
@@ -285,32 +314,33 @@ def Create(Parameter):
 	smesh.SetName(NETGEN_2D_Parameters_2, 'NETGEN 2D Parameters_2')
 	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
 
-	#local (fine) meshing around voids/cracks in order to improve accuracy 
-	if isVoid:
-		local_mesh_size = (2.0*np.pi*SmallestVoidRad)/Parameter.VoidSegmentN
-    ### Sub Mesh creation
-    ## Sub-Mesh 3
-		Regular_1D_3 = Mesh_1.Segment(geom=VoidSurfaces)
-		Local_Length_3 = Regular_1D_3.LocalLength(local_mesh_size,None,1e-07)
-		NETGEN_2D_3 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=VoidSurfaces)
-		NETGEN_2D_Parameters_3 = NETGEN_2D_3.Parameters()
-		NETGEN_2D_Parameters_3.SetMaxSize( local_mesh_size )
-		NETGEN_2D_Parameters_3.SetOptimize( 1 )
-		NETGEN_2D_Parameters_3.SetFineness( 3 )
-		NETGEN_2D_Parameters_3.SetChordalError( 0.1 )
-		NETGEN_2D_Parameters_3.SetChordalErrorEnabled( 0 )
-		NETGEN_2D_Parameters_3.SetMinSize( local_mesh_size )
-		NETGEN_2D_Parameters_3.SetUseSurfaceCurvature( 1 )
-		NETGEN_2D_Parameters_3.SetQuadAllowed( 0 )
-		Sub_mesh_3 = NETGEN_2D_3.GetSubMesh()
+	#local (fine) meshing around voids in order to improve accuracy
+	for m in range (len (isVoid)): 
+		if isVoid[m]:
+			local_mesh_size = (2.0*np.pi*SmallestVoidRad[m])/Parameter.VoidSegmentN
+    		### Sub Mesh creation
+    		## Sub-Mesh 3
+			Regular_1D_3 = Mesh_1.Segment(geom=VoidSurfaces[m])
+			Local_Length_3 = Regular_1D_3.LocalLength(local_mesh_size,None,1e-07)
+			NETGEN_2D_3 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=VoidSurfaces[m])
+			NETGEN_2D_Parameters_3 = NETGEN_2D_3.Parameters()
+			NETGEN_2D_Parameters_3.SetMaxSize( local_mesh_size )
+			NETGEN_2D_Parameters_3.SetOptimize( 1 )
+			NETGEN_2D_Parameters_3.SetFineness( 3 )
+			NETGEN_2D_Parameters_3.SetChordalError( 0.1 )
+			NETGEN_2D_Parameters_3.SetChordalErrorEnabled( 0 )
+			NETGEN_2D_Parameters_3.SetMinSize( local_mesh_size )
+			NETGEN_2D_Parameters_3.SetUseSurfaceCurvature( 1 )
+			NETGEN_2D_Parameters_3.SetQuadAllowed( 0 )
+			Sub_mesh_3 = NETGEN_2D_3.GetSubMesh()
 
-		smesh.SetName(Sub_mesh_3, 'VoidMesh')
-		smesh.SetName(NETGEN_2D_Parameters_3, 'NETGEN 2D Parameters_3')
+			smesh.SetName(Sub_mesh_3, 'Void_' + str(m) + '_Mesh')
+			smesh.SetName(NETGEN_2D_Parameters_3, 'NETGEN 2D Parameters-Void_' + str(m))
 
-		NETGEN_2D_Parameters_1.SetMinSize( local_mesh_size )
-		NETGEN_3D_Parameters_1.SetMinSize( local_mesh_size )
+			NETGEN_2D_Parameters_1.SetMinSize( local_mesh_size )
+			NETGEN_3D_Parameters_1.SetMinSize( local_mesh_size )
 
-		Mesh_Void_Ext = Mesh_1.GroupOnGeom(VoidSurfaces,'VoidSurfaces',SMESH.FACE)
+			Mesh_Void_Ext = Mesh_1.GroupOnGeom(VoidSurfaces[m], VoidSurfaces_Names[m],SMESH.FACE)
 
 	isDone = Mesh_1.Compute()
 	globals().update(locals()) ### This adds all variables created in this function
@@ -320,7 +350,7 @@ def Create(Parameter):
 
 
 
-class TestDimensions():
+class TestDimensions(): # This testing input class is valid only for no void case
 	def __init__(self):
 		### Geom
 		self.BlockWidth = 0.03

@@ -27,15 +27,18 @@ Mesh.TileWidth = Mesh.BlockWidth
 Mesh.TileLength = 0.03 #y
 Mesh.TileHeight = 0.005 #z
 
-###############################################################################
-# Geometrical Dimensions for Single Void in Elliptical Cylinder Geometry
-# Void centre/location is a geometric parameter!!
-Mesh.VoidCentre = (Mesh.BlockWidth*0.5 ,Mesh.BlockLength*0.5) # Void centre relative to centre of block - (0, 0) is at the centre
-Mesh.VoidRad_a = 0.003 # length of void in horizontal axis X
-Mesh.VoidRad_b = 0.002 # width of void in vertical axis Y
-Mesh.VoidHeight = 0.001 # height of void < TileHeigth
-Mesh.VoidRotation = 45 # amount of rotation in degree 
-###############################################################################
+# =============================================================================
+# Geometrical Dimensions for Single Void in Elliptic Cylinder Geometry
+# Void centre/location
+Mesh.VoidCentre = [[Mesh.BlockWidth*0.5 ,Mesh.BlockLength*0.5], [(Mesh.BlockWidth*0.5+0.005) ,(Mesh.BlockLength*0.5+0.005)], [(Mesh.BlockWidth*0.5+0.010) ,(Mesh.BlockLength*0.5+0.010)]] # Void centre relative to centre of block - (0, 0) is the tile centre
+Mesh.Void = [[0.002, 0.001, 0.0005, 30.0 ], [0.002, 0.002, 0.001, 0.0 ], [0.002, 0.004, 0.0015, 45.0 ]]
+
+# Mesh.Void = [[VoidRad_a, VoidRad_b, VoidHeight, VoidRotation], [...], ...]
+# VoidRad_a: length of void in horizontal axis X
+# VoidRad_b: width of void in vertical axis Y
+# VoidHeight: height of void < TileHeigth
+# VoidRotation: amount of rotation in degree 
+# =============================================================================
 # Mesh parameters
 Mesh.Length1D = 0.005
 Mesh.Length2D = 0.005
@@ -43,13 +46,13 @@ Mesh.Length3D = 0.005
 
 Mesh.SubTile = 0.002 # Mesh fineness on tile
 Mesh.PipeSegmentN = 32 # Number of segments for pipe circumference
-Mesh.VoidSegmentN = 8 # Number of segments for hole circumference (for sub-mesh) 16-24-28-32..
+Mesh.VoidSegmentN = 16 # Number of segments for hole circumference (for sub-mesh) 16-24-28-32..
 
 
 ##########################
 ####### Simulation #######
 ##########################
-Sim.Name = 'SingleVoid' # if no void, then use the flag'Single' 
+Sim.Name = 'MultiVoid' #  no void flag: 'NoVoid', single void flag: 'SingleVoid', multi void flag: 'MultiVoid' 
 
 #############
 ## PreAster #

@@ -217,8 +217,8 @@ def VLPool(fn,VL,Dict,*args):
             print("Running {}.\n".format(Name))
             err = fn(VL,Dict,*args)
 
-        if not err: mess = "{} completed successfully.".format(Name)
-        else: mess = "{} finishes with errors.".format(Name)
+        if not err: mess = "{} completed successfully.\n".format(Name)
+        else: mess = "{} finishes with errors.\n".format(Name)
 
         Returner.Error = err # will be None if everything has runs moothly
         if not OrigDict == Dict: Returner.Dict = Dict
@@ -239,9 +239,9 @@ def VLPool(fn,VL,Dict,*args):
                 with open(LogFile,'a') as f:
                     f.write(str(err))
         elif err:
-            mess += "\n{}".format(err)
+            mess += "{}\n".format(err)
 
-        print(mess)
+        print(mess,flush=True)
 
 def VLPoolReturn(Dicts,Returners):
     cpDicts = copy.deepcopy(Dicts)

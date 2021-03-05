@@ -60,7 +60,7 @@ class VLSetup():
 		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
 
 		# Remove RunFiles directory from path if a scrit was launched there.
-		if VL_DIR != sys.path[-1]: sys.path.pop(-1)
+		# if VL_DIR != sys.path[-1]: sys.path.pop(-1)
 
 		self.__ID__ = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
 

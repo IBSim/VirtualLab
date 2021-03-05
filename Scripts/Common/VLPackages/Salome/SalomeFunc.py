@@ -7,6 +7,7 @@ import salome_version
 import salome
 import sys
 import importlib
+import pickle
 
 __all__ = ['MeshInfo','MeshExport','ObjIndex','AddGroup','GetArgs','Reload','MeshRC','MeshStore']
 
@@ -120,6 +121,20 @@ def GetArgs(argv):
 		key, value = arg.split('=')
 		ArgDict[key]=value
 	return ArgDict
+
+def devGetArgs():
+	if len(sys.argv) > 1:
+		for arg in sys.argv[1:]:
+			_var,_val = arg.split('=')
+			if _var == 'pkl':
+				pklfile=_val
+				break
+		with open(pklfile,'rb') as f:
+		    argdict = pickle.load(f)
+	else:
+		argdict = {}
+	return argdict
+
 
 def Reload(name):
 	importlib.reload(sys.modules[name])

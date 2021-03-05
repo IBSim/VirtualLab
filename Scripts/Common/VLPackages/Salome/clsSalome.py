@@ -6,6 +6,7 @@ import os
 from subprocess import Popen, PIPE, STDOUT
 import uuid
 import VLconfig
+import pickle
 
 __all__ = ['Salome']
 
@@ -189,9 +190,13 @@ class Salome():
 		PyPath = ["{}:".format(path) for path in AddPath+self.AddPath]
 		PyPath = "".join(PyPath)
 
-		# Write ArgDict and ArgList in format to pass to salome
-		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
-		Args = ",".join(ArgList + Args)
+		if ArgDict:
+			pth = "{}/{}.pkl".format(self.cwd,uuid.uuid4())
+			with open(pth,'wb') as f:
+				pickle.dump(ArgDict,f)
+			Args = 'pkl={}'.format(pth)
+		else:
+			Args = ''
 
 		portfile = "{}/{}".format(self.cwd,uuid.uuid4())
 		GUIflag = '-g' if kwargs.get('GUI') else '-t'

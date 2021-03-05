@@ -260,9 +260,9 @@ def EMCreate(SampleMesh, SampleGeom, **kwargs):
 if __name__ == '__main__':
     #### TODO: Add in easy geometry & mesh for testing
 
-    kwargs = SalomeFunc.GetArgs(sys.argv[1:])
+    ArgDict = SalomeFunc.devGetArgs()
 
-    MeshFile = kwargs['InputFile']
+    MeshFile = ArgDict['InputFile']
     # Get sample mesh from .med file
     (SampleMesh, status) = smesh.CreateMeshesFromMED(MeshFile)
     SampleMesh=SampleMesh[0]
@@ -274,11 +274,11 @@ if __name__ == '__main__':
         geompy.addToStudyInFather(SampleGeom, grp, str(grp.GetName()))
 
     # Create ERMES mesh using the sample mesh and geometry
-    ERMESmesh = EMCreate(SampleMesh, SampleGeom, **kwargs)
+    ERMESmesh = EMCreate(SampleMesh, SampleGeom, **ArgDict)
 
     # Export ERMESmesh if mesh type
     if type(ERMESmesh) == salome.smesh.smeshBuilder.Mesh:
-        SalomeFunc.MeshExport(ERMESmesh, kwargs['OutputFile'])
+        SalomeFunc.MeshExport(ERMESmesh, ArgDict['OutputFile'])
     # Check return vaue from EMCreate
     elif ERMESmesh == 2319:
         sys.exit("\nImpossible configuration: Coil intersects sample\n")

@@ -12,7 +12,7 @@ SalomePyQt.SalomePyQt().activateModule('ParaViS')
 import pvsimple
 pvsimple.ShowParaviewView()
 
-kwargs = SalomeFunc.GetArgs(sys.argv[1:])
+kwargs = SalomeFunc.GetArgs()
 CBmin = float(kwargs.pop('Rangemin'))
 CBmax = float(kwargs.pop('Rangemax'))
 

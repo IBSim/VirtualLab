@@ -41,7 +41,9 @@ def Setup(VL, **kwargs):
 
         VL.WriteModule("{}/{}.py".format(VL.GEOM_DIR, MeshName), ParaDict)
 
-        Mdict = {'Name':MeshName, 'Parameters':Namespace(**ParaDict)}
+        Mdict = {'Name':MeshName,
+                 'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
+                 'Parameters':Namespace(**ParaDict)}
         if VL.mode in ('Headless','Continuous'):
             Mdict['LogFile'] = "{}/{}.log".format(VL.MESH_DIR,MeshName)
         else : Mdict['LogFile'] = None
@@ -58,14 +60,10 @@ def PoolRun(VL, MeshDict,**kwargs):
     if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
         script = '{}/MeshRun.py'.format(VL.SIM_MESH)
 
-    AddPath = [VL.SIM_MESH, VL.GEOM_DIR]
-    Returnfile = "{}/{}_RC.txt".format(VL.GEOM_DIR,MeshName) # File where salome can write an exit status to
-    ArgDict = {'Name':MeshName,
-                'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
-                'RCfile':Returnfile,
-                'STEP':True}
+    AddPath = [VL.SIM_MESH, VL.GEOM_DIR] #Geomdir may not be needed
+    MeshDict['STEP'] = True
 
-    err = VL.Salome.Run(script, AddPath=AddPath, ArgDict=ArgDict)
+    err = VL.Salome.Run(script, DataDict = MeshDict, AddPath=AddPath)
     if err:
         return "Error in Salome run"
 
@@ -195,7 +193,6 @@ def Run(VL, **kwargs):
         MeshScript = '{}/MeshRun.py'.format(VL.SIM_MESH)
 
     AddPath = [VL.SIM_MESH, VL.GEOM_DIR]
-    ArgDict = {}
 
     MeshStat = {}
     NumActive=NumComplete=0
@@ -206,10 +203,7 @@ def Run(VL, **kwargs):
 
         port = Ports.pop(0)
 
-        ArgDict.update(Name=MeshName, MESH_FILE="{}/{}.med".format(VL.MESH_DIR, MeshName),
-                       RCfile="{}/{}_RC.txt".format(VL.GEOM_DIR,MeshName))
-
-        Proc = VL.Salome.Shell(MeshScript, Port=port, AddPath=AddPath, ArgDict=ArgDict, OutFile=MeshDict['LogFile'])
+        Proc = VL.Salome.Shell(MeshScript, Port=port, AddPath=AddPath, DataDict=MeshDict, OutFile=MeshDict['LogFile'])
         MeshStat[MeshName] = [Proc,port]
         PortCount[port] +=1
         NumActive+=1

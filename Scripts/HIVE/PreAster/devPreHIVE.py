@@ -82,10 +82,9 @@ def CoilCurrent(EMMesh, JRes, groupname = 'CoilIn', **kwargs):
 
 	return intJ
 
-def ERMES_Mesh(VL, SampleMesh, ERMESMesh, AddPath=[], LogFile=None, GUI=0, **kwargs):
+def ERMES_Mesh(VL, SimDict, AddPath=[], LogFile=None, GUI=0, **kwargs):
 	script = "{}/EM/NewEM.py".format(VL.SIM_SCRIPTS)
-	ArgDict = {'InputFile':SampleMesh, 'OutputFile':ERMESMesh}
-	err = VL.Salome.Run(script, ArgDict=ArgDict, AddPath=AddPath, OutFile=LogFile, GUI=GUI)
+	err = VL.Salome.Run(script, DataDict=SimDict, AddPath=AddPath, OutFile=LogFile, GUI=GUI)
 	return err
 
 def SetupERMES(Info, Parameters, ERMESMeshFile, ERMESResFile, tmpERMESdir, **kwargs):
@@ -536,14 +535,14 @@ def EMI(Info, StudyDict):
 		ERMESdir = "{}/ERMES".format(StudyDict["TMP_CALC_DIR"])
 		os.makedirs(ERMESdir)
 
+		StudyDict['InputFile'] = StudyDict['MeshFile']
+		StudyDict['OutputFile'] = "{}/Mesh.med".format(ERMESdir)
 		# Create ERMES mesh
-		ERMESmeshfile = "{}/Mesh.med".format(ERMESdir)
-		err = ERMES_Mesh(Info,StudyDict['MeshFile'], ERMESmeshfile,
-						AddPath = StudyDict['TMP_CALC_DIR'],
+		err = ERMES_Mesh(Info,StudyDict,
 						GUI=0)
 		if err: return sys.exit('Issue creating mesh')
 
-		Watts, WattsPV, Elements, JHNode = SetupERMES(Info, Parameters, ERMESmeshfile, ERMESresfile, ERMESdir)
+		Watts, WattsPV, Elements, JHNode = SetupERMES(Info, Parameters, StudyDict['OutputFile'], ERMESresfile, ERMESdir)
 
 		shutil.rmtree(ERMESdir)
 

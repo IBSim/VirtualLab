@@ -115,26 +115,29 @@ def AddGroup(Geom, GroupName, Index):
 	geompy.addToStudyInFather( Geom, Name, GroupName )
 	return Name
 
-def GetArgs(argv):
+def deprGetArgs(argv):
 	ArgDict = {}
 	for arg in argv:
 		key, value = arg.split('=')
 		ArgDict[key]=value
 	return ArgDict
 
-def devGetArgs():
+def GetArgs():
 	if len(sys.argv) > 1:
+		pkldict = {}
 		for arg in sys.argv[1:]:
-			_var,_val = arg.split('=')
-			if _var == 'pkl':
-				pklfile=_val
-				break
-		with open(pklfile,'rb') as f:
-		    argdict = pickle.load(f)
-	else:
-		argdict = {}
-	return argdict
+			varname,path = arg.split('=')
+			if not path.endswith('pkl'): continue
 
+			with open(path,'rb') as f:
+			    pklvar = pickle.load(f)
+			pkldict[varname] = pklvar
+
+		if len(pkldict) == 2:
+			# change to alphabetical
+			return pkldict['Args'],pkldict['DataDict']
+		elif len(pkldict) == 1:
+			return list(pkldict.values())[0]
 
 def Reload(name):
 	importlib.reload(sys.modules[name])

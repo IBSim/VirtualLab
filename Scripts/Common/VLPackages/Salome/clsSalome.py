@@ -23,33 +23,6 @@ class Salome():
 		self.AddPath = kwargs.get('AddPath',[]) + [os.path.dirname(os.path.abspath(__file__))]
 		self.Ports = []
 
-
-#	def WriteArgs(self,ArgDict):
-#		# Args = []
-#		# for key, value in ArgDict.items()
-#		# 	Args.append("{}={}".format(key, value))
-
-#		for key, value in ArgDict.items()
-
-#	def __ArgEncode__(self,val):
-#		tp = type(val)
-#		if tp == int:
-#			return "__int{}".format(val)
-#		elif tp == float:
-#			return "float{}".format(val)
-#		elif tp == str:
-#			return "__str{}".format(val)
-#		elif tp == bool:
-#			return "_bool{}".format(val)
-#		elif val == None:
-#			return "_none{}".format(val)
-#		elif tp == list:
-#			lstring = "_list"
-#			for i, lval in enumerate(val):
-#				self.__ArgEncode__(lval)
-#				string = "^{:04}^".format()
-#			lstring+=
-
 	def Start(self, Num=1,**kwargs):
 		# If only OutFile is provided as a kwarg then ErrFile is set to this also
 		OutFile = ErrFile = kwargs.get('OutFile', None)
@@ -96,8 +69,8 @@ class Salome():
 		GUI: Opens a new instance with GUI (useful for testing)
 		'''
 		AddPath = kwargs.get('AddPath',[])
-		ArgDict = kwargs.get('ArgDict', {})
-		ArgList = kwargs.get('ArgList',[])
+		Args = kwargs.get('Args', {})
+		DataDict = kwargs.get('DataDict',{})
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
@@ -105,9 +78,19 @@ class Salome():
 		PythonPath = ["PYTHONPATH="] + PythonPath + ["$PYTHONPATH;export PYTHONPATH;"]
 		PythonPath = "".join(PythonPath)
 
-		# Write ArgDict and ArgList in format to pass to salome
-		Args = ["{}={}".format(key, value) for key, value in ArgDict.items()]
-		Args = ",".join(ArgList + Args)
+		_argstr = []
+		if Args:
+			pth = "{}/Args_{}.pkl".format(self.cwd,uuid.uuid4())
+			with open(pth,'wb') as f:
+				pickle.dump(Args,f)
+			_argstr.append("Args={}".format(pth))
+		if DataDict:
+			pth = "{}/DataDict_{}.pkl".format(self.cwd,uuid.uuid4())
+			with open(pth,'wb') as f:
+				pickle.dump(DataDict,f)
+			_argstr.append('DataDict={}'.format(pth))
+		argstr = ",".join(_argstr)
+
 
 		if kwargs.get('GUI',False):
 			command = "{} {} args:{}".format(self.Exec, Script, Args)
@@ -181,22 +164,28 @@ class Salome():
 		GUI: Opens a new instance with GUI (useful for testing)
 		'''
 		AddPath = kwargs.get('AddPath',[])
-		ArgDict = kwargs.get('ArgDict', {})
-		ArgList = kwargs.get('ArgList',[])
 		OutFile = kwargs.get('OutFile', None)
+		Args = kwargs.get('Args', {})
+		DataDict = kwargs.get('DataDict',{})
 
 		# Add paths provided to python path for subprocess (self.COM_SCRIPTS and self.SIM_SCRIPTS is always added to path)
 		AddPath = [AddPath] if type(AddPath) == str else AddPath
 		PyPath = ["{}:".format(path) for path in AddPath+self.AddPath]
 		PyPath = "".join(PyPath)
 
-		if ArgDict:
-			pth = "{}/{}.pkl".format(self.cwd,uuid.uuid4())
+		_argstr = []
+		if Args:
+			pth = "{}/Args_{}.pkl".format(self.cwd,uuid.uuid4())
 			with open(pth,'wb') as f:
-				pickle.dump(ArgDict,f)
-			Args = 'pkl={}'.format(pth)
-		else:
-			Args = ''
+				pickle.dump(Args,f)
+			_argstr.append("Args={}".format(pth))
+		if DataDict:
+			pth = "{}/DataDict_{}.pkl".format(self.cwd,uuid.uuid4())
+			with open(pth,'wb') as f:
+				pickle.dump(DataDict,f)
+			_argstr.append('DataDict={}'.format(pth))
+		argstr = ",".join(_argstr)
+
 
 		portfile = "{}/{}".format(self.cwd,uuid.uuid4())
 		GUIflag = '-g' if kwargs.get('GUI') else '-t'
@@ -205,10 +194,10 @@ class Salome():
 		# Run mesh in Salome
 		if False:
 			# This is dev work, need to add in output option for this call
-			cmlst = self.Exec.split() + [GUIflag, '--ns-port-log', portfile, Script, 'args:'+Args]
+			cmlst = self.Exec.split() + [GUIflag, '--ns-port-log', portfile, Script, 'args:'+argstr]
 			SubProc = Popen(cmlst, cwd=self.cwd, stdout=sys.stdout, stderr=sys.stderr, env=env)
 		else :
-			command = "{} {} --ns-port-log {} {} args:{} ".format(self.Exec, GUIflag, portfile, Script, Args)
+			command = "{} {} --ns-port-log {} {} args:{} ".format(self.Exec, GUIflag, portfile, Script, argstr)
 			if OutFile:
 				with open(OutFile,'w') as f:
 					SubProc = Popen(command, shell='TRUE',cwd=self.cwd, stdout=f, stderr=f,env=env)

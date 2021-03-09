@@ -16,7 +16,6 @@ import  SMESH, SALOMEDS
 from salome.smesh import smeshBuilder
 
 import SalomeFunc
-import Parameters
 
 geompy = geomBuilder.New()
 smesh = smeshBuilder.New()
@@ -55,7 +54,7 @@ class GetMesh():
 
             self.Groups[GrpType][Name] = Ix
 
-def EMCreate(SampleMesh, SampleGeom, **kwargs):
+def EMCreate(SampleMesh, SampleGeom, Parameters):
     # Default parameters
     VacuumRadius = getattr(Parameters,'VacuumRadius',0.2)
     VacuumSegment = getattr(Parameters,'VacuumSegment', 25)
@@ -260,25 +259,24 @@ def EMCreate(SampleMesh, SampleGeom, **kwargs):
 if __name__ == '__main__':
     #### TODO: Add in easy geometry & mesh for testing
 
-    ArgDict = SalomeFunc.devGetArgs()
-
-    MeshFile = ArgDict['InputFile']
+    DataDict = SalomeFunc.GetArgs()
+    InputFile = DataDict['InputFile']
     # Get sample mesh from .med file
-    (SampleMesh, status) = smesh.CreateMeshesFromMED(MeshFile)
+    (SampleMesh, status) = smesh.CreateMeshesFromMED(InputFile)
     SampleMesh=SampleMesh[0]
     # Get the sample geometry from the .xao file saved alongside the .med file
-    XAO = geompy.ImportXAO("{}.xao".format(os.path.splitext(MeshFile)[0]))
+    XAO = geompy.ImportXAO("{}.xao".format(os.path.splitext(InputFile)[0]))
     SampleGeom, SampleGroups = XAO[1],XAO[3]
     geompy.addToStudy( SampleGeom, 'SampleGeom' )
     for grp in SampleGroups:
         geompy.addToStudyInFather(SampleGeom, grp, str(grp.GetName()))
 
     # Create ERMES mesh using the sample mesh and geometry
-    ERMESmesh = EMCreate(SampleMesh, SampleGeom, **ArgDict)
+    ERMESmesh = EMCreate(SampleMesh, SampleGeom, DataDict['Parameters'])
 
     # Export ERMESmesh if mesh type
     if type(ERMESmesh) == salome.smesh.smeshBuilder.Mesh:
-        SalomeFunc.MeshExport(ERMESmesh, ArgDict['OutputFile'])
+        SalomeFunc.MeshExport(ERMESmesh, DataDict['OutputFile'])
     # Check return vaue from EMCreate
     elif ERMESmesh == 2319:
         sys.exit("\nImpossible configuration: Coil intersects sample\n")

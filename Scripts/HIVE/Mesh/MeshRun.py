@@ -6,11 +6,11 @@ import salome
 salome.salome_init()
 
 # This function gives the ArgDict dictionary we passed to SalomeRun
-ArgDict = SalomeFunc.devGetArgs()
+MeshDict = SalomeFunc.GetArgs()
 
 # Import the Create function which is used to generate the mesh using the mesh parameters
-Parameters = __import__(ArgDict['Name'])
-MeshFile = ArgDict['MESH_FILE']
+Parameters = MeshDict['Parameters']
+MeshFile = MeshDict['MESH_FILE']
 
 Create = __import__(Parameters.File).Create
 MeshRn = Create(Parameters)
@@ -21,8 +21,7 @@ if type(MeshRn)==salome.smesh.smeshBuilder.Mesh:
         from EM.EMChamber import CreateEMMesh
         Meshes = CreateEMMesh(MeshRn, Parameters)
         if type(Meshes)==int:
-            with open(ArgDict['RCfile'],'w') as f:
-            	f.write(str(Meshes))
+            pass
         else :
             SampleMesh, ERMESMesh = Meshes[0:2]
             # smesh.SetName(SampleMesh, 'Sample')
@@ -33,7 +32,7 @@ if type(MeshRn)==salome.smesh.smeshBuilder.Mesh:
         MeshRn.Compute()
         SalomeFunc.MeshExport(MeshRn,MeshFile)
         # only called by dev scripts
-        if 'STEP' in ArgDict:
+        if 'STEP' in MeshDict:
             from salome.geom import geomBuilder
             import GEOM
             geompy = geomBuilder.New()
@@ -50,9 +49,6 @@ if type(MeshRn)==salome.smesh.smeshBuilder.Mesh:
 
             geompy.ExportXAO(SampleGeom, GrpGeom, [], "", xaofile, "")
 
-elif type(MeshRn)==int:
-    with open(ArgDict['RCfile'],'w') as f:
-    	f.write(str(MeshRn))
 
 # salome.myStudy.Clear()
 # salome.salome_close()

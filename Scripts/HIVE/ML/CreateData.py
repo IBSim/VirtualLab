@@ -91,7 +91,7 @@ def Single(VL, MLdict):
         DataArr = np.vstack((CurrentData,DataArr))
     elif dsetExist and len(DataDir_Sub) > CurrentData.shape[0]:
         print("New data will be appended")
-        NbPoints = Database[DataPath].shape[0]
+        NbPoints = CurrentData.shape[0]
         print(len(DataDir_Sub) - NbPoints)
         DataArr = GetData(VL,MLdict,DataDir_Sub[NbPoints:])
         DataArr = np.vstack((CurrentData,DataArr))
@@ -99,7 +99,7 @@ def Single(VL, MLdict):
         print('No new data to include')
         Write = False
     else: #dsetExist is False
-        print("New dataset will be added")
+        print("New dataset {} will be added".format(DataPath))
         DataArr = GetData(VL,MLdict,DataDir_Sub)
 
     if Write:

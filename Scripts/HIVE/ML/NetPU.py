@@ -44,33 +44,9 @@ class NetPU(nn.Module):
         x = fc(x)
         return x
 
-
-    # def __init__(self,bah,blah):
-    #     super(NetPU, self).__init__()
-    #     self.fc1 = nn.Linear(4, 32)
-    #     self.fc2 = nn.Linear(32, 128)
-    #     self.fc3 = nn.Linear(128, 16)
-    #     self.fc4 = nn.Linear(16, 2)
-    #     self.drop = nn.Dropout(0.4)
-    #
-    # def forward(self, x):
-    #     x = nn.Dropout(0.0)(x)
-    #     x = F.leaky_relu(self.fc1(x))
-    #     # print(x[0,:])
-    #     x = nn.Dropout(0.0)(x)
-    #     x = F.leaky_relu(self.fc2(x))
-    #     # print(x[0,:])
-    #     x = nn.Dropout(0.4)(x)
-    #     x = F.leaky_relu(self.fc3(x))
-    #     # print(x[0,:])
-    #     x = nn.Dropout(0.0)(x)
-    #     x = self.fc4(x)
-    #     print(x[0,:])
-    #     return x
-
-    def predict_denorm(self, x, xmin, xmax, ymin, ymax, GPU=False):
+    def predict_denorm(self, x, InputRange, OutputRange, GPU=False):
         # normalize
-        xn = ((x[None, :] - xmin) / (xmax - xmin))[0]
+        xn = (x - InputRange[0])/(InputRange[1] - InputRange[0])
         # compute
         if GPU:
             self = self.to(device)
@@ -82,7 +58,7 @@ class NetPU(nn.Module):
             xn = xn.cpu()
             yn = yn.cpu()
         # de-normalize
-        return (yn[None, :] * (ymax - ymin) + ymin)[0]
+        return (yn[None, :] * (OutputRange[1] - OutputRange[0]) + OutputRange[0])
 
     def predict(self,xn,device=None,GPU=False):
         if GPU:
@@ -125,29 +101,6 @@ class NetPU(nn.Module):
                 Cumul = np.einsum('ikj,ilk->ilj', Cumul, layergrad)
 
         return Cumul
-
-def Gradold(model, input):
-    # one at a time here
-    # input = input.detach().numpy()
-    input = np.array(input)
-    for i in range(1,5):
-        fc = getattr(model,'fc{}'.format(i))
-        w = fc.weight.detach().numpy()
-        b = fc.bias.detach().numpy()
-        out = w.dot(input)+b
-        diag = np.copy(out)
-        diag[diag>=0] = 1
-        diag[diag<0] = 0.01
-        gd = diag[:,None]*w
-        # print(gd.shape)
-        if i==1:
-            cumul = gd
-        else :
-            cumul = gd.dot(cumul)
-        # print(cumul.shape)
-        out[out<0] = out[out<0]*0.01
-        input = out
-    return cumul
 
 def DataNorm(Arr, DataRange):
     return (Arr - DataRange[0])/(DataRange[1] - DataRange[0])
@@ -250,34 +203,50 @@ def ErrorHist(Data,ResNames = ['Power','Uniformity']):
 
     ResData = np.array(ResData)
 
-    # Top = ['Output'] + ["+-{}%".format(v) for v in Ranges]
-    # TestTb = PrettyTable(Top,float_format=".3")
-    # for name, data in zip(ResNames,ResData):
-    #     TestTb.add_row([name, *data])
-    #
-    # print(TestTb)
-
     return ResData
+
+def VerifyNN(VL,DataDict):
+    from PreAster.devPreHIVE import ERMES_Mesh, SetupERMES
+
+    os.makedirs(DataDict['ERMESdir'],exist_ok=True)
+
+    # Create ERMES mesh
+    err = ERMES_Mesh(VL,DataDict)
+    if err: return sys.exit('Issue creating mesh')
+
+    ERMESres = SetupERMES(VL, DataDict['Parameters'],
+                                       DataDict['OutputFile'],
+                                       DataDict['ERMESResFile'], DataDict['ERMESdir'])
+    return ERMESres
+
+def UniformityScore(JHNode, MeshFile):
+    Meshcls = MeshInfo(MeshFile)
+    CoilFace = Meshcls.GroupInfo('CoilFace')
+    Area, JHArea = 0, 0 # Actual area and area of triangles with JH
+    for nodes in CoilFace.Connect:
+        vertices = Meshcls.GetNodeXYZ(nodes)
+        # Heron's formula
+        a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
+        s = 0.5 * (a + b + c)
+        area = np.sqrt(s * (s - a) * (s - b) * (s - c))
+        Area += area
+
+        vertices[:,2] += JHNode[nodes - 1].flatten()
+
+        a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
+        s = 0.5 * (a + b + c)
+        area1 = np.sqrt(s * (s - a) * (s - b) * (s - c))
+        JHArea += area1
+    Meshcls.Close()
+
+    Uniformity = JHArea/Area
+    return Uniformity
 
 def Single(VL, MLdict):
     ML = MLdict["Parameters"]
 
     # File where all data is stored
     DataFile = "{}/Data.hdf5".format(VL.ML_DIR)
-    # Create new data
-    if ML.CreateData:
-        DataDir = "{}/{}".format(VL.PROJECT_DIR,ML.DataDir)
-        NewData = GetData(VL, ML, DataDir,5)
-        NewData = np.array(NewData)
-        MLfile = h5py.File(DataFile,'a')
-        if ML.DataDir not in MLfile.keys():
-            StudyGrp = MLfile.create_group(ML.DataDir)
-        else :
-            StudyGrp = MLfile[ML.DataDir]
-        if ML.DataName in StudyGrp.keys():
-            del StudyGrp[ML.DataName]
-        StudyGrp.create_dataset(ML.DataName, data=NewData)
-        MLfile.close()
 
     torch.set_num_threads(2)
     torch.manual_seed(getattr(ML,'Seed',100))
@@ -574,84 +543,190 @@ def Single(VL, MLdict):
 
     model.eval()
 
-    # TrainData_norm = DataNorm(TrainData,DataRange)
-    # TestData_norm = DataNorm(TestData,DataRange)
-    # In_train = torch.from_numpy(TrainData_norm[:,:4])
-    # Out_train = torch.from_numpy(TrainData_norm[:,4:])
-    # In_test = torch.from_numpy(TestData_norm[:,:4])
-    # Out_test = torch.from_numpy(TestData_norm[:,4:])
-    #
-    # trainloss = nn.MSELoss(reduction='mean')(model(In_train),Out_train)
-    # testloss = nn.MSELoss(reduction='mean')(model(In_test),Out_test)
-    #
-    # MLdict["TrainLoss"] = float(trainloss.detach().numpy())
-    # MLdict["TestLoss"] = float(testloss.detach().numpy())
-
-    return
-    # Find the point(s) which give the maximum power
+    # set bounds for optimsation
     b = (0.0,1.0)
     bnds = (b, b, b, b)
 
-    # Get max point in NN
-    Optima = FuncOpt(MinMax,dMinMax,20,bnds,args=(model,1,0))
-    MaxPower_cd = SortOptima(Optima, order='increasing')
-    with torch.no_grad():
-        NNout = model.predict(torch.tensor(MaxPower_cd, dtype=torch.float32))
-    MaxPower_val = DataDenorm(NNout,OutputRange)
-    MaxPower_cd = DataDenorm(MaxPower_cd, InputRange)
-    print("Optimum configuration(s) for max. power:")
-    print("{:8}{:12}{:12}".format('Epoch','Train_loss','Val_loss'))
-    print("    {:7}{:7}{:7}{:11}{:9}{:8}".format('x','y','z','r','Power','Variation'))
-    for coord, val in zip(MaxPower_cd,MaxPower_val):
-        print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W, {:.3f}".format(*coord, *val))
-    print()
-
-    # Find optimum uniformity for a given power
-    if hasattr(ML,'DesiredPower'):
-        if ML.DesiredPower > MaxPower_val[0,0]:
-            print('DesiredPower greater than power available')
-            DesPower = None
-        else:
-            DesPower = ML.DesiredPower
-    else: DesPower=None
-
-    if DesPower != None:
-        DesPower_norm = DataNorm(np.array([DesPower,0]), OutputRange)[0]
-        con1 = {'type': 'ineq', 'fun': constraint,'jac':dconstraint, 'args':(model, DesPower_norm)}
-
-        Optima = FuncOpt(MinMax,dMinMax,10,bnds,args=(model,-1,1),constraints=con1,options={'maxiter':100})
-        OptUni_cd = SortOptima(Optima, order='increasing')
+    # Optimsation 1: Find the point of max power
+    # Find the point(s) which give the maximum power
+    if hasattr(ML,'MaxPowerOpt'):
+        print("Optimum configuration(s) for max. power")
+        NbInit = ML.MaxPowerOpt.get('NbInit',20)
+        # Get max point in NN. Create NbInit random seeds to start
+        Optima = FuncOpt(MinMax,dMinMax,NbInit,bnds,args=(model,1,0))
+        MaxPower_cd = SortOptima(Optima, order='increasing')
         with torch.no_grad():
-            NNout = model.predict(torch.tensor(OptUni_cd, dtype=torch.float32))
-        OptUni_val = DataDenorm(NNout,OutputRange)
-        OptUni_cd = DataDenorm(OptUni_cd, InputRange)
-
-        print("Optimum configuration(s) for max. uniformity  (ensuring power >= {} W):".format(DesPower))
+            NNout = model.predict(torch.tensor(MaxPower_cd, dtype=torch.float32))
+        MaxPower_val = DataDenorm(NNout,OutputRange).detach().numpy()
+        MaxPower_cd = DataDenorm(MaxPower_cd, InputRange)
         print("{:8}{:12}{:12}".format('Epoch','Train_loss','Val_loss'))
         print("    {:7}{:7}{:7}{:11}{:9}{:8}".format('x','y','z','r','Power','Variation'))
-        for coord, val in zip(OptUni_cd,OptUni_val):
+        for coord, val in zip(MaxPower_cd,MaxPower_val):
             print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W, {:.3f}".format(*coord, *val))
         print()
 
-    if hasattr(ML,'Alpha'):
-        if ML.Alpha < 0 or ML.Alpha >1:
-            print('Alpha must be between 0 and 1')
-            alpha = None
-        else : alpha = ML.Alpha
-    else: alpha = None
-    if alpha != None:
-        Optima = FuncOpt(func,dfunc,10,bnds,args=(model,alpha))
+        if ML.MaxPowerOpt.get('Verify',True):
+            CheckPoint = MaxPower_cd[0].tolist()
+            print("Checking results at {}\n".format(CheckPoint))
+
+            ERMESResFile = '{}/MaxPower.rmed'.format(MLdict["CALC_DIR"])
+            if ML.MaxPowerOpt.get('NewSim',True):
+                ParaDict = {'CoilType':'HIVE',
+                            'CoilDisplacement':CheckPoint[:3],
+                            'Rotation':CheckPoint[3],
+                            'Current':1000,
+                            'Frequency':1e4,
+                            'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
+                Parameters = Namespace(**ParaDict)
+                ERMESdir = "{}/ERMES".format(MLdict['TMP_CALC_DIR'])
+                DataDict = {'InputFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),
+                            'OutputFile':"{}/Mesh.med".format(ERMESdir),
+                            'ERMESResFile':ERMESResFile,
+                            'ERMESdir':ERMESdir,
+                            'Parameters':Parameters}
+
+                Watts, WattsPV, Elements, JHNode = VerifyNN(VL, DataDict)
+            elif os.path.isfile(ERMESResFile):
+                ERMESres = h5py.File(ERMESResFile, 'r')
+                attrs =  ERMESres["EM_Load"].attrs
+                Elements = ERMESres["EM_Load/Elements"][:]
+
+                Scale = (1000/attrs['Current'])**2
+                Watts = ERMESres["EM_Load/Watts"][:]*Scale
+                WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
+                JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
+                ERMESres.close()
+
+            # Power & Uniformity
+            Power = np.sum(Watts)
+            JHNode /= 1000**2
+            Uniformity = UniformityScore(JHNode,ERMESResFile)
+
+            print("Anticipated power & uniformity at optimum configuration is {:.2f} W, {:.3f}".format(*MaxPower_val[0]))
+            print("Actual power & uniformity at optimum configuration is {:.2f} W, {:.3f}\n".format(Power,Uniformity))
+
+            # err = 100*(MaxPower_val[0,:] - ActOptOutput)/ActOptOutput
+            # print("Prediction errors are: {:.3f} & {:.3f}".format(*err))
+            # MLdict['Optima'] = [MaxPower_val[0,0],Power]
+
+    #Optimisation2: Find optimum uniformity for a given power
+    if hasattr(ML,'DesPowerOpt'):
+        if ML.DesPowerOpt['Power'] >= MaxPower_val[0,0]:
+            print('DesiredPower greater than power available.')
+        else:
+            print("Optimum configuration(s) for max. uniformity  (ensuring power >= {} W)".format(ML.DesPowerOpt['Power']))
+            DesPower_norm = DataNorm(np.array([ML.DesPowerOpt['Power'],0]), OutputRange)[0]
+
+            NbInit = ML.DesPowerOpt.get('NbInit',20)
+            # constraint to ensure des power is met
+            con1 = {'type': 'ineq', 'fun': constraint,'jac':dconstraint, 'args':(model, DesPower_norm)}
+            Optima = FuncOpt(MinMax,dMinMax,NbInit,bnds,args=(model,-1,1),constraints=con1,options={'maxiter':100})
+            OptUni_cd = SortOptima(Optima, order='increasing')
+            with torch.no_grad():
+                NNout = model.predict(torch.tensor(OptUni_cd, dtype=torch.float32))
+            OptUni_val = DataDenorm(NNout,OutputRange).detach().numpy()
+            OptUni_cd = DataDenorm(OptUni_cd, InputRange)
+
+            print("{:8}{:12}{:12}".format('Epoch','Train_loss','Val_loss'))
+            print("    {:7}{:7}{:7}{:11}{:9}{:8}".format('x','y','z','r','Power','Variation'))
+            for coord, val in zip(OptUni_cd,OptUni_val):
+                print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W, {:.3f}".format(*coord, *val))
+            print()
+
+            if ML.DesPowerOpt.get('Verify',True):
+                CheckPoint = OptUni_cd[0].tolist()
+                print("Checking results at {}\n".format(CheckPoint))
+
+                ERMESResFile = '{}/DesPower.rmed'.format(MLdict["CALC_DIR"])
+                if ML.DesPowerOpt.get('NewSim',True):
+                    ParaDict = {'CoilType':'HIVE',
+                                'CoilDisplacement':CheckPoint[:3],
+                                'Rotation':CheckPoint[3],
+                                'Current':1000,
+                                'Frequency':1e4,
+                                'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
+                    Parameters = Namespace(**ParaDict)
+                    ERMESdir = "{}/ERMES".format(MLdict['TMP_CALC_DIR'])
+                    DataDict = {'InputFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),
+                                'OutputFile':"{}/Mesh.med".format(ERMESdir),
+                                'ERMESResFile':ERMESResFile,
+                                'ERMESdir':ERMESdir,
+                                'Parameters':Parameters}
+
+                    Watts, WattsPV, Elements, JHNode = VerifyNN(VL, DataDict)
+                elif os.path.isfile(ERMESResFile):
+                    ERMESres = h5py.File(ERMESResFile, 'r')
+                    attrs =  ERMESres["EM_Load"].attrs
+                    Elements = ERMESres["EM_Load/Elements"][:]
+
+                    Scale = (1000/attrs['Current'])**2
+                    Watts = ERMESres["EM_Load/Watts"][:]*Scale
+                    WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
+                    JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
+                    ERMESres.close()
+
+                # Power & Uniformity
+                Power = np.sum(Watts)
+                JHNode /= 1000**2
+                Uniformity = UniformityScore(JHNode,ERMESResFile)
+                print("Anticipated power & uniformity at optimum configuration is {:.2f} W, {:.3f}".format(*OptUni_val[0]))
+                print("Actual power & uniformity at optimum configuration is {:.2f} W, {:.3f}\n".format(Power,Uniformity))
+
+    # Optimsation 3: Weighted average of Power & Uniformity
+    if hasattr(ML,'CombinedOpt'):
+        print("Optimum configuration(s) for weighted average (alpha = {})".format(ML.CombinedOpt['Alpha']))
+        NbInit = ML.CombinedOpt.get('NbInit',20)
+        Optima = FuncOpt(func,dfunc,10,bnds,args=(model,ML.CombinedOpt['Alpha']))
         W_avg_cd = SortOptima(Optima, order='increasing')
         with torch.no_grad():
             NNout = model.predict(torch.tensor(W_avg_cd, dtype=torch.float32))
-        W_avg_val = DataDenorm(NNout,OutputRange)
+        W_avg_val = DataDenorm(NNout,OutputRange).detach().numpy()
         W_avg_cd = DataDenorm(W_avg_cd, InputRange)
-        print("Optimum configuration(s) for weighted average (alpha = {}):".format(alpha))
+
         print("{:8}{:12}{:12}".format('Epoch','Train_loss','Val_loss'))
         print("    {:7}{:7}{:7}{:11}{:9}{:8}".format('x','y','z','r','Power','Variation'))
         for coord, val in zip(W_avg_cd,W_avg_val):
             print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W, {:.3f}".format(*coord, *val))
         print()
+
+        if ML.CombinedOpt.get('Verify',True):
+            CheckPoint = W_avg_cd[0].tolist()
+            print("Checking results at {}\n".format(CheckPoint))
+
+            ERMESResFile = '{}/WeightedAverage.rmed'.format(MLdict["CALC_DIR"])
+            if ML.CombinedOpt.get('NewSim',True):
+                ParaDict = {'CoilType':'HIVE',
+                            'CoilDisplacement':CheckPoint[:3],
+                            'Rotation':CheckPoint[3],
+                            'Current':1000,
+                            'Frequency':1e4,
+                            'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
+                Parameters = Namespace(**ParaDict)
+                ERMESdir = "{}/ERMES".format(MLdict['TMP_CALC_DIR'])
+                DataDict = {'InputFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),
+                            'OutputFile':"{}/Mesh.med".format(ERMESdir),
+                            'ERMESResFile':ERMESResFile,
+                            'ERMESdir':ERMESdir,
+                            'Parameters':Parameters}
+
+                Watts, WattsPV, Elements, JHNode = VerifyNN(VL, DataDict)
+            elif os.path.isfile(ERMESResFile):
+                ERMESres = h5py.File(ERMESResFile, 'r')
+                attrs =  ERMESres["EM_Load"].attrs
+                Elements = ERMESres["EM_Load/Elements"][:]
+
+                Scale = (1000/attrs['Current'])**2
+                Watts = ERMESres["EM_Load/Watts"][:]*Scale
+                WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
+                JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
+                ERMESres.close()
+
+            # Power & Uniformity
+            Power = np.sum(Watts)
+            JHNode /= 1000**2
+            Uniformity = UniformityScore(JHNode,ERMESResFile)
+            print("Anticipated power & uniformity at optimum configuration is {:.2f} W, {:.3f}".format(*W_avg_val[0]))
+            print("Actual power & uniformity at optimum configuration is {:.2f} W, {:.3f}\n".format(Power,Uniformity))
 
     return
 
@@ -705,127 +780,21 @@ def Single(VL, MLdict):
     # OptScore = shgo(func, bnds, args=(model,alpha), n=100, iters=5, sampling_method='sobol',minimizer_kwargs={'method':'SLSQP','jac':dfunc,'args':(model, alpha),'constraints':cnstr})
     # print(OptScore)
 
-    if ML.Verify:
-        from PreAster.devPreHIVE import ERMES_Mesh, SetupERMES
-
-        ParaDict = {'CoilType':'HIVE',
-                    'CoilDisplacement':BestCoord[:3].tolist(),
-                    'Rotation':BestCoord[3],
-                    'Current':1000,
-                    'Frequency':1e4,
-                    'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
-
-        VL.WriteModule("{}/Parameters.py".format(VL.tmpML_DIR), ParaDict)
-
-        Parameters = Namespace(**ParaDict)
-
-        ERMESresfile = '{}/maxERMES.rmed'.format(MLdict["CALC_DIR"])
-        SampleMeshFile = "{}/AMAZEsample.med".format(VL.MESH_DIR)
-
-        if ML.NewSim:
-            ERMESdir = "{}/ERMES".format(VL.tmpML_DIR)
-            os.makedirs(ERMESdir)
-            # Create ERMES mesh
-            ERMESmeshfile = "{}/Mesh.med".format(ERMESdir)
-            err = ERMES_Mesh(VL,SampleMeshFile, ERMESmeshfile,
-            				AddPath = VL.tmpML_DIR,
-            				LogFile = None,
-            				GUI=0)
-            if err: return sys.exit('Issue creating mesh')
-
-            Watts, WattsPV, Elements, JHNode = SetupERMES(VL, Parameters, ERMESmeshfile, ERMESresfile, ERMESdir)
-
-            # shutil.rmtree(ERMESdir)
-        else :
-            ERMESres = h5py.File(ERMESresfile, 'r')
-            attrs =  ERMESres["EM_Load"].attrs
-            Elements = ERMESres["EM_Load/Elements"][:]
-
-            Scale = (Parameters.Current/attrs['Current'])**2
-            Watts = ERMESres["EM_Load/Watts"][:]*Scale
-            WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
-            JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
-            ERMESres.close()
-
-        # Power
-        Power = np.sum(Watts)
-        # Uniformity
-
-        JHNode /= Parameters.Current**2
-        Meshcls = MeshInfo(SampleMeshFile)
-        CoilFace = Meshcls.GroupInfo('CoilFace')
-        Area, JHArea = 0, 0 # Actual area and area of triangles with JH
-        for nodes in CoilFace.Connect:
-            vertices = Meshcls.GetNodeXYZ(nodes)
-            # Heron's formula
-            a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
-            s = 0.5 * (a + b + c)
-            area = np.sqrt(s * (s - a) * (s - b) * (s - c))
-            Area += area
-
-            vertices[:,2] += JHNode[nodes - 1].flatten()
-
-            a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
-            s = 0.5 * (a + b + c)
-            area1 = np.sqrt(s * (s - a) * (s - b) * (s - c))
-            JHArea += area1
-
-        Meshcls.Close()
-        Uniformity = JHArea/Area
-
-        ActOptOutput = np.array([Power, Uniformity])
-
-        print("Actual power & uniformity at optimum configuration is {:.2f} W, {:.3f}".format(*ActOptOutput))
-
-        err = 100*(BestPred - ActOptOutput)/ActOptOutput
-        print("Prediction errors are: {:.3f} & {:.3f}".format(*err))
-
-
 # def Combined(VL,MLDicts):
-#     TrainDataDict = {}
-#     TestDataDict = {}
+#     DataDict = {}
 #     for MLdict in MLDicts:
-#         Nb = MLdict["Parameters"].TrainNb
-#         if Nb not in TrainDataDict: TrainDataDict[Nb] = []
-#         if Nb not in TestDataDict: TestDataDict[Nb] = []
-#
-#         TrainDataDict[Nb].append(MLdict["TrainLoss"])
-#         TestDataDict[Nb].append(MLdict["TestLoss"])
+#         Name = MLdict['Parameters'].TrainData.split('/')[0]
+#         Nb = MLdict['Parameters'].TrainNb
+#         if Name not in DataDict: DataDict[Name] = {}
+#         if Nb not in DataDict[Name]: DataDict[Name][Nb] = []
+#         DataDict[Name][Nb].append(MLdict['Optima'][1])
 #
 #     plt.figure(figsize=(12,9))
-#     AvgTest, AvgTrain = [],[]
-#     ErrTest, ErrTrain = [],[]
-#     Nbs = list(TestDataDict.keys())
-#     for Nb in Nbs:
-#         TestVal = TestDataDict[Nb]
-#         _AvgTest = np.mean(TestVal)
-#         AvgTest.append(_AvgTest)
-#         ErrTest.append([_AvgTest-np.min(TestVal),np.max(TestVal)-_AvgTest])
-#
-#         TrainVal = TrainDataDict[Nb]
-#         _AvgTrain = np.mean(TrainVal)
-#         AvgTrain.append(_AvgTrain)
-#         ErrTrain.append([_AvgTrain-np.min(TrainVal),np.max(TrainVal)-_AvgTrain])
-#
-#     plt.errorbar(Nbs,AvgTest,yerr=np.array(ErrTest).T,fmt='bo',ecolor='b',capsize=5,label='Test')
-#     plt.errorbar(Nbs,AvgTrain,yerr=np.array(ErrTrain).T,fmt='go',ecolor='g',capsize=5,label='Train')
-#
-#     plt.xlabel('TrainNb')
-#     plt.ylabel('MSE')
+#     for Name, _dict in DataDict.items():
+#         datx,daty = [],[]
+#         for Nb, vals in _dict.items():
+#             datx+=[Nb]*len(vals)
+#             daty+=vals
+#         plt.scatter(datx,daty, label=Name)
 #     plt.legend()
 #     plt.show()
-#     # plt.savefig("{}/Methods/NNerr.png".format(VL.ML_DIR,))
-#     plt.close()
-#     # plt.figure(figsize=(12,9))
-#     # for Nb, vals in TestDataDict.items():
-#     #     x = [Nb]*len(vals)
-#     #     plt.scatter(x,vals)
-#     # plt.savefig("{}/Methods/TestData.png".format(VL.ML_DIR,))
-#     # plt.close()
-#     #
-#     # plt.figure(figsize=(12,9))
-#     # for Nb, vals in TrainDataDict.items():
-#     #     x = [Nb]*len(vals)
-#     #     plt.scatter(x,vals)
-#     # plt.savefig("{}/Methods/TrainData.png".format(VL.ML_DIR,))
-#     # plt.close()

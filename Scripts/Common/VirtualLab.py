@@ -233,6 +233,11 @@ class VLSetup():
 		if not Var: return {Master.Name : Master.__dict__}
 		if not hasattr(Var,'Name'): self.Exit("Error: '{}' does not have the attribute 'Name' in Parameters_Var".format(Attr))
 
+		# Attributes
+		dfattrs = set(Var.__dict__.keys()) - set(list(Master.__dict__.keys())+['Run'])
+		if dfattrs: print("Warning: Attribute(s) {} specified in Parameters_Var are not in Parameters_Master.\n"\
+							"This may lead to unexpected results.\n".format(dfattrs))
+
 		NbNames = len(Var.Name)
 		ParaDict = {}
 		for VariableName, MasterValue in Master.__dict__.items():

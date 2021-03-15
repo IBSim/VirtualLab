@@ -6,12 +6,12 @@ import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 import time
-from importlib import import_module
 from bisect import bisect_left as bl
 import shutil
 
 from Scripts.Common.VLFunctions import MeshInfo
 from Scripts.Common.VLPackages.ERMES import ERMES
+from ML.Functions import Uniformity2
 
 def HTC(Info, StudyDict):
 	CreateHTC = getattr(StudyDict['Parameters'], 'CreateHTC', True)
@@ -574,6 +574,9 @@ def EMI(Info, StudyDict):
 	print("Power delivered by coil: {:.4f}W".format(CoilPower))
 	StudyDict['CoilPower'] = CoilPower
 
+	Uniformity = Uniformity2(JHNode/Parameters.Current**2,ERMESresfile)
+	StudyDict['Uniformity'] = Uniformity
+
 	# Scale CumSum to 0 and 1
 	CumSum = CumSum/CoilPower
 
@@ -709,7 +712,7 @@ def EMI(Info, StudyDict):
 			EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
 			Info.SalomeRun(EMGroupFile, ArgDict=ArgDict)
 			StudyDict['MeshFile'] = tmpMeshFile
-			print('Create:{}'.format(time.time()-st))
+			# print('Create:{}'.format(time.time()-st))
 
 def Single(Info, StudyDict):
 	HTC(Info, StudyDict)

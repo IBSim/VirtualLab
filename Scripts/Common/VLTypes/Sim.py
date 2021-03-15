@@ -145,6 +145,7 @@ def devRun(VL,**kwargs):
 
     ShowRes = kwargs.get('ShowRes', False)
     NumThreads = kwargs.get('NumThreads',1)
+    launcher = kwargs.get('launcher','Process')
 
     VL.Logger('\n### Starting Simulations ###\n', Print=True)
 
@@ -153,10 +154,16 @@ def devRun(VL,**kwargs):
     SimDicts = list(VL.SimData.values())
     PoolArgs = [[VL]*NbSim,SimDicts,[kwargs]*NbSim]
 
-    launcher = kwargs.get('launcher','Process')
-    if launcher == 'Process':
+    N = min(NumThreads,NbSim)
+
+    if launcher == 'Sequential':
+        Res = []
+        for args in zip(*PoolArgs):
+            ret = VLPool(PoolRun,*args)
+            Res.append(ret)
+    elif launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
-        pool = ProcessPool(nodes=NumThreads, workdir=VL.TEMP_DIR)
+        pool = ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
         Res = pool.map(VLPool,[PoolRun]*NbSim, *PoolArgs)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
@@ -167,9 +174,9 @@ def devRun(VL,**kwargs):
         os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
 
         onall = kwargs.get('onall',True) # Do we want 1 mpi worked to delegate and not compute (False if so)
-        pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
-        # VLPool gives a try and except block around the function to prevent
-        # hanging which can occur with mpi4py
+        if not onall and NumThreads > N: N=N+1 # Add 1 if extra threads available for 'delegator'
+
+        pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
         Res = pool.map(VLPool,[PoolRun]*NbSim, *PoolArgs, onall=onall)
 
         # reset environment back to original

@@ -53,36 +53,37 @@ def devRun(VL,**kwargs):
     sys.path.insert(0,VL.SIM_ML)
 
     NumThreads = kwargs.get('NumThreads',1)
+    launcher = kwargs.get('launcher','Process')
 
     VL.Logger('\n### Starting Machine Learning ###\n', Print=True)
 
-    # Run high throughput part in parallel
     NbML = len(VL.MLData)
     MLDicts = list(VL.MLData.values())
     PoolArgs = [[VL]*NbML,MLDicts]
 
-    launcher = kwargs.get('launcher','Process')
-    Res = []
+    N = min(NumThreads,NbML)
+
     if launcher == 'Sequential':
+        Res = []
         for args in zip(*PoolArgs):
             ret = VLPool(PoolRun,*args)
             Res.append(ret)
     elif launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
-        pool = ProcessPool(nodes=NumThreads, workdir=VL.TEMP_DIR)
+        pool = ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
         Res = pool.map(VLPool,[PoolRun]*NbML, *PoolArgs)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
-        # Ensure that all paths added to sys.path are visible pyinas MPI subprocess
+        # Ensure that all paths added to sys.path are visible in pyinas MPI subprocess
         addpath = set(sys.path) - set(VL._pypath) # group subtraction
         addpath = ":".join(addpath) # write in unix style
         PyPath_orig = os.environ.get('PYTHONPATH',"")
         os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
 
-        onall = kwargs.get('onall',True) # Do we want 1 mpi worked to delegate and not compute (False if so)
-        pool = MpiPool(nodes=NumThreads,source=True, workdir=VL.TEMP_DIR)
-        # TryPathos gives a try and except block around the function to prevent
-        # hanging which can occur with mpi4py
+        onall = kwargs.get('onall',True) # Do we want 1 mpi worker to delegate and not compute (False if so)
+        if not onall and NumThreads > N: N=N+1 # Add 1 if extra threads available for 'delegator'
+
+        pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
         Res = pool.map(VLPool,[PoolRun]*NbML, *PoolArgs, onall=onall)
 
         # reset environment back to original

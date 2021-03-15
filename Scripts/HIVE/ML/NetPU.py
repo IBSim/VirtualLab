@@ -1,27 +1,20 @@
 import os
 import sys
-from importlib import import_module, reload
 import h5py
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import torch.utils.data as Data
 import copy
-from pathos.multiprocessing import ProcessPool
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from prettytable import PrettyTable
 from scipy.optimize import minimize, differential_evolution, shgo, basinhopping
 from types import SimpleNamespace as Namespace
-from natsort import natsorted
-from Scripts.Common.VLFunctions import MeshInfo
-import scipy
-import pickle
-from adaptive import LearnerND
-import adaptive.learner.learnerND as LND
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import torch.utils.data as Data
 
+from Scripts.Common.VLFunctions import MeshInfo
 
 # NetPU architecture
 class NetPU(nn.Module):
@@ -219,36 +212,15 @@ def VerifyNN(VL,DataDict):
                                        DataDict['ERMESResFile'], DataDict['ERMESdir'])
     return ERMESres
 
-def UniformityScore(JHNode, MeshFile):
-    Meshcls = MeshInfo(MeshFile)
-    CoilFace = Meshcls.GroupInfo('CoilFace')
-    Area, JHArea = 0, 0 # Actual area and area of triangles with JH
-    for nodes in CoilFace.Connect:
-        vertices = Meshcls.GetNodeXYZ(nodes)
-        # Heron's formula
-        a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
-        s = 0.5 * (a + b + c)
-        area = np.sqrt(s * (s - a) * (s - b) * (s - c))
-        Area += area
 
-        vertices[:,2] += JHNode[nodes - 1].flatten()
-
-        a, b, c = scipy.spatial.distance.pdist(vertices, metric="euclidean")
-        s = 0.5 * (a + b + c)
-        area1 = np.sqrt(s * (s - a) * (s - b) * (s - c))
-        JHArea += area1
-    Meshcls.Close()
-
-    Uniformity = JHArea/Area
-    return Uniformity
 
 def Single(VL, MLdict):
     ML = MLdict["Parameters"]
 
     # File where all data is stored
     DataFile = "{}/Data.hdf5".format(VL.ML_DIR)
-
-    torch.set_num_threads(2)
+    NbTorchThread = getattr(ML,'NbTorchThread',1)
+    torch.set_num_threads(NbTorchThread)
     torch.manual_seed(getattr(ML,'Seed',100))
 
     # device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
@@ -530,7 +502,7 @@ def Single(VL, MLdict):
         fig.text(0.04, 0.5, InTag[AxMaj[0]].capitalize(), ha='center')
         fig.text(0.5, 0.04, InTag[AxMaj[1]].capitalize(), va='center', rotation='vertical')
         plt.savefig("{}/NNPlot.png".format(MLdict["CALC_DIR"]))
-
+        plt.close()
     else:
         model = NetPU(ML.NNLayout,ML.Dropout)
         model.load_state_dict(torch.load(ModelFile))
@@ -543,6 +515,12 @@ def Single(VL, MLdict):
 
     model.eval()
 
+    Check = getattr(ML,'Check',None)
+    if Check:
+        x = torch.tensor(Check, dtype=torch.float32)
+        y = model.predict_denorm(x, InputRange, OutputRange)
+        MLdict['CheckAns'] = y.detach().numpy().tolist()
+
     # set bounds for optimsation
     b = (0.0,1.0)
     bnds = (b, b, b, b)
@@ -554,7 +532,7 @@ def Single(VL, MLdict):
         NbInit = ML.MaxPowerOpt.get('NbInit',20)
         # Get max point in NN. Create NbInit random seeds to start
         Optima = FuncOpt(MinMax,dMinMax,NbInit,bnds,args=(model,1,0))
-        MaxPower_cd = SortOptima(Optima, order='increasing')
+        MaxPower_cd = SortOptima(Optima, tol=0.05, order='increasing')
         with torch.no_grad():
             NNout = model.predict(torch.tensor(MaxPower_cd, dtype=torch.float32))
         MaxPower_val = DataDenorm(NNout,OutputRange).detach().numpy()
@@ -564,6 +542,8 @@ def Single(VL, MLdict):
         for coord, val in zip(MaxPower_cd,MaxPower_val):
             print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W, {:.3f}".format(*coord, *val))
         print()
+
+        MLdict['Optima_1'] = np.hstack((MaxPower_cd, MaxPower_val)).tolist()
 
         if ML.MaxPowerOpt.get('Verify',True):
             CheckPoint = MaxPower_cd[0].tolist()
@@ -612,7 +592,7 @@ def Single(VL, MLdict):
     #Optimisation2: Find optimum uniformity for a given power
     if hasattr(ML,'DesPowerOpt'):
         if ML.DesPowerOpt['Power'] >= MaxPower_val[0,0]:
-            print('DesiredPower greater than power available.')
+            print('DesiredPower greater than power available.\n')
         else:
             print("Optimum configuration(s) for max. uniformity  (ensuring power >= {} W)".format(ML.DesPowerOpt['Power']))
             DesPower_norm = DataNorm(np.array([ML.DesPowerOpt['Power'],0]), OutputRange)[0]

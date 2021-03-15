@@ -93,7 +93,7 @@ class Salome():
 
 
 		if kwargs.get('GUI',False):
-			command = "{} {} args:{}".format(self.Exec, Script, Args)
+			command = "{} {} args:{}".format(self.Exec, Script, argstr)
 			SubProc = Popen(PythonPath + command, shell='TRUE')
 			return SubProc
 
@@ -109,7 +109,7 @@ class Salome():
 		if OutFile: output += " >>{}".format(OutFile)
 		if ErrFile: output += " 2>>{}".format(ErrFile)
 
-		command = "{} shell -p{!s} {} args:{} {}".format(self.Exec,Port, Script, Args, output)
+		command = "{} shell -p{!s} {} args:{} {}".format(self.Exec,Port, Script, argstr, output)
 
 		SubProc = Popen(PythonPath + command, shell='TRUE')
 		return SubProc

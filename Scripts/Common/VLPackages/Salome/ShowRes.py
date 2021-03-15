@@ -6,7 +6,7 @@ import numpy as np
 from SalomeFunc import GetArgs
 import SalomePyQt
 
-kwargs = GetArgs(sys.argv[1:])
+kwargs = GetArgs()
 
 # Connect to ParaVis server
 from pvsimple import *

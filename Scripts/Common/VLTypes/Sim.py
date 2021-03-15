@@ -213,7 +213,7 @@ def devRun(VL,**kwargs):
     				if ext == '.rmed':
     					ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
     	Script = "{}/VLPackages/Salome/ShowRes.py".format(VL.COM_SCRIPTS)
-    	VL.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
+    	VL.Salome.Run(Script, GUI=True, DataDict=ResFiles)
 
 def Run(VL, **kwargs):
     if not VL.SimData: return
@@ -499,4 +499,4 @@ def Run(VL, **kwargs):
     				if ext == '.rmed':
     					ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
     	Script = "{}/VLPackages/Salome/ShowRes.py".format(VL.COM_SCRIPTS)
-    	VL.Salome.Run(Script, GUI=True, ArgDict=ResFiles)
+    	VL.Salome.Run(Script, GUI=True, DataDict=ResFiles)

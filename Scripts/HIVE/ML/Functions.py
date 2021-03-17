@@ -1,6 +1,7 @@
 import numpy as np
-from scipy import spatial
-from itertools import product
+from scipy import spatial, special
+from itertools import product, combinations
+
 
 from Scripts.Common.VLFunctions import MeshInfo
 '''
@@ -50,6 +51,7 @@ class Sampling():
         elif method.lower() == 'random': self.sampler = self.Random
         elif method.lower() == 'sobol': self.sampler = self.Sobol
         elif method.lower() == 'grid': self.sampler = self.Grid
+        elif method.lower() == 'lewis': self.sampler = self.Lewis
 
 
     def get(self,N):
@@ -114,3 +116,84 @@ class Sampling():
     def Grid(self):
         disc = np.linspace(0,1,self.N)
         return np.array(list(zip(*product(*[disc]*self.dim)))).T
+
+    def _Lewis(self):
+        # alot of for loops here which could be tidied up
+        if not hasattr(self,'a'): self.a = 1
+        if not hasattr(self,'nbs'): self.nbs = [0]*self.dim
+        dims = list(range(1,self.dim+1))[::-1]
+        disc = [self.a**d for d in dims]
+
+        import ghalton
+        if not hasattr(self,'_generator'):
+            self._generator = {}
+            for i in dims:
+                self._generator[i] = ghalton.Halton(i)
+
+        M = []
+        for i, (_dim,_disc) in enumerate(zip(dims,disc)):
+            BIxs = list(combinations(dims,self.dim - _dim))
+            BoundPerm = list(product(*[[0,1]]*(self.dim - _dim)))
+
+            if True:
+                _n = _disc - self.nbs[i]
+                self.nbs[i] = _disc
+            else:
+                _n = _disc
+            
+            points = self._generator[_dim].get(_n)
+            for point in points:
+                for BIx in BIxs:
+                    # print(point,BIx)
+                    NBIx = set(dims) - set(BIx)
+                    for cmb in BoundPerm:
+                        ls = [0]*self.dim
+                        for _NBIx,_p in zip(NBIx,point):
+                            ls[_NBIx-1] = _p
+                        for _BIx,_p in zip(BIx,cmb):
+                            ls[_BIx-1] = _p
+
+                        M.append(ls)
+
+        self.a+=1
+
+        self.generator = np.array(M)
+        # print(self.generator)
+    def Lewis(self):
+        Bnds = self.getbounds()
+        if self.N == 0: return Bnds
+
+        if not hasattr(self,'generator'): self._Lewis()
+
+        if self.N < self.generator.shape[0]:
+            Points = self.generator[:self.N,:]
+            self.generator = self.generator[self.N:,]
+        else:
+            Points = self.generator
+            need = self.N - Points.shape[0]
+            while need>0:
+                self._Lewis()
+                if need >= self.generator.shape[0]:
+                    NewPoints = self.generator
+                else:
+                    NewPoints = self.generator[:need,:]
+                    self.generator = self.generator[need:,]
+
+                Points = np.vstack((Points,NewPoints))
+                need -=NewPoints.shape[0]
+
+        if isinstance(Bnds,np.ndarray):
+            return np.vstack((Bnds,Points))
+        else :
+            return Points
+
+
+
+
+
+
+
+        #
+        # self._it=0
+        # while self.N:
+        #     for dim,coef in zip(dims[self._it:],coef[self._it:]):

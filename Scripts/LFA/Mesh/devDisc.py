@@ -1,0 +1,238 @@
+import sys
+sys.dont_write_bytecode=True
+import numpy as np
+import os
+
+def Create(Parameter):
+	from salome.geom import geomBuilder
+	from salome.smesh import smeshBuilder
+	import  SMESH
+	import salome_version
+	from Scripts.Common.VLPackages.Salome import SalomeFunc
+
+	if salome_version.getVersions()[0] < 9:
+		import salome
+		theStudy = salome.myStudy
+		geompy = geomBuilder.New(theStudy)
+		smesh = smeshBuilder.New(theStudy)
+	else :
+		geompy = geomBuilder.New()
+		smesh = smeshBuilder.New()
+
+	isVoid = True if Parameter.VoidHeight else False
+
+	###
+	### GEOM component
+	###
+	O = geompy.MakeVertex(0, 0, 0)
+	OX = geompy.MakeVectorDXDYDZ(1, 0, 0)
+	OY = geompy.MakeVectorDXDYDZ(0, 1, 0)
+	OZ = geompy.MakeVectorDXDYDZ(0, 0, 1)
+	geompy.addToStudy( O, 'O' )
+	geompy.addToStudy( OX, 'OX' )
+	geompy.addToStudy( OY, 'OY' )
+	geompy.addToStudy( OZ, 'OZ' )
+
+	### Bottom disc
+	Disc_b_orig = geompy.MakeCylinder(O, OZ, Parameter.Radius, Parameter.HeightB)
+	geompy.addToStudy(Disc_b_orig,'Disc_b_orig')
+
+	## Top disc
+	Vertex_1 = geompy.MakeVertexWithRef(O, 0, 0, Parameter.HeightB)
+	Disc_t_orig = geompy.MakeCylinder(Vertex_1, OZ, Parameter.Radius, Parameter.HeightT)
+	geompy.addToStudy(Disc_t_orig,'Disc_t_orig')
+
+	if isVoid:
+		Vertex_Void = geompy.MakeVertexWithRef(O, *Parameter.VoidCentre, Parameter.HeightB)
+		VoidBase = geompy.MakeDiskPntVecR(Vertex_Void, OZ, Parameter.VoidRadius)
+		Void = geompy.MakePrismVecH(VoidBase, OZ, Parameter.VoidHeight)
+		Disc_t = geompy.MakeCutList(Disc_t_orig,[Void], True)
+		Disc_b = geompy.MakeCutList(Disc_b_orig,[Void], True)
+
+		# joining face - need the newly created face due to void
+		_shface = geompy.GetSubShape(Disc_b_orig,[10]) # top face of the bottom disc
+		_JoinFace = geompy.MakeCutList(_shface,[VoidBase], True)
+	else:
+		Disc_t = Disc_t_orig
+		Disc_b = Disc_b_orig
+
+		# joining face
+		_JoinFace = geompy.GetSubShape(Disc_b_orig,[10])
+
+	Disc_Fuse = geompy.MakeFuseList([Disc_b, Disc_t], True, True)
+	Testpiece = geompy.MakePartition([Disc_Fuse], [Disc_b], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
+
+	geompy.addToStudy(Testpiece, 'Testpiece')
+
+	## Add Groups
+	# Volumes
+	TopID = geompy.GetSameIDs(Testpiece,Disc_t)
+	Top = SalomeFunc.AddGroup(Testpiece,'Top',TopID)
+
+	BottomID = geompy.GetSameIDs(Testpiece,Disc_b)
+	Bottom = SalomeFunc.AddGroup(Testpiece,'Bottom',BottomID)
+
+	# Faces
+	JoinID = geompy.GetSameIDs(Testpiece,_JoinFace)
+	Join_Face = SalomeFunc.AddGroup(Testpiece,'Join_Face',JoinID)
+
+	BottomID = SalomeFunc.ObjIndex(Testpiece, Disc_b_orig, [12])[0]
+	Bottom_Face = SalomeFunc.AddGroup(Testpiece,'Bottom_Face',BottomID)
+
+	TopID = SalomeFunc.ObjIndex(Testpiece, Disc_t_orig, [10])[0]
+	Top_Face = SalomeFunc.AddGroup(Testpiece,'Top_Face',TopID)
+
+	ExtID = geompy.SubShapeAllIDs(Testpiece,geompy.ShapeType['FACE'])
+	External_Faces = SalomeFunc.AddGroup(Testpiece,'External_Faces',ExtID)
+
+	BottomExtID = SalomeFunc.ObjIndex(Testpiece, Disc_b_orig, [3,12])[0]
+	Bottom_Ext = SalomeFunc.AddGroup(Testpiece,'Bottom_Ext',BottomExtID)
+
+	TopExtID = SalomeFunc.ObjIndex(Testpiece, Disc_t_orig, [3,10])[0]
+	Top_Ext = SalomeFunc.AddGroup(Testpiece,'Top_Ext',TopExtID)
+
+	if isVoid:
+		VoidID = SalomeFunc.ObjIndex(Testpiece, Void, [3, 10, 12])[0]
+		Void_Ext = SalomeFunc.AddGroup(Testpiece,'Void_Ext',VoidID)
+
+
+	###
+	### SMESH component
+	###
+
+	### Create Main Mesh
+	Mesh_1 = smesh.Mesh(Testpiece)
+	Regular_1D = Mesh_1.Segment()
+	Local_Length_1 = Regular_1D.LocalLength(Parameter.Length1D,None,1e-07)
+	NETGEN_2D = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D)
+	NETGEN_2D_Parameters_1 = NETGEN_2D.Parameters()
+	NETGEN_2D_Parameters_1.SetMaxSize( Parameter.Length2D )
+	NETGEN_2D_Parameters_1.SetOptimize( 1 )
+	NETGEN_2D_Parameters_1.SetFineness( 3 )
+	NETGEN_2D_Parameters_1.SetChordalError( 0.1 )
+	NETGEN_2D_Parameters_1.SetChordalErrorEnabled( 0 )
+	NETGEN_2D_Parameters_1.SetMinSize( Parameter.Length2D )
+	NETGEN_2D_Parameters_1.SetUseSurfaceCurvature( 1 )
+	NETGEN_2D_Parameters_1.SetQuadAllowed( 0 )
+	NETGEN_3D = Mesh_1.Tetrahedron()
+	NETGEN_3D_Parameters_1 = NETGEN_3D.Parameters()
+	NETGEN_3D_Parameters_1.SetMaxSize( Parameter.Length3D )
+	NETGEN_3D_Parameters_1.SetOptimize( 1 )
+	NETGEN_3D_Parameters_1.SetFineness( 2 )
+	NETGEN_3D_Parameters_1.SetMinSize( Parameter.Length3D )
+
+	smesh.SetName(Regular_1D.GetAlgorithm(), 'Regular_1D')
+	smesh.SetName(NETGEN_3D.GetAlgorithm(), 'NETGEN 3D')
+	smesh.SetName(NETGEN_2D.GetAlgorithm(), 'NETGEN 2D')
+	smesh.SetName(NETGEN_2D_Parameters_1, 'NETGEN 2D Parameters_1')
+	smesh.SetName(Local_Length_1, 'Local Length_1')
+	smesh.SetName(NETGEN_3D_Parameters_1, 'NETGEN 3D Parameters_1')
+	smesh.SetName(Mesh_1, Parameter.Name)
+
+
+	## Add groups
+	Mesh_Top = Mesh_1.GroupOnGeom(Top,'Top',SMESH.VOLUME)
+	Mesh_Top = Mesh_1.GroupOnGeom(Bottom,'Bottom',SMESH.VOLUME)
+
+	Mesh_Top_Ext = Mesh_1.GroupOnGeom(Top_Ext,'Top_Ext',SMESH.FACE)
+	Mesh_Bottom_Ext = Mesh_1.GroupOnGeom(Bottom_Ext,'Bottom_Ext',SMESH.FACE)
+	Mesh_Top_Face = Mesh_1.GroupOnGeom(Top_Face,'Top_Face',SMESH.FACE)
+	Mesh_Bottom_Face = Mesh_1.GroupOnGeom(Bottom_Face,'Bottom_Face',SMESH.FACE)
+	Mesh_External = Mesh_1.GroupOnGeom(External_Faces,'External_Faces',SMESH.FACE)
+	Mesh_Join_Face1 = Mesh_1.GroupOnGeom(Join_Face,'Join_Face_1',SMESH.FACE)
+
+	Mesh_Bottom_Ext_Node = Mesh_1.GroupOnGeom(Bottom_Face,'NBottom_Face',SMESH.NODE)
+	Mesh_Top_Ext_Node = Mesh_1.GroupOnGeom(Top_Face,'NTop_Face',SMESH.NODE)
+
+	if isVoid:
+		HoleCirc = 2*np.pi*Parameter.VoidRadius
+		HoleLength = HoleCirc/Parameter.VoidDisc
+
+		### Sub Mesh creation
+		## Sub-Mesh 2
+		Regular_1D_2 = Mesh_1.Segment(geom=Void_Ext)
+		Local_Length_2 = Regular_1D_2.LocalLength(HoleLength,None,1e-07)
+		NETGEN_2D_2 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=Void_Ext)
+		NETGEN_2D_Parameters_3 = NETGEN_2D_2.Parameters()
+		NETGEN_2D_Parameters_3.SetMaxSize( HoleLength )
+		NETGEN_2D_Parameters_3.SetOptimize( 1 )
+		NETGEN_2D_Parameters_3.SetFineness( 3 )
+		NETGEN_2D_Parameters_3.SetChordalError( 0.1 )
+		NETGEN_2D_Parameters_3.SetChordalErrorEnabled( 0 )
+		NETGEN_2D_Parameters_3.SetMinSize( HoleLength )
+		NETGEN_2D_Parameters_3.SetUseSurfaceCurvature( 1 )
+		NETGEN_2D_Parameters_3.SetQuadAllowed( 0 )
+		Sub_mesh_2 = NETGEN_2D_2.GetSubMesh()
+
+		smesh.SetName(Sub_mesh_2, 'VoidMesh')
+		smesh.SetName(NETGEN_2D_Parameters_3, 'NETGEN 2D Parameters_3')
+
+		NETGEN_2D_Parameters_1.SetMinSize( HoleLength )
+		NETGEN_3D_Parameters_1.SetMinSize( HoleLength )
+
+		Mesh_Void_Ext = Mesh_1.GroupOnGeom(Void_Ext,'Void_Ext',SMESH.FACE)
+
+	isDone = Mesh_1.Compute()
+
+	_Mesh_Join_Face2 = Mesh_1.DoubleElements( Mesh_Join_Face1, '_Join_Face_2')
+	Affected = Mesh_1.AffectedElemGroupsInRegion( [ _Mesh_Join_Face2 ], [], None )
+	NewGrps = Mesh_1.DoubleNodeElemGroups( [ Mesh_Join_Face1 ], [], Affected, 1, 1 )
+	for grp in NewGrps:
+		if str(grp.GetType()) == 'FACE':
+			Mesh_Join_Face2 = grp
+			grp.SetName('Join_Face_2')
+			# smesh.SetName(MeshJoin_Face2,'Join_Face_2')
+		else:
+			Mesh_1.RemoveGroup(grp)
+	Mesh_1.RemoveGroupWithContents(_Mesh_Join_Face2)
+
+	Mesh_External = Mesh_1.ConvertToStandalone( Mesh_External )
+	nbAdd = Mesh_External.Add(Mesh_Join_Face2.GetListOfID())
+
+
+	globals().update(locals())
+
+	return Mesh_1
+
+
+	globals().update(locals())
+
+
+class TestDimensions():
+	def __init__(self):
+		self.Name = 'TestMesh'
+		self.Radius = 0.0063
+		self.HeightB = 0.00125
+		self.HeightT = 0.00125
+		self.VoidCentre = (0,0)
+		self.VoidRadius = 0.0005
+		self.VoidHeight = -0.0001
+		### Mesh parameters
+		self.Length1D = 0.0004 #Length on 1D edges
+		self.Length2D = 0.0004 #Maximum length of any edge belonging to a face
+		self.Length3D = 0.0004 #Maximum length of any edge belogining to a tetrahedron
+		self.VoidDisc = 20
+		self.MeshName = 'Test'
+
+
+def GeomError(Parameters):
+	''' This function is imported in during the Setup to pick up any errors which will occur for the given geometrical dimension. i.e. impossible dimensions '''
+
+	message = None
+	if Parameters.VoidHeight >= Parameters.HeightT:
+		message = 'Void height too large'
+	if Parameters.VoidRadius >= Parameters.Radius:
+		message = 'Void radius too large'
+	if (Parameters.VoidHeight == 0 and  Parameters.VoidRadius !=0) or (Parameters.VoidHeight != 0 and  Parameters.VoidRadius ==0):
+		message = 'The height and radius of the void must both be zero or non-zero'
+	return message
+
+if __name__ == '__main__':
+	if len(sys.argv) == 1:
+		Create(TestDimensions())
+	# 1 argument provided which is the parameter file
+	elif len(sys.argv) == 2:
+		ParameterFile = sys.argv[1]
+		sys.path.insert(0, os.path.dirname(ParameterFile))
+		Parameters = __import__(os.path.splitext(os.path.basename(ParameterFile))[0])
+		Create(Parameters)

@@ -8,7 +8,7 @@ import numpy as np
 import shutil
 import copy
 from types import SimpleNamespace as Namespace
-from importlib import import_module
+from importlib import import_module, reload
 
 import VLconfig
 from Scripts.Common import Analytics
@@ -203,7 +203,7 @@ class VLSetup():
 		if type(Parameters_Master)==str:
 			if not os.path.exists('{}/{}.py'.format(self.INPUT_DIR, Parameters_Master)):
 				self.Exit("Parameters_Master file '{}' not in directory {}".format(Parameters_Master, self.INPUT_DIR))
-			Main = import_module(Parameters_Master)
+			Main = reload(import_module(Parameters_Master))
 		elif any(hasattr(Parameters_Master,nm) for nm in NS):
 			Main = Parameters_Master
 		else: sys.exit()
@@ -214,7 +214,7 @@ class VLSetup():
 		if type(Parameters_Var)==str:
 			if not os.path.exists('{}/{}.py'.format(self.INPUT_DIR, Parameters_Var)):
 				self.Exit("Parameters_Var file '{}' not in directory {}".format(Parameters_Var, self.INPUT_DIR))
-			Var = import_module(Parameters_Var)
+			Var = reload(import_module(Parameters_Var))
 		elif any(hasattr(Parameters_Var,nm) for nm in NS):
 			Var = Parameters_Var
 		elif Parameters_Var==None:

@@ -70,7 +70,7 @@ class Sampling():
                 self.N=0
             else:
                 self._boundscomplete=True
-                self.N -= Bnds.shape[0] # number of N to ask for from Halton
+                self.N -= Bnds.shape[0]
             return Bnds
 
     def Halton(self):
@@ -112,10 +112,84 @@ class Sampling():
         else :
             return Points
 
-
     def Grid(self):
         disc = np.linspace(0,1,self.N)
         return np.array(list(zip(*product(*[disc]*self.dim)))).T
+
+    def __Lewis(self):
+        if not hasattr(self,'Add'):
+            self.Add=0
+            self.SumNb = np.array([0]*(self.dim))
+            self.IndNb = np.array([0]*(self.dim))
+            self.Generator = [[] for _ in range(self.dim)]
+
+            import ghalton
+            self._generator,self.SS = [],[]
+            for i in range(self.dim):
+                self._generator.append(ghalton.Halton(self.dim - i))
+                self.SS.append(special.binom(self.dim,self.dim-i)*2**i)
+
+        self.Add += self.N
+
+        _N = self.Add
+
+
+        n = _N**(1/self.dim)
+        fact = (1 - 1/n)**2
+        # fact = (1 - 1/n)**self.dim # Seems to be too affected by higher powers
+        fact = max(fact,0.1) # ensures fact is never zero
+        # print(fact)
+        Dist = []
+        for i in range(self.dim-1):
+            Top = int(np.ceil(_N*fact))
+            Dist.append(Top)
+            _N -= Top
+        Dist.append(_N)
+        Dist = np.array(Dist)
+        # print(Dist)
+        Ind = np.ceil(Dist/self.SS) - self.IndNb
+
+        for i, (num, gen, ss) in enumerate(zip(Ind,self._generator,self.SS)):
+            if num == 0: continue
+            genvals = gen.get(int(num))
+            self.IndNb[i]+=num # keep track of how many of each dim we've asked for
+            if i==0:
+                vals = genvals
+            else:
+                vals = []
+                BndIxs = list(combinations(list(range(self.dim)),i)) # n chose i
+                BndPerms = list(product(*[[0,1]]*i))
+                for genval,BndIx,BndPerm in product(genvals,BndIxs,BndPerms):
+                    IntIx = list(set(range(self.dim)).difference(BndIx))
+                    a = np.zeros(self.dim)
+                    a[IntIx] = genval
+                    a[list(BndIx)] = list(BndPerm)
+                    vals.append(a.tolist())
+
+            self.Generator[i].extend(vals)
+
+        Need = Dist - self.SumNb
+        M = []
+        for i in range(self.N):
+            ix = Need.argmax()
+            v = self.Generator[ix].pop(0)
+            M.append(v)
+            Need[ix]-=1
+            self.SumNb[ix]+=1
+        # print(M)
+        return M
+
+    def Lewis(self):
+        Bnds = self.getbounds()
+        if self.N == 0: return Bnds
+
+        Points = self.__Lewis()
+
+        if isinstance(Bnds,np.ndarray):
+            return np.vstack((Bnds,Points))
+        else :
+            return Points
+
 
     def _Lewis(self):
         # alot of for loops here which could be tidied up
@@ -140,7 +214,7 @@ class Sampling():
                 self.nbs[i] = _disc
             else:
                 _n = _disc
-            
+
             points = self._generator[_dim].get(_n)
             for point in points:
                 for BIx in BIxs:
@@ -159,7 +233,7 @@ class Sampling():
 
         self.generator = np.array(M)
         # print(self.generator)
-    def Lewis(self):
+    def LewisOld(self):
         Bnds = self.getbounds()
         if self.N == 0: return Bnds
 

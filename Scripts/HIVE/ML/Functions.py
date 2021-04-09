@@ -117,22 +117,27 @@ class Sampling():
         return np.array(list(zip(*product(*[disc]*self.dim)))).T
 
     def __Lewis(self):
+        d = 2
+        # d = self.dim
+
         if not hasattr(self,'Add'):
             self.Add=0
-            self.SumNb = np.array([0]*(self.dim))
-            self.IndNb = np.array([0]*(self.dim))
+            self.SumNb = np.array([0]*(d))
+            self.IndNb = np.array([0]*(d))
             self.Generator = [[] for _ in range(self.dim)]
 
             import ghalton
+            # import torch
             self._generator,self.SS = [],[]
-            for i in range(self.dim):
-                self._generator.append(ghalton.Halton(self.dim - i))
+            for i in range(d):
+                self._generator.append(ghalton.GeneralizedHalton(self.dim - i,i+1))
+                # self._generator.append(ghalton.Halton(self.dim - i))
+                # self._generator.append(torch.quasirandom.SobolEngine(dimension=self.dim - i,scramble=True,seed = i*100))
                 self.SS.append(special.binom(self.dim,self.dim-i)*2**i)
 
         self.Add += self.N
 
         _N = self.Add
-
 
         n = _N**(1/self.dim)
         fact = (1 - 1/n)**2
@@ -140,7 +145,7 @@ class Sampling():
         fact = max(fact,0.1) # ensures fact is never zero
         # print(fact)
         Dist = []
-        for i in range(self.dim-1):
+        for i in range(d-1):
             Top = int(np.ceil(_N*fact))
             Dist.append(Top)
             _N -= Top
@@ -152,6 +157,7 @@ class Sampling():
         for i, (num, gen, ss) in enumerate(zip(Ind,self._generator,self.SS)):
             if num == 0: continue
             genvals = gen.get(int(num))
+            # genvals = gen.draw(int(num)).detach().numpy().tolist()
             self.IndNb[i]+=num # keep track of how many of each dim we've asked for
             if i==0:
                 vals = genvals
@@ -178,7 +184,7 @@ class Sampling():
             fact = max(fact,0.1) # ensures fact is never zero
 
             Dist = []
-            for i in range(self.dim-1):
+            for i in range(d-1):
                 Top = int(np.ceil(_N*fact))
                 Dist.append(Top)
                 _N -= Top
@@ -188,6 +194,7 @@ class Sampling():
 
             ix = Need.argmax()
             v = self.Generator[ix].pop(0)
+
             M.append(v)
             Need[ix]-=1
             self.SumNb[ix]+=1

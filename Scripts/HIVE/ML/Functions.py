@@ -168,9 +168,24 @@ class Sampling():
 
             self.Generator[i].extend(vals)
 
-        Need = Dist - self.SumNb
+        # ensures ordering is maintained
         M = []
-        for i in range(self.N):
+        oldNb = self.Add - self.N
+        for i in range(1,self.N+1):
+            _N = oldNb+i
+            n = _N**(1/self.dim)
+            fact = (1 - 1/n)**2
+            fact = max(fact,0.1) # ensures fact is never zero
+
+            Dist = []
+            for i in range(self.dim-1):
+                Top = int(np.ceil(_N*fact))
+                Dist.append(Top)
+                _N -= Top
+            Dist.append(_N)
+            Dist = np.array(Dist)
+            Need = Dist - self.SumNb
+
             ix = Need.argmax()
             v = self.Generator[ix].pop(0)
             M.append(v)

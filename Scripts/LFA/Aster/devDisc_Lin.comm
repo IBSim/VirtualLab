@@ -99,14 +99,15 @@ if True:
 	## Heat transfer between discs - non-perfect (depends on IntHT)
 	'''
 	As the value for IntHTC tends towards infinity the behaviour of the system
-	tends towards the perfect heat exchange model. More work is needed to discover
-	how IntHTC can be chosen wisely. (this script is used with meshes created by devDisc)
+	tends towards the perfect heat exchange model.
+	TCC depends greatly on the surface finish of the material, join pressure and
+	gas/liquid sitting between
 	'''
-	IntHTC = DEFI_CONSTANTE(VALE=800000000)
+	TCC = DEFI_CONSTANTE(VALE=143000) #Thermal Contact Conductance - this is the value for copper
 	IntHT=AFFE_CHAR_THER_F(MODELE=Thermod,
 	                       ECHANGE_PAROI=_F(GROUP_MA_1='Join_Face_1',
 	                                        GROUP_MA_2='Join_Face_2',
-	                                        COEF_H=IntHTC,
+	                                        COEF_H=TCC,
 											TRAN=(0,0,0)))
 else:
 	## perfect heat transfer between top and bottom disc

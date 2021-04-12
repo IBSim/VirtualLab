@@ -45,7 +45,9 @@ def Create(Parameter):
 	InRad = Parameter.PipeDiam/2
 	OutRad = Parameter.PipeDiam/2 + Parameter.PipeThick
 
-	Vertex_1 = geompy.MakeVertex(Parameter.BlockWidth/2+Parameter.PipeCentre[0], -0.5*(Parameter.PipeLength-Parameter.BlockLength), Parameter.BlockHeight/2+Parameter.PipeCentre[1])
+	Vertex_1 = geompy.MakeVertex(Parameter.BlockWidth/2+Parameter.PipeCentre[0],
+								-0.5*(Parameter.PipeLength-Parameter.BlockLength),
+								Parameter.BlockHeight/2+Parameter.PipeCentre[1])
 	Fluid = geompy.MakeCylinder(Vertex_1, OY, InRad, Parameter.PipeLength)
 	PipeExt = geompy.MakeCylinder(Vertex_1, OY, OutRad, Parameter.PipeLength)
 	Pipe = geompy.MakeCutList(PipeExt, [Fluid], True)
@@ -96,23 +98,42 @@ def Create(Parameter):
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [10])[0]
 	GrpPipeOut = SalomeFunc.AddGroup(Sample, 'PipeOut', Ix)
 
-	# Create SampleSurface group by taking relevant parts of each geometry
+	# Create group SampleSurface which is the external surface of the sample
+	# Take relevant parts from the Pipe, Tile and Block
+
+	# Pipe
+	PipeExtIx = SalomeFunc.ObjIndex(Sample, Pipe, [10,15,20])[0]
+	# Get the index of the new faces create where the Pipe joins the Block
+	# Get the faces remaining after block surface cut from pipe & their indexes
+	CutPipBlk = geompy.MakeCutList(geompy.GetSubShape(Pipe,[3]), [geompy.GetSubShape(Block,[41])], True)
+	_PipeIx = geompy.SubShapeAllIDs(CutPipBlk, geompy.ShapeType["FACE"])
+	if _PipeIx:
+		# Get corresponding index on Sample
+		PipeIx = SalomeFunc.ObjIndex(Sample, CutPipBlk, _PipeIx)[0]
+		PipeExtIx += PipeIx
+
+	# Block
+	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0]
+	# Get the index of the new faces create where the Tile joins the Block
+	# This finds the additional faces on the block
+	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile,[31])], True)
+	_BlkIx = geompy.SubShapeAllIDs(CutBlkTl, geompy.ShapeType["FACE"])
+	if _BlkIx:
+		BlkIx = SalomeFunc.ObjIndex(Sample, CutBlkTl, _BlkIx)[0]
+		BlockExtIx += BlkIx
+
 	# Tile
 	TileExtIx = SalomeFunc.ObjIndex(Sample, Tile, [3,13,23,27,33])[0]
-	# Pipe
-	# Get the indicies of the new faces create where the Pipe joins the Block
-	CutPipBlk = geompy.MakeCutList(geompy.GetSubShape(Pipe,[3]), [geompy.GetSubShape(Block,[41])], True)
-	SubIDs = geompy.SubShapeAllIDs(CutPipBlk, geompy.ShapeType["FACE"])
-	NewIx = SalomeFunc.ObjIndex(Sample, CutPipBlk, SubIDs)[0] if SubIDs else []
-	PipeExtIx = SalomeFunc.ObjIndex(Sample, Pipe, [10,15,20])[0] + NewIx
-	# Block
-	# Get the indicies of the new faces create where the Tile joins the Block
-	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile,[31])], True)
-	NewIx = SalomeFunc.ObjIndex(Sample, CutBlkTl, geompy.SubShapeAllIDs(CutBlkTl, geompy.ShapeType["FACE"]))[0]
-	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0] + NewIx
+	# Get the index of the new faces create where the Tile joins the Block
+	# This finds the additional faces on the tile
+	CutTlBlk = geompy.MakeCutList(geompy.GetSubShape(Tile,[31]), [geompy.GetSubShape(Block,[23])], True)
+	_TlIx = geompy.SubShapeAllIDs(CutTlBlk, geompy.ShapeType["FACE"])
+	if _TlIx:
+		TlIx = SalomeFunc.ObjIndex(Sample, CutTlBlk, _TlIx)[0]
+		TileExtIx += TlIx
 
-	Ix = TileExtIx + PipeExtIx + BlockExtIx
-	GrpSampleSurface = SalomeFunc.AddGroup(Sample, 'SampleSurface', Ix)
+	# Add group made up of Tile, Block and Pipe external surfaces
+	GrpSampleSurface = SalomeFunc.AddGroup(Sample, 'SampleSurface', TileExtIx + PipeExtIx + BlockExtIx)
 
 
 	###
@@ -236,20 +257,21 @@ def Create(Parameter):
 class TestDimensions():
 	def __init__(self):
 		### Geom
-		self.BlockWidth = 0.03
-		self.BlockLength = 0.05
-		self.BlockHeight = 0.02
+		self.BlockWidth = 0.045
+		self.BlockLength = 0.045
+		self.BlockHeight = 0.035
 
 		self.PipeShape = 'smooth tube'
-		self.PipeCentre = [0,0]
-		self.PipeDiam = 0.01 ###Inner Diameter
-		self.PipeThick = 0.001
-		self.PipeLength = self.BlockLength
+
+		self.PipeDiam = 0.012 ###Inner Diameter
+		self.PipeThick = 0.0014
+		self.PipeLength = 0.2
 
 		self.TileCentre = [0,0]
-		self.TileWidth = self.BlockWidth
-		self.TileLength = 0.03
-		self.TileHeight = 0.005
+		self.TileWidth = self.BlockWidth*1.2
+		self.TileLength = self.BlockLength*0.8
+		self.TileHeight = self.BlockWidth-self.BlockHeight
+		self.PipeCentre = [0,self.TileHeight/2]
 
 		### Mesh
 		self.Length1D = 0.005

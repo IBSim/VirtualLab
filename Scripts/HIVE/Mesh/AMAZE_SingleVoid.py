@@ -13,7 +13,7 @@ def Create(Parameter):
 	import salome_version
 	from Scripts.Common.VLPackages.Salome import SalomeFunc
 	import salome
-    
+
 	if salome_version.getVersions()[0] < 9:
 		theStudy = salome.myStudy
 		geompy = geomBuilder.New(theStudy)
@@ -26,9 +26,9 @@ def Create(Parameter):
 	isVoid, LargestVoidRad, SmallestVoidRad  = [], [], []
 	ScalingFactor, ScalingFlag   = [], []
 
-	for i in range(len(Parameter.Void)): 
-		if Parameter.Void[i][0] and Parameter.Void[i][1] and Parameter.Void[i][2]: 
-			isVoid.append(True) 
+	for i in range(len(Parameter.Void)):
+		if Parameter.Void[i][0] and Parameter.Void[i][1] and Parameter.Void[i][2]:
+			isVoid.append(True)
 			if Parameter.Void[i][0] > Parameter.Void[i][1]: # scale the void in y-axis
 				LargestVoidRad.append(Parameter.Void[i][0]) # elliptical cylinder void
 				SmallestVoidRad.append(Parameter.Void[i][1])
@@ -46,7 +46,7 @@ def Create(Parameter):
 				ScalingFlag.append(None)
 		else:
 			isVoid.append(False)
-# =============================================================================    
+# =============================================================================
 	###
 	### GEOM component
 	###
@@ -94,7 +94,7 @@ def Create(Parameter):
 
 	for i in range (len (isVoid)):
 		if isVoid[i]:
-        	# Void is at the top half of the tile 
+        	# Void is at the top half of the tile
 			Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[i][0], Parameter.VoidCentre[i][1], Parameter.BlockHeight) # extrusion vector
 			Void_Temp = geompy.MakeCylinder(Vertex_2, OZ, LargestVoidRad[i], Parameter.Void[i][2])
 
@@ -109,23 +109,23 @@ def Create(Parameter):
 				Void = Void_Temp
 
 			# elliptic void and rotation with respect to the void centre
-			if Parameter.Void[i][3] != 0.0 and ScalingFlag[i] != None: 
+			if Parameter.Void[i][3] != 0.0 and ScalingFlag[i] != None:
 				Point_1 = geompy.MakeVertex(Parameter.VoidCentre[i][0], Parameter.VoidCentre[i][1], 0)
 				Point_2 = geompy.MakeVertex(Parameter.VoidCentre[i][0], Parameter.VoidCentre[i][1], Parameter.BlockHeight)
 				VectorRotation = geompy.MakeVector(Point_1, Point_2)
 				Void = geompy.Rotate(Void_Scaled, VectorRotation, Parameter.Void[i][3]*np.pi/180.0)
 
 			# no rotation but elliptic void
-			if Parameter.Void[i][3] == 0 and ScalingFlag[i] != None: 
+			if Parameter.Void[i][3] == 0 and ScalingFlag[i] != None:
 				Void = Void_Scaled
 
 			Void_List.append(Void)
 
 	if len (isVoid) != 0:   # void(s) case
-		Tile = geompy.MakeCutList(Tile_orig, Void_List, True)  
+		Tile = geompy.MakeCutList(Tile_orig, Void_List, True)
 
 	else:   # no void case
-		Tile = Tile_orig 
+		Tile = Tile_orig
 
 # =============================================================================
 ## Merge the parts
@@ -134,7 +134,7 @@ def Create(Parameter):
 
 	Void_Name = [] # void geometry list (solid bodies)
 
-	for j in range (len (isVoid)): 
+	for j in range (len (isVoid)):
 		Void_Name.append('Void_' + str (j))
 		geompy.addToStudy(Void_List[j], Void_Name[j])
 
@@ -149,7 +149,7 @@ def Create(Parameter):
 # =============================================================================
 	## Add Groups
 	# Solid
-	Ix = SalomeFunc.ObjIndex(Sample, Tile, [1])[0]  
+	Ix = SalomeFunc.ObjIndex(Sample, Tile, [1])[0]
 	GrpTile = SalomeFunc.AddGroup(Sample, 'Tile', Ix)
 
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [1])[0]
@@ -159,7 +159,7 @@ def Create(Parameter):
 	GrpBlock = SalomeFunc.AddGroup(Sample, 'Block', Ix)
 
 	# Surfaces
-	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [33])[0]  
+	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [33])[0]
 	GrpCoilFace = SalomeFunc.AddGroup(Sample, 'CoilFace', Ix)
 
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [20])[0]
@@ -171,28 +171,47 @@ def Create(Parameter):
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [10])[0]
 	GrpPipeOut = SalomeFunc.AddGroup(Sample, 'PipeOut', Ix)
 
-	# Create SampleSurface group by taking relevant parts of each geometry
-	# Tile
-	TileExtIx = SalomeFunc.ObjIndex(Sample, Tile_orig, [3,13,23,27,33])[0]
-	# Pipe
-	# Get the indicies of the new faces create where the Pipe joins the Block
-	CutPipBlk = geompy.MakeCutList(geompy.GetSubShape(Pipe,[3]), [geompy.GetSubShape(Block,[41])], True)
-	SubIDs = geompy.SubShapeAllIDs(CutPipBlk, geompy.ShapeType["FACE"])
-	NewIx = SalomeFunc.ObjIndex(Sample, CutPipBlk, SubIDs)[0] if SubIDs else []
-	PipeExtIx = SalomeFunc.ObjIndex(Sample, Pipe, [10,15,20])[0] + NewIx
-	# Block
-	# Get the indicies of the new faces create where the Tile joins the Block
-	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile_orig,[31])], True)
-	NewIx = SalomeFunc.ObjIndex(Sample, CutBlkTl, geompy.SubShapeAllIDs(CutBlkTl, geompy.ShapeType["FACE"]))[0]
-	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0] + NewIx
+	# Create group SampleSurface which is the external surface of the sample
+	# Take relevant parts from the Pipe, Tile and Block
 
-	Ix = TileExtIx + PipeExtIx + BlockExtIx
-	GrpSampleSurface = SalomeFunc.AddGroup(Sample, 'SampleSurface', Ix)
+	# Pipe
+	PipeExtIx = SalomeFunc.ObjIndex(Sample, Pipe, [10,15,20])[0]
+	# Get the index of the new faces create where the Pipe joins the Block
+	# Get the faces remaining after block surface cut from pipe & their indexes
+	CutPipBlk = geompy.MakeCutList(geompy.GetSubShape(Pipe,[3]), [geompy.GetSubShape(Block,[41])], True)
+	_PipeIx = geompy.SubShapeAllIDs(CutPipBlk, geompy.ShapeType["FACE"])
+	if _PipeIx:
+		# Get corresponding index on Sample
+		PipeIx = SalomeFunc.ObjIndex(Sample, CutPipBlk, _PipeIx)[0]
+		PipeExtIx += PipeIx
+
+	# Block
+	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0]
+	# Get the index of the new faces create where the Tile joins the Block
+	# This finds the additional faces on the block
+	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile,[31])], True)
+	_BlkIx = geompy.SubShapeAllIDs(CutBlkTl, geompy.ShapeType["FACE"])
+	if _BlkIx:
+		BlkIx = SalomeFunc.ObjIndex(Sample, CutBlkTl, _BlkIx)[0]
+		BlockExtIx += BlkIx
+
+	# Tile
+	TileExtIx = SalomeFunc.ObjIndex(Sample, Tile, [3,13,23,27,33])[0]
+	# Get the index of the new faces create where the Tile joins the Block
+	# This finds the additional faces on the tile
+	CutTlBlk = geompy.MakeCutList(geompy.GetSubShape(Tile,[31]), [geompy.GetSubShape(Block,[23])], True)
+	_TlIx = geompy.SubShapeAllIDs(CutTlBlk, geompy.ShapeType["FACE"])
+	if _TlIx:
+		TlIx = SalomeFunc.ObjIndex(Sample, CutTlBlk, _TlIx)[0]
+		TileExtIx += TlIx
+
+	# Add group made up of Tile, Block and Pipe external surfaces
+	GrpSampleSurface = SalomeFunc.AddGroup(Sample, 'SampleSurface', TileExtIx + PipeExtIx + BlockExtIx)
 
 #============================================================================
 # Store the void surfaces for feature local meshing
 	VoidSurfaces = []
-	VoidSurfaces_Names = []	
+	VoidSurfaces_Names = []
 
 	for k in range (len (isVoid)):
 	#VoidSurfaces- Find the faces corresponding to 3(side), 10(top) and 12(bottom) in Void
@@ -315,7 +334,7 @@ def Create(Parameter):
 	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
 
 	#local (fine) meshing around voids in order to improve accuracy
-	for m in range (len (isVoid)): 
+	for m in range (len (isVoid)):
 		if isVoid[m]:
 			local_mesh_size = (2.0*np.pi*SmallestVoidRad[m])/Parameter.VoidSegmentN
     		### Sub Mesh creation
@@ -347,9 +366,6 @@ def Create(Parameter):
 
 	return Mesh_1
 
-
-
-
 class TestDimensions(): # This testing input class is valid only for no void case
 	def __init__(self):
 		### Geom
@@ -372,14 +388,18 @@ class TestDimensions(): # This testing input class is valid only for no void cas
 		self.Length1D = 0.005
 		self.Length2D = 0.005
 		self.Length3D = 0.005
-		self.PipeDisc = 20
+		self.PipeSegmentN = 20
 		self.SubTile = 0.003
+		self.VoidSegmentN = 16
 
 		self.CoilType = 'Test'
 		self.CoilDisp = [0, 0, 0.005]
 
 		self.MeshName = 'Test'
 		self.SampleGroups = ['Tile','Block','Pipe']
+
+		self.Void=[]
+
 
 def HandleRC(returncode, Sims={}, AffectedSims=[], MeshName='',MeshErrors=[]):
 	'''

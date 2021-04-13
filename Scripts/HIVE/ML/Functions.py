@@ -32,7 +32,7 @@ def Uniformity2(JHNode, MeshFile):
 
 
 class Sampling():
-    def __init__(self, method, dim=0, range=[], bounds=True):
+    def __init__(self, method, dim=0, range=[], bounds=True, options={}):
         # Must have either a range or dimension
         if range:
             self.range = range
@@ -41,9 +41,10 @@ class Sampling():
             self.range = [(0,1)]*dim
             self.dim = dim
         else:
-            print('Must provide either dimension or range')
+            print('Error: Must provide either dimension or range')
 
-        self.bounds=bounds
+        self.options = options
+        self.bounds = bounds
         self._boundscomplete = False
         self._Nb = 0
 
@@ -51,7 +52,7 @@ class Sampling():
         elif method.lower() == 'random': self.sampler = self.Random
         elif method.lower() == 'sobol': self.sampler = self.Sobol
         elif method.lower() == 'grid': self.sampler = self.Grid
-        elif method.lower() == 'lewis': self.sampler = self.Lewis
+        elif method.lower() == 'subspace': self.sampler = self.SubSpace
 
 
     def get(self,N):
@@ -116,180 +117,109 @@ class Sampling():
         disc = np.linspace(0,1,self.N)
         return np.array(list(zip(*product(*[disc]*self.dim)))).T
 
-    def __Lewis(self):
-        d = 2
-        # d = self.dim
-
-        if not hasattr(self,'Add'):
-            self.Add=0
-            self.SumNb = np.array([0]*(d))
-            self.IndNb = np.array([0]*(d))
-            self.Generator = [[] for _ in range(self.dim)]
-
-            import ghalton
-            # import torch
-            self._generator,self.SS = [],[]
-            for i in range(d):
-                self._generator.append(ghalton.GeneralizedHalton(self.dim - i,i+1))
-                # self._generator.append(ghalton.Halton(self.dim - i))
-                # self._generator.append(torch.quasirandom.SobolEngine(dimension=self.dim - i,scramble=True,seed = i*100))
-                self.SS.append(special.binom(self.dim,self.dim-i)*2**i)
-
-        self.Add += self.N
-
-        _N = self.Add
-
-        n = _N**(1/self.dim)
-        fact = (1 - 1/n)**2
-        # fact = (1 - 1/n)**self.dim # Seems to be too affected by higher powers
-        fact = max(fact,0.1) # ensures fact is never zero
-        # print(fact)
+    def _SubSpace_dist(self, N, f, d):
         Dist = []
-        for i in range(d-1):
-            Top = int(np.ceil(_N*fact))
-            Dist.append(Top)
-            _N -= Top
-        Dist.append(_N)
-        Dist = np.array(Dist)
-        # print(Dist)
-        Ind = np.ceil(Dist/self.SS) - self.IndNb
+        for i in range(d):
+            SS_N = int(np.ceil(N*f))
+            Dist.append(SS_N)
+            N -= SS_N
+        Dist.append(N)
+        return Dist
 
-        for i, (num, gen, ss) in enumerate(zip(Ind,self._generator,self.SS)):
+    def _SubSpace_fn(self,N):
+        # This function has looked at empricial results and seems to match well
+        # with curves for 2,3 and 4 D
+        n = N**(1/self.dim) # self.dim th root of N
+        return (1 - 1/n)**2
+
+    def _SubSpace(self):
+        # defaults which can be updated using options
+        options = {'dim': self.dim - 1, # number of dimensions down to survey
+                   'method': 'halton',
+                   'roll' : True,
+                   'SS_Func' : self._SubSpace_fn}
+        options.update(self.options)
+
+        # Setup
+        d = options['dim']
+        if not hasattr(self,'generator'):
+            self.Add = 0
+            self.SumNb = np.array([0]*(d+1))
+            self.IndNb = np.array([0]*(d+1))
+            self.generator = [[] for _ in range(self.dim)]
+
+            self._generator,self.SS = [],[]
+            if options['method'].lower() == 'halton':
+                import ghalton
+                for i in range(d+1):
+                    self._generator.append(ghalton.GeneralizedHalton(self.dim,0))
+                    self.SS.append(special.binom(self.dim,self.dim-i)*2**i)
+
+            elif options['method'].lower() == 'sobol':
+                import torch
+                for i in range(d+1):
+                    self._generator.append(torch.quasirandom.SobolEngine(dimension=self.dim))
+                    self.SS.append(special.binom(self.dim,self.dim-i)*2**i)
+
+        # work out how many points from each subspace we will need
+        fact = options['SS_Func'](self.Add+self.N)
+        fact = max(fact,0.1) # ensures fact is never zero
+        Dist = self._SubSpace_dist(self.Add+self.N,fact,d)
+        # Divide by number of subspaces for each dimension & work out difference
+        Ind = np.ceil(np.array(Dist)/self.SS) - self.IndNb
+        # Get the necessary points needed and add to 'generator'
+        for i, (num, gen) in enumerate(zip(Ind,self._generator)):
             if num == 0: continue
-            genvals = gen.get(int(num))
-            # genvals = gen.draw(int(num)).detach().numpy().tolist()
+            # get num points from generator
+            if options['method'].lower() == 'halton':
+                genvals = gen.get(int(num))
+            elif options['method'].lower() == 'sobol':
+                genvals = gen.draw(int(num)).detach().numpy().tolist()
             self.IndNb[i]+=num # keep track of how many of each dim we've asked for
+
             if i==0:
-                vals = genvals
+                points = genvals
             else:
-                vals = []
+                points = []
                 BndIxs = list(combinations(list(range(self.dim)),i)) # n chose i
                 BndPerms = list(product(*[[0,1]]*i))
                 for genval,BndIx,BndPerm in product(genvals,BndIxs,BndPerms):
-                    IntIx = list(set(range(self.dim)).difference(BndIx))
-                    a = np.zeros(self.dim)
-                    a[IntIx] = genval
-                    a[list(BndIx)] = list(BndPerm)
-                    vals.append(a.tolist())
+                    genval = np.array(genval)
+                    # roll generator to put bases out of sync (optional)
+                    if options['roll']:
+                        genval = np.roll(genval,i)
 
-            self.Generator[i].extend(vals)
+                    genval[list(BndIx)] = list(BndPerm)
+                    points.append(genval.tolist())
 
-        # ensures ordering is maintained
-        M = []
-        oldNb = self.Add - self.N
+            self.generator[i].extend(points)
+
+        # Get N points one at a time from self.generator
+        # to ensures ordering is maintained
+        points = []
         for i in range(1,self.N+1):
-            _N = oldNb+i
-            n = _N**(1/self.dim)
-            fact = (1 - 1/n)**2
+            _N = self.Add+i
+            fact = options['SS_Func'](_N)
             fact = max(fact,0.1) # ensures fact is never zero
 
-            Dist = []
-            for i in range(d-1):
-                Top = int(np.ceil(_N*fact))
-                Dist.append(Top)
-                _N -= Top
-            Dist.append(_N)
-            Dist = np.array(Dist)
-            Need = Dist - self.SumNb
-
-            ix = Need.argmax()
-            v = self.Generator[ix].pop(0)
-
-            M.append(v)
-            Need[ix]-=1
+            Dist = self._SubSpace_dist(_N,fact,d)
+            # Get index of next point
+            ix = (np.array(Dist) - self.SumNb).argmax()
+            point = self.generator[ix].pop(0)
+            points.append(point)
             self.SumNb[ix]+=1
-        # print(M)
-        return M
 
-    def Lewis(self):
+        self.Add+=self.N
+
+        return points
+
+    def SubSpace(self):
         Bnds = self.getbounds()
         if self.N == 0: return Bnds
 
-        Points = self.__Lewis()
+        Points = self._SubSpace()
 
         if isinstance(Bnds,np.ndarray):
             return np.vstack((Bnds,Points))
         else :
             return Points
-
-
-    def _Lewis(self):
-        # alot of for loops here which could be tidied up
-        if not hasattr(self,'a'): self.a = 1
-        if not hasattr(self,'nbs'): self.nbs = [0]*self.dim
-        dims = list(range(1,self.dim+1))[::-1]
-        disc = [self.a**d for d in dims]
-
-        import ghalton
-        if not hasattr(self,'_generator'):
-            self._generator = {}
-            for i in dims:
-                self._generator[i] = ghalton.Halton(i)
-
-        M = []
-        for i, (_dim,_disc) in enumerate(zip(dims,disc)):
-            BIxs = list(combinations(dims,self.dim - _dim))
-            BoundPerm = list(product(*[[0,1]]*(self.dim - _dim)))
-
-            if True:
-                _n = _disc - self.nbs[i]
-                self.nbs[i] = _disc
-            else:
-                _n = _disc
-
-            points = self._generator[_dim].get(_n)
-            for point in points:
-                for BIx in BIxs:
-                    # print(point,BIx)
-                    NBIx = set(dims) - set(BIx)
-                    for cmb in BoundPerm:
-                        ls = [0]*self.dim
-                        for _NBIx,_p in zip(NBIx,point):
-                            ls[_NBIx-1] = _p
-                        for _BIx,_p in zip(BIx,cmb):
-                            ls[_BIx-1] = _p
-
-                        M.append(ls)
-
-        self.a+=1
-
-        self.generator = np.array(M)
-        # print(self.generator)
-    def LewisOld(self):
-        Bnds = self.getbounds()
-        if self.N == 0: return Bnds
-
-        if not hasattr(self,'generator'): self._Lewis()
-
-        if self.N < self.generator.shape[0]:
-            Points = self.generator[:self.N,:]
-            self.generator = self.generator[self.N:,]
-        else:
-            Points = self.generator
-            need = self.N - Points.shape[0]
-            while need>0:
-                self._Lewis()
-                if need >= self.generator.shape[0]:
-                    NewPoints = self.generator
-                else:
-                    NewPoints = self.generator[:need,:]
-                    self.generator = self.generator[need:,]
-
-                Points = np.vstack((Points,NewPoints))
-                need -=NewPoints.shape[0]
-
-        if isinstance(Bnds,np.ndarray):
-            return np.vstack((Bnds,Points))
-        else :
-            return Points
-
-
-
-
-
-
-
-        #
-        # self._it=0
-        # while self.N:
-        #     for dim,coef in zip(dims[self._it:],coef[self._it:]):

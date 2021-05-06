@@ -198,31 +198,50 @@ class VLSetup():
 
 		# self.Logger('### VirtualLab Finished###\n',Print=True)
 	def GetParams(self, Parameters_Master, Parameters_Var, NS):
-		sys.path.insert(0, self.INPUT_DIR)
+		# Parameters_Master &/or Var can be module, a namespace or string.
+		# A string references a file in the input directory
 
+		# ======================================================================
+		# Parameters Master
 		if type(Parameters_Master)==str:
-			if not os.path.exists('{}/{}.py'.format(self.INPUT_DIR, Parameters_Master)):
-				self.Exit("Parameters_Master file '{}' not in directory {}".format(Parameters_Master, self.INPUT_DIR))
-			Main = reload(import_module(Parameters_Master))
+			MasterFile = "{}/{}.py".format(self.INPUT_DIR,Parameters_Master)
+			# Check File exists
+			if not os.path.exists(MasterFile):
+				self.Exit("Parameters_Master file '{}' does not exist".format(MasterFile))
+
+			sys.path.insert(0, os.path.dirname(MasterFile))
+			Main = reload(import_module(os.path.basename(Parameters_Master)))
+			sys.path.pop(0)
 		elif any(hasattr(Parameters_Master,nm) for nm in NS):
 			Main = Parameters_Master
 		else: sys.exit()
+
 		self.Parameters_Master = Namespace()
 		for nm in NS:
 			setattr(self.Parameters_Master, nm, getattr(Main, nm, None))
 
+		# ======================================================================
+		# Parameters Var
 		if type(Parameters_Var)==str:
-			if not os.path.exists('{}/{}.py'.format(self.INPUT_DIR, Parameters_Var)):
-				self.Exit("Parameters_Var file '{}' not in directory {}".format(Parameters_Var, self.INPUT_DIR))
-			Var = reload(import_module(Parameters_Var))
+			VarFile = "{}/{}.py".format(self.INPUT_DIR,Parameters_Var)
+			# Check File exists
+			if not os.path.exists(VarFile):
+				self.Exit("Parameters_Var file '{}' does not exist".format(VarFile))
+
+			sys.path.insert(0, os.path.dirname(VarFile))
+			Var = reload(import_module(os.path.basename(Parameters_Var)))
+			sys.path.pop(0)
 		elif any(hasattr(Parameters_Var,nm) for nm in NS):
 			Var = Parameters_Var
 		elif Parameters_Var==None:
 			Var = None
 		else: sys.exit()
+
 		self.Parameters_Var = Namespace()
 		for nm in NS:
 			setattr(self.Parameters_Var, nm, getattr(Var, nm, None))
+
+		# ======================================================================
 
 	def CreateParameters(self, Parameters_Master, Parameters_Var, Attr):
 		Master=getattr(Parameters_Master,Attr, None)

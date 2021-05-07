@@ -19,5 +19,13 @@ if type(MeshRn)==salome.smesh.smeshBuilder.Mesh:
     isDone = MeshRn.Compute()
     SalomeFunc.MeshExport(MeshRn, MeshDict['MESH_FILE'])
 
+if getattr(Parameters,'ExportGeom',False):
+    from salome.geom import geomBuilder
+    import GEOM
+    geompy = geomBuilder.New()
+    SampleGeom = MeshRn.GetShape()
+    StepFile = "{}.stp".format(os.path.splitext(MeshDict['MESH_FILE'])[0])
+    geompy.ExportSTEP(SampleGeom, StepFile, GEOM.LU_METER )
+
 # salome.myStudy.Clear()
 # salome.salome_close()

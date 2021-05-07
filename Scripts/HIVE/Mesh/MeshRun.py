@@ -49,6 +49,13 @@ if type(MeshRn)==salome.smesh.smeshBuilder.Mesh:
 
             geompy.ExportXAO(SampleGeom, GrpGeom, [], "", xaofile, "")
 
+    if getattr(Parameters,'ExportGeom',False):
+        from salome.geom import geomBuilder
+        import GEOM
+        geompy = geomBuilder.New()
+        SampleGeom = MeshRn.GetShape()
+        StepFile = "{}.stp".format(os.path.splitext(MeshFile)[0])
+        geompy.ExportSTEP(SampleGeom, StepFile, GEOM.LU_METER )
 
 # salome.myStudy.Clear()
 # salome.salome_close()

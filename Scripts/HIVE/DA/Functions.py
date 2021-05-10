@@ -2,8 +2,8 @@ import numpy as np
 from scipy import spatial, special
 from itertools import product, combinations
 
-
 from Scripts.Common.VLFunctions import MeshInfo
+
 '''
 Add in Uniformity 1 which looks at stdev
 '''
@@ -29,6 +29,30 @@ def Uniformity2(JHNode, MeshFile):
 
     Uniformity = JHArea/Area
     return Uniformity
+
+
+def DataScale(data,const,scale):
+    '''
+    This function scales n-dim data to a specific range.
+    data: N-darray or scalar
+    const: N-darray or scalar
+    scale: N-darray or scalar
+    Examples:
+     - Normalising data:
+        const=mean, scale=stddev
+     - [0,1] range:
+        const=min, scale=max-min
+    '''
+    return (data - const)/scale
+
+def DataRescale(data,const,scale):
+    '''
+    This function scales data back to original range.
+    data: N-darray or scalar
+    const: N-darray or scalar
+    scale: N-darray or scalar
+    '''
+    return data*scale + const
 
 
 class Sampling():

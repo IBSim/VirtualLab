@@ -15,6 +15,7 @@ import torch.optim as optim
 import torch.utils.data as Data
 
 from Scripts.Common.VLFunctions import MeshInfo
+from Functions import Uniformity2 as UniformityScore
 
 # NetPU architecture
 class NetPU(nn.Module):

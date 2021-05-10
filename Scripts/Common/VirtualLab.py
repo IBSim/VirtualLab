@@ -13,7 +13,7 @@ from importlib import import_module, reload
 import VLconfig
 from Scripts.Common import Analytics
 from Scripts.Common.VLPackages import Salome, CodeAster
-from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, ML as MLFn
+from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var=None, Mode='T',
@@ -89,7 +89,7 @@ class VLSetup():
 		self.SIM_PREASTER = "{}/PreAster".format(self.SIM_SCRIPTS)
 		self.SIM_ASTER = "{}/Aster".format(self.SIM_SCRIPTS)
 		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
-		self.SIM_ML = "{}/ML".format(self.SIM_SCRIPTS)
+		self.SIM_DA = "{}/DA".format(self.SIM_SCRIPTS)
 
 		self._pypath = sys.path.copy() # Needed for MPI run to match sys.path
 
@@ -100,12 +100,12 @@ class VLSetup():
 		kwargs available:
 		RunMesh: Boolean to dictate whether or not to create meshes
 		RunSim: Boolean to dictate whether or not to run simulation routine
-		RunMl: Boolean to dictate ML part (dev)
+		RunDA: Boolean to dictate data analysis part (dev)
 		'''
 		kwargs.update(self.GetArgParser())
 
 		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
-		self.NS = ['Mesh','Sim','ML']
+		self.NS = ['Mesh','Sim','DA']
 		self.GetParams(self.Parameters_Master, self.Parameters_Var, self.NS)
 
 		self.Salome = Salome.Salome(self, AddPath=[self.SIM_SCRIPTS])
@@ -115,7 +115,7 @@ class VLSetup():
 
 		MeshFn.Setup(self,**kwargs)
 		SimFn.Setup(self,**kwargs)
-		MLFn.Setup(self,**kwargs)
+		DAFn.Setup(self,**kwargs)
 
 		# Function to analyse usage of VirtualLab to evidence impact for
 		# use in future research grant applications. Can be turned off via
@@ -135,10 +135,8 @@ class VLSetup():
 	def devSim(self,**kwargs):
 		return SimFn.devRun(self,**kwargs)
 
-	def devML(self,**kwargs):
-		return MLFn.devRun(self,**kwargs)
-
-
+	def devDA(self,**kwargs):
+		return DAFn.devRun(self,**kwargs)
 
 	def WriteModule(self, FileName, Dictionary, **kwargs):
 		Write = kwargs.get('Write','New')

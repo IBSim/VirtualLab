@@ -26,7 +26,7 @@ def Single(VL, MLdict):
     device = torch.device('cpu')
 
     # File where all data is stored
-    DataFile = "{}/Data.hdf5".format(VL.ML_DIR)
+    DataFile = "{}/ML/Data.hdf5".format(VL.PROJECT_DIR)
 
     if ML.Train:
         DataSplit = getattr(ML,'DataSplit',0.7)

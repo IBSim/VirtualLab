@@ -11,7 +11,7 @@ import shutil
 
 from Scripts.Common.VLFunctions import MeshInfo
 from Scripts.Common.VLPackages.ERMES import ERMES
-from ML.Functions import Uniformity2
+from DA.Functions import Uniformity2
 
 def HTC(Info, StudyDict):
 	CreateHTC = getattr(StudyDict['Parameters'], 'CreateHTC', True)
@@ -621,98 +621,124 @@ def EMI(Info, StudyDict):
 		# plt.show()
 
 	Threshold = getattr(Parameters,'Threshold', 0.999)
-	if Threshold:
+	if Threshold<1:
 		# Find position in CumSum where the threshold percentage has been reached
 		pos = bl(CumSum,Threshold)
-		print("To ensure {}% of the coil power is delivered {} elements will be assigned EM loads".format(Threshold*100, pos+1))
+		WattsPV = WattsPV[:pos+1]
+		Elements = Elements[:pos+1]
+		Watts = Watts[:pos+1]
 
-		# Scale values to reflect Current
-		EM_Val = WattsPV[:pos+1]
-		EM_Els = Elements[:pos+1]
+		print("The {} most influential elements will be assigned EM loads ({}% threshold)".format(pos+1, Threshold*100))
+		if getattr(StudyDict['Parameters'],'EMScale', True):
+			# If EMScale is True then the power input will be scaled to the original value.
+			# i.e. if EMThreshold is 0.5 then the magnitude for each element will be doubled.
+			sc = 1/CumSum[pos]
+			Watts,WattsPV = Watts*sc,WattsPV*sc
+	else:
+		print("All ({}) elements will be assigned EM loads".format(Elements.shape[0]))
 
-		# If EMScale is True then the power input will be scaled to 100% for the elements used.
-		# If EMThreshold is 0.5 then the magnitude for each element will be doubled.
-		if getattr(StudyDict['Parameters'],'EMScale', False):
-			EM_Val = EM_Val*(CumSum[-1]/CumSum[pos])
+	NbClusters = int(getattr(Parameters,'NbClusters',0))
+	if NbClusters > 0:
+		'''
+		Using K-means algorithm the loads will be grouped in to clusters, which
+		will substantially speed up the simulation in CodeAster.
+		The Goodness of Fit Value (GFV) describes how well the clustering
+		represents the data, ranging from 0 (worst) to 1 (best).
+		'''
+		from sklearn.cluster import KMeans
+		X = WattsPV.reshape(-1,1)
+		X_sc = (X - X.min())/(X.max()-X.min())
+		kmeans = KMeans(n_clusters=NbClusters).fit(X_sc)
 
-		# Write results to tmp file for Code_Aster to read in
-		EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
-		np.save(EMLoadFile, np.vstack((EM_Els, EM_Val)).T)
+		EM_Groups = [Elements[kmeans.labels_==i] for i in range(NbClusters)]
+		EM_Loads = kmeans.cluster_centers_*(X.max()-X.min()) + X.min()
 
-		# Create individual mesh groups for the pos+1 elements which are loaded
-		tmpMeshFile = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
-		GroupBy = 'H5PY'
-		# This routine uses h5py to create the groups. It is the fastest available method.
-		if GroupBy == 'H5PY':
-			st = time.time()
-			shutil.copy(StudyDict['MeshFile'],tmpMeshFile)
+		WattsPV_cl = EM_Loads[kmeans.labels_]
+		Vols = Watts/WattsPV # may need to do this correctly as wattspv can be zero
+		Watts_cl = WattsPV_cl.flatten()*Vols
+		sc = Watts.sum()/Watts_cl.sum()
+		Watts_cl, WattsPV_cl = Watts_cl*sc, WattsPV_cl*sc
+		# scoring metrics for clustering
+		SDAM = ((X_sc - X_sc.mean())**2).sum() # Squared deviation for mean array
+		SDCM = kmeans.inertia_ # Squared deviation class mean
+		GFV = (SDAM-SDCM)/SDAM # Goodness of fit value
 
-			tmpMeshMed = h5py.File(tmpMeshFile,'a')
+		print("The {} elements are clustered in to {} groups.\n"\
+			  "Goodness of Fit Value: {}".format(Elements.shape[0],NbClusters,GFV))
 
-			ElInfo = tmpMeshMed["ENS_MAA/Sample/-0000000000000000001-0000000000000000001/MAI/TE4"]
-			ElList = ElInfo["NUM"][:]
-			Elbool = np.searchsorted(ElList,EM_Els)
-			ElList = ElList[Elbool]
-			ElFam = ElInfo["FAM"][:][Elbool]
-			UniqueFam = np.unique(ElFam)
+	else:
+		EM_Groups = Elements
+		EM_Loads = WattsPV
 
-			ElGrps = tmpMeshMed["FAS/Sample/ELEME"]
-			MinNum, GrpName = 0, []
-			for grp in ElGrps.keys():
-				grpnum = ElGrps[grp].attrs['NUM']
-				MinNum = min(MinNum,grpnum)
-				if grpnum in UniqueFam:
-					GrpName.append((grpnum,grp))
 
-			Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
-			NewNum = MinNum-1
+	# Create mesh groups based on elements in EM_Groups
+	tmpMeshFile = "{}/Mesh.med".format(StudyDict["TMP_CALC_DIR"])
+	GroupBy = 'H5PY'
+	# This routine uses h5py to create the groups. It is the fastest available method.
+	if GroupBy == 'H5PY':
+		# Copy MeshFile to add groups to
+		shutil.copy(StudyDict['MeshFile'],tmpMeshFile)
 
-			for Num, key in GrpName:
-				# st2 = time.time()
-				NameGrps = ElGrps["{}/GRO/NOM".format(key)][:]
-				NumGrps = NameGrps.shape[0]
-				Fambool = ElFam == Num
-				tmplist=[]
-				dsetFormat = Formats["Name{}".format(NumGrps+2)]
-				grpobj = ElGrps[key]
-				for El in ElList[Fambool]:
-					EMnames = ASCIIname(['EMgrp','M{}'.format(El)])
-					NewNames = np.vstack((NameGrps,EMnames))
-					newkey = "Grp{}".format(NewNum)
+		# Open MeshFile using h5py to append groups to
+		tmpMeshMed = h5py.File(tmpMeshFile,'a')
+		ElInfo = tmpMeshMed["ENS_MAA/Sample/-0000000000000000001-0000000000000000001/MAI/TE4"]
+		ElList = ElInfo["NUM"][:]
+		ElFam = ElInfo["FAM"][:]
+		# Elbool = np.searchsorted(ElList,Elements)
+		# ElList = ElList[Elbool]
+		# ElFam = ElFam[Elbool]
 
-					ElGrps.copy(dsetFormat,"{}/GRO/NOM".format(newkey))
-					ElGrps[newkey].attrs.create('NUM',NewNum,dtype='i4')
-					ElGrps["{}/GRO".format(newkey)].attrs.create('NBR',NumGrps+2,dtype='i4')
-					ElGrps["Grp{}/GRO/NOM".format(NewNum)][:] = NewNames
+		# Get minimum group famiy Id number (to avoid overwriting) and create dictionary containing
+		# the affected groups
+		ElGrps = tmpMeshMed["FAS/Sample/ELEME"]
+		MinNum, GrpName = 0, {}
+		for grpname in ElGrps.keys():
+			grpnum = ElGrps[grpname].attrs['NUM']
+			MinNum = min(MinNum,grpnum)
+			if grpnum in ElFam:
+				GrpName[grpnum] = ElGrps[grpname]
+		NewNum = MinNum-1 # Number which groping will start at
+		# Formats file contains format needed to add group
+		Formats = h5py.File("{}/MED_Format.med".format(Info.COM_SCRIPTS),'r')
+		for i,els in enumerate(EM_Groups):
+			ElIxcl = np.searchsorted(ElList,els) # get indices of els in ElList
+			ElFamcl = ElFam[ElIxcl] # get Family Ids associated with els
+			for fam in np.unique(ElFamcl):
+				NameGrps = GrpName[fam]['GRO/NOM'][:] # group names already associated with this family id
+				EMnames = ASCIIname(['_EMgrp','_{}'.format(i)]) #ASCII name for 2 new groups; _EMgrp and M#
+				NumGrps = NameGrps.shape[0]+2 # add 2 to NumGrps since we're creating 2 new groups
+				dsetFormat = Formats["Name{}".format(NumGrps)] # copy group format from Formats
 
-					# ElGrps.copy(grpobj,newkey)
-					# ElGrps[newkey].attrs.modify('NUM',NewNum)
-					# ElGrps["{}/GRO".format(newkey)].attrs.modify('NBR',NumGrps+2)
-					# del ElGrps["{}/GRO/NOM".format(newkey)]
-					# ElGrps.copy(dsetFormat,"{}/GRO/NOM".format(newkey))
-					# ElGrps["{}/GRO/NOM".format(newkey)][:] = NewNames
+				# Create new group containing relevant information
+				h5grp = "Grp{}".format(NewNum)
+				ElGrps.copy(dsetFormat,"{}/GRO/NOM".format(h5grp))
+				ElGrps[h5grp].attrs.create('NUM',NewNum,dtype='i4')
+				ElGrps["{}/GRO".format(h5grp)].attrs.create('NBR',NumGrps,dtype='i4')
+				ElGrps["{}/GRO/NOM".format(h5grp)][:] = np.vstack((NameGrps,EMnames))
 
-					tmplist.append(NewNum)
-					NewNum -=1
+				# Update ElFam with new family IDs created
+				IxChange = ElIxcl[ElFamcl==fam]
+				ElFam[IxChange] = NewNum
 
-				ElFam[Fambool] = tmplist
-				# print(time.time()-st2)
+				NewNum -=1
 
-			Formats.close()
-			ElFamFull = ElInfo["FAM"][:]
-			ElFamFull[Elbool] = ElFam
-			ElInfo["FAM"][:] = ElFamFull
-			tmpMeshMed.close()
-			StudyDict['MeshFile'] = tmpMeshFile
-			print('Create:{}'.format(time.time()-st))
+		Formats.close()
 
-		elif GroupBy == 'SALOME':
-			st = time.time()
-			ArgDict = {"MeshFile":StudyDict["MeshFile"], "tmpMesh":tmpMeshFile,"EMLoadFile":EMLoadFile}
-			EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
-			Info.SalomeRun(EMGroupFile, ArgDict=ArgDict)
-			StudyDict['MeshFile'] = tmpMeshFile
-			# print('Create:{}'.format(time.time()-st))
+		ElInfo["FAM"][:] = ElFam
+		tmpMeshMed.close()
+
+	elif GroupBy == 'SALOME':
+		### May be broken so not reliable
+		ArgDict = {"MeshFile":StudyDict["MeshFile"], "tmpMesh":tmpMeshFile,"EMLoadFile":EMLoadFile}
+		EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
+		Info.SalomeRun(EMGroupFile, ArgDict=ArgDict)
+
+	# change MeshFile to point to the mesh file with additional EM groups
+	StudyDict['MeshFile'] = tmpMeshFile
+
+	# Write results to tmp file for Code_Aster to read in
+	EMLoadFile = '{}/ERMES.npy'.format(StudyDict['TMP_CALC_DIR'])
+	np.save(EMLoadFile, EM_Loads)
 
 def Single(Info, StudyDict):
 	HTC(Info, StudyDict)

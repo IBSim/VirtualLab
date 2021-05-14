@@ -81,11 +81,11 @@ if Parameters.EMLoad == 'Uniform':
 	EMI = AFFE_CHAR_THER(FLUX_REP=_F(FLUN=Parameters.Flux, GROUP_MA='CoilFace'),MODELE=Thermod)
 
 elif Parameters.EMLoad == 'ERMES':
+	# Read in ERMES file created during PreAster
 	ERMES = np.load('{}/ERMES.npy'.format(PathVL.TMP_CALC_DIR))
-	Els, JouleHeat = ERMES[:,0],ERMES[:,1]
 	Load_EM = []
-	for El, JH in zip(Els,JouleHeat):
-		Load_EM.append((_F(GROUP_MA="M{}".format(int(El)),SOUR=JH)))
+	for i,JH in enumerate(ERMES):
+		Load_EM.append((_F(GROUP_MA="_{}".format(i),SOUR=JH)))
 	EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
 
 

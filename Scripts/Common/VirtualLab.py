@@ -16,15 +16,15 @@ from Scripts.Common.VLPackages import Salome, CodeAster
 from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
-	def __init__(self, Simulation, Project, StudyName, Parameters_Master, Parameters_Var=None, Mode='T',
+	def __init__(self, Simulation, Project, StudyName, Parameters_Master=None, Parameters_Var=None, Mode='T',
 				 InputDir=None, OutputDir=None, MaterialDir=None, TempDir=None):
 
 		self.Simulation = Simulation
 		self.Project = Project
 		self.StudyName = StudyName
 		# Parameters_Master and Var will be overwritten by a namespace of the parameters using function CreateParameters
-		self.Parameters_Master = Parameters_Master
-		self.Parameters_Var = Parameters_Var
+		self._Parameters_Master = Parameters_Master
+		self._Parameters_Var = Parameters_Var
 		self.mode = Mode
 
 		### Define required directories for VL from config file. If directory name doesn't start with '/'
@@ -95,32 +95,48 @@ class VLSetup():
 
 		self.Logger('### Launching VirtualLab ###',Print=True)
 
+	def Parameters(self, Parameters_Master, Parameters_Var=None,
+					RunMesh=True, RunSim=True, RunDA=True):
+		'''
+		This method is replacing control.
+		'''
+
+		kw = {'RunMesh':RunMesh,'RunSim':RunSim,'RunDA':RunDA}
+		kw.update(self.GetArgParser())
+
+		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
+		VLNamespaces = ['Mesh','Sim','DA']
+		self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
+
+		if not hasattr(self,'Salome'):
+			self.Salome = Salome.Salome(self, AddPath=[self.SIM_SCRIPTS])
+		if not hasattr(self,'CodeAster'):
+			self.CodeAster = CodeAster.CodeAster(self)
+
+		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
+
+		MeshFn.Setup(self,**kw)
+		SimFn.Setup(self,**kw)
+		DAFn.Setup(self,**kw)
+
+		# Function to analyse usage of VirtualLab to evidence impact for
+		# use in future research grant applications. Can be turned off via
+		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
+		if VLconfig.VL_ANALYTICS=="True": Analytics.Run(self,**kw)
+
 	def Control(self, **kwargs):
 		'''
 		kwargs available:
 		RunMesh: Boolean to dictate whether or not to create meshes
 		RunSim: Boolean to dictate whether or not to run simulation routine
 		RunDA: Boolean to dictate data analysis part (dev)
+
+		This method will be depreciated in future.
 		'''
-		kwargs.update(self.GetArgParser())
+		if self._Parameters_Master == None:
+			self.Exit('Parameters_Master/var must be set during class initiation to use this method')
 
-		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
-		self.NS = ['Mesh','Sim','DA']
-		self.GetParams(self.Parameters_Master, self.Parameters_Var, self.NS)
-
-		self.Salome = Salome.Salome(self, AddPath=[self.SIM_SCRIPTS])
-		self.CodeAster = CodeAster.CodeAster(self)
-
-		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
-
-		MeshFn.Setup(self,**kwargs)
-		SimFn.Setup(self,**kwargs)
-		DAFn.Setup(self,**kwargs)
-
-		# Function to analyse usage of VirtualLab to evidence impact for
-		# use in future research grant applications. Can be turned off via
-		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
-		if VLconfig.VL_ANALYTICS=="True": Analytics.Run(self,**kwargs)
+		self.Parameters(self._Parameters_Master,self._Parameters_Var,**kwargs)
 
 
 	def Mesh(self,**kwargs):
@@ -195,6 +211,8 @@ class VLSetup():
 				shutil.rmtree(self.TEMP_DIR)
 
 		# self.Logger('### VirtualLab Finished###\n',Print=True)
+
+
 	def GetParams(self, Parameters_Master, Parameters_Var, NS):
 		# Parameters_Master &/or Var can be module, a namespace or string.
 		# A string references a file in the input directory

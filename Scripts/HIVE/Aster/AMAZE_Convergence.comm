@@ -142,7 +142,6 @@ ConvFile = "{}/Convergence.dat".format(PathVL.ASTER)
 
 with open(ConvFile, 'w') as f: pass
 
-
 TempConvergence = []
 for i, CheckIx in enumerate(CheckList):
 	NewTsteps = AsterFunc.AdaptThermal(resther,Timestp,Loading,Thermat,Thermod,Theta,Solver,Storing = Savestp, MaxIter=MaxIter, EndIndex=CheckIx)
@@ -158,7 +157,7 @@ for i, CheckIx in enumerate(CheckList):
 
 # DETRUIRE(CONCEPT=_F(NOM=(mesh)))
 # mesh = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
-np.savetxt('./REPE_OUT/TimeSteps.dat', AdaptSteps, fmt='%.4e', delimiter = '   ')
+np.savetxt('./REPE_OUT/TimeSteps.dat', AdaptTsteps, fmt='%.4e', delimiter = '   ')
 DEFI_FICHIER(FICHIER='./REPE_OUT/ResTher.rmed', TYPE='BINARY', UNITE=80)
 IMPR_RESU(RESU=_F(RESULTAT=resther), UNITE=80)
 

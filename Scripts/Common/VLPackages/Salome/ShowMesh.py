@@ -13,7 +13,7 @@ import  SMESH, SALOMEDS
 from salome.smesh import smeshBuilder
 import SalomeFunc
 
-Meshes = SalomeFunc.GetArgs(sys.argv[1:])
+Meshes = SalomeFunc.GetArgs()
 
 smesh = smeshBuilder.New()
 

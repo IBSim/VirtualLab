@@ -51,26 +51,18 @@ def Setup(VL, **kwargs):
 
 
 def PoolRun(VL, MeshDict,**kwargs):
-    MeshName = MeshDict['Name']
     # Write Parameters used to make the mesh to the mesh directory
-    shutil.copy("{}/{}.py".format(VL.GEOM_DIR,MeshName), VL.MESH_DIR)
+    shutil.copy("{}/{}.py".format(VL.GEOM_DIR,MeshDict['Name']), VL.MESH_DIR)
 
-    script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
-    # if MeshRun is Mesh folder this is used instead
     if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
         script = '{}/MeshRun.py'.format(VL.SIM_MESH)
+    else:
+        script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
 
     AddPath = [VL.SIM_MESH, VL.GEOM_DIR] #Geomdir may not be needed
-    MeshDict['STEP'] = True
-
     err = VL.Salome.Run(script, DataDict = MeshDict, AddPath=AddPath)
     if err:
         return "Error in Salome run"
-
-    # if os.path.isfile(Returnfile):
-    #     with open(Returnfile,'r') as f:
-    #         Returner.Code = int(f.readline())
-
 
 def devRun(VL,**kwargs):
     if not VL.MeshData: return
@@ -82,15 +74,22 @@ def devRun(VL,**kwargs):
     NumThreads = kwargs.get('NumThreads',1)
     launcher = kwargs.get('launcher','Process')
 
-    # MeshCheck routine which allows you to mesh in the GUI (Used for debugging).
-    # The script will terminate after this routine
+    '''
+    MeshCheck routine which allows you to mesh in the GUI (useful for debugging).
+    Currently only 1 mesh can be debugged at a time.
+    VirtualLab will terminate once the GUI is closed.
+    '''
     if MeshCheck and MeshCheck in VL.MeshData.keys():
-        VL.Logger('### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
-        # The file MeshParaFile is passed to MeshScript to create the mesh in the GUI
-        MeshParaFile = "{}/{}.py".format(VL.GEOM_DIR,MeshCheck)
-        MeshScript = "{}/{}.py".format(VL.SIM_MESH, VL.MeshData[MeshCheck]['Parameters'].File)
+        VL.Logger('\n### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
 
-        VL.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
+        if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
+            script = '{}/MeshRun.py'.format(VL.SIM_MESH)
+        else:
+            script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
+        VL.MeshData[MeshCheck]['Debug'] = True
+        VL.Salome.Run(script, DataDict = VL.MeshData[MeshCheck],
+                        AddPath=[VL.SIM_MESH, VL.GEOM_DIR], GUI=True)
+
         VL.Exit('Terminating after checking mesh')
 
     elif MeshCheck and MeshCheck not in VL.MeshData.keys():
@@ -137,13 +136,12 @@ def devRun(VL,**kwargs):
 
     VL.Logger('\n### Meshing Complete ###',Print=True)
 
-
     if ShowMesh:
-        VL.Logger("Opening mesh files in Salome",Print=True)
+        VL.Logger("\n### Opening mesh files in Salome ###\n",Print=True)
         ArgDict = {name:"{}/{}.med".format(VL.MESH_DIR, name) for name in VL.MeshData.keys()}
         Script = '{}/VLPackages/Salome/ShowMesh.py'.format(VL.COM_SCRIPTS)
-        VL.Salome.Run(Script, ArgDict=ArgDict, GUI=True)
-        VL.Exit("Terminating after mesh viewing")
+        VL.Salome.Run(Script, DataDict=ArgDict, GUI=True)
+        VL.Exit("\n### Terminating after mesh viewing ###")
 
 def Run(VL, **kwargs):
     if not VL.MeshData: return
@@ -163,11 +161,14 @@ def Run(VL, **kwargs):
     # The script will terminate after this routine
     if MeshCheck and MeshCheck in VL.MeshData.keys():
         VL.Logger('### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
+        if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
+            script = '{}/MeshRun.py'.format(VL.SIM_MESH)
+        else:
+            script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
+        VL.MeshData[MeshCheck]['Debug'] = True
+        VL.Salome.Run(script, DataDict = VL.MeshData[MeshCheck],
+                        AddPath=[VL.SIM_MESH, VL.GEOM_DIR], GUI=True)
 
-        MeshParaFile = "{}/{}.py".format(VL.GEOM_DIR,MeshCheck)
-        MeshScript = "{}/{}.py".format(VL.SIM_MESH, VL.MeshData[MeshCheck]['Parameters'].File)
-        # The file MeshParaFile is passed to MeshScript to create the mesh in the GUI
-        VL.Salome.Run(MeshScript, ArgList=[MeshParaFile], GUI=True)
         VL.Exit('Terminating after checking mesh')
 
     elif MeshCheck and MeshCheck not in VL.MeshData.keys():
@@ -273,11 +274,12 @@ def Run(VL, **kwargs):
     if MeshError: VL.Exit("The following Meshes finished with errors:\n{}".format(MeshError),KeepDirs=['Geom'])
 
     VL.Logger('\n### Meshing Completed ###',Print=True)
+
     if ShowMesh:
         VL.Logger("Opening mesh files in Salome",Print=True)
         ArgDict = {name:"{}/{}.med".format(VL.MESH_DIR, name) for name in VL.MeshData.keys()}
         Script = '{}/VLPackages/Salome/ShowMesh.py'.format(VL.COM_SCRIPTS)
-        VL.Salome.Run(Script, ArgDict=ArgDict, GUI=True)
+        VL.Salome.Run(Script, DataDict=ArgDict, GUI=True)
         VL.Exit("Terminating after mesh viewing")
 
 def Cleanup():

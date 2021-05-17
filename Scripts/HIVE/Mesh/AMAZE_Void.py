@@ -249,10 +249,10 @@ def Create(Parameter):
 	NETGEN_2D_Parameters = NETGEN_2D.Parameters()
 	NETGEN_2D_Parameters.SetMaxSize( Parameter.Length2D )
 	NETGEN_2D_Parameters.SetOptimize( 1 )
-	NETGEN_2D_Parameters.SetFineness( 3 )
+	NETGEN_2D_Parameters.SetFineness( 2 )
 	NETGEN_2D_Parameters.SetChordalError( 0.1 )
 	NETGEN_2D_Parameters.SetChordalErrorEnabled( 0 )
-	NETGEN_2D_Parameters.SetMinSize( Parameter.Length2D )
+	NETGEN_2D_Parameters.SetMinSize( 0.5*Parameter.Length2D )
 	NETGEN_2D_Parameters.SetUseSurfaceCurvature( 1 )
 	NETGEN_2D_Parameters.SetQuadAllowed( 0 )
 
@@ -260,8 +260,8 @@ def Create(Parameter):
 	NETGEN_3D_Parameters = NETGEN_3D.Parameters()
 	NETGEN_3D_Parameters.SetMaxSize( Parameter.Length3D )
 	NETGEN_3D_Parameters.SetOptimize( 1 )
-	NETGEN_3D_Parameters.SetFineness( 3 )
-	NETGEN_3D_Parameters.SetMinSize( Parameter.Length3D )
+	NETGEN_3D_Parameters.SetFineness( 2 )
+	NETGEN_3D_Parameters.SetMinSize( 0.5*Parameter.Length3D )
 
 	smesh.SetName(Local_Length, 'Local Length')
 	smesh.SetName(Check.GetAlgorithm(), 'Check')
@@ -334,20 +334,20 @@ def Create(Parameter):
 	NETGEN_2D_2 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpTile)
 	NETGEN_2D_Parameters_2 = NETGEN_2D_2.Parameters()
 	NETGEN_2D_Parameters_2.SetOptimize( 1 )
-	NETGEN_2D_Parameters_2.SetFineness( 3 )
-	NETGEN_2D_Parameters_2.SetChordalError( 0.1 )
+	NETGEN_2D_Parameters_2.SetFineness( 2 )
+	NETGEN_2D_Parameters_2.SetChordalError( 0.01 )
 	NETGEN_2D_Parameters_2.SetChordalErrorEnabled( 0 )
 	NETGEN_2D_Parameters_2.SetUseSurfaceCurvature( 1 )
 	NETGEN_2D_Parameters_2.SetQuadAllowed( 0 )
 	NETGEN_2D_Parameters_2.SetMaxSize( Parameter.SubTile )
-	NETGEN_2D_Parameters_2.SetMinSize( Parameter.SubTile )
+	NETGEN_2D_Parameters_2.SetMinSize( 0.2*Parameter.SubTile )
 
 	NETGEN_3D_2 = Mesh_1.Tetrahedron(geom=GrpTile)
 	NETGEN_3D_Parameters_2 = NETGEN_3D_2.Parameters()
 	NETGEN_3D_Parameters_2.SetOptimize( 1 )
-	NETGEN_3D_Parameters_2.SetFineness( 3 )
+	NETGEN_3D_Parameters_2.SetFineness( 2 )
 	NETGEN_3D_Parameters_2.SetMaxSize( Parameter.SubTile )
-	NETGEN_3D_Parameters_2.SetMinSize( Parameter.SubTile )
+	NETGEN_3D_Parameters_2.SetMinSize( 0.2*Parameter.SubTile )
 
 	smesh.SetName(Sub_mesh_2, 'Sub-mesh_2')
 	smesh.SetName(Local_Length_2, 'Local Length_2')
@@ -357,28 +357,31 @@ def Create(Parameter):
 	#local (fine) meshing around voids in order to improve accuracy
 	for m in range (len (isVoid)): 
 		if isVoid[m]:
-			local_mesh_size = (2.0*np.pi*SmallestVoidRad[m])/Parameter.VoidSegmentN
+			local_mesh_size = np.pi * ((2*((0.5*SmallestVoidRad[m])**2.0 + (0.5*LargestVoidRad[m])**2))**0.5)/Parameter.VoidSegmentN #(2.0*np.pi*SmallestVoidRad[m])/Parameter.VoidSegmentN
+			sc = 0.05
     		### Sub Mesh creation
     		## Sub-Mesh 3
 			Regular_1D_3 = Mesh_1.Segment(geom=VoidSurfaces[m])
-			Local_Length_3 = Regular_1D_3.LocalLength(local_mesh_size,None,1e-07)
+			# Local_Length_3 = Regular_1D_3.LocalLength(local_mesh_size,None,1e-07)
+			Local_Length_3 = Regular_1D_3.Adaptive(sc*local_mesh_size, local_mesh_size,0.005)
 			NETGEN_2D_3 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=VoidSurfaces[m])
 			NETGEN_2D_Parameters_3 = NETGEN_2D_3.Parameters()
 			NETGEN_2D_Parameters_3.SetMaxSize( local_mesh_size )
 			NETGEN_2D_Parameters_3.SetOptimize( 1 )
 			NETGEN_2D_Parameters_3.SetFineness( 3 )
-			NETGEN_2D_Parameters_3.SetChordalError( 0.1 )
+			NETGEN_2D_Parameters_3.SetChordalError( 0.01 )
 			NETGEN_2D_Parameters_3.SetChordalErrorEnabled( 0 )
-			NETGEN_2D_Parameters_3.SetMinSize( local_mesh_size )
+			NETGEN_2D_Parameters_3.SetMinSize(sc*local_mesh_size )
 			NETGEN_2D_Parameters_3.SetUseSurfaceCurvature( 1 )
 			NETGEN_2D_Parameters_3.SetQuadAllowed( 0 )
 			Sub_mesh_3 = NETGEN_2D_3.GetSubMesh()
 
 			smesh.SetName(Sub_mesh_3, 'Void_' + str(m) + '_Mesh')
 			smesh.SetName(NETGEN_2D_Parameters_3, 'NETGEN 2D Parameters-Void_' + str(m))
-
-			NETGEN_2D_Parameters_1.SetMinSize( local_mesh_size )
-			NETGEN_3D_Parameters_1.SetMinSize( local_mesh_size )
+			#NETGEN_2D_Parameters_2.SetMaxSize( local_mesh_size )
+			#NETGEN_3D_Parameters_2.SetMaxSize( local_mesh_size )
+			NETGEN_2D_Parameters_2.SetMinSize( sc*local_mesh_size )
+			NETGEN_3D_Parameters_2.SetMinSize( sc*local_mesh_size )
 
 			Mesh_Void_Ext = Mesh_1.GroupOnGeom(VoidSurfaces[m], VoidSurfaces_Names[m],SMESH.FACE)
 

@@ -62,7 +62,7 @@ def Single(Info, StudyDict):
 #============================================================================
 	#open an empty file to write average temperatures of the selected areas in which thermocouple are placed 
 		if Parameters.TemperatureOut == True:
-			FileTemp = open('ThermocoupleTemp.txt', 'w')
+			FileTemp = open("{}/ThermocoupleTemp.txt".format(StudyDict["POSTASTER"]), 'w')
 			FileTemp.write('Time ')
 			for SearchRadius in Parameters.Rvalues:
 				for name in cSurfaceNames:

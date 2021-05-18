@@ -13,7 +13,7 @@ def Create(Parameter):
 	import salome_version
 	from Scripts.Common.VLPackages.Salome import SalomeFunc
 	import salome
-
+    
 	if salome_version.getVersions()[0] < 9:
 		theStudy = salome.myStudy
 		geompy = geomBuilder.New(theStudy)
@@ -26,9 +26,9 @@ def Create(Parameter):
 	isVoid, LargestVoidRad, SmallestVoidRad  = [], [], []
 	ScalingFactor, ScalingFlag   = [], []
 
-	for i in range(len(Parameter.Void)):
-		if Parameter.Void[i][0] and Parameter.Void[i][1] and Parameter.Void[i][2]:
-			isVoid.append(True)
+	for i in range(len(Parameter.Void)): 
+		if Parameter.Void[i][0] and Parameter.Void[i][1] and Parameter.Void[i][2]: 
+			isVoid.append(True) 
 			if Parameter.Void[i][0] > Parameter.Void[i][1]: # scale the void in y-axis
 				LargestVoidRad.append(Parameter.Void[i][0]) # elliptical cylinder void
 				SmallestVoidRad.append(Parameter.Void[i][1])
@@ -46,7 +46,7 @@ def Create(Parameter):
 				ScalingFlag.append(None)
 		else:
 			isVoid.append(False)
-# =============================================================================
+# =============================================================================    
 	###
 	### GEOM component
 	###
@@ -94,11 +94,12 @@ def Create(Parameter):
 
 	for i in range (len (isVoid)):
 		if isVoid[i]:
-        	# Void is at the top half of the tile
-			Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[i][0], Parameter.VoidCentre[i][1], Parameter.BlockHeight) # extrusion vector
+        	# Void is at the top half of the tile 
+			VoidCentreX = Parameter.TileWidth*Parameter.VoidCentre[i][0]
+			VoidCentreY = (Parameter.BlockLength - Parameter.TileLength)*0.5 + Parameter.TileLength*Parameter.VoidCentre[i][1]
+			Vertex_2 = geompy.MakeVertexWithRef(O, VoidCentreX, VoidCentreY, Parameter.BlockHeight) # extrusion vector
 			Void_Temp = geompy.MakeCylinder(Vertex_2, OZ, LargestVoidRad[i], Parameter.Void[i][2])
-
-                	# if void has elliptical base, then...
+            	# if void has elliptical base, then...
 			if ScalingFlag[i] == 'AxisY':
 				Void_Scaled = geompy.MakeScaleAlongAxes(Void_Temp, Vertex_2, 1, ScalingFactor[i], 1)
 
@@ -109,24 +110,24 @@ def Create(Parameter):
 				Void = Void_Temp
 
 			# elliptic void and rotation with respect to the void centre
-			if Parameter.Void[i][3] != 0.0 and ScalingFlag[i] != None:
-				Point_1 = geompy.MakeVertex(Parameter.VoidCentre[i][0], Parameter.VoidCentre[i][1], 0)
-				Point_2 = geompy.MakeVertex(Parameter.VoidCentre[i][0], Parameter.VoidCentre[i][1], Parameter.BlockHeight)
+			if Parameter.Void[i][3] != 0.0 and ScalingFlag[i] != None: 
+				Point_1 = geompy.MakeVertex(VoidCentreX, VoidCentreY, 0)
+				Point_2 = geompy.MakeVertex(VoidCentreX, VoidCentreY, Parameter.BlockHeight)
 				VectorRotation = geompy.MakeVector(Point_1, Point_2)
 				Void = geompy.Rotate(Void_Scaled, VectorRotation, Parameter.Void[i][3]*np.pi/180.0)
 
 			# no rotation but elliptic void
-			if Parameter.Void[i][3] == 0 and ScalingFlag[i] != None:
+			if Parameter.Void[i][3] == 0 and ScalingFlag[i] != None: 
 				Void = Void_Scaled
 
 			Void_List.append(Void)
 
 	if len (isVoid) != 0:   # void(s) case
-		Tile = geompy.MakeCutList(Tile_orig, Void_List, True)
-
+		Tile = geompy.MakeCutList(Tile_orig, Void_List, True)  
+		
 	else:   # no void case
-		Tile = Tile_orig
-
+		Tile = Tile_orig 
+		
 # =============================================================================
 ## Merge the parts
 	Fuse = geompy.MakeFuseList([Pipe, Block, Tile], True, True)
@@ -134,7 +135,7 @@ def Create(Parameter):
 
 	Void_Name = [] # void geometry list (solid bodies)
 
-	for j in range (len (isVoid)):
+	for j in range (len (isVoid)): 
 		Void_Name.append('Void_' + str (j))
 		geompy.addToStudy(Void_List[j], Void_Name[j])
 
@@ -149,7 +150,7 @@ def Create(Parameter):
 # =============================================================================
 	## Add Groups
 	# Solid
-	Ix = SalomeFunc.ObjIndex(Sample, Tile, [1])[0]
+	Ix = SalomeFunc.ObjIndex(Sample, Tile, [1])[0]  
 	GrpTile = SalomeFunc.AddGroup(Sample, 'Tile', Ix)
 
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [1])[0]
@@ -159,7 +160,7 @@ def Create(Parameter):
 	GrpBlock = SalomeFunc.AddGroup(Sample, 'Block', Ix)
 
 	# Surfaces
-	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [33])[0]
+	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [33])[0]  
 	GrpCoilFace = SalomeFunc.AddGroup(Sample, 'CoilFace', Ix)
 
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [20])[0]
@@ -189,14 +190,14 @@ def Create(Parameter):
 	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0]
 	# Get the index of the new faces create where the Tile joins the Block
 	# This finds the additional faces on the block
-	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile,[31])], True)
+	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile_orig,[31])], True)
 	_BlkIx = geompy.SubShapeAllIDs(CutBlkTl, geompy.ShapeType["FACE"])
 	if _BlkIx:
 		BlkIx = SalomeFunc.ObjIndex(Sample, CutBlkTl, _BlkIx)[0]
 		BlockExtIx += BlkIx
 
 	# Tile
-	TileExtIx = SalomeFunc.ObjIndex(Sample, Tile, [3,13,23,27,33])[0]
+	TileExtIx = SalomeFunc.ObjIndex(Sample, Tile_orig, [3,13,23,27,33])[0]
 	# Get the index of the new faces create where the Tile joins the Block
 	# This finds the additional faces on the tile
 	CutTlBlk = geompy.MakeCutList(geompy.GetSubShape(Tile,[31]), [geompy.GetSubShape(Block,[23])], True)
@@ -207,11 +208,25 @@ def Create(Parameter):
 
 	# Add group made up of Tile, Block and Pipe external surfaces
 	GrpSampleSurface = SalomeFunc.AddGroup(Sample, 'SampleSurface', TileExtIx + PipeExtIx + BlockExtIx)
+#============================================================================
+# Store the Tile surfaces used for thermocouples in HIVE experimental tests (top and side surfaces) in a surface groups
+	#if len(Parameter.ThermoCouple) > 0:
+	TC_ID = [['Tile', 'Front', 13], ['Tile', 'Back', 3], ['Tile', 'SideA', 23], ['Tile', 'SideB', 27], ['Tile', 'Top', 33], ['Block', 'Front', 39], ['Block', 'Back', 3], ['Block', 'SideA', 13], ['Block', 'SideB', 28],['Block', 'Bottom', 36]] # TC_ID: ThermoCouple ID
+
+	GrpThermocouple = []
+	TCSurface = [] 
+	for TC in TC_ID:
+		SurfaceName = TC[0] + TC[1]	
+		if TC[0] == 'Tile': SurfaceID = SalomeFunc.ObjIndex(Sample, Tile_orig, [TC[2]])[0]
+		if TC[0] == 'Block': SurfaceID = SalomeFunc.ObjIndex(Sample, Block, [TC[2]])[0] 
+		temp = SalomeFunc.AddGroup(Sample, SurfaceName, SurfaceID)
+		GrpThermocouple.append(temp)
+		TCSurface.append(SurfaceName)
 
 #============================================================================
 # Store the void surfaces for feature local meshing
 	VoidSurfaces = []
-	VoidSurfaces_Names = []
+	VoidSurfaces_Names = []	
 
 	for k in range (len (isVoid)):
 	#VoidSurfaces- Find the faces corresponding to 3(side), 10(top) and 12(bottom) in Void
@@ -234,10 +249,10 @@ def Create(Parameter):
 	NETGEN_2D_Parameters = NETGEN_2D.Parameters()
 	NETGEN_2D_Parameters.SetMaxSize( Parameter.Length2D )
 	NETGEN_2D_Parameters.SetOptimize( 1 )
-	NETGEN_2D_Parameters.SetFineness( 3 )
+	NETGEN_2D_Parameters.SetFineness( 2 )
 	NETGEN_2D_Parameters.SetChordalError( 0.1 )
 	NETGEN_2D_Parameters.SetChordalErrorEnabled( 0 )
-	NETGEN_2D_Parameters.SetMinSize( Parameter.Length2D )
+	NETGEN_2D_Parameters.SetMinSize( 0.5*Parameter.Length2D )
 	NETGEN_2D_Parameters.SetUseSurfaceCurvature( 1 )
 	NETGEN_2D_Parameters.SetQuadAllowed( 0 )
 
@@ -245,8 +260,8 @@ def Create(Parameter):
 	NETGEN_3D_Parameters = NETGEN_3D.Parameters()
 	NETGEN_3D_Parameters.SetMaxSize( Parameter.Length3D )
 	NETGEN_3D_Parameters.SetOptimize( 1 )
-	NETGEN_3D_Parameters.SetFineness( 3 )
-	NETGEN_3D_Parameters.SetMinSize( Parameter.Length3D )
+	NETGEN_3D_Parameters.SetFineness( 2 )
+	NETGEN_3D_Parameters.SetMinSize( 0.5*Parameter.Length3D )
 
 	smesh.SetName(Local_Length, 'Local Length')
 	smesh.SetName(Check.GetAlgorithm(), 'Check')
@@ -269,10 +284,16 @@ def Create(Parameter):
 	MSampleSurface = Mesh_1.GroupOnGeom(GrpSampleSurface,'SampleSurface',SMESH.FACE)
 	MPipeIn = Mesh_1.GroupOnGeom(GrpPipeIn,'PipeIn',SMESH.FACE)
 	MPipeOut = Mesh_1.GroupOnGeom(GrpPipeOut,'PipeOut',SMESH.FACE)
+            # Store surface mesh of tile for HIVE Temp Distribution Analysis
+	MThermocouple = []
+	for m in range (len(GrpThermocouple)):
+		SurfaceName = TCSurface[m]
+		MThermocouple.append(Mesh_1.GroupOnGeom(GrpThermocouple[m], TCSurface[m], SMESH.FACE))
 
 	# Node
 	MPipe = Mesh_1.GroupOnGeom(GrpPipe,'PipeNd',SMESH.NODE)
 	MSample = Mesh_1.GroupOnGeom(GrpBlock,'BlockNd',SMESH.NODE)
+
 
 	### Sub-Mesh 1 - Refinement on pipe
 	## PipeEdges
@@ -313,20 +334,20 @@ def Create(Parameter):
 	NETGEN_2D_2 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpTile)
 	NETGEN_2D_Parameters_2 = NETGEN_2D_2.Parameters()
 	NETGEN_2D_Parameters_2.SetOptimize( 1 )
-	NETGEN_2D_Parameters_2.SetFineness( 3 )
-	NETGEN_2D_Parameters_2.SetChordalError( 0.1 )
+	NETGEN_2D_Parameters_2.SetFineness( 2 )
+	NETGEN_2D_Parameters_2.SetChordalError( 0.01 )
 	NETGEN_2D_Parameters_2.SetChordalErrorEnabled( 0 )
 	NETGEN_2D_Parameters_2.SetUseSurfaceCurvature( 1 )
 	NETGEN_2D_Parameters_2.SetQuadAllowed( 0 )
 	NETGEN_2D_Parameters_2.SetMaxSize( Parameter.SubTile )
-	NETGEN_2D_Parameters_2.SetMinSize( Parameter.SubTile )
+	NETGEN_2D_Parameters_2.SetMinSize( 0.2*Parameter.SubTile )
 
 	NETGEN_3D_2 = Mesh_1.Tetrahedron(geom=GrpTile)
 	NETGEN_3D_Parameters_2 = NETGEN_3D_2.Parameters()
 	NETGEN_3D_Parameters_2.SetOptimize( 1 )
-	NETGEN_3D_Parameters_2.SetFineness( 3 )
+	NETGEN_3D_Parameters_2.SetFineness( 2 )
 	NETGEN_3D_Parameters_2.SetMaxSize( Parameter.SubTile )
-	NETGEN_3D_Parameters_2.SetMinSize( Parameter.SubTile )
+	NETGEN_3D_Parameters_2.SetMinSize( 0.2*Parameter.SubTile )
 
 	smesh.SetName(Sub_mesh_2, 'Sub-mesh_2')
 	smesh.SetName(Local_Length_2, 'Local Length_2')
@@ -334,30 +355,33 @@ def Create(Parameter):
 	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
 
 	#local (fine) meshing around voids in order to improve accuracy
-	for m in range (len (isVoid)):
+	for m in range (len (isVoid)): 
 		if isVoid[m]:
-			local_mesh_size = (2.0*np.pi*SmallestVoidRad[m])/Parameter.VoidSegmentN
+			local_mesh_size = np.pi * ((2*((0.5*SmallestVoidRad[m])**2.0 + (0.5*LargestVoidRad[m])**2))**0.5)/Parameter.VoidSegmentN #(2.0*np.pi*SmallestVoidRad[m])/Parameter.VoidSegmentN
+			sc = 0.05
     		### Sub Mesh creation
     		## Sub-Mesh 3
 			Regular_1D_3 = Mesh_1.Segment(geom=VoidSurfaces[m])
-			Local_Length_3 = Regular_1D_3.LocalLength(local_mesh_size,None,1e-07)
+			# Local_Length_3 = Regular_1D_3.LocalLength(local_mesh_size,None,1e-07)
+			Local_Length_3 = Regular_1D_3.Adaptive(sc*local_mesh_size, local_mesh_size,0.005)
 			NETGEN_2D_3 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=VoidSurfaces[m])
 			NETGEN_2D_Parameters_3 = NETGEN_2D_3.Parameters()
 			NETGEN_2D_Parameters_3.SetMaxSize( local_mesh_size )
 			NETGEN_2D_Parameters_3.SetOptimize( 1 )
 			NETGEN_2D_Parameters_3.SetFineness( 3 )
-			NETGEN_2D_Parameters_3.SetChordalError( 0.1 )
+			NETGEN_2D_Parameters_3.SetChordalError( 0.01 )
 			NETGEN_2D_Parameters_3.SetChordalErrorEnabled( 0 )
-			NETGEN_2D_Parameters_3.SetMinSize( local_mesh_size )
+			NETGEN_2D_Parameters_3.SetMinSize(sc*local_mesh_size )
 			NETGEN_2D_Parameters_3.SetUseSurfaceCurvature( 1 )
 			NETGEN_2D_Parameters_3.SetQuadAllowed( 0 )
 			Sub_mesh_3 = NETGEN_2D_3.GetSubMesh()
 
 			smesh.SetName(Sub_mesh_3, 'Void_' + str(m) + '_Mesh')
 			smesh.SetName(NETGEN_2D_Parameters_3, 'NETGEN 2D Parameters-Void_' + str(m))
-
-			NETGEN_2D_Parameters_1.SetMinSize( local_mesh_size )
-			NETGEN_3D_Parameters_1.SetMinSize( local_mesh_size )
+			#NETGEN_2D_Parameters_2.SetMaxSize( local_mesh_size )
+			#NETGEN_3D_Parameters_2.SetMaxSize( local_mesh_size )
+			NETGEN_2D_Parameters_2.SetMinSize( sc*local_mesh_size )
+			NETGEN_3D_Parameters_2.SetMinSize( sc*local_mesh_size )
 
 			Mesh_Void_Ext = Mesh_1.GroupOnGeom(VoidSurfaces[m], VoidSurfaces_Names[m],SMESH.FACE)
 
@@ -365,6 +389,9 @@ def Create(Parameter):
 	globals().update(locals()) ### This adds all variables created in this function
 
 	return Mesh_1
+
+
+
 
 class TestDimensions(): # This testing input class is valid only for no void case
 	def __init__(self):
@@ -388,18 +415,14 @@ class TestDimensions(): # This testing input class is valid only for no void cas
 		self.Length1D = 0.005
 		self.Length2D = 0.005
 		self.Length3D = 0.005
-		self.PipeSegmentN = 20
+		self.PipeDisc = 20
 		self.SubTile = 0.003
-		self.VoidSegmentN = 16
 
 		self.CoilType = 'Test'
 		self.CoilDisp = [0, 0, 0.005]
 
 		self.MeshName = 'Test'
 		self.SampleGroups = ['Tile','Block','Pipe']
-
-		self.Void=[]
-
 
 def HandleRC(returncode, Sims={}, AffectedSims=[], MeshName='',MeshErrors=[]):
 	'''

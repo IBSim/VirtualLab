@@ -16,6 +16,7 @@ Simulation='HIVE'
 Project='.dev'
 StudyName='SingleVoidTests'
 Parameters_Master='MasterSingleVoid'
+#Parameters_Master='Master_HIVE'
 Parameters_Var= None
 Mode='T'
 
@@ -33,23 +34,23 @@ VirtualLab=VLSetup(
 
 # Create directories and Parameter files for simulation
 VirtualLab.Control(
-           RunMesh=True,
+           RunMesh=True, #True
            RunSim=True,
            RunML=0)
 
 # Creates meshes
 VirtualLab.devMesh(
            ShowMesh=False,
-           MeshCheck=None,
+           MeshCheck= None, #'Mesh_SingleVoid', None,
            NumThreads=2) 
 
 # Run Pre-Sim calculations, CodeAster and Post-Sim calculations/imaging
 VirtualLab.devSim(
-           RunPreAster=True,
-           RunAster=True,
+           RunPreAster=True, #False,
+           RunAster=True, #False
            RunPostAster=True,
            NumThreads=2,
-           ShowRes=True,
+           ShowRes=True, #False,
            mpi_nbcpu=1,
            mpi_nbnoeud=1,
            ncpus=2,

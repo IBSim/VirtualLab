@@ -212,6 +212,26 @@ class VLSetup():
 
 		# self.Logger('### VirtualLab Finished###\n',Print=True)
 
+	def ImportParameters(self, Rel_Parameters):
+		'''
+		Rel_Parameters is a file name relative to the Input directory
+		'''
+		# Strip .py off the end if it's in the name
+		if os.path.splitext(Rel_Parameters)[1]=='.py':
+			Rel_Parameters = os.path.splitext(Rel_Parameters)[0]
+
+		Abs_Parameters = "{}/{}.py".format(self.INPUT_DIR,Rel_Parameters)
+		# Check File exists
+		if not os.path.exists(Abs_Parameters):
+			message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
+			self.Exit(self._Error(message))
+
+		sys.path.insert(0, os.path.dirname(Abs_Parameters))
+		Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
+		sys.path.pop(0)
+
+		return Parameters
+
 	def GetParams(self, Parameters_Master, Parameters_Var, NS):
 		# Parameters_Master &/or Var can be module, a namespace or string.
 		# A string references a file in the input directory
@@ -219,14 +239,7 @@ class VLSetup():
 		# ======================================================================
 		# Parameters Master
 		if type(Parameters_Master)==str:
-			MasterFile = "{}/{}.py".format(self.INPUT_DIR,Parameters_Master)
-			# Check File exists
-			if not os.path.exists(MasterFile):
-				self.Exit("Parameters_Master file '{}' does not exist".format(MasterFile))
-
-			sys.path.insert(0, os.path.dirname(MasterFile))
-			Main = reload(import_module(os.path.basename(Parameters_Master)))
-			sys.path.pop(0)
+			Main = self.ImportParameters(Parameters_Master)
 		elif any(hasattr(Parameters_Master,nm) for nm in NS):
 			Main = Parameters_Master
 		else: sys.exit()
@@ -238,14 +251,7 @@ class VLSetup():
 		# ======================================================================
 		# Parameters Var
 		if type(Parameters_Var)==str:
-			VarFile = "{}/{}.py".format(self.INPUT_DIR,Parameters_Var)
-			# Check File exists
-			if not os.path.exists(VarFile):
-				self.Exit("Parameters_Var file '{}' does not exist".format(VarFile))
-
-			sys.path.insert(0, os.path.dirname(VarFile))
-			Var = reload(import_module(os.path.basename(Parameters_Var)))
-			sys.path.pop(0)
+			Var = self.ImportParameters(Parameters_Var)
 		elif any(hasattr(Parameters_Var,nm) for nm in NS):
 			Var = Parameters_Var
 		elif Parameters_Var==None:

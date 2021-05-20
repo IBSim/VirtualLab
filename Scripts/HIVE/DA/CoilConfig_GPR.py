@@ -68,10 +68,6 @@ def Single(VL, MLdict):
         TestData = np.load("{}/TestData.npy".format(MLdict["CALC_DIR"]))
 
     #=======================================================================
-    # Prepare data for PyTorch: scaling to suitable ranges etc.
-    # a = [-0.0002408777091113569, 0.0031962113547017446, 0.0015000000130385369, -4.999999999999998,525.84,1]
-    # a2 = [a]*10
-    # TrainData = np.append(TrainData,a2,axis=0)
 
     # Convert data to float32 (needed for pytorch)
     TrainData = TrainData.astype('float32')
@@ -100,32 +96,51 @@ def Single(VL, MLdict):
 
     Train_P_tf,Train_V_tf = Train_y_tf[:,0],Train_y_tf[:,1]
     Test_P_tf,Test_V_tf = Test_y_tf[:,0],Test_y_tf[:,1]
-    sig = 0.00001*torch.ones(Train_x_tf.shape[0]) # Fixed Noise (since these are simulations)
-    # Power
-    # PowerLH = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-5))
-    PowerLH = gpytorch.likelihoods.FixedNoiseGaussianLikelihood(sig)
-    Power = ExactGPmodel(Train_x_tf, Train_P_tf, PowerLH)
 
-    # Variation
-    # VarLH = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-5))
-    VarLH = gpytorch.likelihoods.FixedNoiseGaussianLikelihood(sig)
-    Variation = ExactGPmodel(Train_x_tf, Train_V_tf, VarLH)
+    if getattr(ML,'Noise',True):
+        PowerLH = gpytorch.likelihoods.GaussianLikelihood()
+        VarLH = gpytorch.likelihoods.GaussianLikelihood()
+    else:
+        # Noise can't be zero in gpytorch so set it to very small value
+        sig = 0.00001*torch.ones(Train_x_tf.shape[0])
+        PowerLH = gpytorch.likelihoods.FixedNoiseGaussianLikelihood(sig)
+        VarLH = gpytorch.likelihoods.FixedNoiseGaussianLikelihood(sig)
+
+    # If kernel is 'Matern' then nu must be specified in Parameters
+    options = {}
+    if hasattr(ML,'Nu'): options['nu']=ML.Nu
+
+    Power = ExactGPmodel(Train_x_tf, Train_P_tf, PowerLH,
+                    ML.Kernel,options)
+    Variation = ExactGPmodel(Train_x_tf, Train_V_tf, VarLH,
+                    ML.Kernel,options)
 
     if ML.Train:
         # Power
         lr = getattr(ML,'lr', 0.01)
-
+        MLdict['Data']['MSE'] = MSEvals = {}
         print('Training Power')
         Conv_P,MSE_P = Power.Training(PowerLH,ML.Iterations,lr=lr)
         print()
         ModelFile = '{}/Power.pth'.format(MLdict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Power.state_dict(), ModelFile)
 
-        if MSE_P:
-            plt.figure()
-            plt.plot(MSE_P)
-            plt.savefig("{}/MSE_Power.png".format(MLdict["CALC_DIR"]))
-            plt.close()
+        # if MSE_P:
+        #     plt.figure()
+        #     plt.plot(MSE_P)
+        #     plt.savefig("{}/MSE_Power.png".format(MLdict["CALC_DIR"]))
+        #     plt.close()
+
+        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
+            Power_test = MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])
+            Power_train = MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])
+        Power_test *= OutputScaler[1,0]**2
+        Power_train *= OutputScaler[1,0]**2
+        print("Train MSE: {}\nTest MSE: {}\n".format(Power_train,Power_test))
+
+        print(Power_test,Power_train)
+        MSEvals["Power_Test"] = Power_test
+        MSEvals["Power_Train"] = Power_train
 
         # Variation
         print('Training Variation')
@@ -134,11 +149,27 @@ def Single(VL, MLdict):
         ModelFile = '{}/Variation.pth'.format(MLdict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Variation.state_dict(), ModelFile)
 
-        if MSE_V:
-            plt.figure()
-            plt.plot(MSE_V)
-            plt.savefig("{}/MSE_Variation.png".format(MLdict["CALC_DIR"]))
-            plt.close()
+        # if MSE_V:
+        #     plt.figure()
+        #     plt.plot(MSE_V)
+        #     plt.savefig("{}/MSE_Variation.png".format(MLdict["CALC_DIR"]))
+        #     plt.close()
+
+        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
+            Vari_test = MSE(Variation(Test_x_tf).mean.numpy(), Test_y_scale[:,1])
+            Vari_train = MSE(Variation(Train_x_tf).mean.numpy(), Train_y_scale[:,1])
+        Vari_test  *= OutputScaler[1,1]**2
+        Vari_train *= OutputScaler[1,1]**2
+        print("Train MSE: {}\nTest MSE: {}\n".format(Vari_train,Vari_test))
+        MSEvals["Variation_Test"] = Vari_test
+        MSEvals["Variation_Train"] = Vari_train
+
+        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
+            Test_MSE_P = MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])
+            Test_MSE_P *= OutputScaler[1,0]**2 #scale MSE to correct range
+
+            Train_MSE_P = MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])
+            Train_MSE_P *= OutputScaler[1,0]**2 #scale MSE to correct range
 
         plt.figure()
         plt.plot(Conv_V, label='Variation')
@@ -146,18 +177,28 @@ def Single(VL, MLdict):
         plt.legend()
         plt.savefig("{}/Convergence.png".format(MLdict["CALC_DIR"]))
         plt.close()
+
     else:
         # Power
         state_dict_P = torch.load('{}/Power.pth'.format(MLdict["CALC_DIR"]))
         Power.load_state_dict(state_dict_P)
         PowerLH.eval(); Power.eval()
 
-        # Variation
+        Variation
         state_dict_V = torch.load('{}/Variation.pth'.format(MLdict["CALC_DIR"]))
         Variation.load_state_dict(state_dict_V)
         Variation.eval(); VarLH.eval()
 
 
+
+
+    if getattr(ML,'Input',None):
+        with torch.no_grad():
+            x_scale = DataScale(np.atleast_2d(ML.Check),*InputScaler)
+            x_scale = torch.tensor(x_scale, dtype=torch.float32)
+            y = Power(x_scale)
+            y = DataRescale(y.mean.numpy(),*OutputScaler[:,0])
+            MLdict['CheckAns'] = y.tolist()
 
     # Get bounds of data for optimisation
     bnds = list(zip(Train_x_scale.min(axis=0), Train_x_scale.max(axis=0)))
@@ -174,20 +215,24 @@ def Single(VL, MLdict):
     print("Locating optimum configuration(s) for maximum power")
     NbInit = ML.MaxPowerOpt.get('NbInit',20)
 
-    Optima = FuncOpt(MinMaxGPR,NbInit,bnds,args=(Power))
-    MaxPower_cd = SortOptima(Optima, tol=0.05, order='increasing')
+    Optima = FuncOpt(MinMaxGPR,NbInit,bnds,tol=0.01, order='increasing',args=(Power))
+    MaxPower_cd,MaxPower_val,MaxPower_grad = Optima
+    # Correct Vals and grads for due to max search
+    # MaxPower_val,MaxPower_grad = -1*MaxPower_val,-1*MaxPower_grad
 
-    MaxPower_cd_tf = torch.tensor(MaxPower_cd, dtype=torch.float32)
     with torch.no_grad():
-        MaxPower_vals = Power(MaxPower_cd_tf)
+        MaxPower_cd_tf = torch.tensor(MaxPower_cd, dtype=torch.float32)
+        GPR_Out = Power(MaxPower_cd_tf)
 
-    MaxPower_val = DataRescale(MaxPower_vals.mean.numpy(),*OutputScaler[:,0])
     MaxPower_cd = DataRescale(MaxPower_cd, *InputScaler)
-    MaxPower_std = DataRescale(MaxPower_vals.stddev,0,OutputScaler[1,0])
+    MaxPower_val = DataRescale(GPR_Out.mean.numpy(),*OutputScaler[:,0])
+    MaxPower_std = DataRescale(GPR_Out.stddev,0,OutputScaler[1,0])
     print("    {:7}{:7}{:7}{:11}{:9}".format('x','y','z','r','Power'))
     for coord, val, std in zip(MaxPower_cd,MaxPower_val,MaxPower_std):
         print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W ({})".format(*coord, val,std))
     print()
+
+    MLdict["Data"]['MaxPower'] = MaxPower = {'x':MaxPower_cd[0],'y':MaxPower_val[0]}
 
     if ML.MaxPowerOpt.get('Verify',True):
         print("Checking results at optima\n")
@@ -204,6 +249,9 @@ def Single(VL, MLdict):
 
         print("Anticipated power at optimum configuration: {:.2f} W".format(MaxPower_val[0]))
         print("Actual power at optimum configuration: {:.2f} W\n".format(Power))
+
+        MaxPower["target"] = Power
+
 
     if hasattr(ML,'DesPowerOpt'):
         if ML.DesPowerOpt['Power'] >= MaxPower_val[0]:
@@ -250,13 +298,22 @@ def Single(VL, MLdict):
                       "Uniformity: {}".format(Power,Uniformity))
 
 
+def MSE(Predicted,Target):
+    sqdiff = (Predicted - Target)**2
+    return np.mean(sqdiff)
+
 
 class ExactGPmodel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood):
+    def __init__(self, train_x, train_y, likelihood, kernel,options={}):
         super(ExactGPmodel, self).__init__(train_x, train_y, likelihood)
+
         self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=4))
-        # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=1.5,ard_num_dims=4))
+
+        if kernel.lower() in ('rbf'):
+            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=4))
+        if kernel.lower() in ('matern'):
+            nu = options.get('nu',2.5)
+            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=nu,ard_num_dims=4))
 
     def forward(self, x):
         mean_x = self.mean_module(x)
@@ -359,41 +416,48 @@ def Param_ERMES(x,y,z,r,Parameters):
     Parameters.update(CoilDisplacement=[x,y,z],Rotation=r)
     return Namespace(**Parameters)
 
-def FuncOpt(fnc, NbInit, bounds, **kwargs):
-    Optima = []
+def FuncOpt(fnc, NbInit, bounds, order='decreasing', tol=0.01, **kwargs):
+
+    _Optima, fnVal, fnGrad, Coord = [],[],[],[]
     for X0 in np.random.uniform(0,1,size=(NbInit,4)):
         Opt = minimize(fnc, X0, jac=True, method='SLSQP', bounds=bounds,**kwargs)
-        if not Opt.success: continue
-        Optima.append(Opt)
-    return Optima
+        _Optima.append(Opt)
+        if Opt.success:
+            fnVal.append(Opt.fun)
+            fnGrad.append(Opt.jac)
+            Coord.append(Opt.x)
 
-def SortOptima(Optima, tol=0.01, order='decreasing'):
-    Score, Coord = [Optima[0].fun], np.array([Optima[0].x])
-    for Opt in Optima[1:]:
-        D = np.linalg.norm(Coord-np.array(Opt.x),axis=1)
-        if all(D > tol):
-            Coord = np.vstack((Coord,Opt.x))
-            Score.append(Opt.fun)
+    fnVal,fnGrad,Coord = np.array(fnVal),np.array(fnGrad),np.array(Coord)
 
-    Score = np.array(Score)
-    if order == 'decreasing': ord=-1
-    elif order == 'increasing':ord=1
-    sortlist = np.argsort(Score)[::ord]
-    Score = Score[sortlist]
-    Coord = Coord[sortlist,:]
-    return Coord
+    #Sort Optimas in increasing/decreasing order
+    ord = -1 if order.lower()=='decreasing' else 1
+    sortIx = np.argsort(fnVal)[::ord]
+    fnVal,fnGrad,Coord = fnVal[sortIx],fnGrad[sortIx],Coord[sortIx]
+
+    if tol:
+        tolCd,Ix = Coord[:1],[0]
+        for i, cd in enumerate(Coord[1:]):
+            D = np.linalg.norm(tolCd - cd, axis=1)
+            if all(D>tol):
+                Ix.append(i+1)
+                tolCd = np.vstack((tolCd,cd))
+
+        fnVal,fnGrad,Coord = fnVal[Ix],fnGrad[Ix],Coord[Ix]
+
+    return Coord, fnVal, fnGrad
 
 def MinMaxGPR(X, model, find='max'):
     '''
     '''
     if find.lower()=='max':sign=-1
     elif find.lower()=='min':sign=1
-
+    _x=X
     X = torch.tensor(np.atleast_2d(X),dtype=torch.float32)
     # Function value
     Pred = model(X).mean.detach().numpy()
     # Gradient
     Grad = model.Gradient(X)[0]
+    # print(X,Pred)
     return sign*Pred, sign*Grad
 
 def constraint(X, model, DesPower):

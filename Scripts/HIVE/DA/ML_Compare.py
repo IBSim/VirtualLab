@@ -9,9 +9,10 @@ import torch.nn.functional as F
 import gpytorch
 import h5py
 import scipy
+import pickle
 
 from Functions import DataScale, DataRescale
-from CoilConfig_GPR import ExactGPmodel
+from CoilConfig_GPR import ExactGPmodel, MSE
 
 def Single(VL, MLdict):
     Parameters = MLdict["Parameters"]
@@ -45,7 +46,9 @@ def Single(VL, MLdict):
         if Method not in Methods: continue
 
         if Method not in DataDict:
-            DataDict[Method] = {'TrainNb':[],'TestMSE':[],'TrainMSE':[],'MaxPower':[]}
+            DataDict[Method] = {'TrainNb':[],'TestMSE_Power':[],'TrainMSE_Power':[],
+                            'TestMSE_Variation':[],'TrainMSE_Variation':[],
+                            'MaxPower_pred':[],'MaxPower_act':[]}
 
         # Get data used to train model
         TrainData = (np.load("{}/TrainData.npy".format(ResSubDir))).astype('float32')
@@ -61,63 +64,105 @@ def Single(VL, MLdict):
         Train_x_tf,Train_y_tf = torch.from_numpy(Train_x_scale),torch.from_numpy(Train_y_scale)
         Test_x_tf,Test_y_tf = torch.from_numpy(Test_x_scale),torch.from_numpy(Test_y_scale)
 
-        # Define model
-        PowerLH = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-5))
-        Power = ExactGPmodel(Train_x_tf, Train_y_tf[:,0], PowerLH)
+        with open("{}/Data.pkl".format(ResSubDir),'rb') as f:
+            Data = pickle.load(f)
+
+        DataDict[Method]['TrainNb'].append(MLParameters.TrainNb)
+
+        # Likelihood
+        if getattr(MLParameters,'Noise',True):
+            PowerLH = gpytorch.likelihoods.GaussianLikelihood()
+            VarLH = gpytorch.likelihoods.GaussianLikelihood()
+        else:
+            sig = 0.00001*torch.ones(Train_x_tf.shape[0])
+            PowerLH = gpytorch.likelihoods.FixedNoiseGaussianLikelihood(sig)
+            VarLH = gpytorch.likelihoods.FixedNoiseGaussianLikelihood(sig)
+
+        options = {}
+        if hasattr(MLParameters,'Nu'): options['nu']=MLParameters.Nu
+
+        # Power model
+        Power = ExactGPmodel(Train_x_tf, Train_y_tf[:,0], PowerLH,
+                        MLParameters.Kernel,options)
+
         state_dict_P = torch.load('{}/Power.pth'.format(ResSubDir))
         Power.load_state_dict(state_dict_P)
         PowerLH.eval(); Power.eval()
 
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
-            pred = Power(Test_x_tf)
-            Test_MSE_P = np.mean((OutputScaler[1,0]*(pred.mean-Test_y_tf[:,0]).numpy())**2)
-            pred = Power(Train_x_tf)
-            Train_MSE_P = np.mean((OutputScaler[1,0]*(pred.mean-Train_y_tf[:,0]).numpy())**2)
-            DataDict[Method]['TrainNb'].append(MLParameters.TrainNb)
-            DataDict[Method]['TestMSE'].append(Test_MSE_P)
-            DataDict[Method]['TrainMSE'].append(Train_MSE_P)
+            Test_MSE_P = MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])*OutputScaler[1,0]**2
+            Train_MSE_P = MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])*OutputScaler[1,0]**2
 
-        # Check max Power accuracy
-        MaxPowerERMES = '{}/MaxPower.rmed'.format(ResSubDir)
-        if not os.path.isfile(MaxPowerERMES): continue
+        DataDict[Method]['TestMSE_Power'].append(Test_MSE_P)
+        DataDict[Method]['TrainMSE_Power'].append(Train_MSE_P)
 
-        ERMESres = h5py.File(MaxPowerERMES, 'r')
-        attrs =  ERMESres["EM_Load"].attrs
-        Scale = (1000/attrs['Current'])**2
-        Watts = ERMESres["EM_Load/Watts"][:]*Scale
-        JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
-        ERMESres.close()
+        # Variation model
+        Variation = ExactGPmodel(Train_x_tf, Train_y_tf[:,1], VarLH,
+                        MLParameters.Kernel,options)
 
-        Power = np.sum(Watts)
-        DataDict[Method]['MaxPower'].append(Power)
+        state_dict_V = torch.load('{}/Variation.pth'.format(ResSubDir))
+        Variation.load_state_dict(state_dict_V)
+        VarLH.eval(); Variation.eval()
+
+        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
+            Test_MSE_V = MSE(Variation(Test_x_tf).mean.numpy(), Test_y_scale[:,1])*OutputScaler[1,1]**2
+            Train_MSE_V = MSE(Variation(Train_x_tf).mean.numpy(), Train_y_scale[:,1])*OutputScaler[1,1]**2
+
+        DataDict[Method]['TestMSE_Variation'].append(Test_MSE_V)
+        DataDict[Method]['TrainMSE_Variation'].append(Train_MSE_V)
 
 
-    fig, axes = plt.subplots(nrows=2,ncols=1, sharex=True,figsize=(15,10))
-    fig.suptitle('ML accuracy for different sampling methods and training dataset sizes',fontsize=18)
-    for Name, dat in DataDict.items():
-        # Get sort order and arrange loss values accordingly
-        srt = np.argsort(dat['TrainNb'])
-        for key in dat.keys():
-            dat[key] = np.array(dat[key])[srt]
+        Power_y = Data['MaxPower']['y']
 
-        axes[0].plot(dat['TrainNb'], dat['TestMSE'],label='{} ({} points)'.format(Name,Parameters.TestNb))
-        axes[1].plot(dat['TrainNb'], dat['TrainMSE'],label=Name)
+        if 'target' in Data['MaxPower']:
+            Power_target = Data['MaxPower']['target']
+        else:
+            # Check max Power accuracy
+            MaxPowerERMES = '{}/MaxPower.rmed'.format(ResSubDir)
+            if not os.path.isfile(MaxPowerERMES): continue
 
-    axes[0].set_title('Test data',fontsize=14)
-    axes[0].set_ylabel('MSE',fontsize=14)
-    axes[0].legend(fontsize=14)
-    axes[1].set_title('Train data',fontsize=14)
-    axes[1].set_ylabel('MSE',fontsize=14)
-    axes[1].set_xlabel('Number of data points used for training',fontsize=14)
-    axes[1].legend(fontsize=14)
-    plt.savefig("{}/MSE.png".format(ResDir))
-    plt.close()
+            ERMESres = h5py.File(MaxPowerERMES, 'r')
+            attrs =  ERMESres["EM_Load"].attrs
+            Scale = (1000/attrs['Current'])**2
+            Watts = ERMESres["EM_Load/Watts"][:]*Scale
+            JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
+            ERMESres.close()
+            Power_target = np.sum(Watts)
+
+        DataDict[Method]['MaxPower_pred'].append(Power_y)
+        DataDict[Method]['MaxPower_act'].append(Power_target)
+
+
+    for res in ['Power','Variation']:
+        fig, axes = plt.subplots(nrows=2,ncols=1, sharex=True,figsize=(15,10))
+        fig.suptitle('MSE for {} based on different sampling methods\n and training dataset sizes'.format(res),fontsize=18)
+        for Name, dat in DataDict.items():
+            # Get sort order and arrange loss values accordingly
+            srt = np.argsort(dat['TrainNb'])
+            for key in dat.keys():
+                dat[key] = np.array(dat[key])[srt]
+
+            axes[0].plot(dat['TrainNb'], dat['TestMSE_{}'.format(res)],label='{} ({} points)'.format(Name,Parameters.TestNb))
+            axes[1].plot(dat['TrainNb'], dat['TrainMSE_{}'.format(res)],label=Name)
+
+        axes[0].set_title('Test data',fontsize=14)
+        axes[0].set_ylabel('MSE',fontsize=14)
+        axes[0].legend(fontsize=14)
+        axes[1].set_title('Train data',fontsize=14)
+        axes[1].set_ylabel('MSE',fontsize=14)
+        axes[1].set_xlabel('Number of data points used for training',fontsize=14)
+        axes[1].legend(fontsize=14)
+        plt.savefig("{}/MSE_{}.png".format(ResDir,res))
+        plt.close()
 
     nc = 1
-    nr = int(np.ceil(len(DataDict)//nc))
+    nr = int(np.ceil(len(DataDict)/nc))
     fig, axes = plt.subplots(nrows=nr,ncols=nc, sharex=True,sharey=True, figsize=(15,10))
+    if nr==1:axes=np.array([axes])
     for i, (ax, (Name, dat)) in enumerate(zip(axes.flatten(),DataDict.items())):
-        ax.plot(dat['TrainNb'],dat['MaxPower'])
+        ax.plot(dat['TrainNb'],dat['MaxPower_pred'], label='Predicted')
+        ax.plot(dat['TrainNb'],dat['MaxPower_act'], label='Actual')
+        ax.legend()
         ax.set_title(Name, fontsize=14)
     fig.text(0.5, 0.04, 'Number of data points used for training', ha='center',fontsize=16)
     fig.text(0.04, 0.5, 'Power imparted to sample', va='center', rotation='vertical',fontsize=16)

@@ -5,6 +5,7 @@ from types import SimpleNamespace as Namespace
 from importlib import import_module
 from Scripts.Common.VLFunctions import VLPool, VLPoolReturn
 import copy
+import pickle
 
 '''
 DA - Data Analysis
@@ -25,7 +26,8 @@ def Setup(VL, **kwargs):
         DADict = {'Name':DAName,
                  'CALC_DIR':CALC_DIR,
                  'TMP_CALC_DIR':"{}/{}".format(VL.tmpDA_DIR, DAName),
-                 'Parameters':Namespace(**ParaDict)}
+                 'Parameters':Namespace(**ParaDict),
+                 'Data':{}}
 
         os.makedirs(CALC_DIR, exist_ok=True)
         os.makedirs(DADict["TMP_CALC_DIR"],exist_ok=True)
@@ -89,8 +91,10 @@ def devRun(VL,**kwargs):
     if Errorfnc:
         VL.Exit("The following DA routine(s) finished with errors:\n{}".format(Errorfnc))
 
-    DAmod = import_module(VL.Parameters_Master.DA.File)
-    if hasattr(DAmod,'Combined'):
-        DAmod.Combined(VL,VL.DAData.values())
+    for DADict in DADicts:
+        if not DADict['Data']: continue
+
+        with open("{}/Data.pkl".format(DADict['CALC_DIR']),'wb') as f:
+            pickle.dump(DADict['Data'],f)
 
     VL.Logger('\n### Data Analysis Complete ###',Print=True)

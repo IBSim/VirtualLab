@@ -6,7 +6,7 @@ from pathos.multiprocessing import ProcessPool
 from importlib import import_module, reload
 import numpy as np
 
-from ML.Functions import Uniformity2
+from Functions import Uniformity2
 from Scripts.Common.VLFunctions import MeshInfo
 
 
@@ -43,7 +43,7 @@ def Single(VL, MLdict):
     ML = MLdict["Parameters"]
 
     # Master file where all data is stored
-    DataFile_path = "{}/Data.hdf5".format(VL.ML_DIR)
+    DataFile_path = "{}/ML/Data.hdf5".format(VL.PROJECT_DIR)
     Database = h5py.File(DataFile_path,'r')
     DataPath = "{}/{}".format(ML.DataDir,ML.DataName)
     if DataPath in Database:

@@ -212,7 +212,6 @@ class VLSetup():
 
 		# self.Logger('### VirtualLab Finished###\n',Print=True)
 
-
 	def GetParams(self, Parameters_Master, Parameters_Var, NS):
 		# Parameters_Master &/or Var can be module, a namespace or string.
 		# A string references a file in the input directory
@@ -259,46 +258,62 @@ class VLSetup():
 
 		# ======================================================================
 
-	def CreateParameters(self, Parameters_Master, Parameters_Var, Attr):
-		Master=getattr(Parameters_Master,Attr, None)
+	def CreateParameters(self, Parameters_Master, Parameters_Var, InstName):
+		'''
+		Create parameter dictionary for instance 'InstName' using Parameters_Master and Var.
+		'''
+		# ======================================================================
+		# Performs Checks & return warnings or errors
+
+		# Get instance 'InstName' from Parameters_Master and _Parameters_Var (if they are defined)
+		# and check they have the attribute 'Name'
+		Master=getattr(Parameters_Master,InstName, None)
 		if not Master: return {}
-		if not hasattr(Master,'Name'): self.Exit("Error: '{}' does not have the attribute 'Name' in Parameters_Master".format(Attr))
+		if not hasattr(Master,'Name'):
+			message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(InstName)
+			self.Exit(self._Error(message))
 
-		Var=getattr(Parameters_Var,Attr, None)
+		Var=getattr(Parameters_Var,InstName, None)
 		if not Var: return {Master.Name : Master.__dict__}
-		if not hasattr(Var,'Name'): self.Exit("Error: '{}' does not have the attribute 'Name' in Parameters_Var".format(Attr))
+		if not hasattr(Var,'Name'):
+			message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(InstName)
+			self.Exit(self._Error(message))
 
-		# Attributes
+		# Check if there are attributes defined in Var which are not in Master
 		dfattrs = set(Var.__dict__.keys()) - set(list(Master.__dict__.keys())+['Run'])
-		if dfattrs: print("Warning: Attribute(s) {} specified in Parameters_Var are not in Parameters_Master.\n"\
-							"This may lead to unexpected results.\n".format(dfattrs))
+		if dfattrs:
+			attstr = "\n".join(["{}.{}".format(InstName,i) for i in dfattrs])
+			message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
+				"{}\n\nThis may lead to unexpected results.".format(attstr)
+			print(self._Warning(message))
 
+		# Check all entires in Parameters_Var have the same length
 		NbNames = len(Var.Name)
-		ParaDict = {}
-		for VariableName, MasterValue in Master.__dict__.items():
-			# check types
-			NewValues = getattr(Var, VariableName, [MasterValue]*NbNames)
-			# Check the number of NewVals is correct
+		VarNames, NewVals, errVar = [],[], []
+		for VariableName, NewValues in Var.__dict__.items():
+			VarNames.append(VariableName)
+			NewVals.append(NewValues)
 			if len(NewValues) != NbNames:
-				self.Exit("Error: Number of entries for '{0}.{1}' not equal to '{0}.Names' in Parameters_Var".format(Attr,VariableName))
-			for Name,NewVal in zip(Var.Name,NewValues):
-				if type(MasterValue)==dict:
-					cpdict = copy.deepcopy(MasterValue)
-					cpdict.update(NewVal)
-					NewVal=cpdict
-					DiffKeys = set(cpdict.keys()).difference(MasterValue.keys())
-					if DiffKeys:
-						self.Logger("Warning: The key(s) {2} specified in '{0}.{3}' for '{1}' are not in that dictionary "\
-						"in Parameters_Master.\nThis may lead to unexpected results.\n".format(Attr,Name,DiffKeys,VariableName), Print=True)
-				if Name not in ParaDict: ParaDict[Name] = {}
-				ParaDict[Name][VariableName] = NewVal
+				errVar.append(VariableName)
 
-		if hasattr(Var,'Run'):
-			if len(Var.Run)!=NbNames:
-				self.Exit("Error: Number of entries for {}.Run not equal to {}.Names".format(Attr))
-			for Name, flag in zip(Var.Name, Var.Run):
-				if not flag:
-					ParaDict.pop(Name)
+		if errVar:
+			attrstr = "\n".join(["{}.{}".format(InstName,i) for i in errVar])
+			message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
+				"{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(InstName,attrstr)
+			self.Exit(self._Error(message))
+
+		# ======================================================================
+		# Create dictionary for each entry in Parameters_Var
+		VarRun = getattr(Var,'Run',[True]*NbNames) # create True list if Run not an attribute of InstName
+		ParaDict = {}
+		for Name, NewValues, Run in zip(Var.Name,zip(*NewVals),VarRun):
+			if not Run: continue
+
+			cpMaster = copy.deepcopy(Master.__dict__)
+			for VariableName, NewValue in zip(VarNames,NewValues):
+				# if type(NewValue)==dict:
+				cpMaster[VariableName]=NewValue
+			ParaDict[Name] = cpMaster
 
 		return ParaDict
 
@@ -322,3 +337,15 @@ class VLSetup():
 			argdict[var]=value
 
 		return argdict
+
+	def _Warning(self, message):
+		warning = "\n======== Warning ========\n\n"\
+			"{}\n\n"\
+			"=========================\n\n".format(message)
+		return warning
+
+	def _Error(self,message):
+		error = "\n========= Error =========\n\n"\
+			"{}\n\n"\
+			"=========================\n\n".format(message)
+		return error

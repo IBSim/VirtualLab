@@ -8,6 +8,21 @@ from types import SimpleNamespace as Namespace
 import copy
 sys.dont_write_bytecode=True
 
+def WarningMessage(message):
+	warning = "\n======== Warning ========\n\n"\
+		"{}\n\n"\
+		"=========================\n\n".format(message)
+	return warning
+
+def ErrorMessage(message):
+	error = "\n========= Error =========\n\n"\
+		"{}\n\n"\
+		"=========================\n\n".format(message)
+	return error
+
+def VerifyParameters(ParametersNS,vars):
+    return list(set(vars) - set(ParametersNS.__dict__))
+
 def MaterialProperty(matarr,Temperature):
     if len(matarr) in (1,2): return matarr[-1]
     else: return np.interp(Temperature, matarr[::2], matarr[1::2])

@@ -12,6 +12,7 @@ from importlib import import_module, reload
 
 import VLconfig
 from Scripts.Common import Analytics
+from .VLFunctions import ErrorMessage, WarningMessage
 from Scripts.Common.VLPackages import Salome, CodeAster
 from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
@@ -224,7 +225,7 @@ class VLSetup():
 		# Check File exists
 		if not os.path.exists(Abs_Parameters):
 			message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
-			self.Exit(self._Error(message))
+			self.Exit(ErrorMessage(message))
 
 		sys.path.insert(0, os.path.dirname(Abs_Parameters))
 		Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
@@ -277,13 +278,13 @@ class VLSetup():
 		if not Master: return {}
 		if not hasattr(Master,'Name'):
 			message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(InstName)
-			self.Exit(self._Error(message))
+			self.Exit(ErrorMessage(message))
 
 		Var=getattr(Parameters_Var,InstName, None)
 		if not Var: return {Master.Name : Master.__dict__}
 		if not hasattr(Var,'Name'):
 			message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(InstName)
-			self.Exit(self._Error(message))
+			self.Exit(ErrorMessage(message))
 
 		# Check if there are attributes defined in Var which are not in Master
 		dfattrs = set(Var.__dict__.keys()) - set(list(Master.__dict__.keys())+['Run'])
@@ -291,7 +292,7 @@ class VLSetup():
 			attstr = "\n".join(["{}.{}".format(InstName,i) for i in dfattrs])
 			message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
 				"{}\n\nThis may lead to unexpected results.".format(attstr)
-			print(self._Warning(message))
+			print(WarningMessage(message))
 
 		# Check all entires in Parameters_Var have the same length
 		NbNames = len(Var.Name)
@@ -306,7 +307,7 @@ class VLSetup():
 			attrstr = "\n".join(["{}.{}".format(InstName,i) for i in errVar])
 			message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
 				"{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(InstName,attrstr)
-			self.Exit(self._Error(message))
+			self.Exit(ErrorMesage(message))
 
 		# ======================================================================
 		# Create dictionary for each entry in Parameters_Var
@@ -322,6 +323,8 @@ class VLSetup():
 			ParaDict[Name] = cpMaster
 
 		return ParaDict
+
+
 
 	def GetArgParser(self):
 		ArgList=sys.argv[1:]
@@ -343,15 +346,3 @@ class VLSetup():
 			argdict[var]=value
 
 		return argdict
-
-	def _Warning(self, message):
-		warning = "\n======== Warning ========\n\n"\
-			"{}\n\n"\
-			"=========================\n\n".format(message)
-		return warning
-
-	def _Error(self,message):
-		error = "\n========= Error =========\n\n"\
-			"{}\n\n"\
-			"=========================\n\n".format(message)
-		return error

@@ -46,8 +46,13 @@ def MeshExport(Mesh,Meshfile, **kwargs):
 	Overwrite = kwargs.get('Overwrite',1)
 	err = Mesh.ExportMED( Meshfile, auto_groups=0, minor=40, overwrite=Overwrite,meshPart=None,autoDimension=1)
 	if not err:
-		print("Nodes: {}\nVolumes: {}\nSurfaces: {}\nEdges: {}".format(Mesh.NbNodes(),Mesh.NbVolumes(),Mesh.NbFaces(),Mesh.NbEdges()))
-		print ("Mesh '{}' successfully exported to file {}".format(Mesh.GetName(), Meshfile))
+		meshdata = "\n=== Mesh Information ===\n\n"\
+		"Nodes: {}\nVolumes: {}\nSurfaces: {}\nEdges: {}\n"\
+		"Mesh '{}' has been successfully exported to:\n{}\n\n"\
+		"========================\n".format(Mesh.NbNodes(),Mesh.NbVolumes(),
+											Mesh.NbFaces(),Mesh.NbEdges(),
+											Mesh.GetName(), Meshfile)
+		print(meshdata)
 	else:
 		print("Error in Exporting mesh")
 

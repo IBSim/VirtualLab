@@ -8,7 +8,7 @@ import time
 import shutil
 import uuid
 
-from Scripts.Common.VLFunctions import VLPool, VLPoolReturn
+from Scripts.Common.VLFunctions import VLPool, VLPoolReturn, WarningMessage, ErrorMessage
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
@@ -26,24 +26,36 @@ def Setup(VL, **kwargs):
     sys.path.insert(0, VL.SIM_MESH)
 
     for MeshName, ParaDict in MeshDicts.items():
-        ## Run checks ##
+        Parameters = Namespace(**ParaDict)
+        # ====================================================================
+        # Perform checks
         # Check that mesh file exists
-        if not os.path.exists('{}/{}.py'.format(VL.SIM_MESH,ParaDict['File'])):
-            VL.Exit("Mesh file '{}' does not exist in {}".format(ParaDict['File'], VL.SIM_MESH))
+        filepath = '{}/{}.py'.format(VL.SIM_MESH,ParaDict['File'])
+        if not os.path.exists(filepath):
+            VL.Exit(ErrorMessage('Mesh file\n{}\n does not exist'.format(filepath)))
 
+        # Check Verify function, if it exists
         MeshFile = import_module(ParaDict['File'])
-        try :
-            err = MeshFile.GeomError(Namespace(**ParaDict))
-            if err: VL.Exit("GeomError in '{}' - {}".format(MeshDict['Name'], err))
-        except AttributeError:
-            pass
+        if hasattr(MeshFile,'Verify'):
+            error,warning = MeshFile.Verify(Parameters)
+            if warning:
+                mess = "Warning issed for mesh '{}':\n\n".format(MeshName)
+                mess+= "\n\n".join(warning)
+                print(WarningMessage(mess))
+
+            if error:
+                mess = "Error issued for mesh '{}':\n\n".format(MeshName)
+                mess+= "\n\n".join(error)
+                print(ErrorMessage(mess))
+                VL.Exit()
+
         ## Checks complete ##
 
         VL.WriteModule("{}/{}.py".format(VL.GEOM_DIR, MeshName), ParaDict)
 
         Mdict = {'Name':MeshName,
                  'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
-                 'Parameters':Namespace(**ParaDict)}
+                 'Parameters':Parameters}
         if VL.mode in ('Headless','Continuous'):
             Mdict['LogFile'] = "{}/{}.log".format(VL.MESH_DIR,MeshName)
         else : Mdict['LogFile'] = None

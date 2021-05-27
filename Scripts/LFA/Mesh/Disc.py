@@ -2,6 +2,79 @@ import sys
 sys.dont_write_bytecode=True
 import numpy as np
 import os
+from types import SimpleNamespace
+from Scripts.Common.VLFunctions import VerifyParameters
+
+'''
+This script generates a sample using the SALOME software package which is used
+to perform a Laser Flash Analysis (LFA) simulation. An optional void can be
+included in the sample. An image of the sample and reference to variable names
+can be found in:
+https://gitlab.com/ibsim/media/-/blob/master/images/VirtualLab/LFA_Disc.png
+
+The function 'Example' contains the variables and values required to generate a
+mesh.
+'''
+
+def Example():
+	Parameters = SimpleNamespace(Name='Test')
+	# === Geometrical dimensions ===
+	Parameters.Radius = 0.0063
+	Parameters.HeightB = 0.00125
+	Parameters.HeightT = 0.00125
+	Parameters.VoidCentre = (0,0)
+	Parameters.VoidRadius = 0.0005
+	Parameters.VoidHeight = -0.0001
+	### Mesh parameters
+	Parameters.Length1D = 0.0004 # Length on  edges
+	Parameters.Length2D = 0.0004 # Maximum length of any edge belonging to a face
+	Parameters.Length3D = 0.0004 # Maximum length of any edge belogining to a tetrahedron
+	Parameters.VoidDisc = 20
+
+	return Parameters
+
+def Verify(Parameters):
+	''''
+	Verify that the parameters set in Parameters_Master and/or Parameters_Var
+	are suitable to create the mesh.
+	These can either be a warning or an error
+	'''
+	error, warning = [],[]
+
+	# =============================================================
+	# Check Variables are defined in the parameters
+
+	# Required variables
+	ReqVar = ['Radius','HeightB','HeightT',
+			  'Length1D','Length2D','Length3D']
+	# Optional variables - all are needed to create a void
+	OptVar = ['VoidCentre','VoidRadius','VoidHeight','VoidDisc']
+
+	miss = VerifyParameters(Parameters,ReqVar)
+	if miss:
+		error.append("The following variables are not declared in the "\
+					 "mesh parameters:\n{}".format("\n".join(miss)))
+
+	miss = VerifyParameters(Parameters,OptVar)
+	if miss and len(miss)<len(OptVar):
+		error.append("Following variables are not declared in the "\
+					 "mesh parameters:\n{}".format("\n".join(miss)))
+	if error:
+		return error, warning
+
+	# =============================================================
+	# Check conditons based on the dimensions provided
+	if hasattr(Parameters,'VoidHeight'):
+		if Parameters.VoidHeight >= Parameters.HeightT:
+			error.append('VoidHeight is greater than HeightT')
+		elif -1*Parameters.VoidHeight >= Parameters.HeightB:
+			error.append('VoidHeight is greater than HeightB')
+		if Parameters.VoidRadius >= Parameters.Radius:
+			error.append('VoidRadius is greater than Radius')
+		if (Parameters.VoidHeight == 0 and  Parameters.VoidRadius !=0) or (Parameters.VoidHeight != 0 and  Parameters.VoidRadius ==0):
+			error.append('VoidHeight and VoidRadius must both be zero or non-zero')
+
+	return error, warning
 
 def Create(Parameter):
 	from salome.geom import geomBuilder
@@ -19,10 +92,7 @@ def Create(Parameter):
 		geompy = geomBuilder.New()
 		smesh = smeshBuilder.New()
 
-	if Parameter.VoidRadius and Parameter.VoidHeight:
-		isVoid = True
-	else:
-		isVoid = False
+	isVoid = True if Parameter.VoidHeight else False
 
 	###
 	### GEOM component
@@ -36,130 +106,67 @@ def Create(Parameter):
 	geompy.addToStudy( OY, 'OY' )
 	geompy.addToStudy( OZ, 'OZ' )
 
+	### Bottom disc
+	Disc_b_orig = geompy.MakeCylinder(O, OZ, Parameter.Radius, Parameter.HeightB)
+	geompy.addToStudy(Disc_b_orig,'Disc_b_orig')
 
-	## Bottom half of dics
-	Cylinder_b_orig = geompy.MakeCylinder(O, OZ, Parameter.Radius, Parameter.HeightB)
-	geompy.addToStudy(Cylinder_b_orig,'Cylinder_b_orig')
-
-	# add groups
-	Bottom_Face = geompy.CreateGroup(Cylinder_b_orig, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Bottom_Face, [12])
-	geompy.addToStudyInFather( Cylinder_b_orig, Bottom_Face, 'Bottom_Face' )
-
-	Bottom_Ext = geompy.CreateGroup(Cylinder_b_orig, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Bottom_Ext, [12,3])
-	geompy.addToStudyInFather( Cylinder_b_orig, Bottom_Ext, 'Bottom_Ext' )
-
-
-	## Top half of disc
+	## Top disc
 	Vertex_1 = geompy.MakeVertexWithRef(O, 0, 0, Parameter.HeightB)
-	Cylinder_t_orig = geompy.MakeCylinder(Vertex_1, OZ, Parameter.Radius, Parameter.HeightT)
-	geompy.addToStudy(Cylinder_t_orig,'Cylinder_t_orig')
-
-	# add groups
-	Top_Face = geompy.CreateGroup(Cylinder_t_orig, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Top_Face, [10])
-	geompy.addToStudyInFather( Cylinder_t_orig, Top_Face, 'Top_Face' )
-
-	Top_Ext = geompy.CreateGroup(Cylinder_t_orig, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Top_Ext, [3,10])
-	geompy.addToStudyInFather( Cylinder_t_orig, Top_Ext, 'Top_Ext' )
-
-	#Name these with extension _orig since we may change them depending on the
-	#location of the void
-
-
-	# Add void in to disc if needed
-	if Parameter.VoidHeight > 0:
-		# Void is in the top half of the disc
-		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.HeightB)
-		Void = geompy.MakeCylinder(Vertex_2, OZ, Parameter.VoidRadius, Parameter.VoidHeight)
-		Cylinder_t = geompy.MakeCutList(Cylinder_t_orig,[Void], True)
-		Cylinder_b = Cylinder_b_orig
-
-	elif Parameter.VoidHeight < 0:
-		# Void is in the bottom half of the dics
-		Vertex_2 = geompy.MakeVertexWithRef(O, Parameter.VoidCentre[0], Parameter.VoidCentre[1], Parameter.HeightB)
-		OZm = geompy.MakeVectorDXDYDZ(0, 0, -1)
-		Void = geompy.MakeCylinder(Vertex_2, OZm, Parameter.VoidRadius, -Parameter.VoidHeight)
-		Cylinder_b = geompy.MakeCutList(Cylinder_b_orig,[Void], True)
-		Cylinder_t = Cylinder_t_orig
-
-	else:
-		Cylinder_t = Cylinder_t_orig
-		Cylinder_b = Cylinder_b_orig
-
-	# Fuse together top and bottom disk & partition
-	Cylinder_full = geompy.MakeFuseList([Cylinder_b, Cylinder_t], True, True)
-	Testpiece = geompy.MakePartition([Cylinder_full], [Cylinder_b], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
-
-	geompy.addToStudy(Cylinder_full,'Cylinder_full')
-	geompy.addToStudy(Cylinder_b,'Cylinder_b')
-	geompy.addToStudy(Cylinder_t,'Cylinder_t')
-	geompy.addToStudy(Testpiece, 'Testpiece')
-
-
-	### Add solid groups
-	# List of solid objects IDs. This will have 2 numbers which represent
-	# the IDs for the top and bottom disc
-	Vollst = geompy.SubShapeAllIDs(Testpiece,geompy.ShapeType['SOLID'])
-
-	# Get geom object & ID of the bottom disc which was used to make the partition
-	# This is the same as ObjIndex in salome func
-	objDiskB = geompy.GetInPlace(Testpiece, Cylinder_b, False)
-	DiskB_ID = objDiskB.GetSubShapeIndices()
-
-	DiskB = geompy.CreateGroup(Testpiece, geompy.ShapeType["SOLID"])
-	geompy.UnionIDs(DiskB, DiskB_ID)
-	geompy.addToStudyInFather( Testpiece, DiskB, 'Bottom' )
-
-	# The geom object of the top disc is then the remaining ID in Vollst
-	Vollst.remove(DiskB_ID[0])
-	DiskT = geompy.CreateGroup(Testpiece, geompy.ShapeType["SOLID"])
-	geompy.UnionIDs(DiskT, Vollst)
-	geompy.addToStudyInFather( Testpiece, DiskT, 'Top' )
-
-
-	### Add Faces
-	# get the necessary groups from Cylinder_b_orig and Cylinder_t_orig
-	# and get them as sub shapes of Testpiece
-
-	# Top_Face - The face which the laser pulse will be applied
-	Top_Face_ID = Top_Face.GetSubShapeIndices()
-	ID = SalomeFunc.ObjIndex(Testpiece, Cylinder_t_orig, Top_Face_ID)[0]
-	Top_Face = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Top_Face, ID)
-	geompy.addToStudyInFather( Testpiece, Top_Face, 'Top_Face' )
-
-	# Top_Ext - External surfaces for the top disk for HTC
-	Top_Ext_ID = Top_Ext.GetSubShapeIndices()
-	ID = SalomeFunc.ObjIndex(Testpiece, Cylinder_t_orig, Top_Ext_ID)[0]
-	Top_Ext = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Top_Ext, ID)
-	geompy.addToStudyInFather( Testpiece, Top_Ext, 'Top_Ext' )
-
-	# Bottom_Face - Used to measure thermal conductivity during post processing
-	Bottom_Face_ID = Bottom_Face.GetSubShapeIndices()
-	ID = SalomeFunc.ObjIndex(Testpiece, Cylinder_b_orig, Bottom_Face_ID)[0]
-	Bottom_Face = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Bottom_Face, ID)
-	geompy.addToStudyInFather( Testpiece, Bottom_Face, 'Bottom_Face' )
-
-	# Bottom_Ext - External surfaces for the bottom disk for HTC
-	Bottom_Ext_ID = Bottom_Ext.GetSubShapeIndices()
-	ID = SalomeFunc.ObjIndex(Testpiece, Cylinder_b_orig, Bottom_Ext_ID)[0]
-	Bottom_Ext = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
-	geompy.UnionIDs(Bottom_Ext, ID)
-	geompy.addToStudyInFather( Testpiece, Bottom_Ext, 'Bottom_Ext' )
+	Disc_t_orig = geompy.MakeCylinder(Vertex_1, OZ, Parameter.Radius, Parameter.HeightT)
+	geompy.addToStudy(Disc_t_orig,'Disc_t_orig')
 
 	if isVoid:
-		# On void created previously the surfaces are made up of from the
-		# geometric IDs [3,10,12]
-		# VoidExt - Find the faces corresponding to 3(side), 10(top) and 12(bottom) in Void
-		Ix = SalomeFunc.ObjIndex(Testpiece, Void, [3, 10, 12])[0]
-		VoidExt = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
-		geompy.UnionIDs(VoidExt, Ix)
-		geompy.addToStudyInFather( Testpiece, VoidExt, 'Void_Ext' )
+		Vertex_Void = geompy.MakeVertexWithRef(O, *Parameter.VoidCentre, Parameter.HeightB)
+		VoidBase = geompy.MakeDiskPntVecR(Vertex_Void, OZ, Parameter.VoidRadius)
+		Void = geompy.MakePrismVecH(VoidBase, OZ, Parameter.VoidHeight)
+		Disc_t = geompy.MakeCutList(Disc_t_orig,[Void], True)
+		Disc_b = geompy.MakeCutList(Disc_b_orig,[Void], True)
+
+		# joining face - need the newly created face due to void
+		_shface = geompy.GetSubShape(Disc_b_orig,[10]) # top face of the bottom disc
+		_JoinFace = geompy.MakeCutList(_shface,[VoidBase], True)
+	else:
+		Disc_t = Disc_t_orig
+		Disc_b = Disc_b_orig
+
+		# joining face
+		_JoinFace = geompy.GetSubShape(Disc_b_orig,[10])
+
+	Disc_Fuse = geompy.MakeFuseList([Disc_b, Disc_t], True, True)
+	Testpiece = geompy.MakePartition([Disc_Fuse], [Disc_b], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
+
+	geompy.addToStudy(Testpiece, 'Testpiece')
+
+	## Add Groups
+	# Volumes
+	TopID = geompy.GetSameIDs(Testpiece,Disc_t)
+	Top = SalomeFunc.AddGroup(Testpiece,'Top',TopID)
+
+	BottomID = geompy.GetSameIDs(Testpiece,Disc_b)
+	Bottom = SalomeFunc.AddGroup(Testpiece,'Bottom',BottomID)
+
+	# Faces
+	JoinID = geompy.GetSameIDs(Testpiece,_JoinFace)
+	Join_Face = SalomeFunc.AddGroup(Testpiece,'Join_Face',JoinID)
+
+	BottomID = SalomeFunc.ObjIndex(Testpiece, Disc_b_orig, [12])[0]
+	Bottom_Face = SalomeFunc.AddGroup(Testpiece,'Bottom_Face',BottomID)
+
+	TopID = SalomeFunc.ObjIndex(Testpiece, Disc_t_orig, [10])[0]
+	Top_Face = SalomeFunc.AddGroup(Testpiece,'Top_Face',TopID)
+
+	ExtID = geompy.SubShapeAllIDs(Testpiece,geompy.ShapeType['FACE'])
+	External_Faces = SalomeFunc.AddGroup(Testpiece,'External_Faces',ExtID)
+
+	BottomExtID = SalomeFunc.ObjIndex(Testpiece, Disc_b_orig, [3,12])[0]
+	Bottom_Ext = SalomeFunc.AddGroup(Testpiece,'Bottom_Ext',BottomExtID)
+
+	TopExtID = SalomeFunc.ObjIndex(Testpiece, Disc_t_orig, [3,10])[0]
+	Top_Ext = SalomeFunc.AddGroup(Testpiece,'Top_Ext',TopExtID)
+
+	if isVoid:
+		VoidID = SalomeFunc.ObjIndex(Testpiece, Void, [3, 10, 12])[0]
+		Void_Ext = SalomeFunc.AddGroup(Testpiece,'Void_Ext',VoidID)
 
 
 	###
@@ -195,14 +202,17 @@ def Create(Parameter):
 	smesh.SetName(NETGEN_3D_Parameters_1, 'NETGEN 3D Parameters_1')
 	smesh.SetName(Mesh_1, Parameter.Name)
 
+
 	## Add groups
-	Mesh_Top_Ext = Mesh_1.GroupOnGeom(DiskT,'Top',SMESH.VOLUME)
-	Mesh_Top_Ext = Mesh_1.GroupOnGeom(DiskB,'Bottom',SMESH.VOLUME)
+	Mesh_Top = Mesh_1.GroupOnGeom(Top,'Top',SMESH.VOLUME)
+	Mesh_Top = Mesh_1.GroupOnGeom(Bottom,'Bottom',SMESH.VOLUME)
 
 	Mesh_Top_Ext = Mesh_1.GroupOnGeom(Top_Ext,'Top_Ext',SMESH.FACE)
 	Mesh_Bottom_Ext = Mesh_1.GroupOnGeom(Bottom_Ext,'Bottom_Ext',SMESH.FACE)
 	Mesh_Top_Face = Mesh_1.GroupOnGeom(Top_Face,'Top_Face',SMESH.FACE)
 	Mesh_Bottom_Face = Mesh_1.GroupOnGeom(Bottom_Face,'Bottom_Face',SMESH.FACE)
+	Mesh_External = Mesh_1.GroupOnGeom(External_Faces,'External_Faces',SMESH.FACE)
+	Mesh_Join_Face1 = Mesh_1.GroupOnGeom(Join_Face,'Join_Face_1',SMESH.FACE)
 
 	Mesh_Bottom_Ext_Node = Mesh_1.GroupOnGeom(Bottom_Face,'NBottom_Face',SMESH.NODE)
 	Mesh_Top_Ext_Node = Mesh_1.GroupOnGeom(Top_Face,'NTop_Face',SMESH.NODE)
@@ -213,9 +223,9 @@ def Create(Parameter):
 
 		### Sub Mesh creation
 		## Sub-Mesh 2
-		Regular_1D_2 = Mesh_1.Segment(geom=VoidExt)
+		Regular_1D_2 = Mesh_1.Segment(geom=Void_Ext)
 		Local_Length_2 = Regular_1D_2.LocalLength(HoleLength,None,1e-07)
-		NETGEN_2D_2 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=VoidExt)
+		NETGEN_2D_2 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=Void_Ext)
 		NETGEN_2D_Parameters_3 = NETGEN_2D_2.Parameters()
 		NETGEN_2D_Parameters_3.SetMaxSize( HoleLength )
 		NETGEN_2D_Parameters_3.SetOptimize( 1 )
@@ -233,46 +243,36 @@ def Create(Parameter):
 		NETGEN_2D_Parameters_1.SetMinSize( HoleLength )
 		NETGEN_3D_Parameters_1.SetMinSize( HoleLength )
 
-		Mesh_Void_Ext = Mesh_1.GroupOnGeom(VoidExt,'Void_Ext',SMESH.FACE)
+		Mesh_Void_Ext = Mesh_1.GroupOnGeom(Void_Ext,'Void_Ext',SMESH.FACE)
 
 	isDone = Mesh_1.Compute()
+
+	# if getattr(Parameters,'ContactSurface',False):
+	if True:
+		_Mesh_Join_Face2 = Mesh_1.DoubleElements( Mesh_Join_Face1, '_Join_Face_2')
+		Affected = Mesh_1.AffectedElemGroupsInRegion( [ _Mesh_Join_Face2 ], [], None )
+		NewGrps = Mesh_1.DoubleNodeElemGroups( [ Mesh_Join_Face1 ], [], Affected, 1, 1 )
+		for grp in NewGrps:
+			if str(grp.GetType()) == 'FACE':
+				Mesh_Join_Face2 = grp
+				grp.SetName('Join_Face_2')
+				# smesh.SetName(MeshJoin_Face2,'Join_Face_2')
+			else:
+				Mesh_1.RemoveGroup(grp)
+		[Mesh_1.RemoveGroup(grp) for grp in Affected]
+		Mesh_1.RemoveGroupWithContents(_Mesh_Join_Face2)
+
+		Mesh_External = Mesh_1.ConvertToStandalone( Mesh_External )
+		nbAdd = Mesh_External.Add(Mesh_Join_Face2.GetListOfID())
 
 	globals().update(locals())
 
 	return Mesh_1
 
-class TestDimensions():
-	def __init__(self):
-		self.Name = 'TestMesh'
-		self.Radius = 0.0063
-		self.HeightB = 0.00125
-		self.HeightT = 0.00125
-		self.VoidCentre = (0,0)
-		self.VoidRadius = 0.0005
-		self.VoidHeight = -0.0001
-		### Mesh parameters
-		self.Length1D = 0.0004 #Length on 1D edges
-		self.Length2D = 0.0004 #Maximum length of any edge belonging to a face
-		self.Length3D = 0.0004 #Maximum length of any edge belogining to a tetrahedron
-		self.VoidDisc = 20
-		self.MeshName = 'Test'
-
-
-def GeomError(Parameters):
-	''' This function is imported in during the Setup to pick up any errors which will occur for the given geometrical dimension. i.e. impossible dimensions '''
-
-	message = None
-	if Parameters.VoidHeight >= Parameters.HeightT:
-		message = 'Void height too large'
-	if Parameters.VoidRadius >= Parameters.Radius:
-		message = 'Void radius too large'
-	if (Parameters.VoidHeight == 0 and  Parameters.VoidRadius !=0) or (Parameters.VoidHeight != 0 and  Parameters.VoidRadius ==0):
-		message = 'The height and radius of the void must both be zero or non-zero'
-	return message
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		Create(TestDimensions())
+		Create(Example())
 	# 1 argument provided which is the parameter file
 	elif len(sys.argv) == 2:
 		ParameterFile = sys.argv[1]

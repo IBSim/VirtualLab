@@ -2,12 +2,93 @@ import sys
 sys.dont_write_bytecode=True
 import numpy as np
 import os
+from types import SimpleNamespace
+from Scripts.Common.VLFunctions import VerifyParameters
 
 '''
-In this script the geometry and mesh we are creating is defined in the function 'Create', with dimensional arguments and mesh arguments passed to it. The 'test' function provides dimensions for when the script is loaded manually in to Salome and not via a parametric study. The error function is imported during the setup of parametric studies to check for any geometrical errors which may arise.
+This script generates a 'dog bone' sample using the SALOME software package.
+This sample is commonly used to perform tensile tests, which can also be carried out
+as part of the VirtualLab package. An optional hole can be included in the sample.
+An image of the dog bone sample and reference to variable names can be found in:
+https://gitlab.com/ibsim/media/-/blob/master/images/VirtualLab/DogBone.png
+
+The function 'Example' contains the variables and values required to generate a
+mesh.
 '''
 
-def Create(Parameter):
+def Example():
+	'''
+	Example parameter values.
+	'''
+	Parameters = SimpleNamespace(Name='Test')
+	# === Geometrical dimensions ===
+	Parameters.Thickness = 0.003
+	Parameters.HandleWidth = 0.036
+	Parameters.HandleLength = 0.024
+	Parameters.GaugeWidth = 0.012
+	Parameters.GaugeLength = 0.04
+	Parameters.TransRad = 0.012
+	Parameters.HoleCentre = (0.00,0.00)
+	Parameters.Rad_a = 0.001
+	Parameters.Rad_b = 0.0005
+
+	# === Mesh sizes ===
+	Parameters.HoleDisc = 50
+	Parameters.Length1D = 0.002
+	Parameters.Length2D = 0.002
+	Parameters.Length3D = 0.002
+
+	return Parameters
+
+def Verify(Parameters):
+	''''
+	Verify that the parameters set in Parameters_Master and/or Parameters_Var
+	are suitable to create the mesh.
+	These can either be a warning or an error
+	'''
+	error, warning = [],[]
+
+	# =============================================================
+	# Check Variables are defined in the parameters
+
+	# Required variables
+	ReqVar = ['Thickness','HandleWidth',
+			  'HandleLength','GaugeWidth',
+			  'GaugeLength','TransRad',
+			  'Length1D','Length2D','Length3D']
+	# Optional variables - all are needed to create a hole
+	OptVar = ['HoleCentre','Rad_a','Rad_b','HoleDisc']
+
+	miss = VerifyParameters(Parameters,ReqVar)
+	if miss:
+		error.append("The following variables are not declared in the "\
+					 "mesh parameters:\n{}".format("\n".join(miss)))
+
+	miss = VerifyParameters(Parameters,OptVar)
+	if miss and len(miss)<len(OptVar):
+		error.append("The following variables are not declared in the "\
+					 "mesh parameters:\n{}".format("\n".join(miss)))
+	if error:
+		return error, warning
+
+	# =============================================================
+	# Check conditons based on the dimensions provided
+	if Parameters.HandleWidth > (Parameters.GaugeWidth + 2*Parameters.TransRad):
+		error.append('Handle width too wide for given gauge width and arc radius')
+
+	if hasattr(Parameters,'Rad_a'):
+		if (Parameters.Rad_a == 0 and Parameters.Rad_b !=0) or (Parameters.Rad_a != 0 and Parameters.Rad_b ==0):
+			error.append('Both Parameters.Rad_a and Parameters.Rad_b must both be zero or non-zero')
+		if (Parameters.Rad_a < 0 or Parameters.Rad_b < 0):
+			error.append('Radii must be positive')
+		if abs(Parameters.HoleCentre[1]) + 2*Parameters.Rad_b >= Parameters.GaugeWidth/2:
+			error.append('Hole not entirely in testpiece')
+		if abs(Parameters.HoleCentre[0]) + 2*Parameters.Rad_a >= Parameters.GaugeLength/2:
+			warning.append('Hole not entirely in gauge')
+
+	return error,warning
+
+def Create(Parameters):
 	from salome.geom import geomBuilder
 	from salome.smesh import smeshBuilder
 	import  SMESH
@@ -23,17 +104,15 @@ def Create(Parameter):
 		geompy = geomBuilder.New()
 		smesh = smeshBuilder.New()
 
+	Hole = hasattr(Parameters,'Rad_a')
+
 	###
 	### GEOM component
 	###
 	print('Creating Geometry')
 	# Width and Length of the transition from gauge to handle
-	TransWidth = (Parameter.HandleWidth - Parameter.GaugeWidth)/2
-	TransLength = (TransWidth*(2*Parameter.TransRad - TransWidth))**0.5
-
-	# Get major and minor diameter for ellipse
-	Diam_a = 2*Parameter.Rad_a
-	Diam_b = 2*Parameter.Rad_b
+	TransWidth = (Parameters.HandleWidth - Parameters.GaugeWidth)/2
+	TransLength = (TransWidth*(2*Parameters.TransRad - TransWidth))**0.5
 
 	O = geompy.MakeVertex(0, 0, 0)
 	OX = geompy.MakeVectorDXDYDZ(1, 0, 0)
@@ -46,17 +125,17 @@ def Create(Parameter):
 
 	# Vertexes of shape and connecting lines
 	Vertex_1 = geompy.MakeVertex(0, 0, 0)
-	Vertex_2 = geompy.MakeVertex(0, Parameter.HandleWidth, 0)
-	Vertex_3 = geompy.MakeVertex(Parameter.HandleLength, Parameter.HandleWidth, 0)
-	Vertex_4 = geompy.MakeVertex(Parameter.HandleLength, 0, 0)
+	Vertex_2 = geompy.MakeVertex(0, Parameters.HandleWidth, 0)
+	Vertex_3 = geompy.MakeVertex(Parameters.HandleLength, Parameters.HandleWidth, 0)
+	Vertex_4 = geompy.MakeVertex(Parameters.HandleLength, 0, 0)
 	Vertex_5 = geompy.MakeVertexWithRef(Vertex_4, TransLength, TransWidth, 0)
-	Vertex_6 = geompy.MakeVertexWithRef(Vertex_5, 0, Parameter.GaugeWidth, 0)
-	Vertex_7 = geompy.MakeVertexWithRef(Vertex_5, Parameter.GaugeLength, Parameter.GaugeWidth, 0)
-	Vertex_8 = geompy.MakeVertexWithRef(Vertex_5, Parameter.GaugeLength, 0, 0)
+	Vertex_6 = geompy.MakeVertexWithRef(Vertex_5, 0, Parameters.GaugeWidth, 0)
+	Vertex_7 = geompy.MakeVertexWithRef(Vertex_5, Parameters.GaugeLength, Parameters.GaugeWidth, 0)
+	Vertex_8 = geompy.MakeVertexWithRef(Vertex_5, Parameters.GaugeLength, 0, 0)
 	Vertex_9 = geompy.MakeVertexWithRef(Vertex_7, TransLength, TransWidth, 0)
-	Vertex_10 = geompy.MakeVertexWithRef(Vertex_9, 0, -Parameter.HandleWidth, 0)
-	Vertex_11 = geompy.MakeVertexWithRef(Vertex_9, Parameter.HandleLength, -Parameter.HandleWidth, 0)
-	Vertex_12 = geompy.MakeVertexWithRef(Vertex_9, Parameter.HandleLength, 0, 0)
+	Vertex_10 = geompy.MakeVertexWithRef(Vertex_9, 0, -Parameters.HandleWidth, 0)
+	Vertex_11 = geompy.MakeVertexWithRef(Vertex_9, Parameters.HandleLength, -Parameters.HandleWidth, 0)
+	Vertex_12 = geompy.MakeVertexWithRef(Vertex_9, Parameters.HandleLength, 0, 0)
 	Line_1 = geompy.MakeLineTwoPnt(Vertex_1, Vertex_2)
 	Line_2 = geompy.MakeLineTwoPnt(Vertex_2, Vertex_3)
 	Line_3 = geompy.MakeLineTwoPnt(Vertex_1, Vertex_4)
@@ -67,10 +146,10 @@ def Create(Parameter):
 	Line_8 = geompy.MakeLineTwoPnt(Vertex_11, Vertex_12)
 
 	# Vertices of centre of circle to create arc between handle and gauge
-	Vertex_13 = geompy.MakeVertexWithRef(Vertex_5, 0, -Parameter.TransRad, 0)
-	Vertex_14 = geompy.MakeVertexWithRef(Vertex_6, 0, Parameter.TransRad, 0)
-	Vertex_15 = geompy.MakeVertexWithRef(Vertex_7, 0, Parameter.TransRad, 0)
-	Vertex_16 = geompy.MakeVertexWithRef(Vertex_8, 0, -Parameter.TransRad, 0)
+	Vertex_13 = geompy.MakeVertexWithRef(Vertex_5, 0, -Parameters.TransRad, 0)
+	Vertex_14 = geompy.MakeVertexWithRef(Vertex_6, 0, Parameters.TransRad, 0)
+	Vertex_15 = geompy.MakeVertexWithRef(Vertex_7, 0, Parameters.TransRad, 0)
+	Vertex_16 = geompy.MakeVertexWithRef(Vertex_8, 0, -Parameters.TransRad, 0)
 	Arc_1 = geompy.MakeArcCenter(Vertex_13, Vertex_4, Vertex_5,False)
 	Arc_2 = geompy.MakeArcCenter(Vertex_14, Vertex_3, Vertex_6,False)
 	Arc_3 = geompy.MakeArcCenter(Vertex_15, Vertex_7, Vertex_9,False)
@@ -80,7 +159,7 @@ def Create(Parameter):
 	Wire_1 = geompy.MakeWire([Line_1, Line_2, Line_3, Line_4, Line_5, Line_6, Line_7, Line_8, Arc_1, Arc_2, Arc_3, Arc_4], 1e-05)
 	Face_1 = geompy.MakeFaceWires([Wire_1], 1)
 	# extrude face to 3D
-	Full = geompy.MakePrismVecH(Face_1, OZ, Parameter.Thickness)
+	Full = geompy.MakePrismVecH(Face_1, OZ, Parameters.Thickness)
 
 	geompy.addToStudy( Vertex_1, 'Vertex_1' )
 	geompy.addToStudy( Vertex_2, 'Vertex_2' )
@@ -115,14 +194,18 @@ def Create(Parameter):
 	geompy.addToStudy( Full, 'Full' )
 
 	# If Radius is non-zero we will create the shape of the notch and then cut it from the sample
-	if Parameter.Rad_a != 0:
-		Vertex_17 = geompy.MakeVertex(Parameter.HandleLength + TransLength + Parameter.GaugeLength/2 + Parameter.HoleCentre[0], Parameter.HandleWidth/2 + Parameter.HoleCentre[1], 0)
-		if Parameter.Rad_a >= Parameter.Rad_b:
+	if Hole:
+		# Get major and minor diameter for ellipse
+		Diam_a = 2*Parameters.Rad_a
+		Diam_b = 2*Parameters.Rad_b
+
+		Vertex_17 = geompy.MakeVertex(Parameters.HandleLength + TransLength + Parameters.GaugeLength/2 + Parameters.HoleCentre[0], Parameters.HandleWidth/2 + Parameters.HoleCentre[1], 0)
+		if Parameters.Rad_a >= Parameters.Rad_b:
 			Ellipse_1 = geompy.MakeEllipse(Vertex_17, OZ, Diam_a, Diam_b, OX)
-		if Parameter.Rad_a < Parameter.Rad_b:
+		if Parameters.Rad_a < Parameters.Rad_b:
 			Ellipse_1 = geompy.MakeEllipse(Vertex_17, OZ, Diam_b, Diam_a, OY)
 		NotchFace = geompy.MakeFaceWires([Ellipse_1], 1)
-		Notch = geompy.MakePrismVecH(NotchFace, OZ, Parameter.Thickness)
+		Notch = geompy.MakePrismVecH(NotchFace, OZ, Parameters.Thickness)
 		Testpiece = geompy.MakeCutList(Full, [Notch], True)
 
 		geompy.addToStudy( NotchFace, 'NotchFace' )
@@ -159,7 +242,7 @@ def Create(Parameter):
 	geompy.UnionIDs(Constrain1, Ix)
 	geompy.addToStudyInFather( Testpiece, Constrain1, 'Constrain1' )
 
-	if Parameter.Rad_a != 0:
+	if Hole:
 		Ix = SalomeFunc.ObjIndex(Testpiece, Notch, [3])[0]
 		Notch_Surf = geompy.CreateGroup(Testpiece, geompy.ShapeType["FACE"])
 		geompy.UnionIDs(Notch_Surf, Ix)
@@ -178,25 +261,25 @@ def Create(Parameter):
 	### Main mesh
 	Mesh_1 = smesh.Mesh(Testpiece)
 	Regular_1D_1 = Mesh_1.Segment()
-	Local_Length_1 = Regular_1D_1.LocalLength(Parameter.Length1D,None,1e-07)
+	Local_Length_1 = Regular_1D_1.LocalLength(Parameters.Length1D,None,1e-07)
 	NETGEN_2D_1 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D)
 	NETGEN_2D_Parameters_1 = NETGEN_2D_1.Parameters()
-	NETGEN_2D_Parameters_1.SetMaxSize( Parameter.Length2D )
+	NETGEN_2D_Parameters_1.SetMaxSize( Parameters.Length2D )
 	NETGEN_2D_Parameters_1.SetOptimize( 1 )
 	NETGEN_2D_Parameters_1.SetFineness( 3 )
 	NETGEN_2D_Parameters_1.SetChordalError( 0.1 )
 	NETGEN_2D_Parameters_1.SetChordalErrorEnabled( 0 )
-	NETGEN_2D_Parameters_1.SetMinSize( Parameter.Length2D*0.5 )
+	NETGEN_2D_Parameters_1.SetMinSize( Parameters.Length2D*0.5 )
 	NETGEN_2D_Parameters_1.SetUseSurfaceCurvature( 1 )
 	NETGEN_2D_Parameters_1.SetQuadAllowed( 0 )
 	NETGEN_3D_1 = Mesh_1.Tetrahedron()
 	NETGEN_3D_Parameters_1 = NETGEN_3D_1.Parameters()
-	NETGEN_3D_Parameters_1.SetMaxSize( Parameter.Length3D )
+	NETGEN_3D_Parameters_1.SetMaxSize( Parameters.Length3D )
 	NETGEN_3D_Parameters_1.SetOptimize( 1 )
 	NETGEN_3D_Parameters_1.SetFineness( 3 )
-	NETGEN_3D_Parameters_1.SetMinSize( Parameter.Length3D*0.5 )
+	NETGEN_3D_Parameters_1.SetMinSize( Parameters.Length3D*0.5 )
 
-	smesh.SetName(Mesh_1.GetMesh(), Parameter.Name)
+	smesh.SetName(Mesh_1.GetMesh(), Parameters.Name)
 	smesh.SetName(Regular_1D_1.GetAlgorithm(), 'Regular_1D_1')
 	smesh.SetName(NETGEN_2D_1.GetAlgorithm(), 'NETGEN 2D_1')
 	smesh.SetName(NETGEN_3D_1.GetAlgorithm(), 'NETGEN 3D_1')
@@ -216,10 +299,10 @@ def Create(Parameter):
 	N_Constrain1 = Mesh_1.GroupOnGeom(Constrain1,'Constrain1',SMESH.NODE)
 
 	### SubMesh 1 - Refinement near the hole
-	if Parameter.Rad_a != 0:
+	if Hole:
 		## Calculate circumference of the hole using Ramanujan approximation
 		HoleCirc = np.pi*(3*(Diam_a + Diam_b) - ((3*Diam_a + Diam_b)*(Diam_a + 3*Diam_b))**0.5)
-		HoleLength = HoleCirc/Parameter.HoleDisc
+		HoleLength = HoleCirc/Parameters.HoleDisc
 
 		Regular_1D_2 = Mesh_1.Segment(geom=Notch_Surf)
 		Local_Length_2 = Regular_1D_2.LocalLength(HoleLength,None,1e-07)
@@ -253,46 +336,9 @@ def Create(Parameter):
 
 	return Mesh_1
 
-
-def GeomError(Parameters):
-	''' This function is imported in during the Setup to pick up any errors which will occur for the given geometrical dimension. i.e. impossible dimensions '''
-
-	message = None
-	if Parameters.HandleWidth > (Parameters.GaugeWidth + 2*Parameters.TransRad):
-		message = 'Handle width too wide for given gauge width and arc radius'
-	if (Parameters.Rad_a == 0 and Parameters.Rad_b !=0) or (Parameters.Rad_a != 0 and Parameters.Rad_b ==0):
-		message = 'Both Parameter.Rad_a and Parameter.Rad_b must both be zero or non-zero'
-	if (Parameters.Rad_a < 0 or Parameters.Rad_b < 0):
-		message = 'Radii must be positive'
-	if abs(Parameters.HoleCentre[1]) + 2*Parameters.Rad_b >= Parameters.GaugeWidth/2:
-		message = 'Hole not entirely in testpiece'
-	if abs(Parameters.HoleCentre[0]) + 2*Parameters.Rad_a >= Parameters.GaugeLength/2:
-		message = 'Hole not entirely in gauge'
-
-	return message
-
-class TestDimensions():
-	def __init__(self):
-		### Geometric parameters
-		self.Thickness = 0.003
-		self.HandleWidth = 0.036
-		self.HandleLength = 0.024
-		self.GaugeWidth = 0.012
-		self.GaugeLength = 0.04
-		self.TransRad = 0.012
-		self.HoleCentre = (0.00,0.00)
-		self.Rad_a = 0.001
-		self.Rad_b = 0.0005
-		### Mesh parameters
-		self.HoleDisc = 50
-		self.Length1D = 0.002
-		self.Length2D = 0.002
-		self.Length3D = 0.002
-		self.Name = 'Test'
-
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		Create(TestDimensions())
+		Create(Example())
 	# 1 argument provided which is the parameter file
 	elif len(sys.argv) == 2:
 		ParameterFile = sys.argv[1]

@@ -8,6 +8,15 @@ from types import SimpleNamespace as Namespace
 import copy
 sys.dont_write_bytecode=True
 
+def ASCIIname(names):
+	namelist = []
+	for name in names:
+		lis = [0]*80
+		lis[:len(name)] = list(map(ord,name))
+		namelist.append(lis)
+	res = np.array(namelist)
+	return res
+	
 def WarningMessage(message):
 	warning = "\n======== Warning ========\n\n"\
 		"{}\n\n"\

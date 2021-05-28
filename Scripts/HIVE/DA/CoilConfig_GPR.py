@@ -11,6 +11,7 @@ import gpytorch
 
 from Scripts.Common.VLFunctions import MeshInfo
 from Functions import Uniformity2 as UniformityScore, DataScale, DataRescale
+from PreAster.devPreHIVE import ERMES
 
 def InputParameters():
     pass
@@ -120,16 +121,16 @@ def Single(VL, MLdict):
         lr = getattr(ML,'lr', 0.01)
         MLdict['Data']['MSE'] = MSEvals = {}
         print('Training Power')
-        Conv_P,MSE_P = Power.Training(PowerLH,ML.Iterations,lr=lr)
+        Conv_P,MSE_P = Power.Training(PowerLH,ML.Iterations,lr=lr,)
         print()
         ModelFile = '{}/Power.pth'.format(MLdict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Power.state_dict(), ModelFile)
 
-        # if MSE_P:
-        #     plt.figure()
-        #     plt.plot(MSE_P)
-        #     plt.savefig("{}/MSE_Power.png".format(MLdict["CALC_DIR"]))
-        #     plt.close()
+        if MSE_P:
+            plt.figure()
+            plt.plot(np.array(MSE_P)*OutputScaler[1,0]**2)
+            plt.savefig("{}/MSE_Power.png".format(MLdict["CALC_DIR"]))
+            plt.close()
 
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
             Power_test = MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])
@@ -149,11 +150,11 @@ def Single(VL, MLdict):
         ModelFile = '{}/Variation.pth'.format(MLdict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Variation.state_dict(), ModelFile)
 
-        # if MSE_V:
-        #     plt.figure()
-        #     plt.plot(MSE_V)
-        #     plt.savefig("{}/MSE_Variation.png".format(MLdict["CALC_DIR"]))
-        #     plt.close()
+        if MSE_V:
+            plt.figure()
+            plt.plot(MSE_V)
+            plt.savefig("{}/MSE_Variation.png".format(MLdict["CALC_DIR"]))
+            plt.close()
 
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
             Vari_test = MSE(Variation(Test_x_tf).mean.numpy(), Test_y_scale[:,1])
@@ -189,22 +190,19 @@ def Single(VL, MLdict):
         Variation.load_state_dict(state_dict_V)
         Variation.eval(); VarLH.eval()
 
-
-
-
-    if getattr(ML,'Input',None):
+    if getattr(ML,'Input',None) != None:
         with torch.no_grad():
-            x_scale = DataScale(np.atleast_2d(ML.Check),*InputScaler)
+            x_scale = DataScale(np.atleast_2d(ML.Input),*InputScaler)
             x_scale = torch.tensor(x_scale, dtype=torch.float32)
             y = Power(x_scale)
             y = DataRescale(y.mean.numpy(),*OutputScaler[:,0])
-            MLdict['CheckAns'] = y.tolist()
+            print(y)
+            MLdict['Output'] = y.tolist()
 
     # Get bounds of data for optimisation
     bnds = list(zip(Train_x_scale.min(axis=0), Train_x_scale.max(axis=0)))
 
-    ERMES_Data = {'InputFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),
-                  'ERMESdir':"{}/ERMES".format(MLdict['TMP_CALC_DIR'])}
+    MeshFile = "{}/AMAZEsample.med".format(VL.MESH_DIR)
     ERMES_Parameters = {'CoilType':'HIVE',
                         'Current':1000,
                         'Frequency':1e4,
@@ -215,15 +213,20 @@ def Single(VL, MLdict):
     print("Locating optimum configuration(s) for maximum power")
     NbInit = ML.MaxPowerOpt.get('NbInit',20)
 
-    Optima = FuncOpt(MinMaxGPR,NbInit,bnds,tol=0.01, order='increasing',args=(Power))
+    Optima = FuncOpt(GPR_Opt, NbInit, bnds, args=[Power],
+                    find='max', tol=0.01, order='decreasing')
     MaxPower_cd,MaxPower_val,MaxPower_grad = Optima
-    # Correct Vals and grads for due to max search
-    # MaxPower_val,MaxPower_grad = -1*MaxPower_val,-1*MaxPower_grad
+    for _MaxPower_cd in MaxPower_cd:
+        with torch.no_grad():
+            MaxPower_cd_tf = torch.tensor(np.atleast_2d(_MaxPower_cd), dtype=torch.float32)
+            GPR_Out = Power(MaxPower_cd_tf)
+        _MaxPower_cd = DataRescale(_MaxPower_cd, *InputScaler)
+        _MaxPower_val = DataRescale(GPR_Out.mean.numpy(),*OutputScaler[:,0])
+        print(_MaxPower_cd, _MaxPower_val)
 
     with torch.no_grad():
         MaxPower_cd_tf = torch.tensor(MaxPower_cd, dtype=torch.float32)
         GPR_Out = Power(MaxPower_cd_tf)
-
     MaxPower_cd = DataRescale(MaxPower_cd, *InputScaler)
     MaxPower_val = DataRescale(GPR_Out.mean.numpy(),*OutputScaler[:,0])
     MaxPower_std = DataRescale(GPR_Out.stddev,0,OutputScaler[1,0])
@@ -237,15 +240,17 @@ def Single(VL, MLdict):
     if ML.MaxPowerOpt.get('Verify',True):
         print("Checking results at optima\n")
         ERMESMaxPower = '{}/MaxPower.rmed'.format(MLdict["CALC_DIR"])
-        Parameters = Param_ERMES(*MaxPower_cd[0],ERMES_Parameters)
-        Watts, WattsPV, Elements, JHNode = VerifyModel(VL, ERMES_Data,
-                                           Parameters, ERMESMaxPower,
-                                           ML.MaxPowerOpt.get('NewSim',True))
+        EMParameters = Param_ERMES(*MaxPower_cd[0],ERMES_Parameters)
+        RunERMES = ML.MaxPowerOpt.get('NewSim',True)
 
+        JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,MeshFile,ERMESMaxPower,
+                                                EMParameters, MLdict["TMP_CALC_DIR"],
+                                                RunERMES, GUI=0)
+        Watts = JH_Vol*Volumes
         # Power & Uniformity
         Power = np.sum(Watts)
-        JHNode /= 1000**2
-        Uniformity = UniformityScore(JHNode,ERMESMaxPower)
+        JH_Node /= 1000**2
+        Uniformity = UniformityScore(JH_Node,ERMESMaxPower)
 
         print("Anticipated power at optimum configuration: {:.2f} W".format(MaxPower_val[0]))
         print("Actual power at optimum configuration: {:.2f} W\n".format(Power))
@@ -264,8 +269,11 @@ def Single(VL, MLdict):
             DesPower_norm = DataScale(ML.DesPowerOpt['Power'], *OutputScaler[:,0]) #scale power
             con1 = {'type': 'ineq', 'fun': constraint, 'jac':dconstraint, 'args':(Power, DesPower_norm)}
 
-            Optima = FuncOpt(MinMaxGPR, NbInit, bnds,args=(Variation,'min'), constraints=con1, options={'maxiter':100})
-            OptVar_cd = SortOptima(Optima, order='increasing')
+            Optima = FuncOpt(GPR_Opt, NbInit, bnds, args=[Variation],
+                            find='min', tol=0.01, order='increasing',
+                            constraints=con1, options={'maxiter':100})
+
+            OptVar_cd,OptVar_val,OptVar_grad = Optima
             with torch.no_grad():
                 OptVar_tf = torch.tensor(OptVar_cd, dtype=torch.float32)
                 _P,_V = Power(OptVar_tf), Variation(OptVar_tf)
@@ -282,15 +290,18 @@ def Single(VL, MLdict):
             if ML.DesPowerOpt.get('Verify',True):
                 print("Checking results at optima\n")
                 ERMESRes = '{}/MinVar_{}.rmed'.format(MLdict["CALC_DIR"],ML.DesPowerOpt['Power'])
-                Parameters = Param_ERMES(*MaxPower_cd[0],ERMES_Parameters)
-                Watts, WattsPV, Elements, JHNode = VerifyModel(VL, ERMES_Data,
-                                                   Parameters, ERMESRes,
-                                                   ML.DesPowerOpt.get('NewSim',True))
+                RunERMES = ML.DesPowerOpt.get('NewSim',True)
+                EMParameters = Param_ERMES(*OptVar_cd[0],ERMES_Parameters)
 
+                JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,MeshFile,ERMESRes,
+                                                    EMParameters, MLdict["TMP_CALC_DIR"],
+                                                    RunERMES, GUI=0)
+
+                Watts = JH_Vol*Volumes
                 # Power & Uniformity
                 Power = np.sum(Watts)
-                JHNode /= 1000**2
-                Uniformity = UniformityScore(JHNode,ERMESRes)
+                JH_Node /= 1000**2
+                Uniformity = UniformityScore(JH_Node,ERMESRes)
 
                 print("Anticipated at optimum configuration:\nPower: {:.2f} W\n"\
                       "Uniformity: {}".format(*OptVar_val[0]))
@@ -353,16 +364,17 @@ class ExactGPmodel(gpytorch.models.ExactGP):
                     #         self.covar_module.outputscale)
                 Convergence.append(loss.item())
 
-            # if test:
-            #     with torch.no_grad(),gpytorch.settings.fast_pred_var():
-            #         self.eval(); LH.eval()
-            #         x,y = test
-            #         pred = LH(self(x))
-            #         MSE = np.mean(((pred.mean-y).numpy())**2)
-            #         TestMSE.append(MSE)
-            #         self.train();LH.train()
-            #         if (i+1) % ConvCheck == 0:
-            #             print(MSE)
+            if test and i%50==0:
+                with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000),gpytorch.settings.fast_pred_var():
+                    self.eval(); LH.eval()
+                    x,y = test
+                    pred = LH(self(x))
+                    MSE = np.mean(((pred.mean-y).numpy())**2)
+                    print("MSE",MSE)
+                    TestMSE.append(MSE)
+                    self.train();LH.train()
+                    if (i+1) % ConvCheck == 0:
+                        print(MSE)
 
             if (i+1) % ConvCheck == 0:
                 Avg = np.mean(Convergence[-ConvCheck:])
@@ -384,51 +396,25 @@ class ExactGPmodel(gpytorch.models.ExactGP):
             grads = torch.autograd.grad(pred.mean.sum(), x)[0]
             return grads
 
-def VerifyModel(VL,ERMESdata,Parameters,ResFile,NewSim=True):
-    if NewSim:
-        from PreAster.devPreHIVE import ERMES_Mesh, SetupERMES
-        os.makedirs(ERMESdata['ERMESdir'], exist_ok=True)
-
-        ERMESdata['OutputFile'] = "{}/Mesh.med".format(ERMESdata['ERMESdir'])
-        ERMESdata['Parameters'] = Parameters
-
-        # Create ERMES mesh
-        err = ERMES_Mesh(VL,ERMESdata)
-        if err: return sys.exit('Issue creating mesh')
-
-        return SetupERMES(VL, Parameters, ERMESdata['OutputFile'],
-                                  ResFile, ERMESdata['ERMESdir'])
-
-    elif os.path.isfile(ResFile):
-        ERMESres = h5py.File(ResFile, 'r')
-        attrs =  ERMESres["EM_Load"].attrs
-        Elements = ERMESres["EM_Load/Elements"][:]
-
-        Scale = (1000/attrs['Current'])**2
-        Watts = ERMESres["EM_Load/Watts"][:]*Scale
-        WattsPV = ERMESres["EM_Load/WattsPV"][:]*Scale
-        JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
-        ERMESres.close()
-
-        return Watts, WattsPV, Elements, JHNode
-
 def Param_ERMES(x,y,z,r,Parameters):
     Parameters.update(CoilDisplacement=[x,y,z],Rotation=r)
     return Namespace(**Parameters)
 
-def FuncOpt(fnc, NbInit, bounds, order='decreasing', tol=0.01, **kwargs):
-
+def FuncOpt(fnc, NbInit, bounds, find='max',order='decreasing', tol=0.01, **kwargs):
+    if find.lower()=='max':sign=-1
+    elif find.lower()=='min':sign=1
     _Optima, fnVal, fnGrad, Coord = [],[],[],[]
+
+    kwargs['args'] = (fnc,sign,*kwargs.get('args',[]))
     for X0 in np.random.uniform(0,1,size=(NbInit,4)):
-        Opt = minimize(fnc, X0, jac=True, method='SLSQP', bounds=bounds,**kwargs)
+        Opt = minimize(MinMax, X0, jac=True, method='SLSQP', bounds=bounds,**kwargs)
         _Optima.append(Opt)
         if Opt.success:
             fnVal.append(Opt.fun)
             fnGrad.append(Opt.jac)
             Coord.append(Opt.x)
 
-    fnVal,fnGrad,Coord = np.array(fnVal),np.array(fnGrad),np.array(Coord)
-
+    fnVal,fnGrad,Coord = sign*np.array(fnVal),sign*np.array(fnGrad),np.array(Coord)
     #Sort Optimas in increasing/decreasing order
     ord = -1 if order.lower()=='decreasing' else 1
     sortIx = np.argsort(fnVal)[::ord]
@@ -446,19 +432,18 @@ def FuncOpt(fnc, NbInit, bounds, order='decreasing', tol=0.01, **kwargs):
 
     return Coord, fnVal, fnGrad
 
-def MinMaxGPR(X, model, find='max'):
-    '''
-    '''
-    if find.lower()=='max':sign=-1
-    elif find.lower()=='min':sign=1
-    _x=X
+def MinMax(X, fn, sign, *args):
+    val,grad = fn(X,*args)
+    return sign*val,sign*grad
+
+def GPR_Opt(X,model):
     X = torch.tensor(np.atleast_2d(X),dtype=torch.float32)
     # Function value
     Pred = model(X).mean.detach().numpy()
     # Gradient
     Grad = model.Gradient(X)[0]
     # print(X,Pred)
-    return sign*Pred, sign*Grad
+    return Pred, Grad
 
 def constraint(X, model, DesPower):
     '''

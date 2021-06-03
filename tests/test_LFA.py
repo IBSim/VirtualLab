@@ -3,43 +3,41 @@ import os
 import sys
 import shutil
 sys.dont_write_bytecode=True
+from subprocess import Popen
 
-dirname = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0,dirname)
+VLdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0,VLdir)
 import VLconfig
 sys.path.pop(0)
 
 Name='LFA'
-tmpdir = '/tmp/LFAunit'
 
-tmpInput = '{}/Input'.format(tmpdir)
-tmpOutput = '{}/Output'.format(tmpdir)
-tmpTemp = '{}/Temp'.format(tmpdir)
-
-sys.path.insert(0,"{}/RunFiles/Tutorials/{}".format(dirname,Name))
-tmpdirs = ['INPUT_DIR={}'.format(tmpInput),'TEMP_DIR={}'.format(tmpTemp),'OUTPUT_DIR={}'.format(tmpOutput)]
-chargs = ['Mode=T','ShowRes=False','ShowMesh=False']
-shutil.copytree("{}/{}".format(VLconfig.InputDir,Name),"{}/{}".format(tmpInput,Name))
+TutorialsDir = "{}/RunFiles/Tutorials/{}".format(VLdir,Name)
+OutputDir = '{}/VLTutorial_{}'.format(VLconfig.TEMP_DIR,Name)
+ParsedArgs = '-k Mode=H -f ShowMesh=False -k ShowRes=False -k OutputDir={}'.format(OutputDir)
 
 def test_Task1():
-	sys.argv = [None,'RunSim=False'] + chargs + tmpdirs
-	import Task1_Run
+	# Run = Popen('VirtualLab -f {}/Task1_Run.py {}'.format(TutorialsDir,ParsedArgs),shell='TRUE')
+	Run = Popen(['VirtualLab','-f','{}/Task1_Run.py'.format(TutorialsDir),ParsedArgs])
+	err = Run.wait()
+	assert err==0
 
 def test_Task2():
-	sys.argv = [None] + chargs + tmpdirs
-	import Task2_Run
+	Run = Popen(['VirtualLab','-f','{}/Task2_Run.py'.format(TutorialsDir),ParsedArgs])
+	err = Run.wait()
+	assert err==0
 
 def test_Task3():
-	sys.argv = [None] + chargs + tmpdirs
-	import Task3_Run
+	Run = Popen(['VirtualLab','-f','{}/Task3_Run.py'.format(TutorialsDir),ParsedArgs])
+	err = Run.wait()
+	assert err==0
 
 def test_Task4():
-	sys.argv = [None] + chargs + tmpdirs
-	import Task4_Run
+	Run = Popen(['VirtualLab','-f','{}/Task4_Run.py'.format(TutorialsDir),ParsedArgs])
+	err = Run.wait()
+	assert err==0
 
 def test_Task5():
-	sys.argv = [None] + chargs + tmpdirs
-	import Task5_Run
-
-def test_Cleanup():
-	shutil.rmtree(tmpdir)
+	Run = Popen(['VirtualLab','-f','{}/Task5_Run.py'.format(TutorialsDir),ParsedArgs])
+	err = Run.wait()
+	assert err==0

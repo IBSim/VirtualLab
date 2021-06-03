@@ -284,9 +284,9 @@ def Run(VL, **kwargs):
     			proc.start()
     		else :
     			with open(SimLogFile.format(StudyDict['PREASTER']), 'w') as f:
-    				with contextlib.redirect_stdout(f):
+    				with redirect_stdout(f):
     					# stderr may need to be written to a seperate file and then copied over
-    					with contextlib.redirect_stderr(sys.stdout):
+    					with redirect_stderr(sys.stdout):
     						proc.start()
 
     		# Copy the parameters file used for this simulation
@@ -335,9 +335,9 @@ def Run(VL, **kwargs):
     			err = PreAster.Combined(VL)
     		else :
     			with open(VL.LogFile, 'a') as f:
-    				with contextlib.redirect_stdout(f):
+    				with redirect_stdout(f):
     					# stderr may need to be written to a seperate file and then copied over
-    					with contextlib.redirect_stderr(sys.stdout):
+    					with redirect_stderr(sys.stdout):
     						err = PreAster.Combined(VL)
     		if err == None:
     			VL.Logger('Combined function completed successfully', Print=True)
@@ -429,9 +429,9 @@ def Run(VL, **kwargs):
     			proc.start()
     		else :
     			with open(SimLogFile.format(StudyDict['POSTASTER']), 'w') as f:
-    				with contextlib.redirect_stdout(f):
+    				with redirect_stdout(f):
     					# stderr may need to be written to a seperate file and then copied over
-    					with contextlib.redirect_stderr(sys.stdout):
+    					with redirect_stderr(sys.stdout):
     						proc.start()
 
     		# Copy the parameters file used for this simulation, if it's not been written previously
@@ -481,9 +481,9 @@ def Run(VL, **kwargs):
     			err = PostAster.Combined(VL)
     		else :
     			with open(VL.LogFile, 'a') as f:
-    				with contextlib.redirect_stdout(f):
+    				with redirect_stdout(f):
     					# stderr may need to be written to a seperate file and then copied over
-    					with contextlib.redirect_stderr(sys.stdout):
+    					with redirect_stderr(sys.stdout):
     						err = PostAster.Combined(VL)
 
     		if err == None:

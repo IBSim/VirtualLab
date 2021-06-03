@@ -17,51 +17,30 @@ from Scripts.Common.VLPackages import Salome, CodeAster
 from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
-	def __init__(self, Simulation, Project, StudyName, Parameters_Master=None, Parameters_Var=None, Mode='T',
-				 InputDir=None, OutputDir=None, MaterialDir=None, TempDir=None):
+	def __init__(self, Simulation, Project, StudyName, Parameters_Master=None, Parameters_Var=None,
+				 Mode='T', InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+				 MaterialDir=VLconfig.MaterialsDir, TempDir=VLconfig.TEMP_DIR):
 
-		self.Simulation = Simulation
-		self.Project = Project
-		self.StudyName = StudyName
-		# Parameters_Master and Var will be overwritten by a namespace of the parameters using function CreateParameters
-		self._Parameters_Master = Parameters_Master
-		self._Parameters_Var = Parameters_Var
-		self.mode = Mode
+		# Parameters can be overwritten using parsed arguments
+		ParsedArgs = self.GetArgParser()
 
-		### Define required directories for VL from config file. If directory name doesn't start with '/'
-		### it will be created relative to the TWD.
-		# Output directory - this is where meshes, Aster results and pre/post-processing will be stored.
-		# Material directory
-		# Input directory
-		# Temp directory
-		VL_DIR = VLconfig.VL_DIR
-		_InputDir = getattr(VLconfig,'InputDir', "{}/Input".format(VL_DIR))
-		_OutputDir = getattr(VLconfig,'OutputDir', "{}/Output".format(VL_DIR))
-		_MaterialDir = getattr(VLconfig,'MaterialDir', "{}/Materials".format(VL_DIR))
-		_TempDir = getattr(VLconfig,'TEMP_DIR',"/tmp")
+		self.Simulation = ParsedArgs.get('Simulation',Simulation)
+		self.Project = ParsedArgs.get('Project',Project)
+		self.StudyName = ParsedArgs.get('StudyName',StudyName)
+		self._Parameters_Master = ParsedArgs.get('Parameters_Master',Parameters_Master)
+		self._Parameters_Var = ParsedArgs.get('Parameters_Var',Parameters_Var)
+		self.mode = ParsedArgs.get('Mode',Mode)
+		self.INPUT_DIR = ParsedArgs.get('InputDir',InputDir)
+		self.OUTPUT_DIR = ParsedArgs.get('OutputDir',OutputDir)
+		self.MATERIAL_DIR = ParsedArgs.get('MaterialDir',MaterialDir)
+		self.TEMP_DIR = ParsedArgs.get('TempDir',TempDir)
 
-		# Set directories to those set in kwargs if given else
-		self.INPUT_DIR=InputDir if InputDir else _InputDir
-		self.OUTPUT_DIR=OutputDir if OutputDir else _OutputDir
-		self.MATERIAL_DIR=MaterialDir if MaterialDir else _MaterialDir
-		self.TEMP_DIR=TempDir if TempDir else _TempDir
-
-		# Update above with parsed arguments
-		for key, val in self.GetArgParser().items():
-			if key in self.__dict__:
-				setattr(self,key,val)
-			if key == 'Mode':
-				self.mode = val
-
-		# Update running mode as shorthand version can be given
+		# Update mode as shorthand version can be given
 		if self.mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
 		elif self.mode.lower() in ('t','terminal'): self.mode = 'Terminal'
 		elif self.mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
 		elif self.mode.lower() in ('h', 'headless'): self.mode = 'Headless'
 		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
-
-		# Remove RunFiles directory from path if a scrit was launched there.
-		# if VL_DIR != sys.path[-1]: sys.path.pop(-1)
 
 		self.__ID__ = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
 
@@ -70,6 +49,7 @@ class VLSetup():
 		try:
 			os.makedirs(self.TEMP_DIR)
 		except FileExistsError:
+			#TODO - sort this
 			pass
 
 		self.INPUT_DIR = '{}/{}/{}'.format(self.INPUT_DIR, Simulation, Project)
@@ -79,11 +59,10 @@ class VLSetup():
 		self.STUDY_DIR = "{}/{}".format(self.PROJECT_DIR, StudyName)
 		self.MESH_DIR = "{}/Meshes".format(self.PROJECT_DIR)
 
-
 		# Define variables and run some checks
 		# Script directories
-		self.COM_SCRIPTS = "{}/Scripts/Common".format(VL_DIR)
-		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VL_DIR, Simulation)
+		self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
+		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, Simulation)
 
 		# Scrpt directories
 		self.SIM_MESH = "{}/Mesh".format(self.SIM_SCRIPTS)

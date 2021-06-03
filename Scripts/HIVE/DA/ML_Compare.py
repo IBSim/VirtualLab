@@ -20,7 +20,8 @@ def Single(VL, MLdict):
     ResDir = "{}/{}".format(VL.PROJECT_DIR, MLdict["Name"])
 
     # Methods we are considering
-    Methods = ['Random','Grid','Adaptive','Adaptive_Uniform','Halton']
+    Methods = ['Random','Grid','Adaptive','Adaptive_Uniform','Halton',
+                'Coupled_RBF','Coupled_Matern_1.5','Coupled_Matern_2.5']
 
     # Get TestNb number of points from TestData
     DataFile = "{}/ML/Data.hdf5".format(VL.PROJECT_DIR)
@@ -92,7 +93,7 @@ def Single(VL, MLdict):
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
             Test_MSE_P = MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])*OutputScaler[1,0]**2
             Train_MSE_P = MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])*OutputScaler[1,0]**2
-
+        print(Method,MLParameters.TrainNb,Test_MSE_P)
         DataDict[Method]['TestMSE_Power'].append(Test_MSE_P)
         DataDict[Method]['TrainMSE_Power'].append(Train_MSE_P)
 
@@ -116,18 +117,17 @@ def Single(VL, MLdict):
 
         if 'target' in Data['MaxPower']:
             Power_target = Data['MaxPower']['target']
-        else:
-            # Check max Power accuracy
-            MaxPowerERMES = '{}/MaxPower.rmed'.format(ResSubDir)
-            if not os.path.isfile(MaxPowerERMES): continue
+        elif os.path.isfile('{}/MaxPower.rmed'.format(ResSubDir)):
 
-            ERMESres = h5py.File(MaxPowerERMES, 'r')
+            ERMESres = h5py.File('{}/MaxPower.rmed'.format(ResSubDir), 'r')
             attrs =  ERMESres["EM_Load"].attrs
             Scale = (1000/attrs['Current'])**2
             Watts = ERMESres["EM_Load/Watts"][:]*Scale
             JHNode =  ERMESres["EM_Load/JHNode"][:]*Scale
             ERMESres.close()
             Power_target = np.sum(Watts)
+        else:
+            Power_target = 0
 
         DataDict[Method]['MaxPower_pred'].append(Power_y)
         DataDict[Method]['MaxPower_act'].append(Power_target)
@@ -140,6 +140,7 @@ def Single(VL, MLdict):
             # Get sort order and arrange loss values accordingly
             srt = np.argsort(dat['TrainNb'])
             for key in dat.keys():
+                print(dat[key])
                 dat[key] = np.array(dat[key])[srt]
 
             axes[0].plot(dat['TrainNb'], dat['TestMSE_{}'.format(res)],label='{} ({} points)'.format(Name,Parameters.TestNb))
@@ -161,7 +162,8 @@ def Single(VL, MLdict):
     if nr==1:axes=np.array([axes])
     for i, (ax, (Name, dat)) in enumerate(zip(axes.flatten(),DataDict.items())):
         ax.plot(dat['TrainNb'],dat['MaxPower_pred'], label='Predicted')
-        ax.plot(dat['TrainNb'],dat['MaxPower_act'], label='Actual')
+        bl = dat['MaxPower_act'] != 0
+        ax.plot(dat['TrainNb'][bl],dat['MaxPower_act'][bl], label='Actual')
         ax.legend()
         ax.set_title(Name, fontsize=14)
     fig.text(0.5, 0.04, 'Number of data points used for training', ha='center',fontsize=16)

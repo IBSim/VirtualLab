@@ -62,7 +62,9 @@ def Single(Info, StudyDict):
 #============================================================================
 	#open an empty file to write average temperatures of the selected areas in which thermocouple are placed 
 		if Parameters.TemperatureOut == True:
-			FileTemp = open("{}/ThermocoupleTemp.txt".format(StudyDict["POSTASTER"]), 'w')
+			FileTemp = open("{}/ThermocoupleTemp.txt".format(StudyDict["POSTASTER"]), 'w') # file for average temperature over each TC
+			FileTemp2 = open("{}/ThermocoupleTempNodal.txt".format(StudyDict["POSTASTER"]), 'w') # file for nodal temperature data over each TC
+
 			FileTemp.write('Time ')
 			for SearchRadius in Parameters.Rvalues:
 				for name in cSurfaceNames:
@@ -91,16 +93,21 @@ def Single(Info, StudyDict):
 			SearchX = CornerCoord[SurfaceID][0] + alpha[SurfaceID][0]*(CornerCoord[SurfaceID][3] - CornerCoord[SurfaceID][0])
 			SearchY = CornerCoord[SurfaceID][1] + alpha[SurfaceID][1]*(CornerCoord[SurfaceID][4] - CornerCoord[SurfaceID][1])
 			SearchZ = CornerCoord[SurfaceID][2] + alpha[SurfaceID][2]*(CornerCoord[SurfaceID][5] - CornerCoord[SurfaceID][2])
+			# write TC coordinates in 'ThermocoupleTempNodal'
+			tempstring = str( cSurfaceNames[SurfaceID ][0]) + "SearchX : " + str(SearchX)  + " SearchY : " + str(SearchY ) + " SearchZ : " + str(SearchZ)
+			FileTemp2.write(tempstring)
+			FileTemp2.write('\n')
+
 			for SearchRadius in Parameters.Rvalues:
 				SearchNbNodes = 0
 
 				for node in NodesID[SurfaceID]:
-					TempNodesID = NodesID[SurfaceID]
+					#TempNodesID = NodesID[SurfaceID]
 					NodeXYZ = meshdata.GetNodeXYZ(node)
 					Distance = np.sqrt((NodeXYZ[0]-SearchX)**2 + (NodeXYZ[1]-SearchY)**2 + (NodeXYZ[2]-SearchZ)**2)
 
 					if Distance <= SearchRadius:
-						DummyListLocal.append(node) # nodes within radius of search
+						DummyListLocal.append(node-1) # nodes within radius of search; -1 as the node numbering starts with zero
 						SearchNbNodes += 1
 				SearchNbNodesN.append([SurfaceID, SearchRadius, SearchNbNodes])
 				SearchNodeID += DummyListLocal
@@ -130,7 +137,10 @@ def Single(Info, StudyDict):
 		for g in range(iterator): # time loop using the list of step or single step
 
 			TemperatureNodes = gRes['{}/NOE/MED_NO_PROFILE_INTERNAL/CO'.format(cstep[g])][:]
-			
+			# Max nodal temperature over entire HIVE sample at a time instant
+			TemperatureMax = max(TemperatureNodes)
+			print("Max Temperature in HIVE sample: ", TemperatureMax)
+
 			k_old = 0
 			if Parameters.TemperatureOut == True:
 				output = str(ctime[g]) + ' '
@@ -139,8 +149,12 @@ def Single(Info, StudyDict):
 			for m in range(len(SearchNbNodesN)):
 				TemperatureAve, TemperatureNode, TemperatureSum = 0.0, 0.0, 0.0
 				for k in range(SearchNbNodesN[m][2]): 
-					TemperatureSum += TemperatureNodes[SearchNodeID[k+k_old]]
+					# write nodal temperature data 'in ThermocoupleTempNodal'
+					tempstring = "surface name: " + cSurfaceNames[m][0] + " node id: " + str(SearchNodeID[k+k_old]) + " temp: " + str(TemperatureNodes[SearchNodeID[k+k_old]])
+					FileTemp2.write(tempstring)
 
+					TemperatureSum += TemperatureNodes[SearchNodeID[k+k_old]] 
+					FileTemp2.write('\n')
 				k_old += SearchNbNodesN[m][2] 
 
 				if SearchNbNodesN[m][2] >= 1:
@@ -183,6 +197,7 @@ def Single(Info, StudyDict):
 
 	if Parameters.TemperatureOut == True:
 		FileTemp.close()
+		FileTemp2.close()
 
 
 

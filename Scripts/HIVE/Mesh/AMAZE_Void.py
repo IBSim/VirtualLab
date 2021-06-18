@@ -297,7 +297,7 @@ def Create(Parameter):
 
 	### Sub-Mesh 1 - Refinement on pipe
 	## PipeEdges
-	Length1 = Parameter.PipeDiam*np.pi/Parameter.PipeSegmentN
+	Length1 = (Parameter.PipeDiam*np.pi/Parameter.PipeSegmentN)*0.75
 
 	Regular_1D_1 = Mesh_1.Segment(geom=GrpPipe)
 	Sub_mesh_1 = Regular_1D_1.GetSubMesh()

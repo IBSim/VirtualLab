@@ -30,8 +30,8 @@ Mesh.PipeCentre = [0, Mesh.TileHeight/2]
 # =============================================================================
 # Geometrical Dimensions for Single Void in Elliptic Cylinder Geometry
 # Void centre/location
-Mesh.VoidCentre = [[1.0/12.0, 1.0/6.0], [3.0/12.0, 1/6.0]] # in terms of tile corner [1.0/6.0 -0.00125*2.0, 1.0/6.0 -0.00125*2.0]
-Mesh.Void = [[0.00125, 0.0005, 0.005, 0.0], [0.00125, 0.0005, 0.005, 0.0]] #[0.002, 0.002, 0.002, 0.0 ], [0.002, 0.003, 0.002, 0.0 ], [0.001, 0.002, 0.001, 60.0 ]
+Mesh.VoidCentre = [[0.5, 0.5]] # in terms of tile corner
+Mesh.Void = [[0.002, 0.002, 0.004, 0.0]] #[0.002, 0.002, 0.002, 0.0 ], [0.002, 0.003, 0.002, 0.0 ], [0.001, 0.002, 0.001, 60.0 ]
 
 # Mesh.Void = [[VoidRad_a, VoidRad_b, VoidHeight, VoidRotation], [...], ...]
 # VoidRad_a: length of void in horizontal axis X
@@ -40,11 +40,11 @@ Mesh.Void = [[0.00125, 0.0005, 0.005, 0.0], [0.00125, 0.0005, 0.005, 0.0]] #[0.0
 # VoidRotation: amount of rotation in degree 
 # =============================================================================
 # Mesh parameters
-Mesh.Length1D = 0.0035
-Mesh.Length2D = 0.0035
-Mesh.Length3D = 0.0035
+Mesh.Length1D = 0.0015
+Mesh.Length2D = 0.0015
+Mesh.Length3D = 0.0015
 
-Mesh.SubTile = 0.002 # Mesh fineness on tile
+Mesh.SubTile = 0.001 # Mesh fineness on tile
 Mesh.PipeSegmentN = 24 # Number of segments for pipe circumference
 Mesh.VoidSegmentN = 16 # Number of segments for hole circumference (for sub-mesh) 16-24-28-32..
 
@@ -85,13 +85,13 @@ if EMLoad == 'ERMES':
     Sim.NbProc = 1
     Sim.Current = 1000
     Sim.Frequency = 1e4
-    Sim.Threshold = 0.9
+    Sim.Threshold = 0.999
     Sim.ThresholdPreview = False
 
 #############
 ### Aster ###
 #############
-Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
+Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster; 'AMAZE_SS' is for steady state
 Sim.Mesh = Mesh.Name # The mesh used for the simulation
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
@@ -109,10 +109,10 @@ Sim.InitTemp = 25 #Celcius
 
 ### Time-stepping and temporal discretisation
 Sim.Theta = 0.5
-Sim.dt = [(0.01,10,2), (0.05,200,2), (0.1,100,2), (0.5,100,2), (1,50,2), (5,50,2) ] #timestep size and number of steps [(0.01,200,2)]  => 99% temp is reached at [(0.01,200,2), (0.2,1650,5)]
+Sim.dt = [(0.01,200,2), (0.05,200,2), (0.1,100,2), (0.5,100,2), (1,50,2), (5,50,2), (10, 20, 2) ] #timestep size and number of steps [(0.01,200,2)]  => 99% temp is reached at [(0.01,200,2), (0.2,1650,5)]
 
 Sim.Convergence = {'Start':10,'Gap':5}
-
+Sim.NbClusters = 1000
 
 #############
 # PostAster #
@@ -129,7 +129,7 @@ Sim.ThermoCouple = [ ['Tile', 'Front', 1.0/6.0, 3.0/6.0],  ['Tile', 'Front', 3.0
 # (0.0, 0.0): left-bottom corner, (1.0, 1.0): right-top corner
 Sim.Rvalues = [0.0025]# Radii of the search; multi thermocouple:; [0.001, 0.0025, 0.005]
 
-Sim.CaptureTime = 0.1 #"all" # or 2.0 for all increments
+Sim.CaptureTime = "all" # or "all" for all increments
 Sim.TemperatureOut = True # if you want to write average temperature data on thermocouples in a file ('ThermocoupleTemp.txt')
 Sim.TemperaturePlot = False # if you want to plot average temperature data on thermocouples in a single plot
 ML.Name = 'Test'

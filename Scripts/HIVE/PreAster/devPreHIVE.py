@@ -549,7 +549,7 @@ def ERMES(VL,MeshFile,ERMESresfile,Parameters,CalcDir,RunSim=True,GUI=False):
 		return JH_Vol, Volumes, Elements, JH_Node
 	else :
 		# exit due to error
-		sys.Exit("ERMES results file '{}' does not exist and RunERMES flag not set to True".format(ERMESresfile))
+		sys.exit("ERMES results file '{}' does not exist and RunERMES flag not set to True".format(ERMESresfile))
 
 def EMI(VL, SimDict):
 	'''

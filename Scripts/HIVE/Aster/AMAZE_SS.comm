@@ -15,7 +15,6 @@ Steady state version of HIVE simulation for AMAZE component.
 
 DEBUT(PAR_LOT = 'NON',LANG='EN')
 
-
 # ==============================================================================
 # Read in the mesh and define model
 mesh = LIRE_MAILLAGE(FORMAT='MED',
@@ -125,40 +124,48 @@ else:
 	Con_BP = AFFE_CHAR_THER(MODELE=Thermod,
 						    LIAISON_MAIL=_F(GROUP_MA_MAIT='Block',
 							 				GROUP_MA_ESCL='ContactBP'))
-
+# List of boundary conditions applied
 Loading = [_F(CHARGE=EMI),_F(CHARGE=PipeHTC),_F(CHARGE=Con_TB),_F(CHARGE=Con_BP)]
 
 # Radiation effects
-if hasattr(Parameters,'TileEmissivity') or hasattr(Parameters,'BlockEmissivity'):
+TileEmissivity = getattr(Parameters,'TileEmissivity',0)
+BlockEmissivity = getattr(Parameters,'BlockEmissivity',0)
+if TileEmissivity!=0 or BlockEmissivity!=0:
 	Radiation = []
-	if hasattr(Parameters,'TileEmissivity'):
+	if TileEmissivity:
 		Radiation.append(_F(GROUP_MA='TileExternal',
 						SIGMA=5.67e-8,
-						EPSILON=Parameters.TileEmissivity,
-						TEMP_EXT=20))
-	if hasattr(Parameters,'BlockEmissivity'):
+						EPSILON=TileEmissivity,
+						TEMP_EXT=Parameters.TempExt))
+	if BlockEmissivity:
 		Radiation.append(_F(GROUP_MA='BlockExternal',
 						SIGMA=5.67e-8,
-						EPSILON=Parameters.BlockEmissivity,
-						TEMP_EXT=20))
+						EPSILON=BlockEmissivity,
+						TEMP_EXT=Parameters.TempExt))
 
 	Radiat = AFFE_CHAR_THER(MODELE=Thermod,
 							RAYONNEMENT=Radiation)
 	Loading.append(_F(CHARGE=Radiat))
 
-### Thermal analysis
-## Provide default values for certain parameters
+# ==============================================================================
+# Thermal FEA analysis
+# Provide default values for certain parameters
 Solver = getattr(Parameters,'Solver', 'MUMPS')
 MaxIter = getattr(Parameters,'MaxIter',50)
 
+# Steady state analysis
 resther = THER_NON_LINE(CHAM_MATER=Thermat,
 						EXCIT=Loading,
 						MODELE=Thermod,
 						SOLVEUR=_F(METHODE=Solver),
 						CONVERGENCE=_F(ITER_GLOB_MAXI=MaxIter))
 
-## Save the results and the full list of actual timesteps used for the simulation
-DEFI_FICHIER(FICHIER='./REPE_OUT/Thermal.rmed', TYPE='BINARY', UNITE=80)
+# ==============================================================================
+# Save results
+DEFI_FICHIER(FICHIER='./REPE_OUT/Thermal.rmed',
+             TYPE='BINARY',
+             UNITE=80)
+             
 IMPR_RESU(RESU=_F(RESULTAT=resther,
                   NOM_CHAM='TEMP',
                   NOM_CHAM_MED='Temperature'),

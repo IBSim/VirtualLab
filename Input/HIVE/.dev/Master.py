@@ -39,7 +39,7 @@ Mesh.VoidSegmentN = 32 # Number of segments for hole circumference (for sub-mesh
 ##########################
 ####### Simulation #######
 ##########################
-Sim.Name = 'Test_1'
+Sim.Name = 'Test_2'
 
 #############
 ## PreAster #
@@ -81,7 +81,7 @@ if EMLoad == 'ERMES':
 #############
 ### Aster ###
 #############
-Sim.AsterFile = 'AMAZE_SS' # This file must be in Scripts/$SIMULATION/Aster
+Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
 Sim.Mesh = Mesh.Name # The mesh used for the simulation
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
@@ -95,6 +95,7 @@ Sim.TileBlockTCC=None
 
 Sim.BlockEmissivity=0
 Sim.TileEmissivity=0
+Sim.TempExt = 20
 
 ### Materials
 Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
@@ -105,6 +106,6 @@ Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation
 Sim.Theta = 0.5
-Sim.dt = [(0.002,100,1)] #timestep size and number of steps
+Sim.dt = [(0.005,40,1)] #timestep size and number of steps
 
-Sim.Convergence = {'Start':10,'Gap':5}
+Sim.Convergence = {'Start':0.1,'Gap':0.02}

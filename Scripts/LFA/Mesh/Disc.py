@@ -211,8 +211,8 @@ def Create(Parameter):
 	Mesh_Bottom_Ext = Mesh_1.GroupOnGeom(Bottom_Ext,'Bottom_Ext',SMESH.FACE)
 	Mesh_Top_Face = Mesh_1.GroupOnGeom(Top_Face,'Top_Face',SMESH.FACE)
 	Mesh_Bottom_Face = Mesh_1.GroupOnGeom(Bottom_Face,'Bottom_Face',SMESH.FACE)
-	Mesh_External = Mesh_1.GroupOnGeom(External_Faces,'External_Faces',SMESH.FACE)
-	Mesh_Join_Face1 = Mesh_1.GroupOnGeom(Join_Face,'Join_Face_1',SMESH.FACE)
+	# Mesh_External = Mesh_1.GroupOnGeom(External_Faces,'External_Faces',SMESH.FACE)
+	Mesh_Join_Face = Mesh_1.GroupOnGeom(Join_Face,'Contact',SMESH.FACE)
 
 	Mesh_Bottom_Ext_Node = Mesh_1.GroupOnGeom(Bottom_Face,'NBottom_Face',SMESH.NODE)
 	Mesh_Top_Ext_Node = Mesh_1.GroupOnGeom(Top_Face,'NTop_Face',SMESH.NODE)
@@ -247,23 +247,9 @@ def Create(Parameter):
 
 	isDone = Mesh_1.Compute()
 
-	# if getattr(Parameters,'ContactSurface',False):
-	if True:
-		_Mesh_Join_Face2 = Mesh_1.DoubleElements( Mesh_Join_Face1, '_Join_Face_2')
-		Affected = Mesh_1.AffectedElemGroupsInRegion( [ _Mesh_Join_Face2 ], [], None )
-		NewGrps = Mesh_1.DoubleNodeElemGroups( [ Mesh_Join_Face1 ], [], Affected, 1, 1 )
-		for grp in NewGrps:
-			if str(grp.GetType()) == 'FACE':
-				Mesh_Join_Face2 = grp
-				grp.SetName('Join_Face_2')
-				# smesh.SetName(MeshJoin_Face2,'Join_Face_2')
-			else:
-				Mesh_1.RemoveGroup(grp)
-		[Mesh_1.RemoveGroup(grp) for grp in Affected]
-		Mesh_1.RemoveGroupWithContents(_Mesh_Join_Face2)
-
-		Mesh_External = Mesh_1.ConvertToStandalone( Mesh_External )
-		nbAdd = Mesh_External.Add(Mesh_Join_Face2.GetListOfID())
+	Affected = Mesh_1.AffectedElemGroupsInRegion( [ Mesh_Join_Face ], [], None )
+	NewGrps = Mesh_1.DoubleNodeElemGroups( [Mesh_Join_Face], [], Affected, 1, 0 )
+	[Mesh_1.RemoveGroup(grp) for grp in Affected]
 
 	globals().update(locals())
 

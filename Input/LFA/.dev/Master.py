@@ -14,16 +14,16 @@ Mesh.VoidCentre = (0,0) # Void centre relative to centre of disk - (0, 0) is at 
 Mesh.VoidRadius = 0.000 # Radius of void
 Mesh.VoidHeight = 0.0000 # Height of Void. Positive/negative number gives a void in the top/bottom disk respectively
 # Parameters to generate mesh
-Mesh.Length1D = 0.0003
-Mesh.Length2D = 0.0003
-Mesh.Length3D = 0.0003
-Mesh.VoidDisc = 30 # Number of segments for hole circumference (for sub-mesh)
+Mesh.Length1D = 0.0004
+Mesh.Length2D = 0.0004
+Mesh.Length3D = 0.0004
+Mesh.VoidDisc = 60 # Number of segments for hole circumference (for sub-mesh)
 
 ##########################
 ####### Simulation #######
 ##########################
 Sim = Namespace()
-Sim.Name = 'Single'
+Sim.Name = 'Test_3'
 #############
 ## PreAster #
 #############
@@ -31,29 +31,38 @@ Sim.Name = 'Single'
 #############
 ### Aster ###
 #############
-Sim.AsterFile = 'Disc_Lin'
-Sim.Mesh = 'NoVoid'
+Sim.AsterFile = 'Disc_NonLin'
+Sim.Mesh = Mesh.Name
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
+
 # Material type(s) for analysis, the properties of which can be found in the 'Materials' directory
 Sim.Materials = {'Top':'Copper_NL', 'Bottom':'Copper_NL'}
+
 # Initial Conditions
 Sim.InitTemp = 20
+
+# Boundary Condtions
 # Laser profile
 Sim.Energy = 5.32468714
 Sim.LaserT= 'Trim' #Temporal profile (see Scripts/LFA/Laser for all options)
 Sim.LaserS = 'Gauss' #Spatial profile (Gauss profile or uniform profile available)
-# Boundary Condtions
+
+# Convection
 Sim.ExtTemp = 20
 Sim.BottomHTC = 0
 Sim.TopHTC = 0
+# Thermal Contact Condunctance
+Sim.TCC=None
+
 # Time-stepping and temporal discretisation
-Sim.dt = [(0.00004,2,1), (0.0005,2,1)]
+Sim.dt = [(0.00002,40,1), (0.0005,40,2)]
 Sim.Theta = 0.5
+
 
 #############
 # PostAster #
 #############
 Sim.PostAsterFile = 'DiscPost'
 Sim.Rvalues = [0.1, 0.5, 1]
-Sim.CaptureTime = 0.0108
+Sim.CaptureTime = 0.00108

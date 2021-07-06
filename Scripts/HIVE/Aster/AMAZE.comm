@@ -9,6 +9,10 @@ import AsterFunc
 import Parameters
 import PathVL
 
+'''
+Transient version of HIVE simulation for AMAZE component.
+'''
+
 DEBUT(PAR_LOT = 'NON',LANG='EN')
 
 def MaxChange(ResName):
@@ -72,7 +76,7 @@ Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TileMat, GROUP_MA='Tile'),
 	                	MAILLAGE=mesh)
 
 # ==============================================================================
-# Create coundary conditions
+# Create boundary conditions
 
 # Thermal load. Either uniform or EM results from ERMES simulation
 if Parameters.EMLoad == 'Uniform':
@@ -156,10 +160,19 @@ timearr, savearr = AsterFunc.Timesteps(Parameters.dt)
 Timestp = DEFI_LIST_REEL(VALE=timearr)
 Savestp = DEFI_LIST_REEL(VALE=savearr)
 
-# Create initial temperature distribution. This is needed as we use adaptive
-# timestepping
-field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),MAILLAGE=mesh,OPERATION='AFFE',TYPE_CHAM='NOEU_TEMP_R')
-resther = CREA_RESU(AFFE=_F(CHAM_GD=field,INST=0.0),NOM_CHAM='TEMP',OPERATION='AFFE',TYPE_RESU='EVOL_THER')
+# ==============================================================================
+# Thermal FEA analysis
+
+# Create initial temperature distribution. This is needed as we use adaptive timestepping
+field = CREA_CHAMP(AFFE=_F(NOM_CMP='TEMP',TOUT='OUI',VALE=Parameters.InitTemp),
+				   MAILLAGE=mesh,
+				   OPERATION='AFFE',
+				   TYPE_CHAM='NOEU_TEMP_R')
+
+resther = CREA_RESU(AFFE=_F(CHAM_GD=field, INST=0.0),
+					NOM_CHAM='TEMP',
+					OPERATION='AFFE',
+					TYPE_RESU='EVOL_THER')
 
 ConvDict = getattr(Parameters,'Convergence',{})
 ConvGap = ConvDict.get('Gap',0.0)
@@ -169,9 +182,7 @@ if ConvGap:
 	ConvIndex = [np.argmax(timearr >= t) for t in CheckTime] + [len(timearr)-1]
 else: ConvIndex = []
 
-# ==============================================================================
-# Thermal FEA analysis
-# Provide default values for certain parameters
+# Set default values for certain parameters
 Theta = getattr(Parameters,'Theta',0.5)
 Solver = getattr(Parameters,'Solver', 'MUMPS')
 MaxIter = getattr(Parameters,'MaxIter',10)
@@ -183,8 +194,10 @@ MaxIter = getattr(Parameters,'MaxIter',10)
 # used for the analysis is returned.
 
 if not ConvIndex:
+	# No tracking for convergence
 	AdaptSteps = AsterFunc.AdaptThermal(resther,Timestp,Loading,Thermat,Thermod,Theta,Solver,Storing = Savestp, MaxIter=MaxIter)
 else:
+	# Track temperature change for convergence
 	ConvRes = 1e-5 # termination residual
 	ConvFile = "{}/Convergence.dat".format(PathVL.ASTER) # Convergence data file
 

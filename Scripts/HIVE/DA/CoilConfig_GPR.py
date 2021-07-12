@@ -10,8 +10,8 @@ import torch
 import gpytorch
 
 from Scripts.Common.VLFunctions import MeshInfo
-from Functions import Uniformity2 as UniformityScore, DataScale, DataRescale
-from PreAster.devPreHIVE import ERMES
+from Functions import Uniformity2 as UniformityScore, DataScale, DataRescale, FuncOpt
+from PreAster.PreHIVE import ERMES
 
 def InputParameters():
     pass
@@ -132,7 +132,7 @@ def Single(VL, MLdict):
             plt.savefig("{}/MSE_Power.png".format(MLdict["CALC_DIR"]))
             plt.close()
 
-        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
+        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500), gpytorch.settings.debug(False):
             Power_test = MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])
             Power_train = MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])
         Power_test *= OutputScaler[1,0]**2
@@ -156,7 +156,7 @@ def Single(VL, MLdict):
             plt.savefig("{}/MSE_Variation.png".format(MLdict["CALC_DIR"]))
             plt.close()
 
-        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
+        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500), gpytorch.settings.debug(False):
             Vari_test = MSE(Variation(Test_x_tf).mean.numpy(), Test_y_scale[:,1])
             Vari_train = MSE(Variation(Train_x_tf).mean.numpy(), Train_y_scale[:,1])
         Vari_test  *= OutputScaler[1,1]**2
@@ -165,7 +165,7 @@ def Single(VL, MLdict):
         MSEvals["Variation_Test"] = Vari_test
         MSEvals["Variation_Train"] = Vari_train
 
-        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000), gpytorch.settings.debug(False):
+        with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500), gpytorch.settings.debug(False):
             Test_MSE_P = MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])
             Test_MSE_P *= OutputScaler[1,0]**2 #scale MSE to correct range
 
@@ -216,13 +216,13 @@ def Single(VL, MLdict):
     Optima = FuncOpt(GPR_Opt, NbInit, bnds, args=[Power],
                     find='max', tol=0.01, order='decreasing')
     MaxPower_cd,MaxPower_val,MaxPower_grad = Optima
-    for _MaxPower_cd in MaxPower_cd:
-        with torch.no_grad():
-            MaxPower_cd_tf = torch.tensor(np.atleast_2d(_MaxPower_cd), dtype=torch.float32)
-            GPR_Out = Power(MaxPower_cd_tf)
-        _MaxPower_cd = DataRescale(_MaxPower_cd, *InputScaler)
-        _MaxPower_val = DataRescale(GPR_Out.mean.numpy(),*OutputScaler[:,0])
-        print(_MaxPower_cd, _MaxPower_val)
+    # for _MaxPower_cd in MaxPower_cd:
+    #     with torch.no_grad():
+    #         MaxPower_cd_tf = torch.tensor(np.atleast_2d(_MaxPower_cd), dtype=torch.float32)
+    #         GPR_Out = Power(MaxPower_cd_tf)
+    #     _MaxPower_cd = DataRescale(_MaxPower_cd, *InputScaler)
+    #     _MaxPower_val = DataRescale(GPR_Out.mean.numpy(),*OutputScaler[:,0])
+    #     print(_MaxPower_cd, _MaxPower_val)
 
     with torch.no_grad():
         MaxPower_cd_tf = torch.tensor(MaxPower_cd, dtype=torch.float32)
@@ -347,7 +347,7 @@ class ExactGPmodel(gpytorch.models.ExactGP):
         for i in range(Iterations):
             optimizer.zero_grad() # Zero gradients from previous iteration
             # Output from model
-            with gpytorch.settings.max_cholesky_size(1000):
+            with gpytorch.settings.max_cholesky_size(1500):
                 output = self(self.train_inputs[0])
                 # Calc loss and backprop gradients
                 loss = -mll(output, self.train_targets)
@@ -365,7 +365,7 @@ class ExactGPmodel(gpytorch.models.ExactGP):
                 Convergence.append(loss.item())
 
             if test and i%50==0:
-                with torch.no_grad(), gpytorch.settings.max_cholesky_size(1000),gpytorch.settings.fast_pred_var():
+                with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500),gpytorch.settings.fast_pred_var():
                     self.eval(); LH.eval()
                     x,y = test
                     pred = LH(self(x))
@@ -399,42 +399,6 @@ class ExactGPmodel(gpytorch.models.ExactGP):
 def Param_ERMES(x,y,z,r,Parameters):
     Parameters.update(CoilDisplacement=[x,y,z],Rotation=r)
     return Namespace(**Parameters)
-
-def FuncOpt(fnc, NbInit, bounds, find='max',order='decreasing', tol=0.01, **kwargs):
-    if find.lower()=='max':sign=-1
-    elif find.lower()=='min':sign=1
-    _Optima, fnVal, fnGrad, Coord = [],[],[],[]
-
-    kwargs['args'] = (fnc,sign,*kwargs.get('args',[]))
-    for X0 in np.random.uniform(0,1,size=(NbInit,4)):
-        Opt = minimize(MinMax, X0, jac=True, method='SLSQP', bounds=bounds,**kwargs)
-        _Optima.append(Opt)
-        if Opt.success:
-            fnVal.append(Opt.fun)
-            fnGrad.append(Opt.jac)
-            Coord.append(Opt.x)
-
-    fnVal,fnGrad,Coord = sign*np.array(fnVal),sign*np.array(fnGrad),np.array(Coord)
-    #Sort Optimas in increasing/decreasing order
-    ord = -1 if order.lower()=='decreasing' else 1
-    sortIx = np.argsort(fnVal)[::ord]
-    fnVal,fnGrad,Coord = fnVal[sortIx],fnGrad[sortIx],Coord[sortIx]
-
-    if tol:
-        tolCd,Ix = Coord[:1],[0]
-        for i, cd in enumerate(Coord[1:]):
-            D = np.linalg.norm(tolCd - cd, axis=1)
-            if all(D>tol):
-                Ix.append(i+1)
-                tolCd = np.vstack((tolCd,cd))
-
-        fnVal,fnGrad,Coord = fnVal[Ix],fnGrad[Ix],Coord[Ix]
-
-    return Coord, fnVal, fnGrad
-
-def MinMax(X, fn, sign, *args):
-    val,grad = fn(X,*args)
-    return sign*val,sign*grad
 
 def GPR_Opt(X,model):
     X = torch.tensor(np.atleast_2d(X),dtype=torch.float32)

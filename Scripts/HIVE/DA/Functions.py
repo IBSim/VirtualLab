@@ -97,19 +97,20 @@ def FuncOpt(fnc, NbInit, bounds, find='max',order='decreasing', tol=0.01, **kwar
             Coord.append(Opt.x)
 
     fnVal,fnGrad,Coord = sign*np.array(fnVal),sign*np.array(fnGrad),np.array(Coord)
+
     #Sort Optimas in increasing/decreasing order
     ord = -1 if order.lower()=='decreasing' else 1
-    sortIx = np.argsort(fnVal)[::ord]
+    sortIx = np.argsort(fnVal,None)[::ord]
     fnVal,fnGrad,Coord = fnVal[sortIx],fnGrad[sortIx],Coord[sortIx]
 
     if tol:
         tolCd,Ix = Coord[:1],[0]
+
         for i, cd in enumerate(Coord[1:]):
             D = np.linalg.norm(tolCd - cd, axis=1)
-            if all(D>tol):
+            if (D>tol).all():
                 Ix.append(i+1)
                 tolCd = np.vstack((tolCd,cd))
-
         fnVal,fnGrad,Coord = fnVal[Ix],fnGrad[Ix],Coord[Ix]
 
     return Coord, fnVal, fnGrad

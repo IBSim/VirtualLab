@@ -5,7 +5,6 @@ import numpy as np
 import copy
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from prettytable import PrettyTable
 
 from types import SimpleNamespace as Namespace
 import torch

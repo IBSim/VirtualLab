@@ -195,9 +195,13 @@ def Single(VL, MLdict):
             x_scale = DataScale(np.atleast_2d(ML.Input),*InputScaler)
             x_scale = torch.tensor(x_scale, dtype=torch.float32)
             y = Power(x_scale)
-            y = DataRescale(y.mean.numpy(),*OutputScaler[:,0])
-            print(y)
-            MLdict['Output'] = y.tolist()
+            y_mean = DataRescale(y.mean.numpy(),*OutputScaler[:,0])
+            y_stddev = DataRescale(y.stddev,0,OutputScaler[1,0])
+            print(y_mean)
+            print(y_stddev)
+            # print(y_mean)
+            MLdict['Output'] = y_mean.tolist()
+            MLdict['Output_Var'] = y_stddev.tolist()
 
     # Get bounds of data for optimisation
     bnds = list(zip(Train_x_scale.min(axis=0), Train_x_scale.max(axis=0)))
@@ -226,16 +230,21 @@ def Single(VL, MLdict):
 
     with torch.no_grad():
         MaxPower_cd_tf = torch.tensor(MaxPower_cd, dtype=torch.float32)
-        GPR_Out = Power(MaxPower_cd_tf)
+        MPPower = Power(MaxPower_cd_tf)
+        MPVar = Variation(MaxPower_cd_tf)
     MaxPower_cd = DataRescale(MaxPower_cd, *InputScaler)
-    MaxPower_val = DataRescale(GPR_Out.mean.numpy(),*OutputScaler[:,0])
-    MaxPower_std = DataRescale(GPR_Out.stddev,0,OutputScaler[1,0])
+    MPMean = np.vstack((MPPower.mean.numpy(),MPVar.mean.numpy())).T
+    MPStd = np.vstack((MPPower.stddev.detach(),MPVar.stddev.detach())).T
+
+    MaxPower_val = DataRescale(MPMean,*OutputScaler)
+
+    MaxPower_std = DataRescale(MPStd,0,OutputScaler[1,:])
     print("    {:7}{:7}{:7}{:11}{:9}".format('x','y','z','r','Power'))
     for coord, val, std in zip(MaxPower_cd,MaxPower_val,MaxPower_std):
-        print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W ({})".format(*coord, val,std))
+        print("({0:.4f},{1:.4f},{2:.4f},{3:.4f}) ---> {4:.2f} W ({6}) {5:.2f} ({7})".format(*coord,*val,*std))
     print()
 
-    MLdict["Data"]['MaxPower'] = MaxPower = {'x':MaxPower_cd[0],'y':MaxPower_val[0]}
+    MLdict["Data"]['MaxPower'] = MaxPower = {'x':MaxPower_cd[0],'y':MaxPower_val[0,0]}
 
     if ML.MaxPowerOpt.get('Verify',True):
         print("Checking results at optima\n")
@@ -251,8 +260,8 @@ def Single(VL, MLdict):
         Power = np.sum(Watts)
         JH_Node /= 1000**2
         Uniformity = UniformityScore(JH_Node,ERMESMaxPower)
-
-        print("Anticipated power at optimum configuration: {:.2f} W".format(MaxPower_val[0]))
+        print(MaxPower_val)
+        print("Anticipated power at optimum configuration: {0:.2f} W".format(MaxPower_val[0,0]))
         print("Actual power at optimum configuration: {:.2f} W\n".format(Power))
 
         MaxPower["target"] = Power

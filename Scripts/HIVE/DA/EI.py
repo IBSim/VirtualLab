@@ -117,7 +117,8 @@ def Single(VL, MLdict):
         # Remove Ix from condidates
         Cand_scale = np.delete(Cand_scale,Ix,axis=0)
 
-        NewPoints.append(Candidates[Ix])
+        NewPoints.append(Candidates[Ix].tolist())
+
 
     MLdict['NewPoints'] = NewPoints
 

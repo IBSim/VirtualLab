@@ -10,7 +10,7 @@ import torch
 import gpytorch
 
 from Scripts.Common.VLFunctions import MeshInfo
-from Functions import Uniformity2 as UniformityScore, DataScale, DataRescale, FuncOpt
+from Functions import Uniformity3 as UniformityScore, DataScale, DataRescale, FuncOpt
 from PreAster.PreHIVE import ERMES
 
 def InputParameters():
@@ -268,7 +268,7 @@ def Single(VL, MLdict):
 
 
     if hasattr(ML,'DesPowerOpt'):
-        if ML.DesPowerOpt['Power'] >= MaxPower_val[0]:
+        if ML.DesPowerOpt['Power'] >= MaxPower_val[0,0]:
             print('DesiredPower greater than power available.\n')
         else:
             print("Locating optimum configuration(s) for maximum uniformity, ensuring power >= {} W".format(ML.DesPowerOpt['Power']))
@@ -296,6 +296,8 @@ def Single(VL, MLdict):
                 print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W, {:.3f}".format(*coord, *val))
             print()
 
+            MLdict["Data"]['C_Var'] = C_Var = {'x':OptVar_cd,'y':OptVar_val}
+
             if ML.DesPowerOpt.get('Verify',True):
                 print("Checking results at optima\n")
                 ERMESRes = '{}/MinVar_{}.rmed'.format(MLdict["CALC_DIR"],ML.DesPowerOpt['Power'])
@@ -309,13 +311,15 @@ def Single(VL, MLdict):
                 Watts = JH_Vol*Volumes
                 # Power & Uniformity
                 Power = np.sum(Watts)
-                JH_Node /= 1000**2
+
                 Uniformity = UniformityScore(JH_Node,ERMESRes)
 
                 print("Anticipated at optimum configuration:\nPower: {:.2f} W\n"\
                       "Uniformity: {}".format(*OptVar_val[0]))
                 print("Actual values at optimum configuration:\nPower: {:.2f} W\n"\
                       "Uniformity: {}".format(Power,Uniformity))
+
+                C_Var['Target'] = [Power,Uniformity]
 
 
 def MSE(Predicted,Target):

@@ -17,7 +17,7 @@ from Functions import DataScale, DataRescale
 def EIGF(y_Power,y_Var,NN,alpha):
     UQ_Score = alpha*y_Power.variance + (1-alpha)*y_Var.variance
     N_Score = alpha*(y_Power.mean - NN[:,0])**2 + (1-alpha)*(y_Var.mean - NN[:,1])**2
-    Score = N_Score + UQ_Score
+    Score = (N_Score + UQ_Score).detach().numpy()
     Ix = np.argmax(Score,None)
     return Ix
 

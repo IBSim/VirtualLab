@@ -180,6 +180,8 @@ if ConvGap:
 	ConvStart = ConvDict.get('Start',ConvGap)
 	CheckTime = np.round(np.arange(ConvStart,timearr[-1],ConvGap),8)
 	ConvIndex = [np.argmax(timearr >= t) for t in CheckTime] + [len(timearr)-1]
+	#Remove duplicates from ConvIndex if timestep size is bigger than gap size
+	ConvIndex = np.unique(ConvIndex)
 else: ConvIndex = []
 
 # Set default values for certain parameters

@@ -36,7 +36,7 @@ exit_abnormal() {
   usage
   exit 1
 }
-while getopts ":P:" options; do 
+while getopts ":P:" options; do
   case "${options}" in
     P) ### If P option triggered
       PYTHON_INST=${OPTARG}
@@ -69,12 +69,15 @@ sudo apt install -y build-essential
 
 if [ "$PYTHON_INST" == "y" ]; then
   ### Install python and required packages
-  sudo apt install -y python3
+  sudo apt install -y python3.6
   sudo apt install -y python3-pip
   #sudo apt install -y python3-sphinx
   sudo pip3 install -U sphinx
-  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py sphinx-rtd-theme sphinxcontrib-bibtex
   sudo -u ${SUDO_USER:-$USER} pip3 install iapws
+  sudo -u ${SUDO_USER:-$USER} pip3 install -r $VL_DIR/requirements.txt
+#  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib h5py sphinx-rtd-theme sphinxcontrib-bibtex
+#  sudo -u ${SUDO_USER:-$USER} pip3 install iapws pathos==0.2.7
+
 
   ### Add $VL_DIR to $PYTHONPATH in python env and current shell
   if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR $USER_HOME/.VLprofile; then
@@ -84,11 +87,11 @@ if [ "$PYTHON_INST" == "y" ]; then
     echo "Adding $VL_DIR to PYTHONPATH"
     sudo -u ${SUDO_USER:-$USER} echo 'export PYTHONPATH=$PYTHONPATH'$VL_DIR''  >> $USER_HOME/.VLprofile
     export PYTHONPATH=$PYTHONPATH$VL_DIR
-    
+
     ### ~/.bashrc doesn't get read by subshells in ubuntu.
     ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
     STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
-    if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then 
+    if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then
       echo $STRING_TMP >> $USER_HOME/.bashrc
     fi
   fi
@@ -148,7 +151,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
     echo "Creating Conda env $CONDAENV"
     conda create -n $CONDAENV python -y
   fi
-  
+
   OS_v=$(eval lsb_release -r -s)
   if [[ $OS_v == "20.04" ]]; then
     if test ! -d "$USER_HOME/anaconda3/envs/python2"; then
@@ -158,7 +161,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
       conda create -n python2 python=2.7 -y
     fi
   fi
-  
+
   ### Install conda packages
   conda activate $CONDAENV
   conda config --append channels conda-forge

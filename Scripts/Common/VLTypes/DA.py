@@ -46,7 +46,7 @@ def PoolRun(VL, DADict):
     err = DASgl(VL,DADict)
     return err
 
-def devRun(VL,**kwargs):
+def Run(VL,**kwargs):
     if not VL.DAData: return
     sys.path.insert(0,VL.SIM_DA)
 

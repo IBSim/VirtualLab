@@ -123,16 +123,19 @@ class VLSetup():
 		return MeshFn.Run(self,**kwargs)
 
 	def devMesh(self,**kwargs):
-		return MeshFn.devRun(self,**kwargs)
+		return MeshFn.Run(self,**kwargs)
 
 	def Sim(self,**kwargs):
 		return SimFn.Run(self,**kwargs)
 
 	def devSim(self,**kwargs):
-		return SimFn.devRun(self,**kwargs)
+		return SimFn.Run(self,**kwargs)
+
+	def DA(self,**kwargs):
+		return DAFn.Run(self,**kwargs)
 
 	def devDA(self,**kwargs):
-		return DAFn.devRun(self,**kwargs)
+		return DAFn.Run(self,**kwargs)
 
 	def WriteModule(self, FileName, Dictionary, **kwargs):
 		Write = kwargs.get('Write','New')

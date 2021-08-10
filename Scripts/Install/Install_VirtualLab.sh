@@ -61,6 +61,8 @@ while getopts ":d:P:S:E:yh" options; do
         echo " - Python will be installed/updated and configured as part of VirtualLab install."
       elif [ "$PYTHON_INST" == "c" ]; then
         echo " - Conda will be installed/updated and configured as part of VirtualLab install."
+      elif [ "$PYTHON_INST" == "n" ]; then
+        echo " - Python is not installed."
       else
         echo "Error: Invalid option argument $PYTHON_INST" >&2
         exit_abnormal
@@ -189,6 +191,8 @@ if [[ $PATH =~ $VL_DIR ]]; then
 else
   ### If not, add VirtualLab to PATH
   echo "Adding VirtualLab to PATH."
+  # Add VL_DIR to VLProfile so that different parts of instal can be run seperately
+  sudo -u ${SUDO_USER:-$USER} echo 'VL_DIR="'$VL_DIR'"' >> $USER_HOME/.VLprofile
 
   sudo -u ${SUDO_USER:-$USER} echo 'if [[ ! $PATH =~ "'$VL_DIR'" ]]; then' >> $USER_HOME/.VLprofile
 #  sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR':$PATH"'  >> $USER_HOME/.VLprofile

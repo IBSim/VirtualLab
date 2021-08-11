@@ -67,17 +67,26 @@ sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential
 
+source "$VL_DIR/VLconfig.py" # Enables this script to be run seperately
+
 if [ "$PYTHON_INST" == "y" ]; then
   ### Install python and required packages
   sudo apt install -y python3.6
   sudo apt install -y python3-pip
   #sudo apt install -y python3-sphinx
   sudo pip3 install -U sphinx
-  sudo -u ${SUDO_USER:-$USER} pip3 install iapws
+  sudo -u ${SUDO_USER:-$USER} pip3 install sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
   sudo -u ${SUDO_USER:-$USER} pip3 install -r $VL_DIR/requirements.txt
+  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps iapws==1.4
+
+  # install pyina (uses MPI)
+  source ~/.profile # This adds $HOME/.local/bin to $PATH which is needed by pyina
+  sudo apt install -y mpich
+  sudo -u ${SUDO_USER:-$USER} pip3 install mpi4py==3.0.3 dill==0.3.3 pox==0.2.9
+  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina==0.2.4
+
 #  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib h5py sphinx-rtd-theme sphinxcontrib-bibtex
 #  sudo -u ${SUDO_USER:-$USER} pip3 install iapws pathos==0.2.7
-
 
   ### Add $VL_DIR to $PYTHONPATH in python env and current shell
   if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR $USER_HOME/.VLprofile; then
@@ -142,14 +151,14 @@ elif [ "$PYTHON_INST" == "c" ]; then
     else
       echo "There has been a problem installing Conda"
       echo "Check error messages, try to rectify then rerun this script"
-      exit 1
+      return # exit closes the terminal as it's sourced
     fi
     #conda --version
   fi
   conda update -n base -c defaults conda -y
   if test ! -d "$USER_HOME/anaconda3/envs/$CONDAENV"; then
     echo "Creating Conda env $CONDAENV"
-    conda create -n $CONDAENV python -y
+    conda create -n $CONDAENV python=3.6.9 -y
   fi
 
   OS_v=$(eval lsb_release -r -s)
@@ -165,8 +174,15 @@ elif [ "$PYTHON_INST" == "c" ]; then
   ### Install conda packages
   conda activate $CONDAENV
   conda config --append channels conda-forge
-  conda install -y numpy scipy matplotlib pillow h5py iapws
+
   conda install -y sphinx
+ # conda install -y sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
+  conda install --file requirements.txt
+
+  conda install -y mpi4py=3.0.3 dill=0.3.3 pox=0.2.9
+
+  # conda install -y numpy scipy matplotlib pillow h5py iapws
+
 
   #sudo chown ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
   #sudo chgrp ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
@@ -177,9 +193,10 @@ elif [ "$PYTHON_INST" == "c" ]; then
 
   ### Install python and required packages
   sudo apt install -y python3-pip
-  #sudo -u ${SUDO_USER:-$USER} pip3 install fpdf sphinx-rtd-theme
-  pip3 install sphinx-rtd-theme sphinxcontrib-bibtex
-  #sudo -u ${SUDO_USER:-$USER} pip3 install fpdf2
+  # Could the sphinx parts be done in conda?
+  sudo -u ${SUDO_USER:-$USER} pip3 install sphinx-rtd-theme sphinxcontrib-bibtex
+  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina==0.2.4
+
   echo "Finished creating Conda env $CONDAENV"
   echo
 

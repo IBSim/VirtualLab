@@ -289,9 +289,7 @@ else
   echo "Skipping ERMES installation"
 fi
 
-echo
-### Build VirtualLab documentation using sphinx
-source $VL_DIR/Scripts/Install/Install_docs.sh
+
 
 : <<'END'
 #commented out script

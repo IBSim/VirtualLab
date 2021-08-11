@@ -80,10 +80,13 @@ if [ "$PYTHON_INST" == "y" ]; then
   sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps iapws==1.4
 
   # install pyina (uses MPI)
-  source ~/.profile # This adds $HOME/.local/bin to $PATH which is needed by pyina
   sudo apt install -y mpich
   sudo -u ${SUDO_USER:-$USER} pip3 install mpi4py==3.0.3 dill==0.3.3 pox==0.2.9
   sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina==0.2.4
+  # sourcing profile adds $HOME/.local/bin to $PATH for this terminal.
+  # TODO: This is a temporary solution for this terminal, it is only permanent by
+  # logging out and back in. Or could add this in to VLprofile?
+  source ~/.profile
 
 #  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib h5py sphinx-rtd-theme sphinxcontrib-bibtex
 #  sudo -u ${SUDO_USER:-$USER} pip3 install iapws pathos==0.2.7
@@ -176,16 +179,10 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda config --append channels conda-forge
 
   conda install -y sphinx
- # conda install -y sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
-  conda install --file requirements.txt
+  conda install -y sphinx-rtd-theme=0.4.3 sphinxcontrib-bibtex=1.0.0
+  conda install -y --file $VL_DIR/requirements.txt
+  conda install -y iapws=1.4
 
-  conda install -y mpi4py=3.0.3 dill=0.3.3 pox=0.2.9
-
-  # conda install -y numpy scipy matplotlib pillow h5py iapws
-
-
-  #sudo chown ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
-  #sudo chgrp ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
   sudo chown $SUDO_USER:$SUDO_USER -R $USER_HOME/anaconda3/envs/$CONDAENV
   sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
   sudo chown -R 1000:1000 $USER_HOME/anaconda3/pkgs/cache
@@ -193,9 +190,12 @@ elif [ "$PYTHON_INST" == "c" ]; then
 
   ### Install python and required packages
   sudo apt install -y python3-pip
-  # Could the sphinx parts be done in conda?
-  sudo -u ${SUDO_USER:-$USER} pip3 install sphinx-rtd-theme sphinxcontrib-bibtex
-  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina==0.2.4
+
+  # install pyina (uses MPI)
+  sudo apt install -y mpich
+  conda install -y mpi4py=3.0.3 dill=0.3.3 pox=0.2.9
+  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina=0.2.4
+  source ~/.profile # This adds $HOME/.local/bin to $PATH which is needed by pyina
 
   echo "Finished creating Conda env $CONDAENV"
   echo
@@ -222,5 +222,11 @@ else
   echo "Skipping python installation"
   exit 1
 fi
+
+echo
+### Build VirtualLab documentation using sphinx
+source $VL_DIR/Scripts/Install/Install_docs.sh
+
+
 #: <<'END'
 #END

@@ -179,7 +179,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda config --append channels conda-forge
 
   conda install -y sphinx
-  conda install -y sphinx-rtd-theme=0.4.3 sphinxcontrib-bibtex=1.0.0
+  conda install -y sphinx_rtd_theme=0.4.3 sphinxcontrib-bibtex=1.0.0
   conda install -y --file $VL_DIR/requirements.txt
   conda install -y iapws=1.4
 
@@ -194,7 +194,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   # install pyina (uses MPI)
   sudo apt install -y mpich
   conda install -y mpi4py=3.0.3 dill=0.3.3 pox=0.2.9
-  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina=0.2.4
+  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina==0.2.4
   source ~/.profile # This adds $HOME/.local/bin to $PATH which is needed by pyina
 
   echo "Finished creating Conda env $CONDAENV"

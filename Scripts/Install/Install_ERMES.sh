@@ -4,7 +4,9 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $THIS_DIR
-source ../../VLconfig.py
+
+source "$VL_DIR/VLconfig.py" # Enables this script to be run seperately
+#source ../../VLconfig.py # probably an easier way to do it but will keep it consistent
 
 ### To get from VLconfig.py
 #ERMES_DIR="/opt/ERMES"

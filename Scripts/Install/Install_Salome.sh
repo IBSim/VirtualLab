@@ -20,6 +20,8 @@ sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential
 
+source "$VL_DIR/VLconfig.py" # Enables this script to be run seperately
+
 ### Install salome related libs
 sudo ubuntu-drivers autoinstall
 sudo apt install -y libcanberra-gtk-module libcanberra-gtk3-module net-tools xterm libopenblas-dev tcl8.5 tk8.5 gfortran libgfortran3 python-tk
@@ -72,7 +74,7 @@ else
       echo "This installation process has been tested on Ubuntu 18.04."
       echo "Your mileage may vary on other setups."
     fi
-  
+
     ### Otherwise download and install
     cd $USER_HOME
     echo "Salome not found in PATH or ~/.VLprofile"
@@ -82,7 +84,7 @@ else
       fi
     sudo -u ${SUDO_USER:-$USER} echo "Proceeding to unpack salome in $USER_HOME"
     sudo -u ${SUDO_USER:-$USER} tar xvf "$SALOME_VER".tgz
-    
+
     echo "Installing salome in $SALOME_DIR"
     if [[ $OS_v == "20.04" ]]; then
       echo -e "$SALOME_DIR\nN" | ./"$SALOME_VER".run
@@ -90,21 +92,21 @@ else
       ### Switch in ubuntu v 18->20, need to verify back compatible.
       echo -e "$SALOME_DIR\nN" | sudo ./"$SALOME_VER".run
     fi
-    
+
     ### Add to PATH
     echo "Adding salome to PATH"
     sudo -u ${SUDO_USER:-$USER} echo 'if [[ ! $PATH =~ "'$SALOME_DIR'/appli_'$SALOME_BIN'" ]]; then' >> $USER_HOME/.VLprofile
     sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/appli_'$SALOME_BIN':$PATH"'  >> $USER_HOME/.VLprofile
     sudo -u ${SUDO_USER:-$USER} echo 'fi'  >> $USER_HOME/.VLprofile
     export PATH="$SALOME_DIR"/appli_"$SALOME_BIN:$PATH"
-    
+
     ### ~/.bashrc doesn't get read by subshells in ubuntu.
     ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
     STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
-    if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then 
+    if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then
       echo $STRING_TMP >> $USER_HOME/.bashrc
     fi
-    
+
     ### Test to check if adding to path worked
     if hash salome 2>/dev/null; then
       ### If exists
@@ -122,4 +124,3 @@ else
     fi
   fi
 fi
-

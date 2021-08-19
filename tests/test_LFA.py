@@ -14,11 +14,12 @@ Name='LFA'
 
 TutorialsDir = "{}/RunFiles/Tutorials/{}".format(VLdir,Name)
 OutputDir = '{}/VLTutorial_{}'.format(VLconfig.TEMP_DIR,Name)
-ParsedArgs = '-k Mode=H -f ShowMesh=False -k ShowRes=False -k OutputDir={}'.format(OutputDir)
+ParsedArgs = '-k Mode=H -k ShowMesh=False -k ShowRes=False -k OutputDir={}'.format(OutputDir)
 
 def test_Task1():
 	# Run = Popen('VirtualLab -f {}/Task1_Run.py {}'.format(TutorialsDir,ParsedArgs),shell='TRUE')
-	Run = Popen(['VirtualLab','-f','{}/Task1_Run.py'.format(TutorialsDir),ParsedArgs])
+	_ParsedArgs = ParsedArgs + ' -k RunSim=False' # as ShowMesh is changed to False
+	Run = Popen(['VirtualLab','-f','{}/Task1_Run.py'.format(TutorialsDir),_ParsedArgs])
 	err = Run.wait()
 	assert err==0
 

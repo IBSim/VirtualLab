@@ -37,7 +37,3 @@ def test_Task4():
 	err = Run.wait()
 	assert err==0
 
-def test_Task5():
-	Run = Popen(['VirtualLab','-f','{}/Task5_Run.py'.format(TutorialsDir),ParsedArgs])
-	err = Run.wait()
-	assert err==0

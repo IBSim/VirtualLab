@@ -588,8 +588,10 @@ def EMI(VL, SimDict):
 	Uniformity = UniformityScore(JH_Node,ERMESresfile)
 	SimDict['Uniformity'] = Uniformity
 
-	Threshold = getattr(Parameters,'Threshold', 0.999)
-	if Threshold<1:
+	Threshold = getattr(Parameters,'Threshold', 0)
+	if not Threshold:
+		pass
+	elif Threshold<1 and Threshold>0:
 		CumSum = Watts.cumsum()/CoilPower
 		# Find position in CumSum where the threshold percentage has been reached
 		pos = bl(CumSum,Threshold)

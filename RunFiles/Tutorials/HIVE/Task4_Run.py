@@ -3,7 +3,7 @@
 ### HEADER
 ################################################################################
 import sys
-from os.path import dirname, abspath
+from os.path import dirname, abspath, isdir
 sys.dont_write_bytecode=True
 sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common.VirtualLab import VLSetup
@@ -30,6 +30,13 @@ VirtualLab=VLSetup(
            Parameters_Master,
            Parameters_Var,
            Mode)
+
+## Copy files created in task 4
+import shutil
+NewResDir = "{}/Sim_ERMES_2".format(VirtualLab.STUDY_DIR)
+if isdir(NewResDir): shutil.rmtree(NewResDir)
+shutil.copytree("{}/Sim_ERMES".format(VirtualLab.STUDY_DIR), NewResDir)
+
 
 VirtualLab.Control(
            RunMesh=False,

@@ -195,6 +195,7 @@ def Create(Parameters):
 	_PipeIx = geompy.SubShapeAllIDs(CutPipBlk, geompy.ShapeType["FACE"])
 	if _PipeIx:
 		PipeExtIx = SalomeFunc.ObjIndex(Sample, CutPipBlk, _PipeIx)[0]
+	else: PipeExtIx = []
 
 	# Block
 	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0]

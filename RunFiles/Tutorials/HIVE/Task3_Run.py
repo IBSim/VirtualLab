@@ -43,7 +43,7 @@ VirtualLab.Mesh(
 VirtualLab.Sim(
 	   NumThreads=1,
            RunPreAster=True,
-           RunAster=False,
+           RunAster=True,
            RunPostAster=True,
            ShowRes=True,
            ncpus=1,

@@ -6,11 +6,10 @@ from types import SimpleNamespace as Namespace
 from importlib import import_module
 from contextlib import redirect_stderr, redirect_stdout
 import shutil
+import pickle
 
 from Scripts.Common.VLPackages import CodeAster
 from Scripts.Common.VLFunctions import VLPool, VLPoolReturn
-
-# Can remove multiprocessing and time from this script, and MPRun
 
 def CheckFile(Directory,fname,ext):
     if not fname:
@@ -26,7 +25,7 @@ def Setup(VL,**kwargs):
     if not (kwargs.get('RunSim', True) and SimDicts): return
 
     os.makedirs(VL.STUDY_DIR, exist_ok=True)
-    MetaInfo = {key:val for key,val in VL.__dict__.items() if type(val)==str}
+
     for SimName, ParaDict in SimDicts.items():
         # Run checks
         # Check files exist
@@ -67,11 +66,8 @@ def Setup(VL,**kwargs):
         # Create tmp directory & add __init__ file so that it can be treated as a package
         os.makedirs(StudyDict['TMP_CALC_DIR'])
         with open("{}/__init__.py".format(StudyDict['TMP_CALC_DIR']),'w') as f: pass
-
-        # Combine Meta information with that from Study dict and write to file for salome/CodeAster to import
-        VL.WriteModule("{}/PathVL.py".format(StudyDict['TMP_CALC_DIR']), {**MetaInfo, **StudyDict})
-        # Write Sim Parameters to file for Salome/CodeAster to import
-        VL.WriteModule("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), ParaDict)
+        # Blank file to import in CodeAster so we known the location of TMP_CALC_DIR
+        with open("{}/IDDirVL.py".format(StudyDict['TMP_CALC_DIR']),'w') as f: pass
 
         StudyDict['Parameters'] = Namespace(**ParaDict)
         # Add StudyDict to SimData dictionary
@@ -88,7 +84,7 @@ def PoolRun(VL, StudyDict, kwargs):
     # Create CALC_DIR where results for this sim will be stored
     os.makedirs(StudyDict['CALC_DIR'],exist_ok=True)
     # Write Parameters used for this sim to CALC_DIR
-    shutil.copy("{}/Parameters.py".format(StudyDict['TMP_CALC_DIR']), StudyDict['CALC_DIR'])
+    VL.WriteModule("{}/Parameters.py".format(StudyDict['CALC_DIR']), Parameters.__dict__)
 
     if RunPreAster and hasattr(Parameters,'PreAsterFile'):
         sys.path.insert(0, VL.SIM_PREASTER)
@@ -115,6 +111,13 @@ def PoolRun(VL, StudyDict, kwargs):
         							StudyDict['ASTER'],
                                     MessFile, **kwargs)
 
+        # Create pickle of Dictionary
+        pth = "{}/SimDict.pkl".format(StudyDict['TMP_CALC_DIR'])
+        SimDict = {**StudyDict,'MATERIAL_DIR':VL.MATERIAL_DIR,'SIM_SCRIPTS':VL.SIM_SCRIPTS}
+        with open(pth,'wb') as f:
+        	pickle.dump(SimDict,f)
+
+        # Run Simulation
         SubProc = VL.CodeAster.Run(ExportFile, Name=Parameters.Name,
                                    AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
         err = SubProc.wait()

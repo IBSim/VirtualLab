@@ -6,14 +6,13 @@ import time
 from Utilitai import partition
 
 import AsterFunc
-import Parameters
-import PathVL
+
+SimDict = AsterFunc.GetSimDict()
+Parameters = SimDict['Parameters']
 
 '''
 Transient version of HIVE simulation for AMAZE component.
 '''
-
-DEBUT(PAR_LOT = 'NON',LANG='EN')
 
 def MaxChange(ResName):
 	Temp_1 = CREA_CHAMP(INFO=1, NOM_CHAM='TEMP', NUME_ORDRE=(ResName.LIST_VARI_ACCES()['NUME_ORDRE'])[-1], OPERATION='EXTR', RESULTAT=ResName, TYPE_CHAM='NOEU_TEMP_R')
@@ -21,6 +20,8 @@ def MaxChange(ResName):
 	Resid = np.max(np.abs(np.array(Temp_1.EXTR_COMP().valeurs) - np.array(Temp_2.EXTR_COMP().valeurs)))
 	DETRUIRE(CONCEPT=_F(NOM=(Temp_1,Temp_2)))
 	return Resid
+
+DEBUT(PAR_LOT = 'NON',LANG='EN')
 
 # ==============================================================================
 # Read in the mesh and define model
@@ -35,7 +36,7 @@ Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model),
 
 # ==============================================================================
 # Define functions for NL material properties and assign materials to parts
-DictMat = AsterFunc.MaterialProps(PathVL.MATERIAL_DIR,Parameters.Materials.values())
+DictMat = AsterFunc.MaterialProps(SimDict['MATERIAL_DIR'],Parameters.Materials.values())
 
 BlockRCP = DEFI_FONCTION(NOM_PARA='TEMP',
 			             PROL_DROITE='CONSTANT',
@@ -83,14 +84,14 @@ if Parameters.EMLoad == 'Uniform':
 	EMI = AFFE_CHAR_THER(FLUX_REP=_F(FLUN=Parameters.Flux, GROUP_MA='CoilFace'),MODELE=Thermod)
 elif Parameters.EMLoad == 'ERMES':
 	# Read in ERMES file created during PreAster
-	ERMES = np.load('{}/ERMES.npy'.format(PathVL.TMP_CALC_DIR))
+	ERMES = np.load('{}/ERMES.npy'.format(SimDict['TMP_CALC_DIR']))
 	Load_EM = []
 	for i,JH in enumerate(ERMES):
 		Load_EM.append((_F(GROUP_MA="_{}".format(i),SOUR=JH)))
 	EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
 
 # Cooling due to coolant. HTC data generated during PreAster
-PipeHTCdat = np.fromfile('{}/HTC.dat'.format(PathVL.TMP_CALC_DIR),dtype=float,count=-1,sep=" ")
+PipeHTCdat = np.fromfile('{}/HTC.dat'.format(SimDict['TMP_CALC_DIR']),dtype=float,count=-1,sep=" ")
 HTC_Temps, HTC_Values = PipeHTCdat[::2], PipeHTCdat[1::2]
 HTC_Temps = np.hstack((HTC_Temps[0]-1,HTC_Temps,HTC_Temps[-1]+1))
 HTC_Values = np.hstack((HTC_Values[0],HTC_Values,HTC_Values[-1]))
@@ -201,7 +202,7 @@ if not ConvIndex:
 else:
 	# Track temperature change for convergence
 	ConvRes = 1e-5 # termination residual
-	ConvFile = "{}/Convergence.dat".format(PathVL.ASTER) # Convergence data file
+	ConvFile = "{}/Convergence.dat".format(SimDict['ASTER']) # Convergence data file
 
 	TempConvergence = []
 	for i, EndIndex in enumerate(ConvIndex):

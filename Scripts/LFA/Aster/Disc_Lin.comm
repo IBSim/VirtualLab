@@ -6,8 +6,9 @@ import time as tm
 from Utilitai import partition
 
 import AsterFunc
-import Parameters
-import PathVL
+
+SimDict = AsterFunc.GetSimDict()
+Parameters = SimDict['Parameters']
 
 def GaussProfile(x,y,sigma):
 	z = (1/(2*pi*sigma**2))*np.exp(-(x**2+y**2)/(2*sigma**2))
@@ -34,7 +35,7 @@ Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=Parameters.Model,
 
 # ==============================================================================
 # Set materials.
-DictMat = AsterFunc.MaterialProps(PathVL.MATERIAL_DIR, Parameters.Materials.values())
+DictMat = AsterFunc.MaterialProps(SimDict['MATERIAL_DIR'], Parameters.Materials.values())
 
 # Top Disk
 TopLambda = LinMaterial(DictMat[Parameters.Materials['Top']]['Lambda'])
@@ -54,7 +55,7 @@ Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TopMat, GROUP_MA='Top'),
 # Create boundary conditions
 
 # Laser temporal Profile
-Lsrdat = np.fromfile('{}/Laser/{}.dat'.format(PathVL.SIM_SCRIPTS, Parameters.LaserT),dtype=float,count=-1,sep=" ")
+Lsrdat = np.fromfile('{}/Laser/{}.dat'.format(SimDict['SIM_SCRIPTS'], Parameters.LaserT),dtype=float,count=-1,sep=" ")
 LsrProf = DEFI_FONCTION(NOM_PARA='INST',
 		       			PROL_DROITE='CONSTANT',
 	               		PROL_GAUCHE='CONSTANT',

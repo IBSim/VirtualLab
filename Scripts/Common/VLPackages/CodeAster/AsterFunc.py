@@ -2,6 +2,7 @@ import os
 import numpy as np
 import sys
 from bisect import bisect_left as bl
+import pickle
 
 import aster
 from Utilitai import partition
@@ -10,6 +11,15 @@ from code_aster.Cata.DataStructure import *
 from code_aster.Cata.Commons import *
 from code_aster.Cata.Commands import *
 from Noyau.N__F import _F
+
+def GetSimDict():
+	import IDDirVL
+	TMP_CALC_DIR = os.path.dirname(IDDirVL.__file__)
+	pth = "{}/SimDict.pkl".format(TMP_CALC_DIR)
+	with open(pth,'rb') as f:
+	    SimDict = pickle.load(f)
+	return SimDict
+
 
 def AdaptThermal(ResName,Tsteps,Load,Material,Model,Theta,Solver,**kwargs):
 	MaxIter = kwargs.get('MaxIter', 10)

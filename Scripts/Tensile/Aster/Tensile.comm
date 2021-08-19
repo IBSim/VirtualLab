@@ -5,8 +5,10 @@ import time
 from Utilitai import partition
 
 import AsterFunc
-import Parameters
-import PathVL
+
+SimDict = AsterFunc.GetSimDict()
+Parameters = SimDict['Parameters']
+
 
 DEBUT(PAR_LOT = 'NON',LANG='EN')
 
@@ -20,7 +22,7 @@ model = AFFE_MODELE(AFFE=_F(MODELISATION=('3D', ),
                     MAILLAGE=mesh)
 
 ##### Create dictionary of material properties and assign materials to parts #####
-DictMat = AsterFunc.MaterialProps(PathVL.MATERIAL_DIR, Parameters.Materials)
+DictMat = AsterFunc.MaterialProps(SimDict['MATERIAL_DIR'], Parameters.Materials)
 
 Mat = DEFI_MATERIAU(ELAS=_F(E=DictMat[Parameters.Materials]["Youngs"][1],
                             NU=DictMat[Parameters.Materials]["PoisRat"][1]))

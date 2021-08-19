@@ -124,6 +124,13 @@ def PoolRun(VL, StudyDict, kwargs):
         if err:
             return "Aster Error: Code {} returned".format(err)
 
+        # Update if anything added to Dictionary
+        with open(pth,'rb') as f:
+            SimDictN = pickle.load(f)
+            SimDictN.pop('MATERIAL_DIR');SimDictN.pop('SIM_SCRIPTS')
+            if SimDictN != StudyDict:
+                StudyDict.update(**SimDictN)
+
     if RunPostAster and hasattr(Parameters,'PostAsterFile'):
         sys.path.insert(0, VL.SIM_POSTASTER)
         PostAster = import_module(Parameters.PostAsterFile)

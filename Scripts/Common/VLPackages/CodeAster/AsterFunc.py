@@ -15,10 +15,17 @@ from Noyau.N__F import _F
 def GetSimDict():
 	import IDDirVL
 	TMP_CALC_DIR = os.path.dirname(IDDirVL.__file__)
-	pth = "{}/SimDict.pkl".format(TMP_CALC_DIR)
-	with open(pth,'rb') as f:
+
+	with open("{}/SimDict.pkl".format(TMP_CALC_DIR),'rb') as f:
 	    SimDict = pickle.load(f)
 	return SimDict
+
+def UpdateSimDict(SimDict):
+	import IDDirVL
+	TMP_CALC_DIR = os.path.dirname(IDDirVL.__file__)
+	with open("{}/SimDict.pkl".format(TMP_CALC_DIR),'wb') as f:
+	    pickle.dump(SimDict,f)
+
 
 
 def AdaptThermal(ResName,Tsteps,Load,Material,Model,Theta,Solver,**kwargs):

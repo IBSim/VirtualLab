@@ -54,6 +54,15 @@ Sim.Theta = 0.5
 #############
 # PostAster #
 #############
-Sim.PostAsterFile = 'DiscPost'
+Sim.PostAsterFile = 'ConductivityCalc'
 Sim.Rvalues = [0.1, 0.5]
 Sim.CaptureTime = 0.01
+
+##########################
+##### Data Analysis ######
+##########################
+DA = Namespace()
+DA.Name = 'Training'
+DA.File = 'Images'
+DA.ResultNames = ['SimNoVoid_NL','SimVoid1_NL','SimVoid2_NL']
+DA.CaptureTime = 0.01

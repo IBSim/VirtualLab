@@ -110,7 +110,7 @@ def Single(Info, StudyDict):
 	ax3.set_title('Nodal load',fontsize = 14)
 	ax3.axis('off')
 
-	plt.savefig("{}/LaserProfilel.png".format(StudyDict['POSTASTER']), bbox_inches='tight')
+	plt.savefig("{}/LaserProfile.png".format(StudyDict['POSTASTER']), bbox_inches='tight')
 	print("Created plot LaserProfile.png")
 	plt.close()
 
@@ -130,18 +130,13 @@ def Single(Info, StudyDict):
 	g = h5py.File(ResFile, 'r')
 	gRes = g['/CHA/Temperature']
 
-	ParaVis = {}
 	BtmIx = Btm_Face.Nodes - 1
 	AvTemp, R = [], []
 	Steps = gRes.keys()
 	Time = [gRes[step].attrs['PDT'] for step in Steps]
-	CaptureTime = min(Time, key=lambda x:abs(x-Parameters.CaptureTime))
 
-	ParaVis["CaptureTime"]=CaptureTime
 	for tm,step in zip(Time,Steps):
 		resTemp = gRes['{}/NOE/MED_NO_PROFILE_INTERNAL/CO'.format(step)][:]
-		if tm==CaptureTime:
-			ParaVis["Range"] = [min(resTemp), max(resTemp)]
 
 		# average temperatures for bottom surface (whole & R factor)
 		BtmTemp = resTemp[BtmIx]
@@ -149,8 +144,7 @@ def Single(Info, StudyDict):
 		if Rvalues:
 			R.append(np.dot(Rbool, BtmTemp)/Rcount)
 
-	StudyDict['ParaVis'] = ParaVis
-
+	g.close()
 	# Plot of average temperature on bottom surface
 	fig = plt.figure(figsize = (14,5))
 	plt.xlabel('Time',fontsize = 20)
@@ -232,20 +226,3 @@ def Single(Info, StudyDict):
 
 	with open("{}/Summary.txt".format(StudyDict["POSTASTER"]),'w') as f:
 		f.write(LaserStr+TCStr+TempStr)
-
-def Combined(Info):
-	GlobalRange = [np.inf, -np.inf]
-	ArgDict = {}
-	for Name, StudyDict in Info.SimData.items():
-		StudyPV = StudyDict["ParaVis"]
-		ArgDict[Name] = StudyPV["CaptureTime"]
-		GlobalRange = [min(StudyPV["Range"][0],GlobalRange[0]), max(StudyPV["Range"][1],GlobalRange[1])]
-	ArgDict['Rangemin'] = GlobalRange[0]
-	ArgDict['Rangemax'] = GlobalRange[1]
-
-	print('Creating images using ParaViS')
-	GUI = getattr(Info.Parameters_Master.Sim, 'PVGUI', False)
-	ParaVisFile = "{}/ParaVis.py".format(os.path.dirname(os.path.abspath(__file__)))
-	RC = Info.Salome.Run(ParaVisFile, GUI=GUI, AddPath=Info.TEMP_DIR, Args=ArgDict)
-	if RC:
-		return "Error in Salome run"

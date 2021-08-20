@@ -12,19 +12,18 @@ SalomePyQt.SalomePyQt().activateModule('ParaViS')
 import pvsimple
 pvsimple.ShowParaviewView()
 
-kwargs = SalomeFunc.GetArgs()
-CBmin = float(kwargs.pop('Rangemin'))
-CBmax = float(kwargs.pop('Rangemax'))
+DADict = SalomeFunc.GetArgs()
+ResData = DADict['ResData']
+
+CBmin,CBmax = DADict['GlobalRange']
 
 renderView1 = pvsimple.GetActiveViewOrCreate('RenderView')
-for Sim, CaptureTime in kwargs.items():
-	print(Sim)
-	CaptureTime = float(CaptureTime)
-	Parameters = import_module("{}.Parameters".format(Sim))
-	PathVL = import_module("{}.PathVL".format(Sim))
-
-	thermalrmed = pvsimple.MEDReader(FileName="{}/Thermal.rmed".format(PathVL.ASTER))
-	pvsimple.RenameSource(Sim,thermalrmed)
+for Name,Data in ResData.items():
+	print()
+	print("Creating images for {}".format(Name))
+	print()
+	thermalrmed = pvsimple.MEDReader(FileName=Data['File'])
+	pvsimple.RenameSource(Name,thermalrmed)
 
 	# show data in view
 	thermalrmedDisplay = pvsimple.Show(thermalrmed, renderView1)
@@ -40,10 +39,10 @@ for Sim, CaptureTime in kwargs.items():
 	renderView1.Background = [1,1,1]  ### White Background
 
 	animationScene1 = pvsimple.GetAnimationScene()
-	if CaptureTime > animationScene1.EndTime:
+	if Data['Time'] > animationScene1.EndTime:
 		animationScene1.AnimationTime = animationScene1.EndTime
 	else :
-		animationScene1.AnimationTime = CaptureTime
+		animationScene1.AnimationTime = Data['Time']
 	# animationScene1.UpdateAnimationUsingDataTimeSteps()
 
 	# set scalar coloring
@@ -78,7 +77,8 @@ for Sim, CaptureTime in kwargs.items():
 	ColorBar.RangeLabelFormat = '%-#.2f'
 	ColorBar.Visibility = 1
 
-	pvsimple.SaveScreenshot("{}/Capture.png".format(PathVL.POSTASTER), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
+	outfile = "{}/Capture.png".format(Data['ImageDir'])
+	pvsimple.SaveScreenshot(outfile, renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
 	pvsimple.Hide(thermalrmed, renderView1)
 	print("Created image Capture.png")
 
@@ -86,7 +86,9 @@ for Sim, CaptureTime in kwargs.items():
 	clip1.ClipType.Normal = [0.0, -1.0, 0.0]
 	clip1Display = pvsimple.Show(clip1, renderView1)
 	ColorBar.Visibility = 1
-	pvsimple.SaveScreenshot("{}/ClipCapture.png".format(PathVL.POSTASTER), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
+
+	outfile = "{}/ClipCapture.png".format(Data['ImageDir'])
+	pvsimple.SaveScreenshot(outfile, renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
 	pvsimple.Hide(clip1, renderView1)
 	print("Created image ClipCapture.png")
 
@@ -95,7 +97,9 @@ for Sim, CaptureTime in kwargs.items():
 	thermalrmedDisplay.Representation = 'Surface With Edges'
 	thermalrmedDisplay.EdgeColor = [0.0, 0.0, 0.0]
 	thermalrmedDisplay.DiffuseColor = [0.2, 0.75, 0.996078431372549]
-	pvsimple.SaveScreenshot("{}/Mesh.png".format(PathVL.POSTASTER), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
+
+	outfile = "{}/Mesh.png".format(Data['ImageDir'])
+	pvsimple.SaveScreenshot(outfile, renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
 	pvsimple.Hide(thermalrmed, renderView1)
 	print("Created image Mesh.png")
 
@@ -120,7 +124,8 @@ for Sim, CaptureTime in kwargs.items():
 	renderView1.CameraFocalPoint = [0, 0, 0.00125]
 	renderView1.CameraViewUp = [0.0, 0.0, 1.0]
 
-	pvsimple.SaveScreenshot("{}/MeshCrossSection.png".format(PathVL.POSTASTER), renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
+	outfile = "{}/MeshCrossSection.png".format(Data['ImageDir'])
+	pvsimple.SaveScreenshot(outfile, renderView1, ImageResolution=[1400, 590], FontScaling='Do not scale fonts')
 	pvsimple.Hide(threshold1, renderView1)
 	print("Created image MeshCrossSection.png")
 

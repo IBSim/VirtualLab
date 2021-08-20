@@ -15,8 +15,8 @@ from Scripts.Common.VirtualLab import VLSetup
 Simulation='LFA'
 Project='Tutorials'
 StudyName='Training'
-Parameters_Master='TrainingParameters'
-Parameters_Var='Parametric_1_Task4'
+Parameters_Master='TrainingParameters_Task4'
+Parameters_Var=None
 Mode='Interactive'
 
 ################################################################################
@@ -31,10 +31,12 @@ VirtualLab=VLSetup(
            Parameters_Var,
            Mode)
 
-VirtualLab.Control(RunMesh=False)
+VirtualLab.Control(RunMesh=False,RunSim=False)
 
 VirtualLab.Mesh()
 
-VirtualLab.Sim(NumThreads=3, RunAster=False)
+VirtualLab.Sim(NumThreads=3)
+
+VirtualLab.DA()
 
 VirtualLab.Cleanup()

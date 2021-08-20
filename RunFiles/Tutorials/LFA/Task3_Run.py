@@ -35,6 +35,6 @@ VirtualLab.Control(RunMesh=False)
 
 VirtualLab.Mesh()
 
-VirtualLab.Sim(NumThreads=3,RunPostAster=False,ShowRes=True)
+VirtualLab.Sim(NumThreads=3,ShowRes=True)
 
 VirtualLab.Cleanup()

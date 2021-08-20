@@ -6,7 +6,9 @@ import os
 from contextlib import redirect_stderr, redirect_stdout
 from types import SimpleNamespace as Namespace
 import copy
+import pickle
 sys.dont_write_bytecode=True
+
 
 def ASCIIname(names):
 	namelist = []
@@ -16,7 +18,7 @@ def ASCIIname(names):
 		namelist.append(lis)
 	res = np.array(namelist)
 	return res
-	
+
 def WarningMessage(message):
 	warning = "\n======== Warning ========\n\n"\
 		"{}\n\n"\
@@ -244,8 +246,15 @@ def VLPool(fn,VL,Dict,*args):
         if not err: mess = "{} completed successfully.\n".format(Name)
         else: mess = "{} finishes with errors.\n".format(Name)
 
-        Returner.Error = err # will be None if everything has runs moothly
-        if not OrigDict == Dict: Returner.Dict = Dict
+        Returner.Error = err # will be None if everything has run smoothly
+        if not OrigDict == Dict:
+            # Attach dictionary to Returner to update VL class
+            Returner.Dict = Dict
+            # Save information in Data to location specified by __file__
+            Data = Dict.get('Data',{})
+            if '__file__' in Data and len(Data)>1:
+            	with open(Data['__file__'],'wb') as f:
+                    pickle.dump(Data,f)
 
         return Returner
     except (Exception,SystemExit) as e:

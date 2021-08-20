@@ -29,11 +29,17 @@ def Setup(VL, **kwargs):
                  'Parameters':Namespace(**ParaDict),
                  'Data':{}}
 
-        os.makedirs(CALC_DIR, exist_ok=True)
-        os.makedirs(DADict["TMP_CALC_DIR"],exist_ok=True)
+        # Important information can be added to Data during any stage of the
+        # data analysis, and this will be saved to the location specified by the
+        # value for the __file__ key
+        DADict['Data'] = {'__file__':"{}/Data.pkl".format(DADict['CALC_DIR'])}
+
         if VL.mode in ('Headless','Continuous'):
             DADict['LogFile'] = "{}/Output.log".format(DADict['CALC_DIR'])
         else : DADict['LogFile'] = None
+
+        os.makedirs(CALC_DIR, exist_ok=True)
+        os.makedirs(DADict["TMP_CALC_DIR"],exist_ok=True)
 
         VL.WriteModule("{}/Parameters.py".format(DADict['CALC_DIR']), ParaDict)
         VL.DAData[DAName] = DADict
@@ -90,11 +96,5 @@ def Run(VL,**kwargs):
     Errorfnc = VLPoolReturn(DADicts,Res)
     if Errorfnc:
         VL.Exit("The following DA routine(s) finished with errors:\n{}".format(Errorfnc))
-
-    for DADict in DADicts:
-        if not DADict['Data']: continue
-
-        with open("{}/Data.pkl".format(DADict['CALC_DIR']),'wb') as f:
-            pickle.dump(DADict['Data'],f)
 
     VL.Logger('\n### Data Analysis Complete ###',Print=True)

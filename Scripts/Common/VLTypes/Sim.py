@@ -59,6 +59,11 @@ def Setup(VL,**kwargs):
                     'MeshFile':"{}/{}.med".format(VL.MESH_DIR, ParaDict['Mesh'])
                     }
 
+        # Important information can be added to Data during any stage of the
+        # simulation, and this will be saved to the location specified by the
+        # value for the __file__ key
+        StudyDict['Data'] = {'__file__':"{}/Data.pkl".format(StudyDict['CALC_DIR'])}
+
         if VL.mode in ('Headless','Continuous'):
             StudyDict['LogFile'] = "{}/Output.log".format(StudyDict['CALC_DIR'])
         else : StudyDict['LogFile'] = None

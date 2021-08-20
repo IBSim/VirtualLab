@@ -17,8 +17,6 @@ def Setup(VL, **kwargs):
     # if either MeshDicts is empty or RunMesh is False we will return
     if not (kwargs.get('RunMesh', True) and MeshDicts): return
 
-    VL.GEOM_DIR = '{}/Geom'.format(VL.TEMP_DIR)
-    os.makedirs(VL.GEOM_DIR, exist_ok=True)
     os.makedirs(VL.MESH_DIR, exist_ok=True)
 
     sys.path.insert(0, VL.SIM_MESH)
@@ -49,8 +47,6 @@ def Setup(VL, **kwargs):
 
         ## Checks complete ##
 
-        VL.WriteModule("{}/{}.py".format(VL.GEOM_DIR, MeshName), ParaDict)
-
         Mdict = {'Name':MeshName,
                  'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
                  'Parameters':Parameters}
@@ -62,15 +58,14 @@ def Setup(VL, **kwargs):
 
 def PoolRun(VL, MeshDict,**kwargs):
     # Write Parameters used to make the mesh to the mesh directory
-    shutil.copy("{}/{}.py".format(VL.GEOM_DIR,MeshDict['Name']), VL.MESH_DIR)
+    VL.WriteModule("{}/{}.py".format(VL.MESH_DIR, MeshDict['Name']), MeshDict['Parameters'].__dict__)
 
     if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
         script = '{}/MeshRun.py'.format(VL.SIM_MESH)
     else:
         script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
 
-    AddPath = [VL.SIM_MESH, VL.GEOM_DIR] #Geomdir may not be needed
-    err = VL.Salome.Run(script, DataDict = MeshDict, AddPath=AddPath)
+    err = VL.Salome.Run(script, DataDict = MeshDict, AddPath=[VL.SIM_MESH])
     if err:
         return "Error in Salome run"
 
@@ -98,7 +93,7 @@ def Run(VL,**kwargs):
             script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
         VL.MeshData[MeshCheck]['Debug'] = True
         VL.Salome.Run(script, DataDict = VL.MeshData[MeshCheck],
-                        AddPath=[VL.SIM_MESH, VL.GEOM_DIR], GUI=True)
+                        AddPath=[VL.SIM_MESH], GUI=True)
 
         VL.Exit('Terminating after checking mesh')
 

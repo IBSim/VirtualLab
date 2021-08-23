@@ -6,7 +6,7 @@ from types import SimpleNamespace as Namespace
 from importlib import import_module
 import shutil
 
-from Scripts.Common.VLFunctions import VLPool, VLPoolReturn, WarningMessage, ErrorMessage
+import Scripts.Common.VLFunctions as VLF 
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
@@ -37,12 +37,12 @@ def Setup(VL, **kwargs):
             if warning:
                 mess = "Warning issed for mesh '{}':\n\n".format(MeshName)
                 mess+= "\n\n".join(warning)
-                print(WarningMessage(mess))
+                print(VLF.WarningMessage(mess))
 
             if error:
                 mess = "Error issued for mesh '{}':\n\n".format(MeshName)
                 mess+= "\n\n".join(error)
-                print(ErrorMessage(mess))
+                print(VLF.ErrorMessage(mess))
                 VL.Exit()
 
         ## Checks complete ##
@@ -58,7 +58,7 @@ def Setup(VL, **kwargs):
 
 def PoolRun(VL, MeshDict,**kwargs):
     # Write Parameters used to make the mesh to the mesh directory
-    VL.WriteModule("{}/{}.py".format(VL.MESH_DIR, MeshDict['Name']), MeshDict['Parameters'].__dict__)
+    VLF.WriteData("{}/{}.py".format(VL.MESH_DIR, MeshDict['Name']), MeshDict['Parameters'])
 
     if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
         script = '{}/MeshRun.py'.format(VL.SIM_MESH)
@@ -112,12 +112,12 @@ def Run(VL,**kwargs):
     if launcher == 'Sequential':
         Res = []
         for args in zip(*PoolArgs):
-            ret = VLPool(PoolRun,*args)
+            ret = VLF.VLPool(PoolRun,*args)
             Res.append(ret)
     elif launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLPool,[PoolRun]*NbMeshes, *PoolArgs)
+        Res = pool.map(VLF.VLPool,[PoolRun]*NbMeshes, *PoolArgs)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
         # Ensure that all paths added to sys.path are visible pyinas MPI subprocess
@@ -130,12 +130,12 @@ def Run(VL,**kwargs):
         if not onall and NumThreads > N: N=N+1 # Add 1 if extra threads available for 'delegator'
 
         pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLPool,[PoolRun]*NbMeshes, *PoolArgs, onall=onall)
+        Res = pool.map(VLF.VLPool,[PoolRun]*NbMeshes, *PoolArgs, onall=onall)
 
         # reset environment back to original
         os.environ["PYTHONPATH"] = PyPath_orig
 
-    Errorfnc = VLPoolReturn(MeshDicts,Res)
+    Errorfnc = VLF.VLPoolReturn(MeshDicts,Res)
     if Errorfnc:
         VL.Exit("\nThe following meshes finished with errors:\n{}".format(Errorfnc),KeepDirs=['Geom'])
 

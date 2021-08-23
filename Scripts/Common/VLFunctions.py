@@ -9,6 +9,35 @@ import copy
 import pickle
 sys.dont_write_bytecode=True
 
+def WriteData(FileName, Data, pkl=True):
+	# Check Data type
+	if type(Data)==dict:
+		DataDict = Data
+	elif type(Data)==Namespace:
+		DataDict = Data.__dict__
+	else:
+		print('Unknown type')
+
+	# Write data as readable text
+	VarList = []
+	for VarName, Val in DataDict.items():
+		if type(Val)==str: Val = "'{}'".format(Val)
+		VarList.append("{} = {}\n".format(VarName, Val))
+	Pathstr = ''.join(VarList)
+
+	with open(FileName,'w+') as f:
+		f.write(Pathstr)
+
+	# Create hidden pickle file (ensures importing is possible)
+	if pkl:
+		dirname = os.path.dirname(FileName)
+		basename = os.path.splitext(os.path.basename(FileName))[0]
+		pklname = "{}/.{}.pkl".format(dirname,basename)
+		try:
+			with open(pklname,'wb') as f:
+				pickle.dump(Data,f)
+		except :
+			print('Could not pickle')
 
 def ASCIIname(names):
 	namelist = []

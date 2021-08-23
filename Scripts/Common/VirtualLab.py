@@ -49,8 +49,9 @@ class VLSetup():
 		try:
 			os.makedirs(self.TEMP_DIR)
 		except FileExistsError:
-			#TODO - sort this
-			pass
+			# Unlikely this would happen but add a random number to the end if it did
+			self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
+			os.makedirs(self.TEMP_DIR)
 
 		self.INPUT_DIR = '{}/{}/{}'.format(self.INPUT_DIR, Simulation, Project)
 
@@ -136,17 +137,6 @@ class VLSetup():
 
 	def devDA(self,**kwargs):
 		return DAFn.Run(self,**kwargs)
-
-	def WriteModule(self, FileName, Dictionary, **kwargs):
-		Write = kwargs.get('Write','New')
-		if Write == 'New':
-			PathList = []
-			for VarName, Val in Dictionary.items():
-				if type(Val)==str: Val = "'{}'".format(Val)
-				PathList.append("{} = {}\n".format(VarName, Val))
-			Pathstr = ''.join(PathList)
-			with open(FileName,'w+') as f:
-				f.write(Pathstr)
 
 	def Logger(self,Text='',**kwargs):
 		Prnt = kwargs.get('Print',False)
@@ -305,8 +295,6 @@ class VLSetup():
 			ParaDict[Name] = cpMaster
 
 		return ParaDict
-
-
 
 	def GetArgParser(self):
 		ArgList=sys.argv[1:]

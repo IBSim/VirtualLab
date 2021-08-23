@@ -3,7 +3,7 @@ import sys
 sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
 from importlib import import_module
-from Scripts.Common.VLFunctions import VLPool, VLPoolReturn
+import Scripts.Common.VLFunctions as VLF 
 import copy
 import pickle
 
@@ -41,11 +41,12 @@ def Setup(VL, **kwargs):
         os.makedirs(CALC_DIR, exist_ok=True)
         os.makedirs(DADict["TMP_CALC_DIR"],exist_ok=True)
 
-        VL.WriteModule("{}/Parameters.py".format(DADict['CALC_DIR']), ParaDict)
+
         VL.DAData[DAName] = DADict
 
 def PoolRun(VL, DADict):
     Parameters = DADict["Parameters"]
+    VLF.WriteData("{}/Parameters.py".format(DADict['CALC_DIR']), Parameters)
 
     DAmod = import_module(Parameters.File)
     DASgl = getattr(DAmod, 'Single', None)
@@ -70,12 +71,12 @@ def Run(VL,**kwargs):
     if launcher == 'Sequential':
         Res = []
         for args in zip(*PoolArgs):
-            ret = VLPool(PoolRun,*args)
+            ret = VLF.VLPool(PoolRun,*args)
             Res.append(ret)
     elif launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLPool,[PoolRun]*NbDA, *PoolArgs)
+        Res = pool.map(VLF.VLPool,[PoolRun]*NbDA, *PoolArgs)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
         # Ensure that all paths added to sys.path are visible in pyinas MPI subprocess
@@ -88,12 +89,12 @@ def Run(VL,**kwargs):
         if not onall and NumThreads > N: N=N+1 # Add 1 if extra threads available for 'delegator'
 
         pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLPool,[PoolRun]*NbDA, *PoolArgs, onall=onall)
+        Res = pool.map(VLF.VLPool,[PoolRun]*NbDA, *PoolArgs, onall=onall)
 
         # reset environment back to original
         os.environ["PYTHONPATH"] = PyPath_orig
 
-    Errorfnc = VLPoolReturn(DADicts,Res)
+    Errorfnc = VLF.VLPoolReturn(DADicts,Res)
     if Errorfnc:
         VL.Exit("The following DA routine(s) finished with errors:\n{}".format(Errorfnc))
 

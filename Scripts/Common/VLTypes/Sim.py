@@ -9,7 +9,7 @@ import shutil
 import pickle
 
 from Scripts.Common.VLPackages import CodeAster
-from Scripts.Common.VLFunctions import VLPool, VLPoolReturn
+import Scripts.Common.VLFunctions as VLF
 
 def CheckFile(Directory,fname,ext):
     if not fname:
@@ -89,7 +89,7 @@ def PoolRun(VL, StudyDict, kwargs):
     # Create CALC_DIR where results for this sim will be stored
     os.makedirs(StudyDict['CALC_DIR'],exist_ok=True)
     # Write Parameters used for this sim to CALC_DIR
-    VL.WriteModule("{}/Parameters.py".format(StudyDict['CALC_DIR']), Parameters.__dict__)
+    VLF.WriteData("{}/Parameters.py".format(StudyDict['CALC_DIR']), Parameters)
 
     if RunPreAster and hasattr(Parameters,'PreAsterFile'):
         sys.path.insert(0, VL.SIM_PREASTER)
@@ -170,12 +170,12 @@ def Run(VL,**kwargs):
     if launcher == 'Sequential':
         Res = []
         for args in zip(*PoolArgs):
-            ret = VLPool(PoolRun,*args)
+            ret = VLF.VLPool(PoolRun,*args)
             Res.append(ret)
     elif launcher == 'Process':
         from pathos.multiprocessing import ProcessPool
         pool = ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLPool,[PoolRun]*NbSim, *PoolArgs)
+        Res = pool.map(VLF.VLPool,[PoolRun]*NbSim, *PoolArgs)
     elif launcher == 'MPI':
         from pyina.launchers import MpiPool
         # Ensure that all paths added to sys.path are visible pyinas MPI subprocess
@@ -188,13 +188,13 @@ def Run(VL,**kwargs):
         if not onall and NumThreads > N: N=N+1 # Add 1 if extra threads available for 'delegator'
 
         pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLPool,[PoolRun]*NbSim, *PoolArgs, onall=onall)
+        Res = pool.map(VLF.VLPool,[PoolRun]*NbSim, *PoolArgs, onall=onall)
 
         # reset environment back to original
         os.environ["PYTHONPATH"] = PyPath_orig
 
     # Errorfnc is a list of the pooled functions which returned errors
-    Errorfnc = VLPoolReturn(SimDicts,Res)
+    Errorfnc = VLF.VLPoolReturn(SimDicts,Res)
 
     if Errorfnc:
         VL.Exit("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc))

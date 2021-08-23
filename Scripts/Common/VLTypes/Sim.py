@@ -9,6 +9,7 @@ import shutil
 import pickle
 
 from Scripts.Common.VLPackages import SalomeRun
+from Scripts.Common.VLPackages.CodeAster import Aster
 import Scripts.Common.VLFunctions as VLF
 
 def CheckFile(Directory,fname,ext):
@@ -111,7 +112,7 @@ def PoolRun(VL, StudyDict, kwargs):
         ExportFile = "{}/Export".format(StudyDict['ASTER'])
         CommFile = '{}/{}.comm'.format(VL.SIM_ASTER, Parameters.AsterFile)
         MessFile = '{}/AsterLog'.format(StudyDict['ASTER'])
-        VL.CodeAster.ExportWriter(ExportFile, CommFile,
+        Aster.ExportWriter(ExportFile, CommFile,
         							StudyDict["MeshFile"],
         							StudyDict['ASTER'],
                                     MessFile, **kwargs)
@@ -123,8 +124,10 @@ def PoolRun(VL, StudyDict, kwargs):
         	pickle.dump(SimDict,f)
 
         # Run Simulation
-        SubProc = VL.CodeAster.Run(ExportFile, Name=Parameters.Name,
-                                   AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
+        if VL.mode == 'Interactive':
+            SubProc = Aster.RunXterm(ExportFile, AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
+        else:
+            SubProc = Aster.Run(ExportFile, AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
         err = SubProc.wait()
         if err:
             return "Aster Error: Code {} returned".format(err)

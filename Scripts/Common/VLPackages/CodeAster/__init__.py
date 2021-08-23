@@ -1,3 +1,3 @@
 #usr/bin/env python
 
-from .clsAster import CodeAster
+# from .clsAster import CodeAster

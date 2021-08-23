@@ -11,10 +11,9 @@ from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
 
 import VLconfig
-from Scripts.Common import Analytics
+from . import Analytics
 from .VLFunctions import ErrorMessage, WarningMessage
-from Scripts.Common.VLPackages import CodeAster
-from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
+from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
 	def __init__(self, Simulation, Project, StudyName, Parameters_Master=None, Parameters_Var=None,
@@ -88,9 +87,6 @@ class VLSetup():
 		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
 		VLNamespaces = ['Mesh','Sim','DA']
 		self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-
-		if not hasattr(self,'CodeAster'):
-			self.CodeAster = CodeAster.CodeAster(self)
 
 		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 

@@ -60,7 +60,7 @@ if EMLoad == 'ERMES':
 #############
 ### Aster ###
 #############
-Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
+Sim.AsterFile = 'AMAZE_SS' # This file must be in Scripts/$SIMULATION/Aster
 Sim.Mesh = 'AMAZE_Sample' # The mesh used for the simulation
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
@@ -71,14 +71,6 @@ if EMLoad == 'Uniform':
 
 ### Materials
 Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
-
-### IC
-Sim.InitTemp = 20 #Celcius
-
-### Time-stepping and temporal discretisation
-Sim.Theta = 0.5
-Sim.dt = [(0.01,200,2)] #timestep size and number of steps
-
 
 
 #############

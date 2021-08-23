@@ -862,13 +862,7 @@ The attribute *NbClusters* specifies the number of groups to cluster the data in
 
 The *RunERMES* flags works similarly to *CreateHTC*.
 
-Since this is a transient simulation, you will see that *Sim* has attributes relating to the temporal discretisation and IC::
-
-    Sim.InitTemp = 20
-    Sim.Theta = 0.5
-    Sim.dt = [(0.01,200,2)]
-
-This simulation will run for 200 timesteps up until the end time of 2s (200 * 0.01). Results will be stored at every other timestep.
+As the loads are not time-dependent this can be treated as a stationary thermal problem, with the command file :file:`AMAZE_SS.comm` used (SS=Steady State). A transient version of this simulation is also available, :file:`AMAZE.comm`.
 
 Task 1: Uniform Heat Flux
 ~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1,8 +1,8 @@
-
 import os
 import numpy as np
 import h5py
 from natsort import natsorted
+from Scripts.Common.VLPackages import SalomeRun
 
 def Single(VL,DADict):
     Parameters = DADict['Parameters']
@@ -40,6 +40,6 @@ def Single(VL,DADict):
 
     GUI = getattr(Parameters, 'PVGUI', False)
     ParaVisFile = "{}/ParaVis.py".format(os.path.dirname(os.path.abspath(__file__)))
-    RC = VL.Salome.Run(ParaVisFile, DataDict=DADict, GUI=GUI)
+    RC = SalomeRun(ParaVisFile, DataDict=DADict, GUI=GUI)
     if RC:
         return "Error in Salome run"

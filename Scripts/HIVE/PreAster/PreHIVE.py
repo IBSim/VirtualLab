@@ -11,6 +11,7 @@ import shutil
 
 from Scripts.Common.VLFunctions import MeshInfo,ASCIIname
 from Scripts.Common.VLPackages.ERMES import ERMES as ERMEScls
+from Scripts.Common.VLPackages import SalomeRun
 from DA.Functions import Uniformity3 as UniformityScore
 
 
@@ -76,7 +77,7 @@ def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, AddPath=[], LogFile=None, GUI=0)
 
 	script = "{}/EM/NewEM.py".format(VL.SIM_SCRIPTS)
 	DataDict = {'Parameters':Parameters,'InputFile':MeshIn,'OutputFile':MeshOut}
-	err = VL.Salome.Run(script, DataDict=DataDict, AddPath=AddPath, OutFile=LogFile, GUI=GUI)
+	err = SalomeRun(script, DataDict=DataDict, AddPath=AddPath, OutFile=LogFile, GUI=GUI)
 	return err
 
 def SetupERMES(VL, Parameters, ERMESMeshFile, tmpERMESdir, check=False):
@@ -519,7 +520,7 @@ def ERMES(VL,MeshFile,ERMESresfile,Parameters,CalcDir,RunSim=True,GUI=False):
 
 		# Create ERMES mesh
 		ERMESmesh = "{}/Mesh.med".format(CalcDir)
-		err = ERMES_Mesh(VL, MeshFile, ERMESmesh, Parameters, GUI=GUI)
+		err = ERMES_Mesh(VL, MeshFile, ERMESmesh, Parameters,AddPath=[VL.SIM_SCRIPTS], GUI=GUI)
 		if err: return sys.exit('Issue creating mesh')
 
 		# Run simulation using mesh created

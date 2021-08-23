@@ -1,3 +1,3 @@
 #usr/bin/env python
 
-# from .Salome import *
+from .Salome.Salome import Run as SalomeRun

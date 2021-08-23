@@ -13,7 +13,7 @@ from importlib import import_module, reload
 import VLconfig
 from Scripts.Common import Analytics
 from .VLFunctions import ErrorMessage, WarningMessage
-from Scripts.Common.VLPackages import Salome, CodeAster
+from Scripts.Common.VLPackages import CodeAster
 from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
@@ -89,8 +89,6 @@ class VLSetup():
 		VLNamespaces = ['Mesh','Sim','DA']
 		self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
-		if not hasattr(self,'Salome'):
-			self.Salome = Salome.Salome(self, AddPath=[self.SIM_SCRIPTS])
 		if not hasattr(self,'CodeAster'):
 			self.CodeAster = CodeAster.CodeAster(self)
 

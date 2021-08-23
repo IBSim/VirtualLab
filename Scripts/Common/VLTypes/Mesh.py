@@ -5,8 +5,9 @@ sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
 from importlib import import_module
 import shutil
+from Scripts.Common.VLPackages import SalomeRun
 
-import Scripts.Common.VLFunctions as VLF 
+import Scripts.Common.VLFunctions as VLF
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
@@ -65,7 +66,7 @@ def PoolRun(VL, MeshDict,**kwargs):
     else:
         script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
 
-    err = VL.Salome.Run(script, DataDict = MeshDict, AddPath=[VL.SIM_MESH])
+    err = SalomeRun(script, DataDict = MeshDict, AddPath=[VL.SIM_SCRIPTS,VL.SIM_MESH])
     if err:
         return "Error in Salome run"
 
@@ -92,8 +93,8 @@ def Run(VL,**kwargs):
         else:
             script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
         VL.MeshData[MeshCheck]['Debug'] = True
-        VL.Salome.Run(script, DataDict = VL.MeshData[MeshCheck],
-                        AddPath=[VL.SIM_MESH], GUI=True)
+        SalomeRun(script, DataDict = VL.MeshData[MeshCheck],
+                        AddPath=[VL.SIM_MESH,VL.SIM_SCRIPTS], GUI=True)
 
         VL.Exit('Terminating after checking mesh')
 
@@ -145,7 +146,7 @@ def Run(VL,**kwargs):
         VL.Logger("\n### Opening mesh files in Salome ###\n",Print=True)
         ArgDict = {name:"{}/{}.med".format(VL.MESH_DIR, name) for name in VL.MeshData.keys()}
         Script = '{}/VLPackages/Salome/ShowMesh.py'.format(VL.COM_SCRIPTS)
-        VL.Salome.Run(Script, DataDict=ArgDict, GUI=True)
+        SalomeRun(Script, DataDict=ArgDict, GUI=True)
         VL.Exit("\n### Terminating after mesh viewing ###")
 
 def Cleanup():

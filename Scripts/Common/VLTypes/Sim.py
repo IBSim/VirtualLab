@@ -8,7 +8,7 @@ from contextlib import redirect_stderr, redirect_stdout
 import shutil
 import pickle
 
-from Scripts.Common.VLPackages import CodeAster
+from Scripts.Common.VLPackages import SalomeRun
 import Scripts.Common.VLFunctions as VLF
 
 def CheckFile(Directory,fname,ext):
@@ -231,4 +231,4 @@ def Run(VL,**kwargs):
     				if ext == '.rmed':
     					ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
     	Script = "{}/VLPackages/Salome/ShowRes.py".format(VL.COM_SCRIPTS)
-    	VL.Salome.Run(Script, GUI=True, DataDict=ResFiles)
+    	SalomeRun(Script, GUI=True, DataDict=ResFiles)

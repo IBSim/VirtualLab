@@ -10,8 +10,7 @@ from bisect import bisect_left as bl
 import shutil
 
 from Scripts.Common.VLFunctions import MeshInfo,ASCIIname
-from Scripts.Common.VLPackages.ERMES import ERMES as ERMEScls
-from Scripts.Common.VLPackages import SalomeRun
+from Scripts.Common.VLPackages import SalomeRun, ERMESRun
 from DA.Functions import Uniformity3 as UniformityScore
 
 
@@ -463,11 +462,10 @@ def RunERMES(VL, Parameters, ERMESMeshFile, ERMESResFile, tmpERMESdir, check=Fal
 	SetupERMES(VL, Parameters, ERMESMeshFile, tmpERMESdir, check)
 
 	# Run ERMES
-	Ermes = ERMEScls() #Create ERMES instance
-	err = Ermes.Run('Static',cwd=tmpERMESdir) # Run ststic
+	err = ERMESRun('Static',cwd=tmpERMESdir) # Run ststic
 	# Run Wave
 	for Temp in Temperatures:
-		err = Ermes.Run('Wave{}'.format(Temp),cwd=tmpERMESdir,env=os.environ)
+		err = ERMESRun('Wave{}'.format(Temp),cwd=tmpERMESdir)
 
 	# Convert ERMES results file to rmed
 	JH_Node = ERMES_Conversion(VL, Parameters, ERMESMeshFile, ERMESResFile, tmpERMESdir, check)

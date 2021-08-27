@@ -19,6 +19,7 @@ def CheckFile(Directory,fname,ext):
         return os.path.isfile('{}/{}.{}'.format(Directory,fname,ext))
 
 def Setup(VL,**kwargs):
+    VL.SIM_SIM = "{}/Sim".format(VL.SIM_SCRIPTS)
 
     VL.SimData = {}
     SimDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Sim')
@@ -30,12 +31,12 @@ def Setup(VL,**kwargs):
     for SimName, ParaDict in SimDicts.items():
         # Run checks
         # Check files exist
-        if not CheckFile(VL.SIM_PREASTER,ParaDict.get('PreAsterFile'),'py'):
-        	VL.Exit("PreAsterFile '{}.py' not in directory {}".format(ParaDict['PreAsterFile'],VL.SIM_PREASTER))
-        if not CheckFile(VL.SIM_ASTER,ParaDict.get('AsterFile'),'comm'):
-        	VL.Exit("AsterFile '{}.comm' not in directory {}".format(ParaDict['AsterFile'],VL.SIM_ASTER,))
-        if not CheckFile(VL.SIM_POSTASTER, ParaDict.get('PostAsterFile'), 'py'):
-        	VL.Exit("PostAsterFile '{}.py' not in directory {}".format(ParaDict['PostAsterFile'],VL.SIM_POSTASTER))
+        if not CheckFile(VL.SIM_SIM,ParaDict.get('PreAsterFile'),'py'):
+        	VL.Exit("PreAsterFile '{}.py' not in directory {}".format(ParaDict['PreAsterFile'],VL.SIM_SIM))
+        if not CheckFile(VL.SIM_SIM,ParaDict.get('AsterFile'),'comm'):
+        	VL.Exit("AsterFile '{}.comm' not in directory {}".format(ParaDict['AsterFile'],VL.SIM_SIM))
+        if not CheckFile(VL.SIM_SIM, ParaDict.get('PostAsterFile'), 'py'):
+        	VL.Exit("PostAsterFile '{}.py' not in directory {}".format(ParaDict['PostAsterFile'],VL.SIM_SIM))
         # Check mesh will be available
         if not (ParaDict['Mesh'] in VL.MeshData or CheckFile(VL.MESH_DIR, ParaDict['Mesh'], 'med')):
         	VL.Exit("Mesh '{}' isn't being created and is not in the mesh directory '{}'".format(ParaDict['Mesh'], VL.MESH_DIR))
@@ -93,7 +94,6 @@ def PoolRun(VL, StudyDict, kwargs):
     VLF.WriteData("{}/Parameters.py".format(StudyDict['CALC_DIR']), Parameters)
 
     if RunPreAster and hasattr(Parameters,'PreAsterFile'):
-        sys.path.insert(0, VL.SIM_PREASTER)
         PreAster = import_module(Parameters.PreAsterFile)
         PreAsterSgl = getattr(PreAster, 'Single',None)
 
@@ -110,7 +110,7 @@ def PoolRun(VL, StudyDict, kwargs):
         os.makedirs(StudyDict['ASTER'],exist_ok=True)
         # Create export file for CodeAster
         ExportFile = "{}/Export".format(StudyDict['ASTER'])
-        CommFile = '{}/{}.comm'.format(VL.SIM_ASTER, Parameters.AsterFile)
+        CommFile = '{}/{}.comm'.format(VL.SIM_SIM, Parameters.AsterFile)
         MessFile = '{}/AsterLog'.format(StudyDict['ASTER'])
         Aster.ExportWriter(ExportFile, CommFile,
         							StudyDict["MeshFile"],
@@ -140,7 +140,6 @@ def PoolRun(VL, StudyDict, kwargs):
                 StudyDict.update(**SimDictN)
 
     if RunPostAster and hasattr(Parameters,'PostAsterFile'):
-        sys.path.insert(0, VL.SIM_POSTASTER)
         PostAster = import_module(Parameters.PostAsterFile)
         PostAsterSgl = getattr(PostAster, 'Single', None)
 
@@ -155,6 +154,7 @@ def PoolRun(VL, StudyDict, kwargs):
 
 def Run(VL,**kwargs):
     if not VL.SimData: return
+    sys.path.insert(0,VL.SIM_SIM)
     kwargs.update(VL.GetArgParser()) # Update with any kwarg passed in the call
 
     ShowRes = kwargs.get('ShowRes', False)
@@ -204,7 +204,6 @@ def Run(VL,**kwargs):
 
     PostAster = getattr(VL.Parameters_Master.Sim, 'PostAsterFile', None)
     if PostAster and kwargs.get('RunPostAster', True):
-        sys.path.insert(0, VL.SIM_POSTASTER)
         PostAster = import_module(PostAster)
         if hasattr(PostAster, 'Combined'):
             VL.Logger('Combined function started', Print=True)

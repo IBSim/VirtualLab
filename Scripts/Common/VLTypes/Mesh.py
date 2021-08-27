@@ -11,6 +11,7 @@ import Scripts.Common.VLFunctions as VLF
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
+    VL.SIM_MESH = "{}/Mesh".format(VL.SIM_SCRIPTS)
 
     VL.MeshData = {}
     MeshDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Mesh')

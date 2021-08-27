@@ -45,13 +45,6 @@ class VLSetup():
 		elif self.mode.lower() in ('h', 'headless'): self.mode = 'Headless'
 		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
 
-		# Scrpt directories
-		self.SIM_MESH = "{}/Mesh".format(self.SIM_SCRIPTS)
-		self.SIM_PREASTER = "{}/PreAster".format(self.SIM_SCRIPTS)
-		self.SIM_ASTER = "{}/Aster".format(self.SIM_SCRIPTS)
-		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
-		self.SIM_DA = "{}/DA".format(self.SIM_SCRIPTS)
-
 		self._pypath = sys.path.copy() # Needed for MPI run to match sys.path
 
 		self.Logger('### Launching VirtualLab ###',Print=True)

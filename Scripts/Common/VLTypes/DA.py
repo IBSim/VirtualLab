@@ -3,7 +3,7 @@ import sys
 sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
 from importlib import import_module
-import Scripts.Common.VLFunctions as VLF 
+import Scripts.Common.VLFunctions as VLF
 import copy
 import pickle
 
@@ -12,6 +12,7 @@ DA - Data Analysis
 '''
 
 def Setup(VL, **kwargs):
+    VL.SIM_DA = "{}/DA".format(VL.SIM_SCRIPTS)
     VL.DAData = {}
     DADicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'DA')
 

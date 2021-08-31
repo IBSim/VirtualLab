@@ -10,7 +10,7 @@ import pickle
 import VLconfig
 
 Exec = getattr(VLconfig,'SalomeExec','salome')
-SalomeDir = os.path.dirname(os.path.abspath(__file__))
+Dir = os.path.dirname(os.path.abspath(__file__))
 
 def Kill(Port):
 	if type(Port) == int:
@@ -38,7 +38,7 @@ def Run(Script, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = 
 
 	# Add paths provided to python path for subprocess
 	AddPath = [AddPath] if type(AddPath) == str else AddPath
-	PyPath = ["{}:".format(path) for path in AddPath + [SalomeDir]]
+	PyPath = ["{}:".format(path) for path in AddPath + [Dir]]
 	PyPath = "".join(PyPath)
 
 	_argstr = []

@@ -3,12 +3,12 @@ import os
 import sys
 sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
-from importlib import import_module
+from importlib import import_module, reload
 from contextlib import redirect_stderr, redirect_stdout
 import shutil
 import pickle
 
-from Scripts.Common.VLPackages import SalomeRun
+from Scripts.Common.VLPackages.Salome import Salome
 from Scripts.Common.VLPackages.CodeAster import Aster
 import Scripts.Common.VLFunctions as VLF
 
@@ -27,7 +27,7 @@ def Setup(VL,**kwargs):
     if not (kwargs.get('RunSim', True) and SimDicts): return
 
     os.makedirs(VL.STUDY_DIR, exist_ok=True)
-
+    sys.path.insert(0,VL.SIM_SIM)
     for SimName, ParaDict in SimDicts.items():
         # Run checks
         # Check files exist
@@ -58,7 +58,8 @@ def Setup(VL,**kwargs):
                     'PREASTER':"{}/PreAster".format(CALC_DIR),
                     'ASTER':"{}/Aster".format(CALC_DIR),
                     'POSTASTER':"{}/PostAster".format(CALC_DIR),
-                    'MeshFile':"{}/{}.med".format(VL.MESH_DIR, ParaDict['Mesh'])
+                    'MeshFile':"{}/{}.med".format(VL.MESH_DIR, ParaDict['Mesh']),
+                    'Parameters':Namespace(**ParaDict)
                     }
 
         # Important information can be added to Data during any stage of the
@@ -70,13 +71,11 @@ def Setup(VL,**kwargs):
             StudyDict['LogFile'] = "{}/Output.log".format(StudyDict['CALC_DIR'])
         else : StudyDict['LogFile'] = None
 
-        # Create tmp directory & add __init__ file so that it can be treated as a package
+        # Create tmp directory & add blank file to import in CodeAster
+        # so we known the location of TMP_CALC_DIR
         os.makedirs(StudyDict['TMP_CALC_DIR'])
-        with open("{}/__init__.py".format(StudyDict['TMP_CALC_DIR']),'w') as f: pass
-        # Blank file to import in CodeAster so we known the location of TMP_CALC_DIR
         with open("{}/IDDirVL.py".format(StudyDict['TMP_CALC_DIR']),'w') as f: pass
 
-        StudyDict['Parameters'] = Namespace(**ParaDict)
         # Add StudyDict to SimData dictionary
         VL.SimData[SimName] = StudyDict.copy()
 
@@ -154,7 +153,6 @@ def PoolRun(VL, StudyDict, kwargs):
 
 def Run(VL,**kwargs):
     if not VL.SimData: return
-    sys.path.insert(0,VL.SIM_SIM)
     kwargs.update(VL.GetArgParser()) # Update with any kwarg passed in the call
 
     ShowRes = kwargs.get('ShowRes', False)
@@ -224,7 +222,7 @@ def Run(VL,**kwargs):
 
     # Opens up all results in ParaVis
     if ShowRes:
-    	print("### Opening .rmed files in ParaVis ###\n")
+    	print("\n### Opening results files in ParaVis ###\n")
     	ResFiles = {}
     	for SimName, StudyDict in VL.SimData.items():
     		for root, dirs, files in os.walk(StudyDict['CALC_DIR']):
@@ -232,5 +230,5 @@ def Run(VL,**kwargs):
     				fname, ext = os.path.splitext(file)
     				if ext == '.rmed':
     					ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
-    	Script = "{}/VLPackages/Salome/ShowRes.py".format(VL.COM_SCRIPTS)
-    	SalomeRun(Script, GUI=True, DataDict=ResFiles)
+    	Script = "{}/ShowRes.py".format(Salome.Dir)
+    	Salome.Run(Script, GUI=True, DataDict=ResFiles,tempdir=VL.TEMP_DIR)

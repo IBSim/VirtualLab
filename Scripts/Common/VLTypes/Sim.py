@@ -54,7 +54,7 @@ def Setup(VL,**kwargs):
         # Create dict of simulation specific information to be nested in SimData
         CALC_DIR = "{}/{}".format(VL.STUDY_DIR, SimName)
         StudyDict = {'Name':SimName,
-                    'TMP_CALC_DIR':"{}/{}".format(VL.TEMP_DIR, SimName),
+                    'TMP_CALC_DIR':"{}/Sim/{}".format(VL.TEMP_DIR, SimName),
                     'CALC_DIR':CALC_DIR,
                     'PREASTER':"{}/PreAster".format(CALC_DIR),
                     'ASTER':"{}/Aster".format(CALC_DIR),
@@ -67,10 +67,11 @@ def Setup(VL,**kwargs):
         # simulation, and this will be saved to the location specified by the
         # value for the __file__ key
         StudyDict['Data'] = {'__file__':"{}/Data.pkl".format(StudyDict['CALC_DIR'])}
-
+        StudyDict['LogFile'] = None
         if VL.mode in ('Headless','Continuous'):
             StudyDict['LogFile'] = "{}/Output.log".format(StudyDict['CALC_DIR'])
-        else : StudyDict['LogFile'] = None
+        elif VL.mode == 'Interactive':
+            StudyDict['Interactive'] = True
 
         # Create tmp directory & add blank file to import in CodeAster
         # so we known the location of TMP_CALC_DIR
@@ -124,10 +125,11 @@ def PoolRun(VL, StudyDict, kwargs):
         	pickle.dump(SimDict,f)
 
         # Run Simulation
-        if VL.mode == 'Interactive':
-            SubProc = Aster.RunXterm(ExportFile, AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
+        if 'Interactive' in StudyDict:
+            SubProc = Aster.RunXterm(ExportFile, AddPath=[StudyDict['TMP_CALC_DIR']],
+                                     tempdir=StudyDict['TMP_CALC_DIR'])
         else:
-            SubProc = Aster.Run(ExportFile, AddPath=[VL.TEMP_DIR,StudyDict['TMP_CALC_DIR']])
+            SubProc = Aster.Run(ExportFile, AddPath=[StudyDict['TMP_CALC_DIR']])
         err = SubProc.wait()
         if err:
             return "Aster Error: Code {} returned".format(err)

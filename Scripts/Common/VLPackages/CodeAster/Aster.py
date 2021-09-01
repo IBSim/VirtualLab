@@ -56,7 +56,7 @@ def RunXterm(ExportFile, AddPath = [], tempdir = '/tmp'):
     proc = Popen(command , shell='TRUE', env=env)
     return proc
 
-def Run(ExportFile, AddPath = [], OutFile=None, tempdir = '/tmp'):
+def Run(ExportFile, AddPath = [], OutFile=None):
 
     AddPath = [AddPath] if type(AddPath) == str else AddPath
     PyPath = ["{}:".format(path) for path in AddPath+[CADir]]

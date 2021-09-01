@@ -163,9 +163,9 @@ class VLSetup():
 				f.write(Text+"\n")
 
 	def Exit(self,mess='',KeepDirs=[]):
-		self.Logger(mess, Print=True)
+		# self.Logger(mess, Print=True)
 		self.Cleanup(KeepDirs)
-		sys.exit()
+		sys.exit(mess)
 
 	def Cleanup(self,KeepDirs=[]):
 

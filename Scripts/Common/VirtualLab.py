@@ -26,14 +26,18 @@ class VLSetup():
 		self.Simulation = ParsedArgs.get('Simulation',Simulation)
 		self.Project = ParsedArgs.get('Project',Project)
 		self.StudyName = ParsedArgs.get('StudyName',StudyName)
+
+		self.Paths(VLconfig.VL_DIR,
+				   ParsedArgs.get('InputDir',InputDir),
+				   ParsedArgs.get('OutputDir',OutputDir),
+				   ParsedArgs.get('MaterialDir',MaterialDir),
+				   ParsedArgs.get('TempDir',TempDir))
+
+		# This is to ensure the Control method works
 		self._Parameters_Master = ParsedArgs.get('Parameters_Master',Parameters_Master)
 		self._Parameters_Var = ParsedArgs.get('Parameters_Var',Parameters_Var)
-		self.mode = ParsedArgs.get('Mode',Mode)
-		self.INPUT_DIR = ParsedArgs.get('InputDir',InputDir)
-		self.OUTPUT_DIR = ParsedArgs.get('OutputDir',OutputDir)
-		self.MATERIAL_DIR = ParsedArgs.get('MaterialDir',MaterialDir)
-		self.TEMP_DIR = ParsedArgs.get('TempDir',TempDir)
 
+		self.mode = ParsedArgs.get('Mode',Mode)
 		# Update mode as shorthand version can be given
 		if self.mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
 		elif self.mode.lower() in ('t','terminal'): self.mode = 'Terminal'
@@ -41,39 +45,43 @@ class VLSetup():
 		elif self.mode.lower() in ('h', 'headless'): self.mode = 'Headless'
 		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
 
-		self.__ID__ = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
-
-		# Update Input, Output and Temp directories with simulation specific ones
-		self.TEMP_DIR = '{}/VL_{}'.format(self.TEMP_DIR, self.__ID__)
-		try:
-			os.makedirs(self.TEMP_DIR)
-		except FileExistsError:
-			# Unlikely this would happen but add a random number to the end if it did
-			self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
-			os.makedirs(self.TEMP_DIR)
-
-		self.INPUT_DIR = '{}/{}/{}'.format(self.INPUT_DIR, Simulation, Project)
-
-		# Output directory
-		self.PROJECT_DIR = "{}/{}/{}".format(self.OUTPUT_DIR, Simulation, Project)
-		self.STUDY_DIR = "{}/{}".format(self.PROJECT_DIR, StudyName)
-		self.MESH_DIR = "{}/Meshes".format(self.PROJECT_DIR)
-
-		# Define variables and run some checks
-		# Script directories
-		self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
-		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, Simulation)
-
-		# Scrpt directories
-		self.SIM_MESH = "{}/Mesh".format(self.SIM_SCRIPTS)
-		self.SIM_PREASTER = "{}/PreAster".format(self.SIM_SCRIPTS)
-		self.SIM_ASTER = "{}/Aster".format(self.SIM_SCRIPTS)
-		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
-		self.SIM_DA = "{}/DA".format(self.SIM_SCRIPTS)
-
 		self._pypath = sys.path.copy() # Needed for MPI run to match sys.path
 
 		self.Logger('### Launching VirtualLab ###',Print=True)
+
+	def Paths(self,VLDir,InputDir,OutputDir,MaterialDir,TempDir):
+		'''
+		Paths to important locations within VirtualLab are defined in this function.
+		'''
+
+		# Define path to Parameters file
+		self._InputDir = InputDir
+		self.PARAMETERS_DIR = '{}/{}/{}'.format(self._InputDir, self.Simulation, self.Project)
+
+		# Define paths to results
+		self._OutputDir = OutputDir
+		self.PROJECT_DIR = "{}/{}/{}".format(self._OutputDir, self.Simulation, self.Project)
+		self.STUDY_DIR = "{}/{}".format(self.PROJECT_DIR, self.StudyName)
+
+		# Define path to Materials
+		self.MATERIAL_DIR = MaterialDir
+
+		# Define & create temporary directory for work to be saved to
+		self._TempDir = TempDir
+		# Unique ID
+		self.__ID__ = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
+
+		self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self.__ID__)
+		try:
+			os.makedirs(self.TEMP_DIR)
+		except FileExistsError:
+			# Unlikely this would happen. Suffix random number to direcory name
+			self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
+			os.makedirs(self.TEMP_DIR)
+
+		# Define paths to script directories
+		self.COM_SCRIPTS = "{}/Scripts/Common".format(VLDir)
+		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLDir, self.Simulation)
 
 	def Parameters(self, Parameters_Master, Parameters_Var=None,
 					RunMesh=True, RunSim=True, RunDA=True):
@@ -155,9 +163,9 @@ class VLSetup():
 				f.write(Text+"\n")
 
 	def Exit(self,mess='',KeepDirs=[]):
-		self.Logger(mess, Print=True)
+		# self.Logger(mess, Print=True)
 		self.Cleanup(KeepDirs)
-		sys.exit()
+		sys.exit(mess)
 
 	def Cleanup(self,KeepDirs=[]):
 
@@ -187,7 +195,7 @@ class VLSetup():
 		if os.path.splitext(Rel_Parameters)[1]=='.py':
 			Rel_Parameters = os.path.splitext(Rel_Parameters)[0]
 
-		Abs_Parameters = "{}/{}.py".format(self.INPUT_DIR,Rel_Parameters)
+		Abs_Parameters = "{}/{}.py".format(self.PARAMETERS_DIR,Rel_Parameters)
 		# Check File exists
 		if not os.path.exists(Abs_Parameters):
 			message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)

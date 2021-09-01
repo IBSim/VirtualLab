@@ -1,11 +1,9 @@
 import h5py
 import sys
 import numpy as np
-import traceback
 import os
 from contextlib import redirect_stderr, redirect_stdout
 from types import SimpleNamespace as Namespace
-import copy
 import pickle
 sys.dont_write_bytecode=True
 
@@ -247,78 +245,7 @@ class MeshInfo():
     def Close(self):
         self.g.close()
 
-def VLPool(fn,VL,Dict,*args):
-    # This function assumes that the first argument of args is the VL instance and
-    # the second is a dictionary of relevant information created in Setup
-    # Try and get name & log file if standard convention has been followed
-    # the relevant dictionary will be the second argument
-    if type(Dict)==dict:
-        Name = Dict.get('Name',None)
-        LogFile = Dict.get('LogFile',None)
-    else : Name, LogFile = None, None
 
-    Returner = Namespace()
-    OrigDict = copy.deepcopy(Dict)
-    try:
-        if LogFile:
-            # Output is piped to LogFile
-            print("Running {}.\nOutput is piped to {}.\n".format(Name, LogFile))
-            LogDir = os.path.dirname(LogFile)
-            os.makedirs(LogDir,exist_ok=True)
-            with open(LogFile,'w') as f:
-                with redirect_stdout(f), redirect_stderr(f):
-                    err = fn(VL,Dict,*args)
-        else:
-            print("Running {}.\n".format(Name))
-            err = fn(VL,Dict,*args)
-
-        if not err: mess = "{} completed successfully.\n".format(Name)
-        else: mess = "{} finishes with errors.\n".format(Name)
-
-        Returner.Error = err # will be None if everything has run smoothly
-        if not OrigDict == Dict:
-            # Attach dictionary to Returner to update VL class
-            Returner.Dict = Dict
-            # Save information in Data to location specified by __file__
-            Data = Dict.get('Data',{})
-            if '__file__' in Data and len(Data)>1:
-            	with open(Data['__file__'],'wb') as f:
-                    pickle.dump(Data,f)
-
-        return Returner
-    except (Exception,SystemExit) as e:
-        exc = e
-        trb = traceback.format_exception(etype=type(exc), value=exc, tb = exc.__traceback__)
-        err = "".join(trb)
-
-        mess = "{} finishes with errors.".format(Name)
-        return exc
-    finally:
-        if LogFile:
-            # if error write it to log file
-            if err:
-                mess += " See the output file for more details.".format(LogFile)
-                with open(LogFile,'a') as f:
-                    f.write(str(err))
-        elif err:
-            mess += "{}\n".format(err)
-
-        print(mess,flush=True)
-
-def VLPoolReturn(Dicts,Returners):
-    cpDicts = copy.deepcopy(Dicts)
-    PlError = []
-    for i, (Dict,Returner) in enumerate(zip(cpDicts,Returners)):
-        Name = Dict['Name']
-        if isinstance(Returner,Exception) or isinstance(Returner,SystemExit):
-            PlError.append(Name)
-            continue
-        if Returner.Error:
-            PlError.append(Name)
-        if hasattr(Returner,'Dict'):
-            Dicts[i].update(Returner.Dict)
-
-    return PlError
 
 class Sampling():
     def __init__(self, method, dim=0, range=[], bounds=True, options={}):

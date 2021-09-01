@@ -5,12 +5,14 @@ sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
 from importlib import import_module
 import shutil
-from Scripts.Common.VLPackages import SalomeRun
+from Scripts.Common.VLPackages.Salome import Salome
 
 import Scripts.Common.VLFunctions as VLF
+from Scripts.Common.VLParallel import VLPool
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
+    VL.SIM_MESH = "{}/Mesh".format(VL.SIM_SCRIPTS)
 
     VL.MeshData = {}
     MeshDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Mesh')
@@ -27,12 +29,12 @@ def Setup(VL, **kwargs):
         # ====================================================================
         # Perform checks
         # Check that mesh file exists
-        filepath = '{}/{}.py'.format(VL.SIM_MESH,ParaDict['File'])
+        filepath = '{}/{}.py'.format(VL.SIM_MESH,Parameters.File)
         if not os.path.exists(filepath):
             VL.Exit(ErrorMessage('Mesh file\n{}\n does not exist'.format(filepath)))
 
         # Check Verify function, if it exists
-        MeshFile = import_module(ParaDict['File'])
+        MeshFile = import_module(Parameters.File)
         if hasattr(MeshFile,'Verify'):
             error,warning = MeshFile.Verify(Parameters)
             if warning:
@@ -48,25 +50,34 @@ def Setup(VL, **kwargs):
 
         ## Checks complete ##
 
-        Mdict = {'Name':MeshName,
-                 'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
-                 'Parameters':Parameters}
+        MeshDict = {'Name':MeshName,
+                    'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
+                    'TMP_CALC_DIR':"{}/Mesh/{}".format(VL.TEMP_DIR, MeshName),
+                    'Parameters':Parameters
+                    }
         if VL.mode in ('Headless','Continuous'):
-            Mdict['LogFile'] = "{}/{}.log".format(VL.MESH_DIR,MeshName)
-        else : Mdict['LogFile'] = None
-        VL.MeshData[MeshName] = Mdict.copy()
+            MeshDict['LogFile'] = "{}/{}.log".format(VL.MESH_DIR,MeshName)
+        else : MeshDict['LogFile'] = None
+
+        os.makedirs(MeshDict['TMP_CALC_DIR'])
+
+        VL.MeshData[MeshName] = MeshDict.copy()
+
+
 
 
 def PoolRun(VL, MeshDict,**kwargs):
     # Write Parameters used to make the mesh to the mesh directory
     VLF.WriteData("{}/{}.py".format(VL.MESH_DIR, MeshDict['Name']), MeshDict['Parameters'])
 
+    # Use a user-made MeshRun file if it exists. If not use the default one.
     if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
         script = '{}/MeshRun.py'.format(VL.SIM_MESH)
     else:
-        script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
+        script = '{}/MeshRun.py'.format(Salome.Dir)
 
-    err = SalomeRun(script, DataDict = MeshDict, AddPath=[VL.SIM_SCRIPTS,VL.SIM_MESH])
+    err = Salome.Run(script, DataDict = MeshDict, AddPath=[VL.SIM_SCRIPTS,VL.SIM_MESH],
+                     tempdir=MeshDict['TMP_CALC_DIR'])
     if err:
         return "Error in Salome run"
 
@@ -86,15 +97,16 @@ def Run(VL,**kwargs):
     VirtualLab will terminate once the GUI is closed.
     '''
     if MeshCheck and MeshCheck in VL.MeshData.keys():
+        MeshDict = VL.MeshData[MeshCheck]
         VL.Logger('\n### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
 
         if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
             script = '{}/MeshRun.py'.format(VL.SIM_MESH)
         else:
-            script = '{}/VLPackages/Salome/MeshRun.py'.format(VL.COM_SCRIPTS)
-        VL.MeshData[MeshCheck]['Debug'] = True
-        SalomeRun(script, DataDict = VL.MeshData[MeshCheck],
-                        AddPath=[VL.SIM_MESH,VL.SIM_SCRIPTS], GUI=True)
+            script = '{}/MeshRun.py'.format(Salome.Dir)
+        MeshDict['Debug'] = True
+        Salome.Run(script, DataDict = MeshDict,tempdir=MeshDict['TMP_CALC_DIR'],
+                   AddPath=[VL.SIM_MESH,VL.SIM_SCRIPTS], GUI=True)
 
         VL.Exit('Terminating after checking mesh')
 
@@ -106,47 +118,20 @@ def Run(VL,**kwargs):
 
     NbMeshes = len(VL.MeshData)
     MeshDicts = list(VL.MeshData.values())
-    PoolArgs = [[VL]*NbMeshes, MeshDicts]
 
     N = min(NumThreads,NbMeshes)
 
-    if launcher == 'Sequential':
-        Res = []
-        for args in zip(*PoolArgs):
-            ret = VLF.VLPool(PoolRun,*args)
-            Res.append(ret)
-    elif launcher == 'Process':
-        from pathos.multiprocessing import ProcessPool
-        pool = ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLF.VLPool,[PoolRun]*NbMeshes, *PoolArgs)
-    elif launcher == 'MPI':
-        from pyina.launchers import MpiPool
-        # Ensure that all paths added to sys.path are visible pyinas MPI subprocess
-        addpath = set(sys.path) - set(VL._pypath) # group subtraction
-        addpath = ":".join(addpath) # write in unix style
-        PyPath_orig = os.environ.get('PYTHONPATH',"")
-        os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
-
-        onall = kwargs.get('onall',True) # Do we want 1 mpi worked to delegate and not compute (False if so)
-        if not onall and NumThreads > N: N=N+1 # Add 1 if extra threads available for 'delegator'
-
-        pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLF.VLPool,[PoolRun]*NbMeshes, *PoolArgs, onall=onall)
-
-        # reset environment back to original
-        os.environ["PYTHONPATH"] = PyPath_orig
-
-    Errorfnc = VLF.VLPoolReturn(MeshDicts,Res)
+    Errorfnc = VLPool(VL,PoolRun,MeshDicts,launcher=launcher,N=N,onall=True)
     if Errorfnc:
-        VL.Exit("\nThe following meshes finished with errors:\n{}".format(Errorfnc),KeepDirs=['Geom'])
+        VL.Exit("\nThe following meshes finished with errors:\n{}".format(Errorfnc))
 
     VL.Logger('\n### Meshing Complete ###',Print=True)
 
     if ShowMesh:
         VL.Logger("\n### Opening mesh files in Salome ###\n",Print=True)
         ArgDict = {name:"{}/{}.med".format(VL.MESH_DIR, name) for name in VL.MeshData.keys()}
-        Script = '{}/VLPackages/Salome/ShowMesh.py'.format(VL.COM_SCRIPTS)
-        SalomeRun(Script, DataDict=ArgDict, GUI=True)
+        Script = '{}/ShowMesh.py'.format(Salome.Dir)
+        Salome.Run(Script, DataDict=ArgDict, tempdir=VL.TEMP_DIR, GUI=True)
         VL.Exit("\n### Terminating after mesh viewing ###")
 
 def Cleanup():

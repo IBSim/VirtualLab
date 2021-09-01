@@ -67,7 +67,7 @@ def HTC(VL, SimDict):
 		### Exit due to errors
 		sys.exit("CreateHTC not 'True' and {} contains no HTC.dat file".format(SimDict['PREASTER']))
 
-def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, AddPath=[], LogFile=None, GUI=0):
+def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, tempdir='/tmp', AddPath=[], LogFile=None, GUI=0):
 	'''
 	MeshIn is used to build a conformal mesh (MeshOut) which is used by ERMES
 	to generate the EM loads. A coil is added above the sample along with a
@@ -76,7 +76,8 @@ def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, AddPath=[], LogFile=None, GUI=0)
 
 	script = "{}/EM/NewEM.py".format(VL.SIM_SCRIPTS)
 	DataDict = {'Parameters':Parameters,'InputFile':MeshIn,'OutputFile':MeshOut}
-	err = SalomeRun(script, DataDict=DataDict, AddPath=AddPath, OutFile=LogFile, GUI=GUI)
+	err = SalomeRun(script, DataDict=DataDict, AddPath=AddPath,
+					OutFile=LogFile, tempdir=tempdir, GUI=GUI)
 	return err
 
 def SetupERMES(VL, Parameters, ERMESMeshFile, tmpERMESdir, check=False):
@@ -518,7 +519,8 @@ def ERMES(VL,MeshFile,ERMESresfile,Parameters,CalcDir,RunSim=True,GUI=False):
 
 		# Create ERMES mesh
 		ERMESmesh = "{}/Mesh.med".format(CalcDir)
-		err = ERMES_Mesh(VL, MeshFile, ERMESmesh, Parameters,AddPath=[VL.SIM_SCRIPTS], GUI=GUI)
+		err = ERMES_Mesh(VL, MeshFile, ERMESmesh, Parameters,
+						 tempdir=CalcDir,AddPath=[VL.SIM_SCRIPTS], GUI=GUI)
 		if err: return sys.exit('Issue creating mesh')
 
 		# Run simulation using mesh created
@@ -575,7 +577,7 @@ def EMI(VL, SimDict):
 	RunERMES = getattr(Parameters,'RunERMES',True)
 	JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,SimDict['MeshFile'],
 										ERMESresfile,Parameters,
-										ERMESdir,RunERMES,GUI=0)
+										ERMESdir,RunERMES, GUI=0)
 	shutil.rmtree(ERMESdir) #rm ERMES dir here as this can be quite large
 
 	Watts = JH_Vol*Volumes

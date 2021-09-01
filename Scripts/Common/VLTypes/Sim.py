@@ -11,6 +11,7 @@ import pickle
 from Scripts.Common.VLPackages.Salome import Salome
 from Scripts.Common.VLPackages.CodeAster import Aster
 import Scripts.Common.VLFunctions as VLF
+from Scripts.Common.VLParallel import VLPool
 
 def CheckFile(Directory,fname,ext):
     if not fname:
@@ -154,7 +155,6 @@ def PoolRun(VL, StudyDict, kwargs):
 def Run(VL,**kwargs):
     if not VL.SimData: return
     kwargs.update(VL.GetArgParser()) # Update with any kwarg passed in the call
-
     ShowRes = kwargs.get('ShowRes', False)
     NumThreads = kwargs.get('NumThreads',1)
     launcher = kwargs.get('launcher','Process')
@@ -164,39 +164,11 @@ def Run(VL,**kwargs):
     # Run high throughput part in parallel
     NbSim = len(VL.SimData)
     SimDicts = list(VL.SimData.values())
-    PoolArgs = [[VL]*NbSim,SimDicts,[kwargs]*NbSim]
+    AddArgs = [[kwargs]*NbSim] #Additional arguments
 
     N = min(NumThreads,NbSim)
 
-    if launcher == 'Sequential':
-        Res = []
-        for args in zip(*PoolArgs):
-            ret = VLF.VLPool(PoolRun,*args)
-            Res.append(ret)
-    elif launcher == 'Process':
-        from pathos.multiprocessing import ProcessPool
-        pool = ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLF.VLPool,[PoolRun]*NbSim, *PoolArgs)
-    elif launcher == 'MPI':
-        from pyina.launchers import MpiPool
-        # Ensure that all paths added to sys.path are visible pyinas MPI subprocess
-        addpath = set(sys.path) - set(VL._pypath) # group subtraction
-        addpath = ":".join(addpath) # write in unix style
-        PyPath_orig = os.environ.get('PYTHONPATH',"")
-        os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
-
-        onall = kwargs.get('onall',True) # Do we want 1 mpi worked to delegate and not compute (False if so)
-        if not onall and NumThreads > N: N=N+1 # Add 1 if extra threads available for 'delegator'
-
-        pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLF.VLPool,[PoolRun]*NbSim, *PoolArgs, onall=onall)
-
-        # reset environment back to original
-        os.environ["PYTHONPATH"] = PyPath_orig
-
-    # Errorfnc is a list of the pooled functions which returned errors
-    Errorfnc = VLF.VLPoolReturn(SimDicts,Res)
-
+    Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs,launcher=launcher,N=N,onall=True)
     if Errorfnc:
         VL.Exit("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc))
 

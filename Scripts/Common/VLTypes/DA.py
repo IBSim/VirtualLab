@@ -3,9 +3,11 @@ import sys
 sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
 from importlib import import_module
-import Scripts.Common.VLFunctions as VLF
 import copy
 import pickle
+
+import Scripts.Common.VLFunctions as VLF
+from Scripts.Common.VLParallel import VLPool
 
 '''
 DA - Data Analysis
@@ -65,37 +67,10 @@ def Run(VL,**kwargs):
 
     NbDA = len(VL.DAData)
     DADicts = list(VL.DAData.values())
-    PoolArgs = [[VL]*NbDA,DADicts]
 
     N = min(NumThreads,NbDA)
 
-    if launcher == 'Sequential':
-        Res = []
-        for args in zip(*PoolArgs):
-            ret = VLF.VLPool(PoolRun,*args)
-            Res.append(ret)
-    elif launcher == 'Process':
-        from pathos.multiprocessing import ProcessPool
-        pool = ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLF.VLPool,[PoolRun]*NbDA, *PoolArgs)
-    elif launcher == 'MPI':
-        from pyina.launchers import MpiPool
-        # Ensure that all paths added to sys.path are visible in pyinas MPI subprocess
-        addpath = set(sys.path) - set(VL._pypath) # group subtraction
-        addpath = ":".join(addpath) # write in unix style
-        PyPath_orig = os.environ.get('PYTHONPATH',"")
-        os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
-
-        onall = kwargs.get('onall',True) # Do we want 1 mpi worker to delegate and not compute (False if so)
-        if not onall and NumThreads > N: N=N+1 # Add 1 if extra threads available for 'delegator'
-
-        pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLF.VLPool,[PoolRun]*NbDA, *PoolArgs, onall=onall)
-
-        # reset environment back to original
-        os.environ["PYTHONPATH"] = PyPath_orig
-
-    Errorfnc = VLF.VLPoolReturn(DADicts,Res)
+    Errorfnc = VLPool(VL,PoolRun,DADicts,launcher=launcher,N=N,onall=True)
     if Errorfnc:
         VL.Exit("The following DA routine(s) finished with errors:\n{}".format(Errorfnc))
 

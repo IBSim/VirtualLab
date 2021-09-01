@@ -8,6 +8,7 @@ import shutil
 from Scripts.Common.VLPackages.Salome import Salome
 
 import Scripts.Common.VLFunctions as VLF
+from Scripts.Common.VLParallel import VLPool
 
 def Setup(VL, **kwargs):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
@@ -117,39 +118,12 @@ def Run(VL,**kwargs):
 
     NbMeshes = len(VL.MeshData)
     MeshDicts = list(VL.MeshData.values())
-    PoolArgs = [[VL]*NbMeshes, MeshDicts]
 
     N = min(NumThreads,NbMeshes)
 
-    if launcher == 'Sequential':
-        Res = []
-        for args in zip(*PoolArgs):
-            ret = VLF.VLPool(PoolRun,*args)
-            Res.append(ret)
-    elif launcher == 'Process':
-        from pathos.multiprocessing import ProcessPool
-        pool = ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLF.VLPool,[PoolRun]*NbMeshes, *PoolArgs)
-    elif launcher == 'MPI':
-        from pyina.launchers import MpiPool
-        # Ensure that all paths added to sys.path are visible pyinas MPI subprocess
-        addpath = set(sys.path) - set(VL._pypath) # group subtraction
-        addpath = ":".join(addpath) # write in unix style
-        PyPath_orig = os.environ.get('PYTHONPATH',"")
-        os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
-
-        onall = kwargs.get('onall',True) # Do we want 1 mpi worked to delegate and not compute (False if so)
-        if not onall and NumThreads > N: N=N+1 # Add 1 if extra threads available for 'delegator'
-
-        pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
-        Res = pool.map(VLF.VLPool,[PoolRun]*NbMeshes, *PoolArgs, onall=onall)
-
-        # reset environment back to original
-        os.environ["PYTHONPATH"] = PyPath_orig
-
-    Errorfnc = VLF.VLPoolReturn(MeshDicts,Res)
+    Errorfnc = VLPool(VL,PoolRun,MeshDicts,launcher=launcher,N=N,onall=True)
     if Errorfnc:
-        VL.Exit("\nThe following meshes finished with errors:\n{}".format(Errorfnc),KeepDirs=['Geom'])
+        VL.Exit("\nThe following meshes finished with errors:\n{}".format(Errorfnc))
 
     VL.Logger('\n### Meshing Complete ###',Print=True)
 

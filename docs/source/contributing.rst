@@ -24,10 +24,10 @@ Creating a new branch should be done roughly as follows::
     
 Now that we have a new temporary branch development can continue on this branch as usual with commits happening when desired by the user. The temp branch can be also pushed to GitLab without creating a merge request if working with collaborators (and also for backing up work in the cloud). To do this the collaborator just needs to ensure they have all the latest changes from all the branches of the code from GitLab using ``git pull --all`` then change over to your branch using ``git checkout INITIALS_BRANCH-NAME``.
 
-Creating a merge request into the dev branch
-********************************************
+Creating a merge request
+************************
 
-Once work on the temporary branch is complete and and ready to be merged into dev we need to first ensure we have pushed our changes over to the remote GitLab repo.::
+Once work on the temporary branch is complete and and ready to be merged into the dev branch we need to first ensure we have pushed our changes over to the remote GitLab repo.::
 
     # first ensure we have the latest changes
     git pull

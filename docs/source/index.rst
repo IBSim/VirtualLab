@@ -20,6 +20,7 @@ Welcome to VirtualLab's documentation!
    runsim
    examples
    about
+   contributing
 
 Indices and tables
 ==================

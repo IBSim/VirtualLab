@@ -22,7 +22,7 @@ Creating a new branch should be done roughly as follows::
     git checkout BRANCHNAME-INT
     git push --set-upstream origin INITIALS_BRANCH-NAME
     
-Now that we have a new temporary branch development can continue on this branch as usual with commits happening when desired by the user. The temp branch can be also pushed to GitLab without creating a merge request if working with collaborators (and also for backing up work in the cloud). To do this the collaborator just needs to ensure they have all the latest changes from all the branches of the code from GitLab using ``git pull --all`` then change over to your branch using ``git checkout BRANCHNAME-INT``.
+Now that we have a new temporary branch development can continue on this branch as usual with commits happening when desired by the user. The temp branch can be also pushed to GitLab without creating a merge request if working with collaborators (and also for backing up work in the cloud). To do this the collaborator just needs to ensure they have all the latest changes from all the branches of the code from GitLab using ``git pull --all`` then change over to your branch using ``git checkout INITIALS_BRANCH-NAME``.
 
 
 
@@ -73,4 +73,4 @@ Once the merge has been accepted, The final step is to pull in the latest change
     git checkout dev
     git pull
     # delete our local copy of the temporary branch
-    git branch -d BRANCHNAME-INT
+    git branch -d INITIALS_BRANCH-NAME

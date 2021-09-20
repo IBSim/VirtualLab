@@ -157,8 +157,6 @@ def Run(VL,**kwargs):
     if not VL.SimData: return
     kwargs.update(VL.GetArgParser()) # Update with any kwarg passed in the call
     ShowRes = kwargs.get('ShowRes', False)
-    NumThreads = kwargs.get('NumThreads',1)
-    launcher = kwargs.get('launcher','Process')
 
     VL.Logger('\n### Starting Simulations ###\n', Print=True)
 
@@ -167,9 +165,9 @@ def Run(VL,**kwargs):
     SimDicts = list(VL.SimData.values())
     AddArgs = [[kwargs]*NbSim] #Additional arguments
 
-    N = min(NumThreads,NbSim)
+    N = min(VL.NbThreads,NbSim)
 
-    Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs,launcher=launcher,N=N,onall=True)
+    Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs,launcher=VL.Launcher,N=N,onall=True)
     if Errorfnc:
         VL.Exit("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc))
 

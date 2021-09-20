@@ -60,17 +60,14 @@ def Run(VL,**kwargs):
     if not VL.DAData: return
     sys.path.insert(0,VL.SIM_DA)
 
-    NumThreads = kwargs.get('NumThreads',1)
-    launcher = kwargs.get('launcher','Process')
-
     VL.Logger('\n### Starting Data Analysis ###\n', Print=True)
 
     NbDA = len(VL.DAData)
     DADicts = list(VL.DAData.values())
 
-    N = min(NumThreads,NbDA)
+    N = min(VL.NbThreads,NbDA)
 
-    Errorfnc = VLPool(VL,PoolRun,DADicts,launcher=launcher,N=N,onall=True)
+    Errorfnc = VLPool(VL,PoolRun,DADicts,launcher=VL.Launcher,N=N,onall=True)
     if Errorfnc:
         VL.Exit("The following DA routine(s) finished with errors:\n{}".format(Errorfnc))
 

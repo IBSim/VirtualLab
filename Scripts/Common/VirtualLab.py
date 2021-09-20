@@ -16,8 +16,8 @@ from .VLFunctions import ErrorMessage, WarningMessage
 from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
-	def __init__(self, Simulation, Project, Parameters_Master=None, Parameters_Var=None,
-				 Mode='T', InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+	def __init__(self, Simulation, Project, Mode='H',
+				 InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
 				 MaterialDir=VLconfig.MaterialsDir, TempDir=VLconfig.TEMP_DIR):
 
 		# Parameters can be overwritten using parsed arguments
@@ -45,6 +45,9 @@ class VLSetup():
 		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
 
 		self._pypath = sys.path.copy() # Needed for MPI run to match sys.path
+
+		self.NbThreads = 1
+		self.Launcher = 'Process'
 
 		self.Logger('### Launching VirtualLab ###',Print=True)
 

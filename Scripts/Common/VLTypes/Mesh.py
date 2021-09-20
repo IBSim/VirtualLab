@@ -88,14 +88,12 @@ def Run(VL,**kwargs):
 
     MeshCheck = kwargs.get('MeshCheck', None)
     ShowMesh = kwargs.get('ShowMesh', False)
-    NumThreads = kwargs.get('NumThreads',1)
-    launcher = kwargs.get('launcher','Process')
 
-    '''
-    MeshCheck routine which allows you to mesh in the GUI (useful for debugging).
-    Currently only 1 mesh can be debugged at a time.
-    VirtualLab will terminate once the GUI is closed.
-    '''
+    #===========================================================================
+    # MeshCheck routine which allows you to mesh in the GUI (for debugging).
+    # Currently only 1 mesh can be debugged at a time. VirtualLab will
+    # terminate once the GUI is closed.
+
     if MeshCheck and MeshCheck in VL.MeshData.keys():
         MeshDict = VL.MeshData[MeshCheck]
         VL.Logger('\n### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
@@ -114,19 +112,24 @@ def Run(VL,**kwargs):
         VL.Exit("Error: '{}' specified for MeshCheck is not one of meshes to be created.\n"\
                      "Meshes to be created are:{}".format(MeshCheck, list(VL.Data.keys())))
 
+    # ==========================================================================
+    # Run mesh routine
+
     VL.Logger('\n### Starting Meshing ###\n',Print=True)
 
     NbMeshes = len(VL.MeshData)
     MeshDicts = list(VL.MeshData.values())
 
-    N = min(NumThreads,NbMeshes)
+    N = min(VL.NbThreads,NbMeshes)
 
-    Errorfnc = VLPool(VL,PoolRun,MeshDicts,launcher=launcher,N=N,onall=True)
+    Errorfnc = VLPool(VL,PoolRun,MeshDicts,launcher=VL.Launcher,N=N,onall=True)
     if Errorfnc:
         VL.Exit("\nThe following meshes finished with errors:\n{}".format(Errorfnc))
 
     VL.Logger('\n### Meshing Complete ###',Print=True)
 
+    # ==========================================================================
+    # Open meshes in GUI to view
     if ShowMesh:
         VL.Logger("\n### Opening mesh files in Salome ###\n",Print=True)
         ArgDict = {name:"{}/{}.med".format(VL.MESH_DIR, name) for name in VL.MeshData.keys()}

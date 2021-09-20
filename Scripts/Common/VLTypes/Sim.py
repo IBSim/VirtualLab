@@ -27,7 +27,6 @@ def Setup(VL,**kwargs):
 
     if not (kwargs.get('RunSim', True) and SimDicts): return
 
-    os.makedirs(VL.STUDY_DIR, exist_ok=True)
     sys.path.insert(0,VL.SIM_SIM)
     for SimName, ParaDict in SimDicts.items():
         # Run checks
@@ -52,7 +51,7 @@ def Setup(VL,**kwargs):
         # Checks complete
 
         # Create dict of simulation specific information to be nested in SimData
-        CALC_DIR = "{}/{}".format(VL.STUDY_DIR, SimName)
+        CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, SimName)
         StudyDict = {'Name':SimName,
                     'TMP_CALC_DIR':"{}/Sim/{}".format(VL.TEMP_DIR, SimName),
                     'CALC_DIR':CALC_DIR,
@@ -173,24 +172,6 @@ def Run(VL,**kwargs):
     Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs,launcher=launcher,N=N,onall=True)
     if Errorfnc:
         VL.Exit("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc))
-
-    PostAster = getattr(VL.Parameters_Master.Sim, 'PostAsterFile', None)
-    if PostAster and kwargs.get('RunPostAster', True):
-        PostAster = import_module(PostAster)
-        if hasattr(PostAster, 'Combined'):
-            VL.Logger('Combined function started', Print=True)
-            # sort this log part out to add to each log file
-            if VL.mode in ('Interactive','Terminal'):
-                err = PostAster.Combined(VL)
-            else :
-                with open(VL.LogFile, 'a') as f:
-                    with redirect_stdout(f), redirect_stderr(f):
-                        err = PostAster.Combined(VL)
-
-            if err == None:
-                VL.Logger('Combined function completed successfully', Print=True)
-            else :
-                VL.Exit("Combined function returned error '{}'".format(err))
 
     VL.Logger('### Simulations Completed ###',Print=True)
 

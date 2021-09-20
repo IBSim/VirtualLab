@@ -45,8 +45,7 @@ def Run(VL,**kwargs):
     RunFile = os.path.realpath(frame[0].f_code.co_filename)
     RunFileSC = inspect.getsource(inspect.getmodule(frame[0]))
 
-    args = {'Simulation':VL.Simulation, 'Project':VL.Project, \
-    			'StudyName':VL.StudyName, 'Mode':VL.mode}
+    args = {'Simulation':VL.Simulation, 'Project':VL.Project, 'Mode':VL.mode}
 
     # Update keywords with those set in the script
     keywords = {**kwargs, \

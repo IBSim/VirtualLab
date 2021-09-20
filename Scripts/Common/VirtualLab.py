@@ -16,7 +16,7 @@ from .VLFunctions import ErrorMessage, WarningMessage
 from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
-	def __init__(self, Simulation, Project, StudyName, Parameters_Master=None, Parameters_Var=None,
+	def __init__(self, Simulation, Project, Parameters_Master=None, Parameters_Var=None,
 				 Mode='T', InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
 				 MaterialDir=VLconfig.MaterialsDir, TempDir=VLconfig.TEMP_DIR):
 
@@ -25,7 +25,6 @@ class VLSetup():
 
 		self.Simulation = ParsedArgs.get('Simulation',Simulation)
 		self.Project = ParsedArgs.get('Project',Project)
-		self.StudyName = ParsedArgs.get('StudyName',StudyName)
 
 		self.Paths(VLconfig.VL_DIR,
 				   ParsedArgs.get('InputDir',InputDir),
@@ -61,7 +60,6 @@ class VLSetup():
 		# Define paths to results
 		self._OutputDir = OutputDir
 		self.PROJECT_DIR = "{}/{}/{}".format(self._OutputDir, self.Simulation, self.Project)
-		self.STUDY_DIR = "{}/{}".format(self.PROJECT_DIR, self.StudyName)
 
 		# Define path to Materials
 		self.MATERIAL_DIR = MaterialDir
@@ -148,7 +146,7 @@ class VLSetup():
 			if self.mode in ('Interactive','Terminal'):
 				self.LogFile = None
 			else:
-				self.LogFile = "{}/.log/{}_{}.log".format(self.PROJECT_DIR,self.StudyName,self.__ID__)
+				self.LogFile = "{}/.log/{}.log".format(self.PROJECT_DIR, self.__ID__)
 				os.makedirs(os.path.dirname(self.LogFile), exist_ok=True)
 				with open(self.LogFile,'w') as f:
 					f.write(Text)

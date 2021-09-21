@@ -13,13 +13,13 @@ from Scripts.Common.VLParallel import VLPool
 DA - Data Analysis
 '''
 
-def Setup(VL, **kwargs):
+def Setup(VL, RunDA=True):
     VL.SIM_DA = "{}/DA".format(VL.SIM_SCRIPTS)
     VL.DAData = {}
     DADicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'DA')
 
     # if either DADicts is empty or RunDA is False we will return
-    if not (kwargs.get('RunDA', True) and DADicts): return
+    if not (RunDA and DADicts): return
 
     VL.tmpDA_DIR = "{}/DA".format(VL.TEMP_DIR)
     os.makedirs(VL.tmpDA_DIR, exist_ok=True)
@@ -56,7 +56,7 @@ def PoolRun(VL, DADict):
     err = DASgl(VL,DADict)
     return err
 
-def Run(VL,**kwargs):
+def Run(VL):
     if not VL.DAData: return
     sys.path.insert(0,VL.SIM_DA)
 

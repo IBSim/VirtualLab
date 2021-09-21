@@ -11,18 +11,18 @@ import VLconfig
 Exec = VLconfig.ASTER_DIR
 CADir = os.path.dirname(os.path.abspath(__file__))
 
-def ExportWriter(ExportFile,CommFile,MeshFile,ResultsDir,MessFile,**kwargs):
+def ExportWriter(ExportFile,CommFile,MeshFile,ResultsDir,MessFile,Settings):
     # Create export file and write to file
 
     # CodeAster settings
-    mpi_cpu = kwargs.get('mpi_nbcpu',1)
-    mpi_nd = kwargs.get('mpi_nbnoeud',1)
-    ncpus = kwargs.get('ncpus',1)
-    memory = kwargs.get('memory',2)
-    time = kwargs.get('time',99999)
-    version = kwargs.get('version','stable')
-    mode = kwargs.get('mode','batch')
-    actions = kwargs.get('actions','make_etude')
+    mpi_cpu = Settings.get('mpi_nbcpu',1)
+    mpi_nd = Settings.get('mpi_nbnoeud',1)
+    ncpus = Settings.get('ncpus',1)
+    memory = Settings.get('memory',2) # Giggabytes
+    time = Settings.get('time',99999) # seconds
+    version = Settings.get('version','stable')
+    mode = Settings.get('mode','batch')
+    actions = Settings.get('actions','make_etude')
 
     Settings='P actions {}\n'\
     'P mode {}\n'\

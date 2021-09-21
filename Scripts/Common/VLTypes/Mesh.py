@@ -10,7 +10,7 @@ from Scripts.Common.VLPackages.Salome import Salome
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 
-def Setup(VL, **kwargs):
+def Setup(VL, RunMesh=True):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
     VL.SIM_MESH = "{}/Mesh".format(VL.SIM_SCRIPTS)
 
@@ -18,7 +18,7 @@ def Setup(VL, **kwargs):
     MeshDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Mesh')
 
     # if either MeshDicts is empty or RunMesh is False we will return
-    if not (kwargs.get('RunMesh', True) and MeshDicts): return
+    if not (RunMesh and MeshDicts): return
 
     os.makedirs(VL.MESH_DIR, exist_ok=True)
 
@@ -63,9 +63,6 @@ def Setup(VL, **kwargs):
 
         VL.MeshData[MeshName] = MeshDict.copy()
 
-
-
-
 def PoolRun(VL, MeshDict,**kwargs):
     # Write Parameters used to make the mesh to the mesh directory
     VLF.WriteData("{}/{}.py".format(VL.MESH_DIR, MeshDict['Name']), MeshDict['Parameters'])
@@ -81,18 +78,12 @@ def PoolRun(VL, MeshDict,**kwargs):
     if err:
         return "Error in Salome run"
 
-def Run(VL,**kwargs):
+def Run(VL,MeshCheck=None,ShowMesh=False):
     if not VL.MeshData: return
 
-    kwargs.update(VL.GetArgParser()) # Update with any kwarg passed in the call
-
-    MeshCheck = kwargs.get('MeshCheck', None)
-    ShowMesh = kwargs.get('ShowMesh', False)
-
     #===========================================================================
-    # MeshCheck routine which allows you to mesh in the GUI (for debugging).
-    # Currently only 1 mesh can be debugged at a time. VirtualLab will
-    # terminate once the GUI is closed.
+    # MeshCheck allows you to mesh in the GUI (for debugging).Currently only 1
+    # mesh can be debugged at a time. VirtualLab terminates when GUI is closed.
 
     if MeshCheck and MeshCheck in VL.MeshData.keys():
         MeshDict = VL.MeshData[MeshCheck]
@@ -113,7 +104,7 @@ def Run(VL,**kwargs):
                      "Meshes to be created are:{}".format(MeshCheck, list(VL.Data.keys())))
 
     # ==========================================================================
-    # Run mesh routine
+    # Run Mesh routine
 
     VL.Logger('\n### Starting Meshing ###\n',Print=True)
 
@@ -130,6 +121,7 @@ def Run(VL,**kwargs):
 
     # ==========================================================================
     # Open meshes in GUI to view
+
     if ShowMesh:
         VL.Logger("\n### Opening mesh files in Salome ###\n",Print=True)
         ArgDict = {name:"{}/{}.med".format(VL.MESH_DIR, name) for name in VL.MeshData.keys()}

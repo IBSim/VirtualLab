@@ -21,22 +21,18 @@ class VLSetup():
 				 MaterialDir=VLconfig.MaterialsDir, TempDir=VLconfig.TEMP_DIR):
 
 		# Parameters can be overwritten using parsed arguments
-		ParsedArgs = self.GetArgParser()
+		self._GetParsedArgs()
 
-		self.Simulation = ParsedArgs.get('Simulation',Simulation)
-		self.Project = ParsedArgs.get('Project',Project)
+		self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
+		self.Project = self._ParsedArgs.get('Project',Project)
 
 		self.Paths(VLconfig.VL_DIR,
-				   ParsedArgs.get('InputDir',InputDir),
-				   ParsedArgs.get('OutputDir',OutputDir),
-				   ParsedArgs.get('MaterialDir',MaterialDir),
-				   ParsedArgs.get('TempDir',TempDir))
+				   self._ParsedArgs.get('InputDir',InputDir),
+				   self._ParsedArgs.get('OutputDir',OutputDir),
+				   self._ParsedArgs.get('MaterialDir',MaterialDir),
+				   self._ParsedArgs.get('TempDir',TempDir))
 
-		# This is to ensure the Control method works
-		self._Parameters_Master = ParsedArgs.get('Parameters_Master',Parameters_Master)
-		self._Parameters_Var = ParsedArgs.get('Parameters_Var',Parameters_Var)
-
-		self.mode = ParsedArgs.get('Mode',Mode)
+		self.mode = self._ParsedArgs.get('Mode',Mode)
 		# Update mode as shorthand version can be given
 		if self.mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
 		elif self.mode.lower() in ('t','terminal'): self.mode = 'Terminal'
@@ -86,12 +82,13 @@ class VLSetup():
 
 	def Parameters(self, Parameters_Master, Parameters_Var=None,
 					RunMesh=True, RunSim=True, RunDA=True):
-		'''
-		This method is replacing control.
-		'''
 
-		kw = {'RunMesh':RunMesh,'RunSim':RunSim,'RunDA':RunDA}
-		kw.update(self.GetArgParser())
+		# Update args with parsed args
+		Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
+		Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
+		RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
+		RunSim = self._ParsedArgs.get('RunSim',RunSim)
+		RunDA = self._ParsedArgs.get('RunDA',RunDA)
 
 		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
 		VLNamespaces = ['Mesh','Sim','DA']
@@ -99,14 +96,15 @@ class VLSetup():
 
 		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 
-		MeshFn.Setup(self,**kw)
-		SimFn.Setup(self,**kw)
-		DAFn.Setup(self,**kw)
+		MeshFn.Setup(self,RunMesh)
+		SimFn.Setup(self,RunSim)
+		DAFn.Setup(self,RunDA)
 
 		# Function to analyse usage of VirtualLab to evidence impact for
 		# use in future research grant applications. Can be turned off via
 		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
-		if VLconfig.VL_ANALYTICS=="True": Analytics.Run(self,**kw)
+		
+		# if VLconfig.VL_ANALYTICS=="True": Analytics.Run(self)
 
 	def Control(self, **kwargs):
 		'''
@@ -124,21 +122,27 @@ class VLSetup():
 
 
 	def Mesh(self,**kwargs):
+		kwargs = self._UpdateArgs(kwargs)
 		return MeshFn.Run(self,**kwargs)
 
 	def devMesh(self,**kwargs):
+		kwargs = self._UpdateArgs(kwargs)
 		return MeshFn.Run(self,**kwargs)
 
 	def Sim(self,**kwargs):
+		kwargs = self._UpdateArgs(kwargs)
 		return SimFn.Run(self,**kwargs)
 
 	def devSim(self,**kwargs):
+		kwargs = self._UpdateArgs(kwargs)
 		return SimFn.Run(self,**kwargs)
 
 	def DA(self,**kwargs):
+		kwargs = self._UpdateArgs(kwargs)
 		return DAFn.Run(self,**kwargs)
 
 	def devDA(self,**kwargs):
+		kwargs = self._UpdateArgs(kwargs)
 		return DAFn.Run(self,**kwargs)
 
 	def Logger(self,Text='',**kwargs):
@@ -299,10 +303,9 @@ class VLSetup():
 
 		return ParaDict
 
-	def GetArgParser(self):
-		ArgList=sys.argv[1:]
-		argdict={}
-		for arg in ArgList:
+	def _GetParsedArgs(self):
+		self._ParsedArgs = {}
+		for arg in sys.argv[1:]:
 			split=arg.split('=')
 			if len(split)!=2:
 				continue
@@ -312,10 +315,16 @@ class VLSetup():
 			elif value=='None':value=None
 			elif value.isnumeric():value=int(value)
 			else:
-				try:
-					value=float(value)
+				try: value=float(value)
 				except: ValueError
 
-			argdict[var]=value
+			self._ParsedArgs[var]=value
 
-		return argdict
+	def _UpdateArgs(self,ArgDict):
+		Changes = set(ArgDict).intersection(self._ParsedArgs)
+		if not Changes: return ArgDict
+
+		# If some of the arguments have been parsed then they are updated
+		for key in Changes:
+			ArgDict[key] = self._ParsedArgs[key]
+		return ArgDict

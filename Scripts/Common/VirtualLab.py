@@ -16,36 +16,74 @@ from .VLFunctions import ErrorMessage, WarningMessage
 from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
-	def __init__(self, Simulation, Project, Mode='H',
+	def __init__(self, Simulation, Project,
 				 InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
 				 MaterialDir=VLconfig.MaterialsDir, TempDir=VLconfig.TEMP_DIR):
 
-		# Parameters can be overwritten using parsed arguments
+
+		# Get parsed args (achieved using the -k flag when launchign VirtualLab).
 		self._GetParsedArgs()
 
+		# ======================================================================
+		# Define variables
 		self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
 		self.Project = self._ParsedArgs.get('Project',Project)
 
+		# ======================================================================
+		# Define paths
 		self.Paths(VLconfig.VL_DIR,
 				   self._ParsedArgs.get('InputDir',InputDir),
 				   self._ParsedArgs.get('OutputDir',OutputDir),
 				   self._ParsedArgs.get('MaterialDir',MaterialDir),
 				   self._ParsedArgs.get('TempDir',TempDir))
 
-		self.mode = self._ParsedArgs.get('Mode',Mode)
-		# Update mode as shorthand version can be given
-		if self.mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
-		elif self.mode.lower() in ('t','terminal'): self.mode = 'Terminal'
-		elif self.mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
-		elif self.mode.lower() in ('h', 'headless'): self.mode = 'Headless'
-		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
+		self.Settings()
 
-		self._pypath = sys.path.copy() # Needed for MPI run to match sys.path
 
-		self.NbThreads = 1
-		self.Launcher = 'Process'
+		# Copy path at the start for MPI to match sys.path
+		self._pypath = sys.path.copy()
 
 		self.Logger('### Launching VirtualLab ###',Print=True)
+
+
+	def SetMode(self,Mode='H'):
+		Mode = self._ParsedArgs.get('Mode',Mode)
+		# ======================================================================
+		# Update mode as shorthand version can be given
+		if Mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
+		elif Mode.lower() in ('t','terminal'): self.mode = 'Terminal'
+		elif Mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
+		elif Mode.lower() in ('h', 'headless'): self.mode = 'Headless'
+		else : self.Exit("Error: Mode must be one of; 'Interactive','Terminal','Continuous', 'Headless'")
+
+	def SetLauncher(self,Launcher='Process'):
+		Launcher = self._ParsedArgs.get('Launcher',Launcher)
+		if Launcher.lower() == 'sequential': self._Launcher = 'Sequential'
+		elif Launcher.lower() == 'process': self._Launcher = 'Process'
+		elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
+		else: self.Exit("Error: Launcher must be one of; 'Sequential','Process', 'MPI'")
+
+	def SetNbThreads(self,NbThreads=1):
+		NbThreads = self._ParsedArgs.get('NbThreads',NbThreads)
+		if type(NbThreads) == int:
+			_NbThreads = NbThreads
+		elif type(NbThreads) == float:
+			if NbThreads.is_integer():
+				_NbThreads = NbThreads
+			else:
+				self.Exit("Error: NbThreads must be an integer")
+		else:
+			self.Exit("Error: NbThreads must be an integer")
+
+		if _NbThreads >= 1:
+			self._NbThreads = _NbThreads
+		else:
+			self.Exit("Error: NbThreads must be positive")
+
+	def Settings(self, Mode='Headless', Launcher='Process', NbThreads=1):
+		self.SetMode(Mode)
+		self.SetLauncher(Launcher)
+		self.SetNbThreads(NbThreads)
 
 	def Paths(self,VLDir,InputDir,OutputDir,MaterialDir,TempDir):
 		'''
@@ -103,23 +141,8 @@ class VLSetup():
 		# Function to analyse usage of VirtualLab to evidence impact for
 		# use in future research grant applications. Can be turned off via
 		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
-		
+
 		# if VLconfig.VL_ANALYTICS=="True": Analytics.Run(self)
-
-	def Control(self, **kwargs):
-		'''
-		kwargs available:
-		RunMesh: Boolean to dictate whether or not to create meshes
-		RunSim: Boolean to dictate whether or not to run simulation routine
-		RunDA: Boolean to dictate data analysis part (dev)
-
-		This method will be depreciated in future.
-		'''
-		if self._Parameters_Master == None:
-			self.Exit('Parameters_Master/var must be set during class initiation to use this method')
-
-		self.Parameters(self._Parameters_Master,self._Parameters_Var,**kwargs)
-
 
 	def Mesh(self,**kwargs):
 		kwargs = self._UpdateArgs(kwargs)
@@ -157,7 +180,7 @@ class VLSetup():
 				os.makedirs(os.path.dirname(self.LogFile), exist_ok=True)
 				with open(self.LogFile,'w') as f:
 					f.write(Text)
-				print("Detailed output written to {}".format(self.LogFile))
+				# print("Detailed output written to {}".format(self.LogFile))
 			return
 
 		if self.mode in ('Interactive','Terminal'):

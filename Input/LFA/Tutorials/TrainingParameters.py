@@ -70,3 +70,11 @@ Sim.Theta = 0.5
 #############
 Sim.PostAsterFile = 'ConductivityCalc'
 Sim.Rvalues = [0.1, 0.5]
+
+##########################
+##### Data Analysis ######
+##########################
+DA = Namespace()
+DA.Name = 'Linear'
+DA.File = 'Images'
+DA.CaptureTime = 0.01

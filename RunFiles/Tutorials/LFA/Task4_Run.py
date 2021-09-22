@@ -1,41 +1,39 @@
 #!/usr/bin/env python3
-################################################################################
-### HEADER
-################################################################################
+#===============================================================================
+# Header
 import sys
-from os.path import dirname, abspath
 sys.dont_write_bytecode=True
-sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common.VirtualLab import VLSetup
 
-################################################################################
-### SETUP
-################################################################################
+#===============================================================================
+# Setup
 
 Simulation='LFA'
 Project='Tutorials'
-StudyName='Training'
-Parameters_Master='TrainingParameters_Task4'
+Parameters_Master='TrainingParameters'
 Parameters_Var=None
-Mode='Interactive'
 
-################################################################################
-### ENVIRONMENT
-################################################################################
+#===============================================================================
+# Environment
 
 VirtualLab=VLSetup(
            Simulation,
-           Project,
-           StudyName,
+           Project)
+
+VirtualLab.Settings(
+           Mode='Interactive',
+           Launcher='Process',
+           NbThreads=3)
+
+VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           Mode)
-
-VirtualLab.Control(RunMesh=False,RunSim=False)
+           RunMesh=False,
+           RunSim=False)
 
 VirtualLab.Mesh()
 
-VirtualLab.Sim(NumThreads=3)
+VirtualLab.Sim()
 
 VirtualLab.DA()
 

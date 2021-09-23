@@ -224,7 +224,7 @@ else
 fi
 #END
 ### NOTE: Remove this when merging dev to master
-sudo -u ${SUDO_USER:-$USER} git checkout dev
+# sudo -u ${SUDO_USER:-$USER} git checkout dev
 ###
 
 ### Run initial VirtualLab setup

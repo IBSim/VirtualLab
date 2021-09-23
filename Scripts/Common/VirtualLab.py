@@ -16,13 +16,12 @@ from .VLFunctions import ErrorMessage, WarningMessage
 from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
-	def __init__(self, Simulation, Project,
-				 InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-				 MaterialDir=VLconfig.MaterialsDir, TempDir=VLconfig.TEMP_DIR):
-
+	def __init__(self, Simulation, Project):
 
 		# Get parsed args (achieved using the -k flag when launchign VirtualLab).
 		self._GetParsedArgs()
+		# Copy path at the start for MPI to match sys.path
+		self._pypath = sys.path.copy()
 
 		# ======================================================================
 		# Define variables
@@ -30,79 +29,21 @@ class VLSetup():
 		self.Project = self._ParsedArgs.get('Project',Project)
 
 		# ======================================================================
-		# Define paths
-		self.Paths(VLconfig.VL_DIR,
-				   self._ParsedArgs.get('InputDir',InputDir),
-				   self._ParsedArgs.get('OutputDir',OutputDir),
-				   self._ParsedArgs.get('MaterialDir',MaterialDir),
-				   self._ParsedArgs.get('TempDir',TempDir))
+		# Specify default settings
+		self.Settings(Mode='H',Launcher='Process',NbThreads=1,
+					  InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+					  MaterialDir=VLconfig.MaterialsDir)
 
-		self.Settings()
-
-
-		# Copy path at the start for MPI to match sys.path
-		self._pypath = sys.path.copy()
-
-		self.Logger('### Launching VirtualLab ###',Print=True)
-
-
-	def SetMode(self,Mode='H'):
-		Mode = self._ParsedArgs.get('Mode',Mode)
 		# ======================================================================
-		# Update mode as shorthand version can be given
-		if Mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
-		elif Mode.lower() in ('t','terminal'): self.mode = 'Terminal'
-		elif Mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
-		elif Mode.lower() in ('h', 'headless'): self.mode = 'Headless'
-		else : self.Exit("Error: Mode must be one of; 'Interactive','Terminal','Continuous', 'Headless'")
+		# Define path to scripts
+		self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
+		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
+		# Add these to path
+		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 
-	def SetLauncher(self,Launcher='Process'):
-		Launcher = self._ParsedArgs.get('Launcher',Launcher)
-		if Launcher.lower() == 'sequential': self._Launcher = 'Sequential'
-		elif Launcher.lower() == 'process': self._Launcher = 'Process'
-		elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
-		else: self.Exit("Error: Launcher must be one of; 'Sequential','Process', 'MPI'")
-
-	def SetNbThreads(self,NbThreads=1):
-		NbThreads = self._ParsedArgs.get('NbThreads',NbThreads)
-		if type(NbThreads) == int:
-			_NbThreads = NbThreads
-		elif type(NbThreads) == float:
-			if NbThreads.is_integer():
-				_NbThreads = NbThreads
-			else:
-				self.Exit("Error: NbThreads must be an integer")
-		else:
-			self.Exit("Error: NbThreads must be an integer")
-
-		if _NbThreads >= 1:
-			self._NbThreads = _NbThreads
-		else:
-			self.Exit("Error: NbThreads must be positive")
-
-	def Settings(self, Mode='Headless', Launcher='Process', NbThreads=1):
-		self.SetMode(Mode)
-		self.SetLauncher(Launcher)
-		self.SetNbThreads(NbThreads)
-
-	def Paths(self,VLDir,InputDir,OutputDir,MaterialDir,TempDir):
-		'''
-		Paths to important locations within VirtualLab are defined in this function.
-		'''
-
-		# Define path to Parameters file
-		self._InputDir = InputDir
-		self.PARAMETERS_DIR = '{}/{}/{}'.format(self._InputDir, self.Simulation, self.Project)
-
-		# Define paths to results
-		self._OutputDir = OutputDir
-		self.PROJECT_DIR = "{}/{}/{}".format(self._OutputDir, self.Simulation, self.Project)
-
-		# Define path to Materials
-		self.MATERIAL_DIR = MaterialDir
-
+		#=======================================================================
 		# Define & create temporary directory for work to be saved to
-		self._TempDir = TempDir
+		self._TempDir = VLconfig.TEMP_DIR
 		# Unique ID
 		self.__ID__ = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
 
@@ -114,9 +55,82 @@ class VLSetup():
 			self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
 			os.makedirs(self.TEMP_DIR)
 
-		# Define paths to script directories
-		self.COM_SCRIPTS = "{}/Scripts/Common".format(VLDir)
-		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLDir, self.Simulation)
+		self.Logger('### Launching VirtualLab ###',Print=True)
+
+
+	def _SetMode(self,Mode='H'):
+		Mode = self._ParsedArgs.get('Mode',Mode)
+		# ======================================================================
+		# Update mode as shorthand version can be given
+		if Mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
+		elif Mode.lower() in ('t','terminal'): self.mode = 'Terminal'
+		elif Mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
+		elif Mode.lower() in ('h', 'headless'): self.mode = 'Headless'
+		else : self.Exit(ErrorMessage("Mode must be one of; 'Interactive',\
+									  'Terminal','Continuous', 'Headless'"))
+
+	def _SetLauncher(self,Launcher='Process'):
+		Launcher = self._ParsedArgs.get('Launcher',Launcher)
+		if Launcher.lower() == 'sequential': self._Launcher = 'Sequential'
+		elif Launcher.lower() == 'process': self._Launcher = 'Process'
+		elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
+		else: self.Exit(ErrorMessage("Launcher must be one of; 'Sequential',\
+									 'Process', 'MPI'"))
+
+	def _SetNbThreads(self,NbThreads=1):
+		NbThreads = self._ParsedArgs.get('NbThreads',NbThreads)
+		if type(NbThreads) == int:
+			_NbThreads = NbThreads
+		elif type(NbThreads) == float:
+			if NbThreads.is_integer():
+				_NbThreads = NbThreads
+			else:
+				self.Exit(ErrorMessage("NbThreads must be an integer"))
+		else:
+			self.Exit(ErrorMessage("NbThreads must be an integer"))
+
+		if _NbThreads >= 1:
+			self._NbThreads = _NbThreads
+		else:
+			self.Exit(ErrorMessage("NbThreads must be positive"))
+
+	def _SetInputDir(self,InputDir):
+		InputDir = self._ParsedArgs.get('InputDir',InputDir)
+		if not os.path.isdir(InputDir):
+			self.Exit(ErrorMessage("InputDir is not a valid directory"))
+		self._InputDir = InputDir
+		self.PARAMETERS_DIR = '{}/{}/{}'.format(self._InputDir, self.Simulation, self.Project)
+
+	def _SetOutputDir(self,OutputDir):
+		OutputDir = self._ParsedArgs.get('OutputDir',OutputDir)
+		self._OutputDir = OutputDir
+		self.PROJECT_DIR = '{}/{}/{}'.format(self._OutputDir, self.Simulation, self.Project)
+
+	def _SetMaterialDir(self,MaterialDir):
+		if not os.path.isdir(MaterialDir):
+			self.Exit(ErrorMessage("MaterialDir is not a valid directory"))
+		MaterialDir = self._ParsedArgs.get('MaterialDir',MaterialDir)
+		self.MATERIAL_DIR = MaterialDir
+
+	def Settings(self,**kwargs):
+
+		Diff = set(kwargs).difference(['Mode','Launcher','NbThreads','InputDir',
+									'OutputDir','MaterialDir'])
+		if Diff:
+			self.Exit("Error: {} are not option(s) for settings".format(list(Diff)))
+
+		if 'Mode' in kwargs:
+			self._SetMode(kwargs['Mode'])
+		if 'Launcher' in kwargs:
+			self._SetLauncher(kwargs['Launcher'])
+		if 'NbThreads' in kwargs:
+			self._SetNbThreads(kwargs['NbThreads'])
+		if 'InputDir' in kwargs:
+			self._SetInputDir(kwargs['InputDir'])
+		if 'OutputDir' in kwargs:
+			self._SetOutputDir(kwargs['OutputDir'])
+		if 'MaterialDir' in kwargs:
+			self._SetMaterialDir(kwargs['MaterialDir'])
 
 	def Parameters(self, Parameters_Master, Parameters_Var=None,
 					RunMesh=True, RunSim=True, RunDA=True):
@@ -131,8 +145,6 @@ class VLSetup():
 		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
 		VLNamespaces = ['Mesh','Sim','DA']
 		self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-
-		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 
 		MeshFn.Setup(self,RunMesh)
 		SimFn.Setup(self,RunSim)

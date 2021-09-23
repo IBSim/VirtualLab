@@ -31,7 +31,7 @@ def Setup(VL, RunMesh=True):
         # Check that mesh file exists
         filepath = '{}/{}.py'.format(VL.SIM_MESH,Parameters.File)
         if not os.path.exists(filepath):
-            VL.Exit(ErrorMessage('Mesh file\n{}\n does not exist'.format(filepath)))
+            VL.Exit(VLF.ErrorMessage('Mesh file\n{}\n does not exist'.format(filepath)))
 
         # Check Verify function, if it exists
         MeshFile = import_module(Parameters.File)

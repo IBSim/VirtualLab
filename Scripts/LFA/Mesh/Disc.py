@@ -29,7 +29,7 @@ def Example():
 	Parameters.Length1D = 0.0004 # Length on  edges
 	Parameters.Length2D = 0.0004 # Maximum length of any edge belonging to a face
 	Parameters.Length3D = 0.0004 # Maximum length of any edge belogining to a tetrahedron
-	Parameters.VoidDisc = 20
+	Parameters.VoidSegmentN = 20
 
 	return Parameters
 
@@ -48,7 +48,7 @@ def Verify(Parameters):
 	ReqVar = ['Radius','HeightB','HeightT',
 			  'Length1D','Length2D','Length3D']
 	# Optional variables - all are needed to create a void
-	OptVar = ['VoidCentre','VoidRadius','VoidHeight','VoidDisc']
+	OptVar = ['VoidCentre','VoidRadius','VoidHeight','VoidSegmentN']
 
 	miss = VerifyParameters(Parameters,ReqVar)
 	if miss:
@@ -219,7 +219,7 @@ def Create(Parameter):
 
 	if isVoid:
 		HoleCirc = 2*np.pi*Parameter.VoidRadius
-		HoleLength = HoleCirc/Parameter.VoidDisc
+		HoleLength = HoleCirc/Parameter.VoidSegmentN
 
 		### Sub Mesh creation
 		## Sub-Mesh 2

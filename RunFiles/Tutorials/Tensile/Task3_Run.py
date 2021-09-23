@@ -1,40 +1,38 @@
 #!/usr/bin/env python3
-################################################################################
-### HEADER
-################################################################################
+#===============================================================================
+# Header
 import sys
-from os.path import dirname, abspath
 sys.dont_write_bytecode=True
-sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common.VirtualLab import VLSetup
 
-################################################################################
-### SETUP
-################################################################################
+#===============================================================================
+# Setup
 
 Simulation='Tensile'
 Project='Tutorials'
-StudyName='Training'
 Parameters_Master='TrainingParameters'
 Parameters_Var='Parametric_1'
-Mode='Interactive'
 
-################################################################################
-### ENVIRONMENT
-################################################################################
+#===============================================================================
+# Environment
 
 VirtualLab=VLSetup(
            Simulation,
-           Project,
-           StudyName,
+           Project)
+
+VirtualLab.Settings(
+           Mode='Interactive',
+           Launcher='Process',
+           NbThreads=2)
+
+VirtualLab.Parameters(
            Parameters_Master,
-           Parameters_Var,
-           Mode)
+           Parameters_Var)
 
-VirtualLab.Control()
+VirtualLab.Mesh()
 
-VirtualLab.Mesh(NumThreads=2)
+VirtualLab.Sim(ShowRes=True)
 
-VirtualLab.Sim(NumThreads=2, ShowRes=True)
+VirtualLab.DA()
 
 VirtualLab.Cleanup()

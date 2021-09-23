@@ -6,12 +6,12 @@ from types import SimpleNamespace as Namespace
 Mesh = Namespace()
 
 # Name under which the mesh will be saved in Meshes directory.
-Mesh.Name = 'Notch1'
+Mesh.Name = 'Notch1_Change'
 # Salome python file used to create mesh.
 Mesh.File = 'DogBone'
 
 # Geometric Parameters
-Mesh.Thickness = 0.003
+Mesh.Thickness = 0.01
 Mesh.HandleWidth = 0.024
 Mesh.HandleLength = 0.024
 Mesh.GaugeWidth = 0.012
@@ -38,12 +38,12 @@ Mesh.HoleSegmentN = 30
 Sim = Namespace()
 
 # Name under which the simulation results will be saved.
-Sim.Name = 'Single'
+Sim.Name = 'Single_Change'
 # The CodeAster command file can be found in Scripts/$SIMULATION.
 Sim.AsterFile = 'Tensile'
 
 # The mesh used in the simulation.
-Sim.Mesh = 'Notch1'
+Sim.Mesh = 'Notch1_Change'
 # Force applied in force controlled analysis.
 Sim.Force = 1000000
 # Enforced displacement in displacement controlled analysis.

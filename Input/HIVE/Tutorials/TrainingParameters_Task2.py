@@ -33,7 +33,7 @@ Mesh.SubTile = 0.002 # Mesh fineness on tile
 ##########################
 ####### Simulation #######
 ##########################
-Sim.Name = 'Sim_ERMES'
+Sim.Name = 'Examples/ERMES'
 
 #############
 ## PreAster #

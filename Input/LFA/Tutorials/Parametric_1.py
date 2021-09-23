@@ -12,19 +12,7 @@ Mesh.VoidHeight = [0, 0.0003]
 ####### Simulation #######
 ##########################
 Sim = Namespace()
-Sim.Name = ['SimNoVoid','SimVoid1','SimVoid2']
-#############
-## Pre-Sim ##
-#############
+Sim.Name = ['Linear/SimNoVoid','Linear/SimVoid1','Linear/SimVoid2']
 
-#############
-### Aster ###
-#############
 Sim.Mesh = ['NoVoid','Void', 'Void']
 Sim.LaserS = ['Gauss', 'Gauss', 'Uniform']
-
-#############
-## Post-Sim #
-#############
-
-

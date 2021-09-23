@@ -13,13 +13,13 @@ from Scripts.Common.VLParallel import VLPool
 DA - Data Analysis
 '''
 
-def Setup(VL, **kwargs):
+def Setup(VL, RunDA=True):
     VL.SIM_DA = "{}/DA".format(VL.SIM_SCRIPTS)
     VL.DAData = {}
     DADicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'DA')
 
     # if either DADicts is empty or RunDA is False we will return
-    if not (kwargs.get('RunDA', True) and DADicts): return
+    if not (RunDA and DADicts): return
 
     VL.tmpDA_DIR = "{}/DA".format(VL.TEMP_DIR)
     os.makedirs(VL.tmpDA_DIR, exist_ok=True)
@@ -56,21 +56,18 @@ def PoolRun(VL, DADict):
     err = DASgl(VL,DADict)
     return err
 
-def Run(VL,**kwargs):
+def Run(VL):
     if not VL.DAData: return
     sys.path.insert(0,VL.SIM_DA)
-
-    NumThreads = kwargs.get('NumThreads',1)
-    launcher = kwargs.get('launcher','Process')
 
     VL.Logger('\n### Starting Data Analysis ###\n', Print=True)
 
     NbDA = len(VL.DAData)
     DADicts = list(VL.DAData.values())
 
-    N = min(NumThreads,NbDA)
+    N = min(VL._NbThreads,NbDA)
 
-    Errorfnc = VLPool(VL,PoolRun,DADicts,launcher=launcher,N=N,onall=True)
+    Errorfnc = VLPool(VL,PoolRun,DADicts,launcher=VL._Launcher,N=N,onall=True)
     if Errorfnc:
         VL.Exit("The following DA routine(s) finished with errors:\n{}".format(Errorfnc))
 

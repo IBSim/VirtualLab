@@ -10,7 +10,7 @@ from Scripts.Common.VLPackages.Salome import Salome
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 
-def Setup(VL, **kwargs):
+def Setup(VL, RunMesh=True):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
     VL.SIM_MESH = "{}/Mesh".format(VL.SIM_SCRIPTS)
 
@@ -18,7 +18,7 @@ def Setup(VL, **kwargs):
     MeshDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Mesh')
 
     # if either MeshDicts is empty or RunMesh is False we will return
-    if not (kwargs.get('RunMesh', True) and MeshDicts): return
+    if not (RunMesh and MeshDicts): return
 
     os.makedirs(VL.MESH_DIR, exist_ok=True)
 
@@ -31,7 +31,7 @@ def Setup(VL, **kwargs):
         # Check that mesh file exists
         filepath = '{}/{}.py'.format(VL.SIM_MESH,Parameters.File)
         if not os.path.exists(filepath):
-            VL.Exit(ErrorMessage('Mesh file\n{}\n does not exist'.format(filepath)))
+            VL.Exit(VLF.ErrorMessage('Mesh file\n{}\n does not exist'.format(filepath)))
 
         # Check Verify function, if it exists
         MeshFile = import_module(Parameters.File)
@@ -63,9 +63,6 @@ def Setup(VL, **kwargs):
 
         VL.MeshData[MeshName] = MeshDict.copy()
 
-
-
-
 def PoolRun(VL, MeshDict,**kwargs):
     # Write Parameters used to make the mesh to the mesh directory
     VLF.WriteData("{}/{}.py".format(VL.MESH_DIR, MeshDict['Name']), MeshDict['Parameters'])
@@ -81,21 +78,13 @@ def PoolRun(VL, MeshDict,**kwargs):
     if err:
         return "Error in Salome run"
 
-def Run(VL,**kwargs):
+def Run(VL,MeshCheck=None,ShowMesh=False):
     if not VL.MeshData: return
 
-    kwargs.update(VL.GetArgParser()) # Update with any kwarg passed in the call
+    #===========================================================================
+    # MeshCheck allows you to mesh in the GUI (for debugging).Currently only 1
+    # mesh can be debugged at a time. VirtualLab terminates when GUI is closed.
 
-    MeshCheck = kwargs.get('MeshCheck', None)
-    ShowMesh = kwargs.get('ShowMesh', False)
-    NumThreads = kwargs.get('NumThreads',1)
-    launcher = kwargs.get('launcher','Process')
-
-    '''
-    MeshCheck routine which allows you to mesh in the GUI (useful for debugging).
-    Currently only 1 mesh can be debugged at a time.
-    VirtualLab will terminate once the GUI is closed.
-    '''
     if MeshCheck and MeshCheck in VL.MeshData.keys():
         MeshDict = VL.MeshData[MeshCheck]
         VL.Logger('\n### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
@@ -114,18 +103,24 @@ def Run(VL,**kwargs):
         VL.Exit("Error: '{}' specified for MeshCheck is not one of meshes to be created.\n"\
                      "Meshes to be created are:{}".format(MeshCheck, list(VL.Data.keys())))
 
+    # ==========================================================================
+    # Run Mesh routine
+
     VL.Logger('\n### Starting Meshing ###\n',Print=True)
 
     NbMeshes = len(VL.MeshData)
     MeshDicts = list(VL.MeshData.values())
 
-    N = min(NumThreads,NbMeshes)
+    N = min(VL._NbThreads,NbMeshes)
 
-    Errorfnc = VLPool(VL,PoolRun,MeshDicts,launcher=launcher,N=N,onall=True)
+    Errorfnc = VLPool(VL,PoolRun,MeshDicts,launcher=VL._Launcher,N=N,onall=True)
     if Errorfnc:
         VL.Exit("\nThe following meshes finished with errors:\n{}".format(Errorfnc))
 
     VL.Logger('\n### Meshing Complete ###',Print=True)
+
+    # ==========================================================================
+    # Open meshes in GUI to view
 
     if ShowMesh:
         VL.Logger("\n### Opening mesh files in Salome ###\n",Print=True)

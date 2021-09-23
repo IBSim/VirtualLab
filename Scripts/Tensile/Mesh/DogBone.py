@@ -33,7 +33,7 @@ def Example():
 	Parameters.Rad_b = 0.0005
 
 	# === Mesh sizes ===
-	Parameters.HoleDisc = 50
+	Parameters.HoleSegmentN = 50
 	Parameters.Length1D = 0.002
 	Parameters.Length2D = 0.002
 	Parameters.Length3D = 0.002
@@ -57,7 +57,7 @@ def Verify(Parameters):
 			  'GaugeLength','TransRad',
 			  'Length1D','Length2D','Length3D']
 	# Optional variables - all are needed to create a hole
-	OptVar = ['HoleCentre','Rad_a','Rad_b','HoleDisc']
+	OptVar = ['HoleCentre','Rad_a','Rad_b','HoleSegmentN']
 
 	miss = VerifyParameters(Parameters,ReqVar)
 	if miss:
@@ -302,7 +302,7 @@ def Create(Parameters):
 	if Hole:
 		## Calculate circumference of the hole using Ramanujan approximation
 		HoleCirc = np.pi*(3*(Diam_a + Diam_b) - ((3*Diam_a + Diam_b)*(Diam_a + 3*Diam_b))**0.5)
-		HoleLength = HoleCirc/Parameters.HoleDisc
+		HoleLength = HoleCirc/Parameters.HoleSegmentN
 
 		Regular_1D_2 = Mesh_1.Segment(geom=Notch_Surf)
 		Local_Length_2 = Regular_1D_2.LocalLength(HoleLength,None,1e-07)

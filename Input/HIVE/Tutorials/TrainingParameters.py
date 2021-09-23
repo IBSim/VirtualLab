@@ -33,7 +33,7 @@ Mesh.SubTile = 0.002 # Mesh fineness on tile
 ##########################
 ####### Simulation #######
 ##########################
-Sim.Name = 'Sim_Uniform'
+Sim.Name = 'Examples/Uniform'
 
 #############
 ## PreAster #

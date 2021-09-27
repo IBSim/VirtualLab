@@ -17,10 +17,10 @@ from Functions import DataScale, DataRescale
 from CoilConfig_GPR import ExactGPmodel, MSE
 from CoilConfig_NN import NetPU
 
-def Single(VL, MLdict):
-    Parameters = MLdict["Parameters"]
+def Single(VL, DADict):
+    Parameters = DADict["Parameters"]
 
-    ResDir = "{}/{}".format(VL.PROJECT_DIR, MLdict["Name"])
+    ResDir = "{}/{}".format(VL.PROJECT_DIR, DADict["Name"])
 
     # Methods we are considering
     Methods = Parameters.Methods
@@ -47,8 +47,14 @@ def Single(VL, MLdict):
         Method = MLParameters.TrainData.split('/')[0]
 
         if Method.startswith('Grid'): Method = 'Grid'
-        if Method == 'HIVE_Random': Method = 'Random'
+
         if Method not in Methods: continue
+        if hasattr(Parameters,'Range'):
+            if MLParameters.TrainNb < Parameters.Range[0] \
+                or MLParameters.TrainNb > Parameters.Range[1]: continue
+        if hasattr(Parameters,'TrainNbs'):
+            if MLParameters.TrainNb not in Parameters.TrainNbs:
+                continue
 
         if Method not in DataDict:
             DataDict[Method] = {'TrainNb':[],'TestMSE':[],'TrainMSE':[],
@@ -111,6 +117,8 @@ def Single(VL, MLdict):
         DataDict[Method]['MaxPower_act'].append(Power_target)
 
     Methods = [i for i in Methods if i in DataDict] # Prserves order
+
+
     colours = plt.cm.gray(np.linspace(0,0.6,len(Methods)))
     # colours = plt.cm.brg(np.linspace(0.1,0.9,len(Methods)))
     lim = [200,1000]
@@ -146,27 +154,29 @@ def Single(VL, MLdict):
             axes.set_ylim(bottom=1,top=lim[i])
             plt.xticks(fontsize=fnt)
             plt.yticks(fontsize=fnt)
-            plt.grid()
+            axes = plt.gca()
+            axes.yaxis.grid()
+            xlim = axes.get_xlim()
 
-            plt.savefig("{}/MSE_{}_{}.png".format(ResDir,res,tp))
+            plt.savefig("{}/MSE_{}_{}.eps".format(ResDir,res,tp),dpi=600)
             plt.close()
 
-    fig, axes = plt.subplots(nrows=1,ncols=1,figsize=(15,10))
-    Nb = DataDict['Halton']['TrainNb']
-    Nb_Uni = np.unique(Nb)
-    mse = np.array(DataDict['Halton']['TestMSE'])[:,0]
-    ex1 = [mse[Nb==v][0] for v in Nb_Uni]
-    ex1 = np.array(ex1)*OutputScaler[1,0]**2
-    ex2 = [mse[Nb==v][8] for v in Nb_Uni]
-    ex2 = np.array(ex2)*OutputScaler[1,0]**2
-    axes.plot(Nb_Uni,ex1,c='0',label='Halton_0')
-    axes.plot(Nb_Uni,ex2,c='0.5',label='Halton_1')
-    axes.set_ylabel('MSE',fontsize=20)
-    axes.set_xlabel('Number of points used for training',fontsize=20)
-    axes.legend(fontsize=20)
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
-    plt.savefig("{}/MSE_Power_Seed.png".format(ResDir))
+    # fig, axes = plt.subplots(nrows=1,ncols=1,figsize=(15,10))
+    # Nb = DataDict['Halton']['TrainNb']
+    # Nb_Uni = np.unique(Nb)
+    # mse = np.array(DataDict['Halton']['TestMSE'])[:,0]
+    # ex1 = [mse[Nb==v][0] for v in Nb_Uni]
+    # ex1 = np.array(ex1)*OutputScaler[1,0]**2
+    # ex2 = [mse[Nb==v][8] for v in Nb_Uni]
+    # ex2 = np.array(ex2)*OutputScaler[1,0]**2
+    # axes.plot(Nb_Uni,ex1,c='0',label='Halton_0')
+    # axes.plot(Nb_Uni,ex2,c='0.5',label='Halton_1')
+    # axes.set_ylabel('MSE',fontsize=20)
+    # axes.set_xlabel('Number of points used for training',fontsize=20)
+    # axes.legend(fontsize=20)
+    # plt.xticks(fontsize=20)
+    # plt.yticks(fontsize=20)
+    # plt.savefig("{}/MSE_Power_Seed.png".format(ResDir))
 
     plt.close()
     fnt = 36
@@ -184,29 +194,34 @@ def Single(VL, MLdict):
         Pred,Act,MPData = [],[],[]
         for v in Nb_Uni:
             bl = Nb==v
-            vals = msesum[bl]
-            ix = np.argmin(vals)
 
-            Pred.append(_Pred[bl][ix])
-            Act.append(_Act[bl][ix])
-            MPData.append(_MPData[bl][0])
+            # vals = msesum[bl]
+            # ix = np.argmin(vals)
+            # Pred.append(_Pred[bl][ix])
+            # Act.append(_Act[bl][ix])
+            # MPData.append(_MPData[bl][0])
+
+            Pred.append(np.mean(_Pred[bl]))
+            Act.append(np.mean(_Act[bl]))
+            MPData.append(np.mean(_MPData[bl]))
 
         Pred,Act = np.array(Pred),np.array(Act)
-
-        axes.plot(Nb_Uni,Pred, c='0',label='Predicted')
         bl = Act != 0
-        axes.plot(Nb_Uni[bl],Act[bl], c='0', linestyle='--',label='Actual')
 
+        axes.scatter(Nb_Uni,Pred, marker='o', s=200, edgecolor='k',  facecolors='none', label='Predicted')
+        axes.scatter(Nb_Uni[bl],Act[bl], marker='+', s=300, edgecolor='k',  facecolors='k', label='Actual')
         axes.scatter(Nb_Uni,MPData,s=200,c='0',marker='x', label='Max. Train')
-        axes.set_ylim([480,550])
-        axes.set_ylabel('Max. Power',fontsize=fnt)
-        axes.set_xlabel('Number of points used for training',fontsize=fnt)
-        axes.legend(fontsize=fnt)
-        plt.xticks(fontsize=fnt)
-        plt.yticks(fontsize=fnt)
-        plt.grid()
 
-        plt.savefig("{}/MaxPower_{}.png".format(ResDir,Name))
+        axes.set_ylim([480,540])
+        axes.set_ylabel('Power',fontsize=fnt)
+        axes.set_xlabel('Number of points used for training',fontsize=fnt)
+        axes.set_xlim(xlim)
+        plt.xticks([1000,2000,3000,4000,5000],fontsize=fnt)
+        plt.yticks(fontsize=fnt)
+        axes = plt.gca()
+        axes.yaxis.grid()
+
+        plt.savefig("{}/MaxPower_{}.eps".format(ResDir,Name),dpi=600)
         plt.close()
 
 

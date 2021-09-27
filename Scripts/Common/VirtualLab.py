@@ -150,12 +150,6 @@ class VLSetup():
 		SimFn.Setup(self,RunSim)
 		DAFn.Setup(self,RunDA)
 
-		# Function to analyse usage of VirtualLab to evidence impact for
-		# use in future research grant applications. Can be turned off via
-		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
-
-		# if VLconfig.VL_ANALYTICS=="True": Analytics.Run(self)
-
 	def Mesh(self,**kwargs):
 		kwargs = self._UpdateArgs(kwargs)
 		return MeshFn.Run(self,**kwargs)
@@ -208,10 +202,15 @@ class VLSetup():
 		sys.exit(mess)
 
 	def Cleanup(self,KeepDirs=[]):
-
-		if hasattr(self, 'Salome'):
-			if self.Salome.Ports:
-				self.Salome.Close(self.Salome.Ports)
+		# Report overview of VirtualLab usage
+		if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
+			MeshNb = self._Analytics.get('Mesh',0)
+			SimNb = self._Analytics.get('Sim',0)
+			DANb = self._Analytics.get('DANb',0)
+			Category = "{}_Overview".format(self.Simulation)
+			Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
+			Label = self.__ID__
+			Analytics.Run(Category,Action,Label)
 
 		if os.path.isdir(self.TEMP_DIR):
 			if KeepDirs:

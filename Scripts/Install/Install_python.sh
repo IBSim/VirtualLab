@@ -36,7 +36,7 @@ exit_abnormal() {
   usage
   exit 1
 }
-while getopts ":P:" options; do 
+while getopts ":P:" options; do
   case "${options}" in
     P) ### If P option triggered
       PYTHON_INST=${OPTARG}
@@ -67,14 +67,30 @@ sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential
 
+source "$VL_DIR/VLconfig.py" # Enables this script to be run seperately
+
 if [ "$PYTHON_INST" == "y" ]; then
   ### Install python and required packages
-  sudo apt install -y python3
+  sudo apt install -y python3.6
   sudo apt install -y python3-pip
   #sudo apt install -y python3-sphinx
   sudo pip3 install -U sphinx
-  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib fpdf pillow h5py sphinx-rtd-theme sphinxcontrib-bibtex
-  sudo -u ${SUDO_USER:-$USER} pip3 install iapws
+  sudo -u ${SUDO_USER:-$USER} pip3 install sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
+  sudo -u ${SUDO_USER:-$USER} pip3 install -r $VL_DIR/requirements.txt
+  sudo -u ${SUDO_USER:-$USER} pip3 install scikit-learn==0.24.1
+  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps iapws==1.4
+
+  # install pyina (uses MPI)
+  sudo apt install -y mpich
+  sudo -u ${SUDO_USER:-$USER} pip3 install mpi4py==3.0.3 dill==0.3.3 pox==0.2.9
+  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina==0.2.4
+  # sourcing profile adds $HOME/.local/bin to $PATH for this terminal.
+  # TODO: This is a temporary solution for this terminal, it is only permanent by
+  # logging out and back in. Or could add this in to VLprofile?
+  source ~/.profile
+
+#  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib h5py sphinx-rtd-theme sphinxcontrib-bibtex
+#  sudo -u ${SUDO_USER:-$USER} pip3 install iapws pathos==0.2.7
 
   ### Add $VL_DIR to $PYTHONPATH in python env and current shell
   if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR $USER_HOME/.VLprofile; then
@@ -84,11 +100,11 @@ if [ "$PYTHON_INST" == "y" ]; then
     echo "Adding $VL_DIR to PYTHONPATH"
     sudo -u ${SUDO_USER:-$USER} echo 'export PYTHONPATH=$PYTHONPATH'$VL_DIR''  >> $USER_HOME/.VLprofile
     export PYTHONPATH=$PYTHONPATH$VL_DIR
-    
+
     ### ~/.bashrc doesn't get read by subshells in ubuntu.
     ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
     STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
-    if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then 
+    if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then
       echo $STRING_TMP >> $USER_HOME/.bashrc
     fi
   fi
@@ -139,16 +155,16 @@ elif [ "$PYTHON_INST" == "c" ]; then
     else
       echo "There has been a problem installing Conda"
       echo "Check error messages, try to rectify then rerun this script"
-      exit 1
+      return # exit closes the terminal as it's sourced
     fi
     #conda --version
   fi
   conda update -n base -c defaults conda -y
   if test ! -d "$USER_HOME/anaconda3/envs/$CONDAENV"; then
     echo "Creating Conda env $CONDAENV"
-    conda create -n $CONDAENV python -y
+    conda create -n $CONDAENV python=3.6.9 -y
   fi
-  
+
   OS_v=$(eval lsb_release -r -s)
   if [[ $OS_v == "20.04" ]]; then
     if test ! -d "$USER_HOME/anaconda3/envs/python2"; then
@@ -158,15 +174,16 @@ elif [ "$PYTHON_INST" == "c" ]; then
       conda create -n python2 python=2.7 -y
     fi
   fi
-  
+
   ### Install conda packages
   conda activate $CONDAENV
   conda config --append channels conda-forge
-  conda install -y numpy scipy matplotlib pillow h5py iapws
-  conda install -y sphinx
 
-  #sudo chown ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
-  #sudo chgrp ${SUDO_USER} -R $USER_HOME/anaconda3/envs/$CONDAENV
+  conda install -y sphinx
+  conda install -y sphinx_rtd_theme=0.4.3 sphinxcontrib-bibtex=1.0.0
+  conda install -y --file $VL_DIR/requirements.txt
+  conda install -y scikit-learn=0.24.1 iapws=1.4
+
   sudo chown $SUDO_USER:$SUDO_USER -R $USER_HOME/anaconda3/envs/$CONDAENV
   sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
   sudo chown -R 1000:1000 $USER_HOME/anaconda3/pkgs/cache
@@ -174,9 +191,13 @@ elif [ "$PYTHON_INST" == "c" ]; then
 
   ### Install python and required packages
   sudo apt install -y python3-pip
-  #sudo -u ${SUDO_USER:-$USER} pip3 install fpdf sphinx-rtd-theme
-  pip3 install sphinx-rtd-theme sphinxcontrib-bibtex
-  #sudo -u ${SUDO_USER:-$USER} pip3 install fpdf2
+
+  # install pyina (uses MPI)
+  sudo apt install -y mpich
+  conda install -y mpi4py=3.0.3 dill=0.3.3 pox=0.2.9
+  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina==0.2.4
+  source ~/.profile # This adds $HOME/.local/bin to $PATH which is needed by pyina
+
   echo "Finished creating Conda env $CONDAENV"
   echo
 
@@ -202,5 +223,11 @@ else
   echo "Skipping python installation"
   exit 1
 fi
+
+echo
+### Build VirtualLab documentation using sphinx
+source $VL_DIR/Scripts/Install/Install_docs.sh
+
+
 #: <<'END'
 #END

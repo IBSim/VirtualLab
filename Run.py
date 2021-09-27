@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-################################################################################
-### HEADER
-################################################################################
+
+#===============================================================================
+# Header
+
 import sys
-from os.path import dirname, abspath
 sys.dont_write_bytecode=True
-sys.path.append(dirname(dirname(abspath(__file__))))
 from Scripts.Common.VirtualLab import VLSetup
 
-################################################################################
-### README
-################################################################################
+#===============================================================================
+# README
 '''
 Usage:
-    ./Run.py
+    VirtualLab -f /PATH/TO/VIRTUALLAB/Run.py
 
 This is a template of the file required to launch VirtualLab.
 
@@ -34,7 +32,7 @@ its activity is to create the necessary directories.
 Class initiation :
     Firstly the object VirtualLab is created using VLSetup. The variables passed
     as arguments makes it possible to differentiate between different virtual
-    experiments and how results are to be stored.
+    experiments, how VirtualLab is run and where results are to be stored.
 
     Simulation : '$TYPE' (str)
         The type of virtual experiment to be conducted.
@@ -56,55 +54,69 @@ Class initiation :
                     whilst being actively cooled with pressurised water.
     Project : '$USER_STRING' (str)
         User-defined field to specify the name of the project being worked on.
-    StudyName : '$USER_STRING' (str)
-        User-defined field used to group together virtual experiments.
+
+
+VirtualLab.Settings(Mode='Headless', Launcher='Process', NbThreads=1)
+    Optional part where VirtualLab settings can be altered.
+
+    Mode : '$TYPE' (str, optional)
+        This dictates how much information is printed in the terminal during the
+        running of VirtualLab. Options available; 'Interactive', 'Terminal',
+        'Continuous' and 'Headless'. 'I'/'T'/'C'/'H' may be used in place of
+        the full option names. Default is Headless.
+          'Intercative' - Prints all output to pop-up terminals.
+          'Terminal' - Prints all information to the terminal that launched
+                       VirtualLab.
+          'Continuous' - Writes the output to a file as it is generated.
+          'Headless' - Writes output to file at the end of the process.
+    Launcher : '$TYPE' (str, optional)
+        This defines the method used to launch the VirtualLab study.
+        Currently available options are:
+        'Sequential' - Each operation is run sequentially (no parallelism).
+        'Process' - Parallelism for a single node only. (Default)
+        'MPI' - Parallelism over multiple nodes.
+    NbThreads : '$USER_INTEGER' (int, optional)
+        Defines how many of the studies that will run concurrently when using
+        either the 'process' or 'MPI' launcher. Default is 1.
+
+
+VirtualLab.Parameters(Parameters_Master, Parameters_Var, RunMesh=True,
+                      RunSim=True, RunDA=True) :
+    This function creates the parameter files used by VirtualLab
+    and defines information used by Mehs, Sim and DA.
+    It is also responsible for checking that all defined files exist in
+    the expected location, such as Parameters_Master, Parameters_Var
+    and the files specified therein (Mesh.File, Sim.AsterFile etc.).
+
     Parameters_Master : ‘$FNAME’ (str)
         Name of file which includes values for all the required variables for
         the selected virtual experiment. These values are used to describe each
-        stage of the particular ‘Study’ to be conducted:
-            pre-processing; simulation; post-processing
+        stage of the particular ‘Study’ to be conducted: Mesh, Sim and DA.
         This file must be in the directory ‘Input/$SIMULATION/$PROJECT’.
     Parameters_Var : {‘$FNAME’/None} (str)
         Name of file which includes value ranges for particular variables of the
-        user’s choice. These variables must be a subset from the full list
-        within ‘Parameters_Master’. These values ranges are used to perform a
-        parameterised ‘study’ where multiple simulations are conducted
-        concurrently. If Parameters_Var is set to 'None' a single simulation
-        will be run. This file must be in the directory
-        ‘Input/$SIMULATION/$PROJECT’.
-    Mode : '$TYPE' (str)
-        This dictates how much information is printed in the terminal during the
-        running of VirtualLab. Options available; 'Interactive', 'Continuous',
-        'Headless'. 'I'/'C'/'H' may be used in place of the full option names
-          'Intercative' - Prints all output to the terminal.
-          'Continuous' - Writes the output to a file as it is generated.
-          'Headless' - Writes output to file at the end of the process.
-
-VirtualLab.Control() :
-    This function is responsible for checking that all defined files exist in
-    the expected location. These include Parameters_Master and Parameters_Var
-    and the files specified therein (Mesh.File, Sim.PreAsterFile, Sim.AsterFile,
-    Sim.PostAsterFile). Once this is satisfied, output directories are created
-    for the results, and the necessary files are created to produce mesh(es) and
-    run simulation(s).
+        user’s choice. These values ranges are used to perform a
+        parameterised ‘study’ where multiple simulations are conducted.
+        If Parameters_Var is set to 'None' a single simulation
+        will be run. This file must also be in the directory ‘Input/$SIMULATION/$PROJECT’.
     RunMesh : bool (optional)
         This indicates whether or not the meshing routine will be run, which is
         defined by the 'Mesh' namespace in Parameters_Master. Default is True.
     RunSim : bool (optional)
         This indicates whether or not the simulation routine will be run, which
         is defined by the 'Sim' namespace in Parameters_Master. Default is True.
+    RunDA : bool (optional)
+        This indicates whether or not the data analysis routine will be run, which
+        is defined by the 'DA' namespace in Parameters_Master. Default is True.
 
 VirtualLab.Mesh() :
     This function is the meshing routine. The mesh(es) defined using the
     namespace 'Mesh' in Parameters_Master and Parameters_Var are created and
     saved in Output/$SIMULATION/$PROJECT/Meshes along with a file detailing the
-    variables used for their creation. If RunMesh is set to False in 'Create'
-    then this routine is skipped. This may be useful when different simulation
-    parameters are to be used on a pre-existing mesh.
-    NumThreads: int (optional)
-        Number of meshes created simultaneously. The number specified
-        will depend on the resources available, such as number of CPUs, RAM etc.
-        Default is 1.
+    variables used for their creation. If RunMesh is set to False in
+    VirtualLab.Parameters then this routine is skipped. This may be useful
+    when different simulation parameters are to be used on a pre-existing mesh.
+
     ShowMesh : bool (optional)
         Indicates whether or not to open created mesh(es) in the SALOME GUI for
         visualisation to assess their suitability. VirtualLab will terminate
@@ -117,14 +129,11 @@ VirtualLab.Mesh() :
 VirtualLab.Sim() :
     This function is the simulation routine. The simulation(s), defined using
     the namespace 'Sim' in Parameters_Master and Parameters_Var, are carried
-    out. The results are saved to Output/$SIMULATION/$PROJECT/$STUDYNAME. This
+    out. The results are saved to Output/$SIMULATION/$PROJECT. This
     routine also runs pre/post processing scripts provided through
     Sim.PreAsterFile and Sim.PostAsterFile, both of which are optional. If
-    RunSim is set to False in 'Create' then this routine is skipped.
-    NumThreads: int (optional)
-        Number of simulations run simultaneously. The number specified
-        will depend on the resources available, such as number of CPUs, RAM etc.
-        Default is 1.
+    RunSim is set to False in VirtualLab.Parameters then this routine is skipped.
+
     RunPreAster : bool (optional)
         Indicates whether or not to run the optional pre-processing script
         provided in Sim.PreAsterFile. Default is True.
@@ -137,77 +146,55 @@ VirtualLab.Sim() :
     ShowRes : bool (optional)
         Visualises the .rmed file(s) produced by Code_Aster by opening ParaVis.
         Default is False.
-    ncpus : int (optional)
-        Number of processors used by the solver 'MULT_FRONT' in Code_Aster.
-        Default is 1.
-    memory : int (optional)
-        Number of GBs of memory allocated to Code_Aster for simulations.
 
-    ### Code acceleration through parallelism with MPI ###
-    The binary distribution of standalone Code_Aster and the version packaged
-    with Salome-Meca does not make use of MPI. To use MPI with Code_Aster it
-    must be compiled from source, in which case the solvers 'MUMPS' and 'PETSC'
-    may be used.
-    mpi_nbcpu : int (optional)
-        Number of cpus cores for MPI parallelism. Default is 1.
-    mpi_nbnoeud : int (optional)
-        Number of nodes which mpi_nbnoeud are spread over. Default is 1.
-    For example, mpi_nbcpu=12,mpi_nbnoeud=4 will set the solver to use 12 cores
-    over 4 nodes, i.e. 3 cores per node.
-    Alternatively, mpi_nbcpu=2,mpi_nbnoeud=2 will use 2 cores over 2 nodes, i.e.
-    one core per node.
-
-    ncpus and mpi_nbcpu will not conflict because only one value is used
-    depending on the solver utilised. That is, if both variables are set, only
-    one is passed to the solver.
+VirtualLab.DA() :
+    This function is the data analysis routine. The analysis, defined using
+    the namespace 'DA' in Parameters_Master and Parameters_Var, are carried
+    out. The results are saved to Output/$SIMULATION/$PROJECT. If
+    RunDA is set to False in VirtualLab.Parameters then this routine is skipped.
 
 VirtualLab.Cleanup()
-    This function removes all tmp directories created and closes the open
-    instance of SALOME (if one was opened by VirtualLab).
+    This function removes any temporary directories created.
 
 '''
 
-################################################################################
-### SETUP
-################################################################################
+#===============================================================================
+# Setup
 
 Simulation='Tensile'
 Project='Tutorials'
-StudyName='Training'
 Parameters_Master='TrainingParameters'
 Parameters_Var=None
-Mode='Interactive'
 
-################################################################################
-### ENVIRONMENT
-################################################################################
+#===============================================================================
+# Environment
 
 VirtualLab=VLSetup(
            Simulation,
-           Project,
-           StudyName,
+           Project)
+
+VirtualLab.Settings(
+           Mode='Headless',
+           Launcher='Process',
+           NbThreads=1)           
+
+VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           Mode)
-
-VirtualLab.Control(
            RunMesh=True,
-           RunSim=True)
+           RunSim=True,
+           RunDA=True)
 
 VirtualLab.Mesh(
-           NumThreads=1,
            ShowMesh=False,
            MeshCheck=None)
 
 VirtualLab.Sim(
-           NumThreads=1,
            RunPreAster=True,
            RunAster=True,
            RunPostAster=True,
-           ShowRes=True,
-           memory=2,
-           ncpus=1,
-           mpi_nbcpu=1,
-           mpi_nbnoeud=1)
+           ShowRes=False)
+
+VirtualLab.DA()
 
 VirtualLab.Cleanup()

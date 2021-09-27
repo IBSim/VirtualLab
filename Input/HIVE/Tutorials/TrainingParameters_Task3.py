@@ -9,7 +9,7 @@ EMLoad = 'ERMES' # {'Uniform','ERMES'}
 ######## Meshing #########
 ##########################
 
-Mesh.Name = 'TestCoil'
+Mesh.Name = 'AMAZE_Sample'
 Mesh.File = 'AMAZE' # This file must be in Scripts/$SIMULATION/PreProc
 # Geometrical Dimensions
 Mesh.BlockWidth = 0.03 #x
@@ -27,41 +27,41 @@ Mesh.TileHeight = 0.005 #z
 Mesh.Length1D = 0.005
 Mesh.Length2D = 0.005
 Mesh.Length3D = 0.005
-Mesh.PipeDisc = 20 # Number of segments for pipe circumference
+Mesh.PipeSegmentN = 20 # Number of segments for pipe circumference
 Mesh.SubTile = 0.002 # Mesh fineness on tile
-
-# for ERMES loading we need to create a mesh for the coil and vacuum
-if EMLoad == 'ERMES':
-    Mesh.CoilType = 'Test'
-    Mesh.CoilDisplacement = [0,0,0.0015]
-    Mesh.Rotation = 0
 
 ##########################
 ####### Simulation #######
 ##########################
-Sim.Name = 'Sim_ERMES'
+Sim.Name = 'Examples/ERMES'
 
 #############
 ## PreAster #
 #############
 Sim.PreAsterFile = "PreHIVE"
 # HTC between coolant and pipe (need Coolant and Pipe properties)
-Sim.CreateHTC = True
+Sim.CreateHTC = False
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
 Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 # Pre-processing to create EMLoads from ERMES output
 if EMLoad == 'ERMES':
-    Sim.RunERMES = True
-    Sim.NbProc = 1
+    Sim.RunERMES = False
+    Sim.CoilType = 'Test'
+    Sim.CoilDisplacement = [0,0,0.0015]
+    Sim.Rotation = 0
+
     Sim.Current = 1000
     Sim.Frequency = 1e4
-    Sim.Threshold = None
+    Sim.NbProc = 1
+
+    Sim.Threshold = 1
+    Sim.NbClusters = 100
 
 #############
 ### Aster ###
 #############
-Sim.AsterFile = 'AMAZE' # This file must be in Scripts/$SIMULATION/Aster
-Sim.Mesh = 'TestCoil' # The mesh used for the simulation
+Sim.AsterFile = 'AMAZE_SS' # This file must be in Scripts/$SIMULATION/Aster
+Sim.Mesh = 'AMAZE_Sample' # The mesh used for the simulation
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
 # Loading
@@ -71,14 +71,6 @@ if EMLoad == 'Uniform':
 
 ### Materials
 Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
-
-### IC
-Sim.InitTemp = 20 #Celcius
-
-### Time-stepping and temporal discretisation
-Sim.Theta = 0.5
-Sim.dt = [(0.01,200,2)] #timestep size and number of steps
-
 
 
 #############

@@ -61,6 +61,9 @@ while getopts ":d:P:S:E:yh" options; do
         echo " - Python will be installed/updated and configured as part of VirtualLab install."
       elif [ "$PYTHON_INST" == "c" ]; then
         echo " - Conda will be installed/updated and configured as part of VirtualLab install."
+      elif [ "$PYTHON_INST" == "n" ]; then
+        echo " - Python/conda will not be installed or configured during setup."
+        echo "   please do this manually, or by sourcing Install_python.sh."
       else
         echo "Error: Invalid option argument $PYTHON_INST" >&2
         exit_abnormal
@@ -70,6 +73,9 @@ while getopts ":d:P:S:E:yh" options; do
       SALOME_INST=${OPTARG}
       if [[ "$SALOME_INST" == "y" ]]; then
         echo " - Salome-Meca will be installed in the default directory and configured as part of VirtualLab install."
+      elif [[ "$SALOME_INST" == "n" ]]; then
+        echo " - Salome-Meca will not be installed or configured during setup,"
+        echo "   please do this manually or by sourcing Install_Salome.sh."
       elif [[ "$SALOME_INST" == "y"* ]]; then
         set -f # disable glob
 	IFS=' ' # split on space characters
@@ -94,6 +100,9 @@ while getopts ":d:P:S:E:yh" options; do
       ERMES_INST=${OPTARG}
       if [ "$ERMES_INST" == "y" ]; then
         echo " - ERMES will be installed in the default directory and configured as part of VirtualLab install."
+      elif [ "$ERMES_INST" == "n" ]; then
+        echo " - ERMES will not be installed or configured during setup,"
+        echo "   please do this manually or by sourcing Install_ERMES.sh."
       else
         echo "Error: Invalid option argument $ERMES_INST" >&2
         exit_abnormal
@@ -115,18 +124,7 @@ while getopts ":d:P:S:E:yh" options; do
       ;;
   esac
 done
-if [ "$PYTHON_INST" == "n" ]; then
-  echo " - Python/conda will not be installed or configured during setup,"
-  echo "please do this manually."
-fi
-if [ "$SALOME_INST" == "n" ]; then
-  echo " - Salome-Meca will not be installed or configured during setup,"
-  echo "please do this manually."
-fi
-if [ "$ERMES_INST" == "n" ]; then
-  echo " - ERMES will not be installed or configured during setup,"
-  echo "please do this manually."
-fi
+
 echo
 ### Check that no additional args were given that weren't caught.
 shift $(($OPTIND - 1))
@@ -189,6 +187,8 @@ if [[ $PATH =~ $VL_DIR ]]; then
 else
   ### If not, add VirtualLab to PATH
   echo "Adding VirtualLab to PATH."
+  # Add VL_DIR to VLProfile so that different parts of instal can be run seperately
+  sudo -u ${SUDO_USER:-$USER} echo 'VL_DIR="'$VL_DIR'"' >> $USER_HOME/.VLprofile
 
   sudo -u ${SUDO_USER:-$USER} echo 'if [[ ! $PATH =~ "'$VL_DIR'" ]]; then' >> $USER_HOME/.VLprofile
 #  sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$VL_DIR':$PATH"'  >> $USER_HOME/.VLprofile
@@ -223,6 +223,10 @@ else
   sudo -u ${SUDO_USER:-$USER} git clone https://gitlab.com/ibsim/virtuallab.git .
 fi
 #END
+### NOTE: Remove this when merging dev to master
+# sudo -u ${SUDO_USER:-$USER} git checkout dev
+###
+
 ### Run initial VirtualLab setup
 echo
 
@@ -285,9 +289,7 @@ else
   echo "Skipping ERMES installation"
 fi
 
-echo
-### Build VirtualLab documentation using sphinx
-source $VL_DIR/Scripts/Install/Install_docs.sh
+
 
 : <<'END'
 #commented out script

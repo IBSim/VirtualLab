@@ -3,14 +3,14 @@ Mesh = Namespace()
 Sim = Namespace()
 ML = Namespace()
 
-EMLoad = 'ERMES'
+EMLoad = 'Uniform'
 
 ##########################
 ######## Meshing #########
 ##########################
 
-Mesh.Name = 'Mesh_void'
-Mesh.File = 'AMAZE_SingleVoid' # This file must be in Scripts/$SIMULATION/PreProc
+Mesh.Name = 'AMAZEMesh'
+Mesh.File = 'AMAZE' # This file must be in Scripts/$SIMULATION/PreProc
 # Geometrical Dimensions
 Mesh.BlockWidth = 0.03 #x
 Mesh.BlockLength = 0.05 #y
@@ -18,23 +18,20 @@ Mesh.BlockHeight = 0.02 #z
 Mesh.PipeCentre = [0,0] #x,z, relative to centre of block
 Mesh.PipeDiam = 0.01 ###Inner Diameter
 Mesh.PipeThick = 0.001
-Mesh.PipeLength = Mesh.BlockLength
+Mesh.PipeLength = Mesh.BlockLength*2
 Mesh.TileCentre = [0,0]
 Mesh.TileWidth = Mesh.BlockWidth
 Mesh.TileLength = 0.03 #y
 Mesh.TileHeight = 0.005 #z
+
+Mesh.VoidCentre = [[0.25, 0.25],[0.75, 0.75]] # in terms of tile corner
+Mesh.Void = [[0.001, 0.002, 0.004, 0.0],[0.002, 0.001, 0.004, 0.0]]
+
 # Mesh parameters
 Mesh.Length1D = 0.005
 Mesh.Length2D = 0.005
 Mesh.Length3D = 0.005
-
 Mesh.SubTile = 0.002 # Mesh fineness on tile
-
-Mesh.VoidCentre = (Mesh.BlockWidth*0.5 ,Mesh.BlockLength*0.5) # Void centre relative to centre of block - (0, 0) is at the centre
-Mesh.VoidDiam = 0.001 # Diameter of void
-Mesh.VoidHeight = 0.001 # Height of Void. Positive/negative number gives a void in the top/bottom
-###############################################################################
-# Mesh parameters
 Mesh.PipeSegmentN = 20 # Number of segments for pipe circumference
 Mesh.VoidSegmentN = 32 # Number of segments for hole circumference (for sub-mesh) (ES) 16-24-28-32..
 
@@ -42,7 +39,7 @@ Mesh.VoidSegmentN = 32 # Number of segments for hole circumference (for sub-mesh
 ##########################
 ####### Simulation #######
 ##########################
-Sim.Name = 'Test_Meshvoid'
+Sim.Name = 'Test_2'
 
 #############
 ## PreAster #
@@ -76,8 +73,9 @@ if EMLoad == 'ERMES':
     Sim.Frequency = 1e4
 
 
-    Sim.Threshold = 0.9
+    Sim.Threshold = 1
     Sim.ThresholdPreview = False
+    Sim.NbClusters = 100
 
 
 #############
@@ -92,6 +90,13 @@ Sim.EMLoad = EMLoad
 if EMLoad == 'Uniform':
     Sim.Flux = 1e7
 
+Sim.BlockPipeTCC=None
+Sim.TileBlockTCC=None
+
+Sim.BlockEmissivity=0
+Sim.TileEmissivity=0
+Sim.TempExt = 20
+
 ### Materials
 Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
 
@@ -101,24 +106,6 @@ Sim.InitTemp = 20 #Celcius
 
 ### Time-stepping and temporal discretisation
 Sim.Theta = 0.5
-Sim.dt = [(0.0001,20,1)] #timestep size and number of steps
+Sim.dt = [(0.005,40,1)] #timestep size and number of steps
 
-Sim.Convergence = {'Start':10,'Gap':5}
-
-
-#############
-# PostAster #
-#############
-
-##########################
-#### Machine Learning ####
-##########################
-
-ML.Name = 'Test'
-ML.File = 'NetPU'
-
-ML.NewData = True
-ML.Device = 'cpu'
-ML.DataPrcnt = 1
-ML.SplitRatio = 0.7
-ML.ShowMetric = 1
+Sim.Convergence = {'Start':0.1,'Gap':0.02}

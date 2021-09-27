@@ -31,11 +31,11 @@ This contains the scripts needed by all simulation types. These includes setting
 Simulations
 ###########
 
-There are also a sub-directories for each simulation type for various physical laboratory experiments. Currently you will find `Tensile <virtual_exp.html#tensile-testing>`_, `LFA <virtual_exp.html#laser-flash-analysis>`_ and `HIVE <virtual_exp.html#hive>`_. 
+There are also a sub-directories for each simulation type for various physical laboratory experiments. Currently you will find `Tensile <virtual_exp.html#tensile-testing>`_, `LFA <virtual_exp.html#laser-flash-analysis>`_ and `HIVE <virtual_exp.html#hive>`_.
 
-Inside each of these are sub-directories containing the relevant files required to run that specific virtual experiment. In *Mesh* you will find **SALOME** python scripts which create the mesh of the testpiece, while the **Code_Aster** command scripts which outline the steps followed to setup the FE simulation can be found in *Aster*.
+Inside each of these are sub-directories containing the relevant files required to run that specific virtual experiment. In *Mesh* you will find **SALOME** python scripts which create the mesh of the testpiece, while in *Sim* you will find the **Code_Aster** command scripts which outline the steps followed to setup the FE simulation. Alongside these files used for PreAster and PostAster can be found. *DA* contains scripts used for data analysis.
 
-The sub-directories *PreAster* and *PostAster* contain scripts which provide pre and post-processing capabilities, if there are any. Simulation-specific sub-directories may also be included here, such as *Laser* for the LFA simulation which contains different laser pulse profiles measured experimentally.
+Simulation-specific sub-directories may also be included here, such as *Laser* for the LFA simulation which contains different laser pulse profiles measured experimentally.
 
 Materials
 *********
@@ -75,8 +75,6 @@ The structure of a *Run* file is explained in `Running a Simulation <runsim.html
 Output
 ******
 
-This directory will be created when the first **VirtualLab** scripts are run which produce output files. 
+This directory will be created when the first **VirtualLab** scripts are run which produce output files.
 
 Similarly to the structure of `Input`_, this directory will have a sub-directory for each 'Project' within each simulation type. This directory will hold all data generated for the 'Project', such as: meshes; simulation results; visualisation images; analysis reports. The structure of the project directory is detailed in `Running a Simulation <runsim.html>`_.
-
-

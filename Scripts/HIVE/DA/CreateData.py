@@ -6,13 +6,14 @@ from pathos.multiprocessing import ProcessPool
 from importlib import import_module, reload
 import numpy as np
 
-from Functions import Uniformity2
+from Functions import Uniformity2, Uniformity3
 from Scripts.Common.VLFunctions import MeshInfo
 
 
 
 def DataPool(VL, MLdict, ResDir):
     # function which is used by ProcessPool map
+    print(ResDir)
     sys.path.insert(0,ResDir)
     Parameters = reload(import_module('Parameters'))
     sys.path.pop(0)
@@ -25,14 +26,15 @@ def DataPool(VL, MLdict, ResDir):
     ERMESres.close()
     # Calculate power
     CoilPower = np.sum(Watts)
-    Uniformity = Uniformity2(JHNode/Parameters.Current**2,"{}/PreAster/ERMES.rmed".format(ResDir) )
+    # Uniformity = Uniformity2(JHNode/Parameters.Current**2,"{}/PreAster/ERMES.rmed".format(ResDir) )
+    Uniformity = Uniformity3(JHNode,"{}/PreAster/ERMES.rmed".format(ResDir) )
 
     Input = list(Parameters.CoilDisplacement) + [Parameters.Rotation]
     Output = [CoilPower,Uniformity]
 
     return Input+Output
 
-def GetData(VL, MLdict, DataDirs, cores=5):
+def GetData(VL, MLdict, DataDirs, cores=9):
     NbDirs = len(DataDirs)
     Args = [[VL]*NbDirs,[MLdict]*NbDirs,DataDirs]
     Pool = ProcessPool(nodes=cores, workdir=VL.TEMP_DIR)

@@ -11,139 +11,168 @@ from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
 
 import VLconfig
-from Scripts.Common import Analytics
+from . import Analytics
 from .VLFunctions import ErrorMessage, WarningMessage
-from Scripts.Common.VLPackages import Salome, CodeAster
-from Scripts.Common.VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
+from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
 
 class VLSetup():
-	def __init__(self, Simulation, Project, StudyName, Parameters_Master=None, Parameters_Var=None,
-				 Mode='T', InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-				 MaterialDir=VLconfig.MaterialsDir, TempDir=VLconfig.TEMP_DIR):
+	def __init__(self, Simulation, Project):
 
-		# Parameters can be overwritten using parsed arguments
-		ParsedArgs = self.GetArgParser()
+		# Get parsed args (achieved using the -k flag when launchign VirtualLab).
+		self._GetParsedArgs()
+		# Copy path at the start for MPI to match sys.path
+		self._pypath = sys.path.copy()
 
-		self.Simulation = ParsedArgs.get('Simulation',Simulation)
-		self.Project = ParsedArgs.get('Project',Project)
-		self.StudyName = ParsedArgs.get('StudyName',StudyName)
-		self._Parameters_Master = ParsedArgs.get('Parameters_Master',Parameters_Master)
-		self._Parameters_Var = ParsedArgs.get('Parameters_Var',Parameters_Var)
-		self.mode = ParsedArgs.get('Mode',Mode)
-		self.INPUT_DIR = ParsedArgs.get('InputDir',InputDir)
-		self.OUTPUT_DIR = ParsedArgs.get('OutputDir',OutputDir)
-		self.MATERIAL_DIR = ParsedArgs.get('MaterialDir',MaterialDir)
-		self.TEMP_DIR = ParsedArgs.get('TempDir',TempDir)
+		# ======================================================================
+		# Define variables
+		self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
+		self.Project = self._ParsedArgs.get('Project',Project)
 
-		# Update mode as shorthand version can be given
-		if self.mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
-		elif self.mode.lower() in ('t','terminal'): self.mode = 'Terminal'
-		elif self.mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
-		elif self.mode.lower() in ('h', 'headless'): self.mode = 'Headless'
-		else : self.Exit("Error: Mode is not in; 'Interactive','Terminal','Continuous' or 'Headless'")
+		# ======================================================================
+		# Specify default settings
+		self.Settings(Mode='H',Launcher='Process',NbThreads=1,
+					  InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+					  MaterialDir=VLconfig.MaterialsDir)
 
+		# ======================================================================
+		# Define path to scripts
+		self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
+		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
+		# Add these to path
+		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
+
+		#=======================================================================
+		# Define & create temporary directory for work to be saved to
+		self._TempDir = VLconfig.TEMP_DIR
+		# Unique ID
 		self.__ID__ = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
 
-		# Update Input, Output and Temp directories with simulation specific ones
-		self.TEMP_DIR = '{}/VL_{}'.format(self.TEMP_DIR, self.__ID__)
+		self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self.__ID__)
 		try:
 			os.makedirs(self.TEMP_DIR)
 		except FileExistsError:
-			#TODO - sort this
-			pass
-
-		self.INPUT_DIR = '{}/{}/{}'.format(self.INPUT_DIR, Simulation, Project)
-
-		# Output directory
-		self.PROJECT_DIR = "{}/{}/{}".format(self.OUTPUT_DIR, Simulation, Project)
-		self.STUDY_DIR = "{}/{}".format(self.PROJECT_DIR, StudyName)
-		self.MESH_DIR = "{}/Meshes".format(self.PROJECT_DIR)
-
-		# Define variables and run some checks
-		# Script directories
-		self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
-		self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, Simulation)
-
-		# Scrpt directories
-		self.SIM_MESH = "{}/Mesh".format(self.SIM_SCRIPTS)
-		self.SIM_PREASTER = "{}/PreAster".format(self.SIM_SCRIPTS)
-		self.SIM_ASTER = "{}/Aster".format(self.SIM_SCRIPTS)
-		self.SIM_POSTASTER = "{}/PostAster".format(self.SIM_SCRIPTS)
-		self.SIM_DA = "{}/DA".format(self.SIM_SCRIPTS)
-
-		self._pypath = sys.path.copy() # Needed for MPI run to match sys.path
+			# Unlikely this would happen. Suffix random number to direcory name
+			self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
+			os.makedirs(self.TEMP_DIR)
 
 		self.Logger('### Launching VirtualLab ###',Print=True)
 
+
+	def _SetMode(self,Mode='H'):
+		Mode = self._ParsedArgs.get('Mode',Mode)
+		# ======================================================================
+		# Update mode as shorthand version can be given
+		if Mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
+		elif Mode.lower() in ('t','terminal'): self.mode = 'Terminal'
+		elif Mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
+		elif Mode.lower() in ('h', 'headless'): self.mode = 'Headless'
+		else : self.Exit(ErrorMessage("Mode must be one of; 'Interactive',\
+									  'Terminal','Continuous', 'Headless'"))
+
+	def _SetLauncher(self,Launcher='Process'):
+		Launcher = self._ParsedArgs.get('Launcher',Launcher)
+		if Launcher.lower() == 'sequential': self._Launcher = 'Sequential'
+		elif Launcher.lower() == 'process': self._Launcher = 'Process'
+		elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
+		else: self.Exit(ErrorMessage("Launcher must be one of; 'Sequential',\
+									 'Process', 'MPI'"))
+
+	def _SetNbThreads(self,NbThreads=1):
+		NbThreads = self._ParsedArgs.get('NbThreads',NbThreads)
+		if type(NbThreads) == int:
+			_NbThreads = NbThreads
+		elif type(NbThreads) == float:
+			if NbThreads.is_integer():
+				_NbThreads = NbThreads
+			else:
+				self.Exit(ErrorMessage("NbThreads must be an integer"))
+		else:
+			self.Exit(ErrorMessage("NbThreads must be an integer"))
+
+		if _NbThreads >= 1:
+			self._NbThreads = _NbThreads
+		else:
+			self.Exit(ErrorMessage("NbThreads must be positive"))
+
+	def _SetInputDir(self,InputDir):
+		InputDir = self._ParsedArgs.get('InputDir',InputDir)
+		if not os.path.isdir(InputDir):
+			self.Exit(ErrorMessage("InputDir is not a valid directory"))
+		self._InputDir = InputDir
+		self.PARAMETERS_DIR = '{}/{}/{}'.format(self._InputDir, self.Simulation, self.Project)
+
+	def _SetOutputDir(self,OutputDir):
+		OutputDir = self._ParsedArgs.get('OutputDir',OutputDir)
+		self._OutputDir = OutputDir
+		self.PROJECT_DIR = '{}/{}/{}'.format(self._OutputDir, self.Simulation, self.Project)
+
+	def _SetMaterialDir(self,MaterialDir):
+		if not os.path.isdir(MaterialDir):
+			self.Exit(ErrorMessage("MaterialDir is not a valid directory"))
+		MaterialDir = self._ParsedArgs.get('MaterialDir',MaterialDir)
+		self.MATERIAL_DIR = MaterialDir
+
+	def Settings(self,**kwargs):
+
+		Diff = set(kwargs).difference(['Mode','Launcher','NbThreads','InputDir',
+									'OutputDir','MaterialDir'])
+		if Diff:
+			self.Exit("Error: {} are not option(s) for settings".format(list(Diff)))
+
+		if 'Mode' in kwargs:
+			self._SetMode(kwargs['Mode'])
+		if 'Launcher' in kwargs:
+			self._SetLauncher(kwargs['Launcher'])
+		if 'NbThreads' in kwargs:
+			self._SetNbThreads(kwargs['NbThreads'])
+		if 'InputDir' in kwargs:
+			self._SetInputDir(kwargs['InputDir'])
+		if 'OutputDir' in kwargs:
+			self._SetOutputDir(kwargs['OutputDir'])
+		if 'MaterialDir' in kwargs:
+			self._SetMaterialDir(kwargs['MaterialDir'])
+
 	def Parameters(self, Parameters_Master, Parameters_Var=None,
 					RunMesh=True, RunSim=True, RunDA=True):
-		'''
-		This method is replacing control.
-		'''
 
-		kw = {'RunMesh':RunMesh,'RunSim':RunSim,'RunDA':RunDA}
-		kw.update(self.GetArgParser())
+		# Update args with parsed args
+		Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
+		Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
+		RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
+		RunSim = self._ParsedArgs.get('RunSim',RunSim)
+		RunDA = self._ParsedArgs.get('RunDA',RunDA)
 
 		# Create variables based on the namespaces (NS) in the Parameters file(s) provided
 		VLNamespaces = ['Mesh','Sim','DA']
 		self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
-		if not hasattr(self,'Salome'):
-			self.Salome = Salome.Salome(self, AddPath=[self.SIM_SCRIPTS])
-		if not hasattr(self,'CodeAster'):
-			self.CodeAster = CodeAster.CodeAster(self)
-
-		sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
-
-		MeshFn.Setup(self,**kw)
-		SimFn.Setup(self,**kw)
-		DAFn.Setup(self,**kw)
-
-		# Function to analyse usage of VirtualLab to evidence impact for
-		# use in future research grant applications. Can be turned off via
-		# VLconfig.py. See Scripts/Common/Analytics.py for more details.
-		if VLconfig.VL_ANALYTICS=="True": Analytics.Run(self,**kw)
-
-	def Control(self, **kwargs):
-		'''
-		kwargs available:
-		RunMesh: Boolean to dictate whether or not to create meshes
-		RunSim: Boolean to dictate whether or not to run simulation routine
-		RunDA: Boolean to dictate data analysis part (dev)
-
-		This method will be depreciated in future.
-		'''
-		if self._Parameters_Master == None:
-			self.Exit('Parameters_Master/var must be set during class initiation to use this method')
-
-		self.Parameters(self._Parameters_Master,self._Parameters_Var,**kwargs)
-
+		MeshFn.Setup(self,RunMesh)
+		SimFn.Setup(self,RunSim)
+		DAFn.Setup(self,RunDA)
 
 	def Mesh(self,**kwargs):
+		kwargs = self._UpdateArgs(kwargs)
 		return MeshFn.Run(self,**kwargs)
 
 	def devMesh(self,**kwargs):
-		return MeshFn.devRun(self,**kwargs)
+		kwargs = self._UpdateArgs(kwargs)
+		return MeshFn.Run(self,**kwargs)
 
 	def Sim(self,**kwargs):
+		kwargs = self._UpdateArgs(kwargs)
 		return SimFn.Run(self,**kwargs)
 
 	def devSim(self,**kwargs):
-		return SimFn.devRun(self,**kwargs)
+		kwargs = self._UpdateArgs(kwargs)
+		return SimFn.Run(self,**kwargs)
+
+	def DA(self,**kwargs):
+		kwargs = self._UpdateArgs(kwargs)
+		return DAFn.Run(self,**kwargs)
 
 	def devDA(self,**kwargs):
-		return DAFn.devRun(self,**kwargs)
-
-	def WriteModule(self, FileName, Dictionary, **kwargs):
-		Write = kwargs.get('Write','New')
-		if Write == 'New':
-			PathList = []
-			for VarName, Val in Dictionary.items():
-				if type(Val)==str: Val = "'{}'".format(Val)
-				PathList.append("{} = {}\n".format(VarName, Val))
-			Pathstr = ''.join(PathList)
-			with open(FileName,'w+') as f:
-				f.write(Pathstr)
+		kwargs = self._UpdateArgs(kwargs)
+		return DAFn.Run(self,**kwargs)
 
 	def Logger(self,Text='',**kwargs):
 		Prnt = kwargs.get('Print',False)
@@ -153,11 +182,11 @@ class VLSetup():
 			if self.mode in ('Interactive','Terminal'):
 				self.LogFile = None
 			else:
-				self.LogFile = "{}/.log/{}_{}.log".format(self.PROJECT_DIR,self.StudyName,self.__ID__)
+				self.LogFile = "{}/.log/{}.log".format(self.PROJECT_DIR, self.__ID__)
 				os.makedirs(os.path.dirname(self.LogFile), exist_ok=True)
 				with open(self.LogFile,'w') as f:
 					f.write(Text)
-				print("Detailed output written to {}".format(self.LogFile))
+				# print("Detailed output written to {}".format(self.LogFile))
 			return
 
 		if self.mode in ('Interactive','Terminal'):
@@ -168,15 +197,20 @@ class VLSetup():
 				f.write(Text+"\n")
 
 	def Exit(self,mess='',KeepDirs=[]):
-		self.Logger(mess, Print=True)
+		# self.Logger(mess, Print=True)
 		self.Cleanup(KeepDirs)
-		sys.exit()
+		sys.exit(mess)
 
 	def Cleanup(self,KeepDirs=[]):
-
-		if hasattr(self, 'Salome'):
-			if self.Salome.Ports:
-				self.Salome.Close(self.Salome.Ports)
+		# Report overview of VirtualLab usage
+		if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
+			MeshNb = self._Analytics.get('Mesh',0)
+			SimNb = self._Analytics.get('Sim',0)
+			DANb = self._Analytics.get('DANb',0)
+			Category = "{}_Overview".format(self.Simulation)
+			Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
+			Label = self.__ID__
+			Analytics.Run(Category,Action,Label)
 
 		if os.path.isdir(self.TEMP_DIR):
 			if KeepDirs:
@@ -200,7 +234,7 @@ class VLSetup():
 		if os.path.splitext(Rel_Parameters)[1]=='.py':
 			Rel_Parameters = os.path.splitext(Rel_Parameters)[0]
 
-		Abs_Parameters = "{}/{}.py".format(self.INPUT_DIR,Rel_Parameters)
+		Abs_Parameters = "{}/{}.py".format(self.PARAMETERS_DIR,Rel_Parameters)
 		# Check File exists
 		if not os.path.exists(Abs_Parameters):
 			message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
@@ -303,12 +337,9 @@ class VLSetup():
 
 		return ParaDict
 
-
-
-	def GetArgParser(self):
-		ArgList=sys.argv[1:]
-		argdict={}
-		for arg in ArgList:
+	def _GetParsedArgs(self):
+		self._ParsedArgs = {}
+		for arg in sys.argv[1:]:
 			split=arg.split('=')
 			if len(split)!=2:
 				continue
@@ -318,10 +349,16 @@ class VLSetup():
 			elif value=='None':value=None
 			elif value.isnumeric():value=int(value)
 			else:
-				try:
-					value=float(value)
+				try: value=float(value)
 				except: ValueError
 
-			argdict[var]=value
+			self._ParsedArgs[var]=value
 
-		return argdict
+	def _UpdateArgs(self,ArgDict):
+		Changes = set(ArgDict).intersection(self._ParsedArgs)
+		if not Changes: return ArgDict
+
+		# If some of the arguments have been parsed then they are updated
+		for key in Changes:
+			ArgDict[key] = self._ParsedArgs[key]
+		return ArgDict

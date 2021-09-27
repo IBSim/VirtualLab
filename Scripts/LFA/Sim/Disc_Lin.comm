@@ -1,0 +1,171 @@
+import sys
+sys.dont_write_bytecode=True
+import os
+import numpy as np
+import time as tm
+from Utilitai import partition
+
+import AsterFunc
+
+SimDict = AsterFunc.GetSimDict()
+Parameters = SimDict['Parameters']
+
+def GaussProfile(x,y,sigma):
+	z = (1/(2*pi*sigma**2))*np.exp(-(x**2+y**2)/(2*sigma**2))
+	return z
+
+def LinMaterial(data,Temperature=20):
+	# This function allows us to use a Linear on NonLinear material for the simulation
+	if len(data) == 4 and data[1]==data[3]: return data[1]
+	else : return np.interp(Temperature, data[::2], data[1::2])
+
+DEBUT(PAR_LOT = 'NON',LANG='EN')
+
+# ==============================================================================
+# Read in the mesh and define model
+
+mesh = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
+mesht = partition.MAIL_PY()
+mesht.FromAster('mesh')
+
+Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=Parameters.Model,
+		                      PHENOMENE='THERMIQUE',
+		                      TOUT='OUI'),
+	             	  MAILLAGE=mesh)
+
+# ==============================================================================
+# Set materials.
+DictMat = AsterFunc.MaterialProps(SimDict['MATERIAL_DIR'], Parameters.Materials.values())
+
+# Top Disk
+TopLambda = LinMaterial(DictMat[Parameters.Materials['Top']]['Lambda'])
+TopRhoCp = LinMaterial(DictMat[Parameters.Materials['Top']]['RhoCp'])
+TopMat = DEFI_MATERIAU(THER=_F(LAMBDA = TopLambda, RHO_CP = TopRhoCp))
+
+# Bottom Disk
+BotLambda = LinMaterial(DictMat[Parameters.Materials['Bottom']]['Lambda'])
+BotRhoCp = LinMaterial(DictMat[Parameters.Materials['Bottom']]['RhoCp'])
+BotMat = DEFI_MATERIAU(THER=_F(LAMBDA = BotLambda, RHO_CP = BotRhoCp))
+
+Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TopMat, GROUP_MA='Top'),
+							  _F(MATER=BotMat, GROUP_MA='Bottom')),
+	                	MAILLAGE=mesh)
+
+# ==============================================================================
+# Create boundary conditions
+
+# Laser temporal Profile
+Lsrdat = np.fromfile('{}/Laser/{}.dat'.format(SimDict['SIM_SCRIPTS'], Parameters.LaserT),dtype=float,count=-1,sep=" ")
+LsrProf = DEFI_FONCTION(NOM_PARA='INST',
+		       			PROL_DROITE='CONSTANT',
+	               		PROL_GAUCHE='CONSTANT',
+		       			VALE=Lsrdat)
+
+Lsrdat = Lsrdat.reshape(int(len(Lsrdat)/2),2)
+tlaser, flaser = Lsrdat[:,0], Lsrdat[:,1]
+LaserArea = np.trapz(flaser, x=tlaser) # Need area under curve for scaling
+
+# Laser spatial Profile
+TopArea,TopNodes = AsterFunc.BCinfo(mesh,Group = 'Top_Face')[0:2]
+# Need to scale input to ensure correct energy is input
+if Parameters.LaserS == 'Uniform':
+	Scale = Parameters.Energy/(sum(TopArea)*LaserArea)
+	FluxProf = DEFI_CONSTANTE(VALE=Scale)
+elif Parameters.LaserS in ('Gauss','gauss'):
+	# Define sigma to ensure a 10% reduction 5mm away from centre
+	sigma = 0.005/(-2*np.log(1-0.1))**0.5
+	Coors = mesht.cn[TopNodes]
+	Gauss = GaussProfile(Coors[:,0], Coors[:,1], sigma)
+	SumLoad = np.dot(TopArea, Gauss)
+	Scale = Parameters.Energy/(SumLoad*LaserArea) # Scales Gaussian profileto ensure correct energy input
+
+	FluxProf = FORMULE(VALE='Scale*GaussProfile(X,Y,sigma)',
+		       NOM_PARA=('X', 'Y'),sigma=sigma,Scale=Scale,GaussProfile=GaussProfile)
+
+LaserOn = AFFE_CHAR_THER_F(FLUX_REP=_F(FLUN=FluxProf,
+									   GROUP_MA='Top_Face'),
+			   			   MODELE=Thermod)
+
+# Convection
+BotHTC = DEFI_CONSTANTE(VALE=Parameters.BottomHTC)
+TopHTC = DEFI_CONSTANTE(VALE=Parameters.TopHTC)
+T_ext = DEFI_CONSTANTE(VALE=Parameters.ExtTemp)
+
+Convect = AFFE_CHAR_THER_F(ECHANGE=(_F(COEF_H=BotHTC, TEMP_EXT=T_ext, GROUP_MA='Bottom_Ext'),
+			       			   		_F(COEF_H=TopHTC, TEMP_EXT=T_ext, GROUP_MA='Top_Ext')),
+		      		  	   MODELE=Thermod)
+
+# Heat transfer between join. As Thermal Contact Conductance (TCC)
+# goes to infiity behaviour moves towards perfect heat exchange
+if getattr(Parameters,'TCC',None) != None:
+	# Imperfect heat exchange.
+	TCC = AFFE_CHAR_THER(MODELE=Thermod,
+                         ECHANGE_PAROI=_F(GROUP_MA_1='Contact',
+                                          GROUP_MA_2='Contact_double',
+                                          COEF_H=Parameters.TCC))
+else:
+	#Perfect heat exchange
+	TCC = AFFE_CHAR_THER(MODELE=Thermod,
+						 LIAISON_MAIL=_F(GROUP_MA_MAIT='Top',
+							 			 GROUP_MA_ESCL='Contact'))
+
+# lists of BCs applied
+Loading1 = [_F(CHARGE=LaserOn, FONC_MULT=LsrProf),_F(CHARGE=Convect),_F(CHARGE=TCC)] #Laser on
+Loading2 = [_F(CHARGE=Convect),_F(CHARGE=TCC)] #Laser off
+
+# ==============================================================================
+# Using Parameters.dt, list of timesteps for analysis and results to save are created
+timearr, savearr = AsterFunc.Timesteps(Parameters.dt)
+Timestp = DEFI_LIST_REEL(VALE=timearr)
+Savestp = DEFI_LIST_REEL(VALE=savearr)
+
+# ==============================================================================
+# Thermal FEA analysis
+
+#Set default values
+MaxIter = getattr(Parameters, 'MaxIter', 10)
+Theta = getattr(Parameters,'Theta',0.5)
+Solver = getattr(Parameters,'Solver', 'MUMPS')
+
+#Time and index in timarr for end of laser pulse
+LPend = getattr(Parameters, 'LaserEnd', tlaser[-1])
+LPindex = np.argmax(timearr >= LPend)
+
+### LaserOn
+
+resther = THER_LINEAIRE(ARCHIVAGE=_F(LIST_INST=Savestp),
+			CHAM_MATER=Thermat,
+			ETAT_INIT=_F(VALE=Parameters.InitTemp),
+			EXCIT=Loading1,
+			INCREMENT=_F(NUME_INST_FIN=LPindex, LIST_INST=Timestp),
+			MODELE=Thermod,
+			PARM_THETA=Theta,
+			SOLVEUR=_F(METHODE=Solver))
+
+### Laser Off
+if timearr[-1] > LPend:
+	resther = THER_LINEAIRE(reuse=resther,
+				ARCHIVAGE=_F(LIST_INST=Savestp),
+				CHAM_MATER=Thermat,
+				ETAT_INIT=_F(EVOL_THER=resther),
+				EXCIT=Loading2,
+				INCREMENT=_F(LIST_INST=Timestp),
+				MODELE=Thermod,
+				PARM_THETA=Theta,
+				SOLVEUR=_F(METHODE=Solver),
+				RESULTAT=resther)
+
+# ==============================================================================
+# Save results & timesteps used for analysis
+
+np.savetxt('./REPE_OUT/TimeSteps.dat', timearr, fmt = '%.6f', delimiter = '   ')
+
+DEFI_FICHIER(FICHIER='./REPE_OUT/Thermal.rmed',
+			 UNITE=81)
+
+IMPR_RESU(RESU=_F(RESULTAT=resther,
+				  NOM_CHAM=('TEMP'),
+				  NOM_CHAM_MED=('Temperature')),
+		  UNITE=81)
+
+FIN()

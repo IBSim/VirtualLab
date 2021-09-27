@@ -14,9 +14,9 @@ def KCalc(halfT, l, rho, Cp):
 	k=alpha*Cp*rho
 	return k, alpha
 
-def Single(Info, StudyDict):
-	Parameters = StudyDict["Parameters"]
-	ResFile = '{}/Thermal.rmed'.format(StudyDict['ASTER'])
+def Single(Info, SimDict):
+	Parameters = SimDict["Parameters"]
+	ResFile = '{}/Thermal.rmed'.format(SimDict['ASTER'])
 
 	# Get mesh information from the results file
 	meshdata = MeshInfo(ResFile)
@@ -110,7 +110,7 @@ def Single(Info, StudyDict):
 	ax3.set_title('Nodal load',fontsize = 14)
 	ax3.axis('off')
 
-	plt.savefig("{}/LaserProfile.png".format(StudyDict['POSTASTER']), bbox_inches='tight')
+	plt.savefig("{}/LaserProfile.png".format(SimDict['POSTASTER']), bbox_inches='tight')
 	print("Created plot LaserProfile.png")
 	plt.close()
 
@@ -153,14 +153,14 @@ def Single(Info, StudyDict):
 	for Rdata, Rval in zip(np.transpose(R), Rvalues):
 		plt.plot(Time, Rdata, label = 'Avg. Temperature (R={})'.format(Rval))
 	plt.legend(loc='upper left')
-	plt.savefig("{}/AvgTempBase.png".format(StudyDict['POSTASTER']), bbox_inches='tight')
+	plt.savefig("{}/AvgTempBase.png".format(SimDict['POSTASTER']), bbox_inches='tight')
 	print("Created plot AvgTempBase.png\n")
 	plt.close()
 
 
 	LaserStr="### Laser pulse discretisation###\n\n"
 	# Accuracy of temporal discretisation for laser pulse
-	TimeSteps = np.fromfile('{}/TimeSteps.dat'.format(StudyDict['ASTER']),dtype=float,count=-1,sep=" ")
+	TimeSteps = np.fromfile('{}/TimeSteps.dat'.format(SimDict['ASTER']),dtype=float,count=-1,sep=" ")
 	TimeSteps = TimeSteps[TimeSteps <= xLaser[-1]]
 	ExactLaser = np.trapz(yLaser, xLaser)
 	AprxLaser = np.trapz(np.interp(TimeSteps,xLaser,yLaser), TimeSteps)
@@ -224,5 +224,5 @@ def Single(Info, StudyDict):
 	TCStr +="\n"
 	TempStr+="\n"
 
-	with open("{}/Summary.txt".format(StudyDict["POSTASTER"]),'w') as f:
+	with open("{}/Summary.txt".format(SimDict["POSTASTER"]),'w') as f:
 		f.write(LaserStr+TCStr+TempStr)

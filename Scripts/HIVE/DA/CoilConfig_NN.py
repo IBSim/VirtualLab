@@ -17,8 +17,8 @@ from Scripts.Common.VLFunctions import MeshInfo
 from Functions import Uniformity2 as UniformityScore, DataScale, DataRescale, FuncOpt
 from PreAster.PreHIVE import ERMES
 
-def Single(VL, MLdict):
-    ML = MLdict["Parameters"]
+def Single(VL, DADict):
+    ML = DADict["Parameters"]
 
     NbTorchThread = getattr(ML,'NbTorchThread',1)
     torch.set_num_threads(NbTorchThread)
@@ -48,7 +48,7 @@ def Single(VL, MLdict):
             TrainNb = int(np.ceil(_TrainData.shape[0]*DataSplit))
         TrainData = _TrainData[:TrainNb,:] # Data used for training
 
-        np.save("{}/TrainData".format(MLdict["CALC_DIR"]),TrainData)
+        np.save("{}/TrainData".format(DADict["CALC_DIR"]),TrainData)
 
         TestNb = int(np.ceil(TrainNb*(1-DataSplit)/DataSplit))
         if hasattr(ML,'TestData'):
@@ -61,13 +61,13 @@ def Single(VL, MLdict):
             TestData = _TrainData[TrainNb:,:]
         TestData = TestData[:TestNb,:]
 
-        np.save("{}/TestData".format(MLdict["CALC_DIR"]),TestData)
+        np.save("{}/TestData".format(DADict["CALC_DIR"]),TestData)
 
         MLData.close()
 
     else:
-        TrainData = np.load("{}/TrainData.npy".format(MLdict["CALC_DIR"]))
-        TestData = np.load("{}/TestData.npy".format(MLdict["CALC_DIR"]))
+        TrainData = np.load("{}/TrainData.npy".format(DADict["CALC_DIR"]))
+        TestData = np.load("{}/TestData.npy".format(DADict["CALC_DIR"]))
 
     #=======================================================================
 
@@ -94,7 +94,7 @@ def Single(VL, MLdict):
     Test_x_tf = torch.from_numpy(Test_x_scale)
     Test_y_tf = torch.from_numpy(Test_y_scale)
 
-    ModelFile = '{}/model.h5'.format(MLdict["CALC_DIR"]) # File model will
+    ModelFile = '{}/model.h5'.format(DADict["CALC_DIR"]) # File model will
     model = NetPU(ML.NNLayout,ML.Dropout)
 
 
@@ -103,7 +103,7 @@ def Single(VL, MLdict):
         lr = getattr(ML,'lr', 0.0001)
         PrintEpoch = getattr(ML,'PrintEpoch',100)
         ConvCheck = getattr(ML,'ConvCheck',100)
-        # MLdict['Data']['MSE'] = MSEvals = {}
+        # DADict['Data']['MSE'] = MSEvals = {}
 
         model.train()
 
@@ -117,9 +117,10 @@ def Single(VL, MLdict):
         # loss tensor
 
         loss_func = nn.MSELoss(reduction='mean')
+        loss_func_split = nn.MSELoss(reduction='none')
         # Convergence history
         LossConv = {'loss_train': [], 'loss_test': []}
-
+        LossConvSplit = {'loss_train': [], 'loss_test': []}
         BestModel = copy.deepcopy(model)
         BestLoss_test, OldAvg = float('inf'), float('inf')
         print("Starting training")
@@ -140,12 +141,17 @@ def Single(VL, MLdict):
             with torch.no_grad():
                 loss_test = loss_func(model(Test_x_tf), Test_y_tf)
                 loss_train = loss_func(model(Train_x_tf), Train_y_tf)
+
+                loss_test_split = loss_func_split(model(Test_x_tf), Test_y_tf).numpy().mean(axis=0)
+                loss_train_split = loss_func_split(model(Train_x_tf), Train_y_tf).numpy().mean(axis=0)
+
             model.train()
 
             LossConv['loss_test'].append(loss_test.cpu().detach().numpy().tolist()) # loss of full test
             LossConv['loss_train'].append(loss_train.cpu().detach().numpy().tolist()) #loss of full train
 
-
+            LossConvSplit['loss_test'].append(loss_test_split.tolist()) # loss of full test
+            LossConvSplit['loss_train'].append(loss_train_split.tolist()) #loss of full train
 
             if (epoch) % PrintEpoch == 0:
                 print("{:<8}{:<12}{:<12}".format(epoch,"%.8f" % loss_train,"%.8f" % loss_test))
@@ -178,15 +184,30 @@ def Single(VL, MLdict):
 
         # save model & training/testing data
         torch.save(model.state_dict(), ModelFile)
+        fnt = 36
 
-        plt.figure(figsize=(12,9),dpi=100)
-        plt.plot(LossConv['loss_train'][0:epoch], label='Train')
-        plt.plot(LossConv['loss_test'][0:epoch], label='Test')
-        plt.ylabel("Loss")
-        plt.xlabel("Epochs")
-        plt.legend()
-        plt.savefig("{}/Convergence.png".format(MLdict["CALC_DIR"]))
+        plt.figure(figsize=(15,10))
+        plt.plot(LossConv['loss_train'][0:epoch], label='Train', c=plt.cm.gray(0))
+        plt.plot(LossConv['loss_test'][0:epoch], label='Test', c=plt.cm.gray(0.5))
+        plt.ylabel("Loss (MSE)",fontsize=fnt)
+        plt.xlabel("Epochs",fontsize=fnt)
+        plt.legend(fontsize=fnt)
+        plt.savefig("{}/Convergence.eps".format(DADict["CALC_DIR"]),dpi=600)
         plt.close()
+
+        if True:
+            plt.figure(figsize=(15,10))
+            LossTrainSplit = np.array(LossConvSplit['loss_train'])
+            LossTestSplit = np.array(LossConvSplit['loss_test'])
+            plt.plot(LossTrainSplit[0:epoch,0], label='Train Power',c=plt.cm.gray(0))
+            plt.plot(LossTestSplit[0:epoch,0], label='Test Power',c=plt.cm.gray(0.2))
+            plt.plot(LossTrainSplit[0:epoch,1], label='Train Variation',c=plt.cm.gray(0.4))
+            plt.plot(LossTestSplit[0:epoch,1], label='Test Variation',c=plt.cm.gray(0.6))
+            plt.ylabel("Loss (MSE)",fontsize=fnt)
+            plt.xlabel("Epochs",fontsize=fnt)
+            plt.legend(fontsize=fnt)
+            plt.savefig("{}/Convergence_Split.eps".format(DADict["CALC_DIR"]),dpi=600)
+            plt.close()
 
         # # Predicted values from test and train data
         # with torch.no_grad():
@@ -207,7 +228,7 @@ def Single(VL, MLdict):
             y = Power(x_scale)
             y = DataRescale(y.numpy(),*OutputScaler[:,0])
             print(y)
-            MLdict['Output'] = y.tolist()
+            DADict['Output'] = y.tolist()
 
     # Get bounds of data for optimisation
     bnds = list(zip(Train_x_scale.min(axis=0), Train_x_scale.max(axis=0)))
@@ -238,16 +259,16 @@ def Single(VL, MLdict):
         print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W ".format(*coord, val))
     print()
 
-    MLdict["Data"]['MaxPower'] = MaxPower = {'x':MaxPower_cd[0],'y':MaxPower_val[0]}
+    DADict["Data"]['MaxPower'] = MaxPower = {'x':MaxPower_cd[0],'y':MaxPower_val[0]}
 
     if ML.MaxPowerOpt.get('Verify',True):
         print("Checking results at optima\n")
-        ERMESMaxPower = '{}/MaxPower.rmed'.format(MLdict["CALC_DIR"])
+        ERMESMaxPower = '{}/MaxPower.rmed'.format(DADict["CALC_DIR"])
         EMParameters = Param_ERMES(*MaxPower_cd[0],ERMES_Parameters)
         RunERMES = ML.MaxPowerOpt.get('NewSim',True)
 
         JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,MeshFile,ERMESMaxPower,
-                                                EMParameters, MLdict["TMP_CALC_DIR"],
+                                                EMParameters, DADict["TMP_CALC_DIR"],
                                                 RunERMES, GUI=0)
         Watts = JH_Vol*Volumes
         # Power & Uniformity
@@ -286,13 +307,13 @@ def Single(VL, MLdict):
             print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W, {:.3f}".format(*coord, *val))
         print()
 
-        MLdict['Optima_1'] = np.hstack((MaxPower_cd, MaxPower_val)).tolist()
+        DADict['Optima_1'] = np.hstack((MaxPower_cd, MaxPower_val)).tolist()
 
         if ML.MaxPowerOpt.get('Verify',True):
             CheckPoint = MaxPower_cd[0].tolist()
             print("Checking results at {}\n".format(CheckPoint))
 
-            ERMESResFile = '{}/MaxPower.rmed'.format(MLdict["CALC_DIR"])
+            ERMESResFile = '{}/MaxPower.rmed'.format(DADict["CALC_DIR"])
             if ML.MaxPowerOpt.get('NewSim',True):
                 ParaDict = {'CoilType':'HIVE',
                             'CoilDisplacement':CheckPoint[:3],
@@ -301,7 +322,7 @@ def Single(VL, MLdict):
                             'Frequency':1e4,
                             'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
                 Parameters = Namespace(**ParaDict)
-                ERMESdir = "{}/ERMES".format(MLdict['TMP_CALC_DIR'])
+                ERMESdir = "{}/ERMES".format(DADict['TMP_CALC_DIR'])
                 DataDict = {'InputFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),
                             'OutputFile':"{}/Mesh.med".format(ERMESdir),
                             'ERMESResFile':ERMESResFile,
@@ -330,7 +351,7 @@ def Single(VL, MLdict):
 
             # err = 100*(MaxPower_val[0,:] - ActOptOutput)/ActOptOutput
             # print("Prediction errors are: {:.3f} & {:.3f}".format(*err))
-            # MLdict['Optima'] = [MaxPower_val[0,0],Power]
+            # DADict['Optima'] = [MaxPower_val[0,0],Power]
 
     #Optimisation2: Find optimum uniformity for a given power
     if hasattr(ML,'DesPowerOpt'):
@@ -360,7 +381,7 @@ def Single(VL, MLdict):
                 CheckPoint = OptUni_cd[0].tolist()
                 print("Checking results at {}\n".format(CheckPoint))
 
-                ERMESResFile = '{}/DesPower.rmed'.format(MLdict["CALC_DIR"])
+                ERMESResFile = '{}/DesPower.rmed'.format(DADict["CALC_DIR"])
                 if ML.DesPowerOpt.get('NewSim',True):
                     ParaDict = {'CoilType':'HIVE',
                                 'CoilDisplacement':CheckPoint[:3],
@@ -369,7 +390,7 @@ def Single(VL, MLdict):
                                 'Frequency':1e4,
                                 'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
                     Parameters = Namespace(**ParaDict)
-                    ERMESdir = "{}/ERMES".format(MLdict['TMP_CALC_DIR'])
+                    ERMESdir = "{}/ERMES".format(DADict['TMP_CALC_DIR'])
                     DataDict = {'InputFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),
                                 'OutputFile':"{}/Mesh.med".format(ERMESdir),
                                 'ERMESResFile':ERMESResFile,
@@ -416,7 +437,7 @@ def Single(VL, MLdict):
             CheckPoint = W_avg_cd[0].tolist()
             print("Checking results at {}\n".format(CheckPoint))
 
-            ERMESResFile = '{}/WeightedAverage.rmed'.format(MLdict["CALC_DIR"])
+            ERMESResFile = '{}/WeightedAverage.rmed'.format(DADict["CALC_DIR"])
             if ML.CombinedOpt.get('NewSim',True):
                 ParaDict = {'CoilType':'HIVE',
                             'CoilDisplacement':CheckPoint[:3],
@@ -425,7 +446,7 @@ def Single(VL, MLdict):
                             'Frequency':1e4,
                             'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
                 Parameters = Namespace(**ParaDict)
-                ERMESdir = "{}/ERMES".format(MLdict['TMP_CALC_DIR'])
+                ERMESdir = "{}/ERMES".format(DADict['TMP_CALC_DIR'])
                 DataDict = {'InputFile':"{}/AMAZEsample.med".format(VL.MESH_DIR),
                             'OutputFile':"{}/Mesh.med".format(ERMESdir),
                             'ERMESResFile':ERMESResFile,

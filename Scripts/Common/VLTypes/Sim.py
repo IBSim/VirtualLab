@@ -52,7 +52,7 @@ def Setup(VL,RunSim=True):
 
         # Create dict of simulation specific information to be nested in SimData
         CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, SimName)
-        StudyDict = {'Name':SimName,
+        SimDict = {'Name':SimName,
                     'TMP_CALC_DIR':"{}/Sim/{}".format(VL.TEMP_DIR, SimName),
                     'CALC_DIR':CALC_DIR,
                     'PREASTER':"{}/PreAster".format(CALC_DIR),
@@ -65,32 +65,32 @@ def Setup(VL,RunSim=True):
         # Important information can be added to Data during any stage of the
         # simulation, and this will be saved to the location specified by the
         # value for the __file__ key
-        StudyDict['Data'] = {'__file__':"{}/Data.pkl".format(StudyDict['CALC_DIR'])}
+        SimDict['Data'] = {'__file__':"{}/Data.pkl".format(SimDict['CALC_DIR'])}
 
-        StudyDict['LogFile'] = None
+        SimDict['LogFile'] = None
         if VL.mode in ('Headless','Continuous'):
-            StudyDict['LogFile'] = "{}/Output.log".format(StudyDict['CALC_DIR'])
+            SimDict['LogFile'] = "{}/Output.log".format(SimDict['CALC_DIR'])
         elif VL.mode == 'Interactive':
-            StudyDict['Interactive'] = True
+            SimDict['Interactive'] = True
 
         # Create tmp directory & add blank file to import in CodeAster
         # so we known the location of TMP_CALC_DIR
-        os.makedirs(StudyDict['TMP_CALC_DIR'])
-        with open("{}/IDDirVL.py".format(StudyDict['TMP_CALC_DIR']),'w') as f: pass
+        os.makedirs(SimDict['TMP_CALC_DIR'])
+        with open("{}/IDDirVL.py".format(SimDict['TMP_CALC_DIR']),'w') as f: pass
 
-        # Add StudyDict to SimData dictionary
-        VL.SimData[SimName] = StudyDict.copy()
+        # Add SimDict to SimData dictionary
+        VL.SimData[SimName] = SimDict.copy()
 
 
 
-def PoolRun(VL, StudyDict, Flags):
+def PoolRun(VL, SimDict, Flags):
     RunPreAster,RunAster,RunPostAster = Flags
 
-    Parameters = StudyDict["Parameters"]
+    Parameters = SimDict["Parameters"]
     # Create CALC_DIR where results for this sim will be stored
-    os.makedirs(StudyDict['CALC_DIR'],exist_ok=True)
+    os.makedirs(SimDict['CALC_DIR'],exist_ok=True)
     # Write Parameters used for this sim to CALC_DIR
-    VLF.WriteData("{}/Parameters.py".format(StudyDict['CALC_DIR']), Parameters)
+    VLF.WriteData("{}/Parameters.py".format(SimDict['CALC_DIR']), Parameters)
 
     # ==========================================================================
     # Run pre aster step
@@ -99,9 +99,9 @@ def PoolRun(VL, StudyDict, Flags):
         PreAsterSgl = getattr(PreAster, 'Single',None)
 
         VL.Logger("Running PreAster for '{}'\n".format(Parameters.Name),Print=True)
-        os.makedirs(StudyDict['PREASTER'],exist_ok=True)
+        os.makedirs(SimDict['PREASTER'],exist_ok=True)
 
-        err = PreAsterSgl(VL,StudyDict)
+        err = PreAsterSgl(VL,SimDict)
         if err:
             return 'PreAster Error: {}'.format(err)
 
@@ -110,43 +110,43 @@ def PoolRun(VL, StudyDict, Flags):
     if RunAster and hasattr(Parameters,'AsterFile'):
         VL.Logger("Running Aster for '{}'\n".format(Parameters.Name),Print=True)
 
-        os.makedirs(StudyDict['ASTER'],exist_ok=True)
+        os.makedirs(SimDict['ASTER'],exist_ok=True)
 
         #=======================================================================
         # Create export file for CodeAster
-        ExportFile = "{}/Export".format(StudyDict['ASTER'])
+        ExportFile = "{}/Export".format(SimDict['ASTER'])
         CommFile = '{}/{}.comm'.format(VL.SIM_SIM, Parameters.AsterFile)
-        MessFile = '{}/AsterLog'.format(StudyDict['ASTER'])
+        MessFile = '{}/AsterLog'.format(SimDict['ASTER'])
         AsterSettings = getattr(Parameters,'AsterSettings',{})
-        Aster.ExportWriter(ExportFile, CommFile, StudyDict["MeshFile"],
-        				   StudyDict['ASTER'], MessFile, AsterSettings)
+        Aster.ExportWriter(ExportFile, CommFile, SimDict["MeshFile"],
+        				   SimDict['ASTER'], MessFile, AsterSettings)
 
         #=======================================================================
-        # Write pickle of StudyDict to file for code aster to find
-        pth = "{}/SimDict.pkl".format(StudyDict['TMP_CALC_DIR'])
-        SimDict = {**StudyDict,'MATERIAL_DIR':VL.MATERIAL_DIR,'SIM_SCRIPTS':VL.SIM_SCRIPTS}
+        # Write pickle of SimDict to file for code aster to find
+        pth = "{}/SimDict.pkl".format(SimDict['TMP_CALC_DIR'])
+        SimDict = {**SimDict,'MATERIAL_DIR':VL.MATERIAL_DIR,'SIM_SCRIPTS':VL.SIM_SCRIPTS}
         with open(pth,'wb') as f:
         	pickle.dump(SimDict,f)
 
         #=======================================================================
         # Run CodeAster
-        if 'Interactive' in StudyDict:
+        if 'Interactive' in SimDict:
             # Run in x-term window
-            SubProc = Aster.RunXterm(ExportFile, AddPath=[StudyDict['TMP_CALC_DIR']],
-                                     tempdir=StudyDict['TMP_CALC_DIR'])
+            SubProc = Aster.RunXterm(ExportFile, AddPath=[SimDict['TMP_CALC_DIR']],
+                                     tempdir=SimDict['TMP_CALC_DIR'])
         else:
-            SubProc = Aster.Run(ExportFile, AddPath=[StudyDict['TMP_CALC_DIR']])
+            SubProc = Aster.Run(ExportFile, AddPath=[SimDict['TMP_CALC_DIR']])
         err = SubProc.wait()
         if err:
             return "Aster Error: Code {} returned".format(err)
 
         #=======================================================================
-        # Update StudyDict with new information added during CodeAster run (if any)
+        # Update SimDict with new information added during CodeAster run (if any)
         with open(pth,'rb') as f:
             SimDictN = pickle.load(f)
             SimDictN.pop('MATERIAL_DIR');SimDictN.pop('SIM_SCRIPTS')
-            if SimDictN != StudyDict:
-                StudyDict.update(**SimDictN)
+            if SimDictN != SimDict:
+                SimDict.update(**SimDictN)
 
     # ==========================================================================
     # Run post aster step
@@ -155,9 +155,9 @@ def PoolRun(VL, StudyDict, Flags):
         PostAsterSgl = getattr(PostAster, 'Single', None)
 
         VL.Logger("Running PostAster for '{}'\n".format(Parameters.Name),Print=True)
-        os.makedirs(StudyDict['POSTASTER'],exist_ok=True)
+        os.makedirs(SimDict['POSTASTER'],exist_ok=True)
 
-        err = PostAsterSgl(VL,StudyDict)
+        err = PostAsterSgl(VL,SimDict)
         if err:
              return 'PostAster Error: {}'.format(err)
 
@@ -189,8 +189,8 @@ def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
     if ShowRes:
     	print("\n### Opening results files in ParaVis ###\n")
     	ResFiles = {}
-    	for SimName, StudyDict in VL.SimData.items():
-    		for root, dirs, files in os.walk(StudyDict['CALC_DIR']):
+    	for SimName, SimDict in VL.SimData.items():
+    		for root, dirs, files in os.walk(SimDict['CALC_DIR']):
     			for file in files:
     				fname, ext = os.path.splitext(file)
     				if ext == '.rmed':

@@ -9,9 +9,9 @@ import matplotlib.gridspec as gridspec
 import scipy.ndimage
 from importlib import import_module
 
-def Single(Info, StudyDict): 
-	Parameters = StudyDict["Parameters"]
-	ResFile = '{}/Thermal.rmed'.format(StudyDict['ASTER']) 
+def Single(Info, SimDict): 
+	Parameters = SimDict["Parameters"]
+	ResFile = '{}/Thermal.rmed'.format(SimDict['ASTER'])
 #============================================================================
 	# open result file using h5py
 	g = h5py.File(ResFile, 'r')
@@ -22,13 +22,13 @@ def Single(Info, StudyDict):
 
 
 	# If mesh info file exists import it
-	if os.path.isfile("{}/{}.py".format(Info.MESH_DIR,Parameters.Mesh)): 
+	if os.path.isfile("{}/{}.py".format(Info.MESH_DIR,Parameters.Mesh)):
 		sys.path.insert(0,Info.MESH_DIR)
 
 #============================================================================
 	# Get mesh information from the results file
-		meshdata = MeshInfo(ResFile)     
-		SurfaceNormal = [['TileFront', 'NX'], ['TileBack', 'NX'], ['TileSideA', 'NY'], ['TileSideB', 'NY'], ['TileTop', 'NZ'], ['BlockFront', 'NX'], ['BlockBack', 'NX'], ['BlockSideA', 'NY'], ['BlockSideB', 'NY'],['BlockBottom', 'NZ'], ['BlockTop', 'NZ']]         
+		meshdata = MeshInfo(ResFile)
+		SurfaceNormal = [['TileFront', 'NX'], ['TileBack', 'NX'], ['TileSideA', 'NY'], ['TileSideB', 'NY'], ['TileTop', 'NZ'], ['BlockFront', 'NX'], ['BlockBack', 'NX'], ['BlockSideA', 'NY'], ['BlockSideB', 'NY'],['BlockBottom', 'NZ'], ['BlockTop', 'NZ']]
 		NodesID = []
 		NodeNumber = []  #number of nodes and elements in each surface
 		ElementNumber = []
@@ -60,10 +60,10 @@ def Single(Info, StudyDict):
 
 		SurfaceN = len(alpha) # number of surfaces where we can mount thermocouples
 #============================================================================
-	#open an empty file to write average temperatures of the selected areas in which thermocouple are placed 
+	#open an empty file to write average temperatures of the selected areas in which thermocouple are placed
 		if Parameters.TemperatureOut == True:
-			FileTemp = open("{}/ThermocoupleTemp.txt".format(StudyDict["POSTASTER"]), 'w') # file for average temperature over each TC
-			FileTemp2 = open("{}/ThermocoupleTempNodal.txt".format(StudyDict["POSTASTER"]), 'w') # file for nodal temperature data over each TC
+			FileTemp = open("{}/ThermocoupleTemp.txt".format(SimDict["POSTASTER"]), 'w') # file for average temperature over each TC
+			FileTemp2 = open("{}/ThermocoupleTempNodal.txt".format(SimDict["POSTASTER"]), 'w') # file for nodal temperature data over each TC
 
 			FileTemp.write('Time ')
 			for SearchRadius in Parameters.Rvalues:
@@ -71,7 +71,7 @@ def Single(Info, StudyDict):
 					output = name[0] + '_' + str(round(name[1], 2)) + '_' + str(round(name[2], 2)) + '_' + str(SearchRadius) + ' '
 					FileTemp.write(output)
 			FileTemp.write('\n')
-#============================================================================		
+#============================================================================
 		for SurfaceID in range(SurfaceN):
 			temp = meshdata.GetNodeXYZ(NodesID[SurfaceID]) # temp: temporary variable
 			minX = min(x for (x, y, z) in temp)
@@ -83,11 +83,11 @@ def Single(Info, StudyDict):
 
 			CornerCoord.append([minX, minY, minZ, maxX, maxY, maxZ])
 
-#============================================================================ 
+#============================================================================
 		# Create list for storing nodal IDs found in radii of search
 		SearchNodeID = []
 		SearchNbNodesN = []
-		DummyListLocal = [] # temporary list 
+		DummyListLocal = [] # temporary list
 
 		for SurfaceID in range(SurfaceN):
 			SearchX = CornerCoord[SurfaceID][0] + alpha[SurfaceID][0]*(CornerCoord[SurfaceID][3] - CornerCoord[SurfaceID][0])
@@ -116,7 +116,7 @@ def Single(Info, StudyDict):
 				if SearchNbNodes == 0:
 					print('warning!!..no nodes were found in location %f and %f on surface %s within search radius %f' %( cSurfaceNames[SurfaceID][1], cSurfaceNames[SurfaceID][2], cSurfaceNames[SurfaceID][0], SearchRadius) )
 					print('..either increase radius of search or use smaller mesh density!')
-#============================================================================ 
+#============================================================================
 		# Read nodal temperature from .h5py file and write in ThermocoupleTemp.txt file
 		cstep = []
 		ctime = []
@@ -132,7 +132,7 @@ def Single(Info, StudyDict):
 				if time1 == Parameters.CaptureTime:
 					cstep.append(step1)
 					ctime.append(time1)
-	
+
 		averageTemp = [] # store average nodal temp over thermocouples
 		for g in range(iterator): # time loop using the list of step or single step
 
@@ -148,14 +148,14 @@ def Single(Info, StudyDict):
 
 			for m in range(len(SearchNbNodesN)):
 				TemperatureAve, TemperatureNode, TemperatureSum = 0.0, 0.0, 0.0
-				for k in range(SearchNbNodesN[m][2]): 
+				for k in range(SearchNbNodesN[m][2]):
 					# write nodal temperature data 'in ThermocoupleTempNodal'
 					tempstring = "surface name: " + cSurfaceNames[m][0] + " node id: " + str(SearchNodeID[k+k_old]) + " temp: " + str(TemperatureNodes[SearchNodeID[k+k_old]])
 					FileTemp2.write(tempstring)
 
-					TemperatureSum += TemperatureNodes[SearchNodeID[k+k_old]] 
+					TemperatureSum += TemperatureNodes[SearchNodeID[k+k_old]]
 					FileTemp2.write('\n')
-				k_old += SearchNbNodesN[m][2] 
+				k_old += SearchNbNodesN[m][2]
 
 				if SearchNbNodesN[m][2] >= 1:
 					TemperatureAve = TemperatureSum/float (SearchNbNodesN[m][2])
@@ -169,27 +169,27 @@ def Single(Info, StudyDict):
 					averageTemp.append([cSurfaceNames[m][0], 'NaN'])
 			if Parameters.TemperatureOut == True:
 				FileTemp.write('\n')
-#============================================================================ 
+#============================================================================
 		# Temperature Plots
 
-		if Parameters.TemperaturePlot == True: 
+		if Parameters.TemperaturePlot == True:
 			aveTemp = [] # average temperature over time
 			fig = plt.figure(figsize = (14,5))
 			plt.xlabel('Time (second)',fontsize = 16)
 			plt.ylabel('Temperature (Celcius)',fontsize = 16)
-					
+
 			for i in range(len(cSurfaceNames)):
-				[aveTemp.append(a[1]) for a in averageTemp if cSurfaceNames[i][0] == a[0]]		
+				[aveTemp.append(a[1]) for a in averageTemp if cSurfaceNames[i][0] == a[0]]
 				if aveTemp[0]!= 'NaN':
 					label1 = 'Avg. Temperature over Thermocouple on '+ cSurfaceNames[i][0]
 					plt.plot(ctime, aveTemp, label = label1)
 				aveTemp.clear()
 			plt.legend(loc='upper left')
 			imageName = "{}/AvgTemperatureThermocouples.png"
-			plt.savefig(imageName.format(StudyDict['POSTASTER']), bbox_inches='tight')
+			plt.savefig(imageName.format(SimDict['POSTASTER']), bbox_inches='tight')
 			print("Created plot " +imageName +"\n")
 			plt.close()
-				
+
 
 	else :
 		print('mesh file is not found!!')#pass
@@ -198,6 +198,3 @@ def Single(Info, StudyDict):
 	if Parameters.TemperatureOut == True:
 		FileTemp.close()
 		FileTemp2.close()
-
-
-

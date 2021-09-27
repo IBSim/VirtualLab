@@ -16,8 +16,8 @@ from PreAster.PreHIVE import ERMES
 def InputParameters():
     pass
 
-def Single(VL, MLdict):
-    ML = MLdict["Parameters"]
+def Single(VL, DADict):
+    ML = DADict["Parameters"]
 
     NbTorchThread = getattr(ML,'NbTorchThread',1)
     torch.set_num_threads(NbTorchThread)
@@ -47,7 +47,7 @@ def Single(VL, MLdict):
             TrainNb = int(np.ceil(_TrainData.shape[0]*DataSplit))
         TrainData = _TrainData[:TrainNb,:] # Data used for training
 
-        np.save("{}/TrainData".format(MLdict["CALC_DIR"]),TrainData)
+        np.save("{}/TrainData".format(DADict["CALC_DIR"]),TrainData)
 
         TestNb = int(np.ceil(TrainNb*(1-DataSplit)/DataSplit))
         if hasattr(ML,'TestData'):
@@ -60,13 +60,13 @@ def Single(VL, MLdict):
             TestData = _TrainData[TrainNb:,:]
         TestData = TestData[:TestNb,:]
 
-        np.save("{}/TestData".format(MLdict["CALC_DIR"]),TestData)
+        np.save("{}/TestData".format(DADict["CALC_DIR"]),TestData)
 
         MLData.close()
 
     else:
-        TrainData = np.load("{}/TrainData.npy".format(MLdict["CALC_DIR"]))
-        TestData = np.load("{}/TestData.npy".format(MLdict["CALC_DIR"]))
+        TrainData = np.load("{}/TrainData.npy".format(DADict["CALC_DIR"]))
+        TestData = np.load("{}/TestData.npy".format(DADict["CALC_DIR"]))
 
     #=======================================================================
 
@@ -119,17 +119,17 @@ def Single(VL, MLdict):
     if ML.Train:
         # Power
         lr = getattr(ML,'lr', 0.01)
-        MLdict['Data']['MSE'] = MSEvals = {}
+        DADict['Data']['MSE'] = MSEvals = {}
         print('Training Power')
         Conv_P,MSE_P = Power.Training(PowerLH,ML.Iterations,lr=lr,)
         print()
-        ModelFile = '{}/Power.pth'.format(MLdict["CALC_DIR"]) # File model will be saved to/loaded from
+        ModelFile = '{}/Power.pth'.format(DADict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Power.state_dict(), ModelFile)
 
         if MSE_P:
             plt.figure()
             plt.plot(np.array(MSE_P)*OutputScaler[1,0]**2)
-            plt.savefig("{}/MSE_Power.png".format(MLdict["CALC_DIR"]))
+            plt.savefig("{}/MSE_Power.png".format(DADict["CALC_DIR"]))
             plt.close()
 
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500), gpytorch.settings.debug(False):
@@ -147,13 +147,13 @@ def Single(VL, MLdict):
         print('Training Variation')
         Conv_V,MSE_V = Variation.Training(VarLH,ML.Iterations,lr=lr,)
         print()
-        ModelFile = '{}/Variation.pth'.format(MLdict["CALC_DIR"]) # File model will be saved to/loaded from
+        ModelFile = '{}/Variation.pth'.format(DADict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Variation.state_dict(), ModelFile)
 
         if MSE_V:
             plt.figure()
             plt.plot(MSE_V)
-            plt.savefig("{}/MSE_Variation.png".format(MLdict["CALC_DIR"]))
+            plt.savefig("{}/MSE_Variation.png".format(DADict["CALC_DIR"]))
             plt.close()
 
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500), gpytorch.settings.debug(False):
@@ -172,21 +172,25 @@ def Single(VL, MLdict):
             Train_MSE_P = MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])
             Train_MSE_P *= OutputScaler[1,0]**2 #scale MSE to correct range
 
-        plt.figure()
-        plt.plot(Conv_V, label='Variation')
-        plt.plot(Conv_P,label='Power')
-        plt.legend()
-        plt.savefig("{}/Convergence.png".format(MLdict["CALC_DIR"]))
+        fnt=36
+        plt.figure(figsize=(15,10))
+        plt.plot(Conv_P,label='Power',c=plt.cm.gray(0))
+        plt.plot(Conv_V, label='Variation',c=plt.cm.gray(0.5))
+
+        plt.ylabel("Loss (MLL)",fontsize=fnt)
+        plt.xlabel("Epochs",fontsize=fnt)
+        plt.legend(fontsize=fnt)
+        plt.savefig("{}/Convergence.eps".format(DADict["CALC_DIR"]),dpi=600)
         plt.close()
 
     else:
         # Power
-        state_dict_P = torch.load('{}/Power.pth'.format(MLdict["CALC_DIR"]))
+        state_dict_P = torch.load('{}/Power.pth'.format(DADict["CALC_DIR"]))
         Power.load_state_dict(state_dict_P)
         PowerLH.eval(); Power.eval()
 
         Variation
-        state_dict_V = torch.load('{}/Variation.pth'.format(MLdict["CALC_DIR"]))
+        state_dict_V = torch.load('{}/Variation.pth'.format(DADict["CALC_DIR"]))
         Variation.load_state_dict(state_dict_V)
         Variation.eval(); VarLH.eval()
 
@@ -200,8 +204,8 @@ def Single(VL, MLdict):
             print(y_mean)
             print(y_stddev)
             # print(y_mean)
-            MLdict['Output'] = y_mean.tolist()
-            MLdict['Output_Var'] = y_stddev.tolist()
+            DADict['Output'] = y_mean.tolist()
+            DADict['Output_Var'] = y_stddev.tolist()
 
     # Get bounds of data for optimisation
     bnds = list(zip(Train_x_scale.min(axis=0), Train_x_scale.max(axis=0)))
@@ -244,16 +248,16 @@ def Single(VL, MLdict):
         print("({0:.4f},{1:.4f},{2:.4f},{3:.4f}) ---> {4:.2f} W ({6}) {5:.2f} ({7})".format(*coord,*val,*std))
     print()
 
-    MLdict["Data"]['MaxPower'] = MaxPower = {'x':MaxPower_cd[0],'y':MaxPower_val[0,0]}
+    DADict["Data"]['MaxPower'] = MaxPower = {'x':MaxPower_cd[0],'y':MaxPower_val[0,0]}
 
     if ML.MaxPowerOpt.get('Verify',True):
         print("Checking results at optima\n")
-        ERMESMaxPower = '{}/MaxPower.rmed'.format(MLdict["CALC_DIR"])
+        ERMESMaxPower = '{}/MaxPower.rmed'.format(DADict["CALC_DIR"])
         EMParameters = Param_ERMES(*MaxPower_cd[0],ERMES_Parameters)
         RunERMES = ML.MaxPowerOpt.get('NewSim',True)
 
         JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,MeshFile,ERMESMaxPower,
-                                                EMParameters, MLdict["TMP_CALC_DIR"],
+                                                EMParameters, DADict["TMP_CALC_DIR"],
                                                 RunERMES, GUI=0)
         Watts = JH_Vol*Volumes
         # Power & Uniformity
@@ -296,16 +300,16 @@ def Single(VL, MLdict):
                 print("({:.4f},{:.4f},{:.4f},{:.4f}) ---> {:.2f} W, {:.3f}".format(*coord, *val))
             print()
 
-            MLdict["Data"]['C_Var'] = C_Var = {'x':OptVar_cd,'y':OptVar_val}
+            DADict["Data"]['C_Var'] = C_Var = {'x':OptVar_cd,'y':OptVar_val}
 
             if ML.DesPowerOpt.get('Verify',True):
                 print("Checking results at optima\n")
-                ERMESRes = '{}/MinVar_{}.rmed'.format(MLdict["CALC_DIR"],ML.DesPowerOpt['Power'])
+                ERMESRes = '{}/MinVar_{}.rmed'.format(DADict["CALC_DIR"],ML.DesPowerOpt['Power'])
                 RunERMES = ML.DesPowerOpt.get('NewSim',True)
                 EMParameters = Param_ERMES(*OptVar_cd[0],ERMES_Parameters)
 
                 JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,MeshFile,ERMESRes,
-                                                    EMParameters, MLdict["TMP_CALC_DIR"],
+                                                    EMParameters, DADict["TMP_CALC_DIR"],
                                                     RunERMES, GUI=0)
 
                 Watts = JH_Vol*Volumes

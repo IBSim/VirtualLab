@@ -17,10 +17,10 @@ from Functions import DataScale, DataRescale
 from CoilConfig_GPR import ExactGPmodel, MSE
 from CoilConfig_NN import NetPU
 
-def Single(VL, MLdict):
-    Parameters = MLdict["Parameters"]
+def Single(VL, DADict):
+    Parameters = DADict["Parameters"]
 
-    ResDir = "{}/{}".format(VL.PROJECT_DIR, MLdict["Name"])
+    ResDir = "{}/{}".format(VL.PROJECT_DIR, DADict["Name"])
 
     # Methods we are considering
     Methods = Parameters.Methods
@@ -47,7 +47,7 @@ def Single(VL, MLdict):
         Method = MLParameters.TrainData.split('/')[0]
         if Method.startswith('Grid'): Method = 'Grid'
 
-        if Method not in Methods and not Method.startswith('Hybrid'): continue
+        if Method not in Methods: continue
         if hasattr(Parameters,'Range'):
             if MLParameters.TrainNb < Parameters.Range[0] \
                 or MLParameters.TrainNb > Parameters.Range[1]: continue
@@ -146,14 +146,8 @@ def Single(VL, MLdict):
                 mse = np.array(DataDict[Name]['{}MSE'.format(tp)])[:,i]
                 if Name=='Adaptive': Name = 'PyAdaptive'
                 if Name=='Hybrid_Halton': Name = 'HII-Halton'
-                if Name=='UQ': Name = 'VBE'
+
                 axes.plot(Nb, mse*OutputScaler[1,i]**2,markersize=15,marker='x',c=colours[j], label=Name)
-                if "Hybrid_{}".format(Name) in DataDict and getattr(Parameters,'Hybrid',False):
-                    nmh='_hybrid'
-                    key = "Hybrid_{}".format(Name)
-                    Nb = DataDict[key]['TrainNb']
-                    mse = np.array(DataDict[key]['{}MSE'.format(tp)])[:,i]
-                    axes.plot(Nb, mse*OutputScaler[1,i]**2, linestyle='--',label=key)
 
             axes.set_ylabel('MSE',fontsize=fnt)
             axes.set_xlabel('Number of points used for training',fontsize=fnt)
@@ -162,9 +156,10 @@ def Single(VL, MLdict):
             axes.legend(fontsize=fnt)
             plt.xticks(fontsize=fnt)
             plt.yticks(fontsize=fnt)
-            plt.grid()
+            axes = plt.gca()
+            axes.yaxis.grid()
 
-            plt.savefig("{}/MSE_{}_{}{}.png".format(ResDir,res,tp,nmh))
+            plt.savefig("{}/MSE_{}_{}{}.eps".format(ResDir,res,tp,nmh),dpi=600)
             plt.close()
 
             xlim = axes.get_xlim()
@@ -201,42 +196,30 @@ def Single(VL, MLdict):
         dat = DataDict[Name]
 
         if Name=='Adaptive': Name = 'PyAdaptive'
-        if Name=='UQ': Name = 'VBE'
 
         Nb = np.array(dat['TrainNb'])
         Pred = dat['MaxPower_pred']
         Act = np.array(dat['MaxPower_act'])
         bl = Act != 0
 
-        # axes.plot(Nb,Pred, c='0',label='Predicted')
-        # axes.plot(Nb[bl],Act[bl], c='0', linestyle=(0,(5,5)),label='Actual')
         axes.scatter(Nb,Pred, marker='o', s=200, edgecolor='k',  facecolors='none', label='Predicted')
-        axes.scatter(Nb[bl],Act[bl], marker='^', s=200, edgecolor='k',  facecolors='none', label='Actual')
+        axes.scatter(Nb[bl],Act[bl], marker='+', s=300, edgecolor='k',  facecolors='k', label='Actual')
         axes.scatter(Nb,dat['MaxPower_data'],s=200,c='0',marker='x', label='Max. Train')
         print(dat['MaxPower_data'])
         nmh = ''
-        if "Hybrid_{}".format(Name) in DataDict and getattr(Parameters,'Hybrid',False):
-            nmh = '_hybrid'
-
-            key = "Hybrid_{}".format(Name)
-            Nb = np.array(DataDict[key]['TrainNb'])
-            Pred = DataDict[key]['MaxPower_pred']
-            Act = np.array(DataDict[key]['MaxPower_act'])
-            bl = Act != 0
-            axes.plot(Nb,Pred, c='0.5',label='Hybrid_Predicted')
-            axes.plot(Nb[bl],Act[bl], c='0.5', linestyle='--',label='Hyrbid_Actual')
 
         axes.set_xlim(xlim)
         axes.set_xlabel('Number of points used for training',fontsize=fnt)
-        axes.set_ylim([480,550])
+        axes.set_ylim([480,540])
         axes.set_ylabel('Power',fontsize=fnt)
 
-        axes.legend(loc='upper right',fontsize=fnt)
+        # axes.legend(loc='upper right',fontsize=fnt)
         plt.xticks(fontsize=fnt)
         plt.yticks(fontsize=fnt)
-        plt.grid()
+        axes = plt.gca()
+        axes.yaxis.grid()
 
-        plt.savefig("{}/MaxPower_{}{}.png".format(ResDir,Name,nmh))
+        plt.savefig("{}/MaxPower_{}{}.eps".format(ResDir,Name,nmh),dpi=600)
         plt.close()
 
 

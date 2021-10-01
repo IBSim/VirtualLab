@@ -32,22 +32,26 @@ def Setup(VL,RunSim=True):
         # Run checks
         # Check files exist
         if not CheckFile(VL.SIM_SIM,ParaDict.get('PreAsterFile'),'py'):
-        	VL.Exit("PreAsterFile '{}.py' not in directory {}".format(ParaDict['PreAsterFile'],VL.SIM_SIM))
+        	VL.Exit(VLF.ErrorMessage("PreAsterFile '{}.py' not in directory "\
+                            "{}".format(ParaDict['PreAsterFile'],VL.SIM_SIM)))
         if not CheckFile(VL.SIM_SIM,ParaDict.get('AsterFile'),'comm'):
-        	VL.Exit("AsterFile '{}.comm' not in directory {}".format(ParaDict['AsterFile'],VL.SIM_SIM))
+        	VL.Exit(VLF.ErrorMessage("AsterFile '{}.comm' not in directory "\
+                            "{}".format(ParaDict['AsterFile'],VL.SIM_SIM)))
         if not CheckFile(VL.SIM_SIM, ParaDict.get('PostAsterFile'), 'py'):
-        	VL.Exit("PostAsterFile '{}.py' not in directory {}".format(ParaDict['PostAsterFile'],VL.SIM_SIM))
+        	VL.Exit(VLF.ErrorMessage("PostAsterFile '{}.py' not in directory "\
+                            "{}".format(ParaDict['PostAsterFile'],VL.SIM_SIM)))
         # Check mesh will be available
         if not (ParaDict['Mesh'] in VL.MeshData or CheckFile(VL.MESH_DIR, ParaDict['Mesh'], 'med')):
-        	VL.Exit("Mesh '{}' isn't being created and is not in the mesh directory '{}'".format(ParaDict['Mesh'], VL.MESH_DIR))
+        	VL.Exit(VLF.ErrorMessage("Mesh '{}' isn't being created and is "\
+            "not in the mesh directory '{}'".format(ParaDict['Mesh'], VL.MESH_DIR)))
         # Check materials used
         Materials = ParaDict.get('Materials',[])
         if type(Materials)==str: Materials = [Materials]
         elif type(Materials)==dict: Materials = Materials.values()
         MatErr = [mat for mat in set(Materials) if not os.path.isdir('{}/{}'.format(VL.MATERIAL_DIR, mat))]
         if MatErr:
-        		VL.Exit("Material(s) {} specified for {} not available.\n"\
-        		"Please see the materials directory {} for options.".format(MatErr,SimName,VL.MATERIAL_DIR))
+        		VL.Exit(VLF.ErrorMessage("Material(s) {} specified for {} not available.\n"\
+        		"Please see the materials directory {} for options.".format(MatErr,SimName,VL.MATERIAL_DIR)))
         # Checks complete
 
         # Create dict of simulation specific information to be nested in SimData
@@ -179,7 +183,7 @@ def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
 
     Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs,launcher=VL._Launcher,N=N,onall=True)
     if Errorfnc:
-        VL.Exit("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc))
+        VL.Exit(VLF.ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)))
 
     VL.Logger('### Simulations Completed ###',Print=True)
 

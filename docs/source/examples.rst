@@ -550,8 +550,8 @@ You will notice that each mesh has the group 'Top' and 'Bottom' in :guilabel:`Gr
 
 Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability, the script will terminate once the GUI is closed, meaning that no simulations will be run.
 
-Task 2: Post-Processing
-~~~~~~~~~~~~~~~~~~~~~~~
+Task 2: Transient simulation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You decide that you are happy with the quality of the meshes created for your simulation.
 
@@ -857,6 +857,7 @@ You will notice in *Parameters_Master* that *Sim* has the attribute *PreAsterFil
 The dictionary *Pipe* specifies information about the geometry of the pipe, while *Coolant* provides properties about the fluid in the pipe. *CreateHTC* is a boolean flag to indicate if this step is run or if previously calculated values are used.
 
 If **ERMES** is to be used for the thermal loading, then this is also launched in this script using the attributes::
+    
     Sim.RunERMES = True
     Sim.CoilType = 'Test'
     Sim.CoilDisplacement = [0,0,0.0015]

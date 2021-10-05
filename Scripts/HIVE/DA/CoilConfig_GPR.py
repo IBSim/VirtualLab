@@ -11,7 +11,7 @@ import gpytorch
 
 from Scripts.Common.VLFunctions import MeshInfo
 from Functions import Uniformity3 as UniformityScore, DataScale, DataRescale, FuncOpt
-from PreAster.PreHIVE import ERMES
+from Sim.PreHIVE import ERMES
 
 def InputParameters():
     pass
@@ -27,7 +27,7 @@ def Single(VL, DADict):
     device = torch.device('cpu')
 
     # File where all data is stored
-    DataFile = "{}/ML/Data.hdf5".format(VL.PROJECT_DIR)
+    DataFile = "{}/{}".format(VL.PROJECT_DIR,ML.DataFile)
 
     if ML.Train:
         DataSplit = getattr(ML,'DataSplit',0.7)
@@ -80,10 +80,12 @@ def Single(VL, DADict):
     Train_x_scale = DataScale(Train_x,*InputScaler)
     # Scale test & train output data to [0,1] (based on training data)
     OutputScaler = np.array([Train_y.min(axis=0),Train_y.max(axis=0) - Train_y.min(axis=0)])
+
     # OutputScaler = np.array([np.mean(Train_y,axis=0),np.std(Train_y,axis=0)])
     Train_y_scale = DataScale(Train_y,*OutputScaler)
 
     Train_x_tf = torch.from_numpy(Train_x_scale)
+
     Train_y_tf = torch.from_numpy(Train_y_scale)
 
     TestData = TestData.astype('float32')
@@ -121,7 +123,7 @@ def Single(VL, DADict):
         lr = getattr(ML,'lr', 0.01)
         DADict['Data']['MSE'] = MSEvals = {}
         print('Training Power')
-        Conv_P,MSE_P = Power.Training(PowerLH,ML.Iterations,lr=lr,)
+        Conv_P,MSE_P = Power.Training(PowerLH,ML.Iterations,lr=lr,Print=100)
         print()
         ModelFile = '{}/Power.pth'.format(DADict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Power.state_dict(), ModelFile)
@@ -145,7 +147,7 @@ def Single(VL, DADict):
 
         # Variation
         print('Training Variation')
-        Conv_V,MSE_V = Variation.Training(VarLH,ML.Iterations,lr=lr,)
+        Conv_V,MSE_V = Variation.Training(VarLH,ML.Iterations,lr=lr,Print=100)
         print()
         ModelFile = '{}/Variation.pth'.format(DADict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Variation.state_dict(), ModelFile)
@@ -207,14 +209,122 @@ def Single(VL, DADict):
             DADict['Output'] = y_mean.tolist()
             DADict['Output_Var'] = y_stddev.tolist()
 
+
+
+    if 1:
+        model=Power
+        Slice = 'xy'
+        Res = 'Power' # 'Uniformity'
+        Component = 'mag'
+        MajorN, MinorN = 7, 20
+
+        InTag, OutTag = ['x','y','z','r'],['power','uniformity']
+
+        AxMin, AxMaj = [], []
+        for i, cmp in enumerate(InTag):
+            if Slice.find(cmp) == -1: AxMaj.append(i)
+            else : AxMin.append(i)
+
+        ResAx = OutTag.index(Res.lower())
+        # Discretisation
+        DiscMin = np.linspace(0+0.5*1/MinorN,1-0.5*1/MinorN,MinorN)
+        DiscMaj = np.linspace(0,1,MajorN)
+        # DiscMaj = np.linspace(0+0.5*1/MajorN,1-0.5*1/MajorN,MajorN)
+        disc = [DiscMaj]*4
+        disc[AxMin[0]] = disc[AxMin[1]] = DiscMin
+        grid = np.meshgrid(*disc, indexing='ij')
+        grid = np.moveaxis(np.array(grid),0,-1) #grid point is now the last axis
+        ndim = grid.ndim - 1
+        # unroll grid so it can be passed to model
+        _disc = [dsc.shape[0] for dsc in disc]
+        grid = grid.reshape([np.prod(_disc),ndim])
+        # print(grid)
+
+        grid_tf = torch.tensor(grid, dtype=torch.float32)
+        # decide what component of Res to print - gradient (magnitude or individual) or the value
+        if Component.lower().startswith('grad'):
+            imres = model.Gradient(grid_tf).detach().numpy()
+            if Component.lower() == 'gradmag':
+                imres = np.linalg.norm(imres, axis=1)
+            else:
+                # letter after grad must be x,y,z or r
+                ax = InTag.index(Component[-1].lower())
+                imres = imres[:,ax]
+        else :
+            with torch.no_grad():
+                imres = model(grid_tf).mean.detach().numpy()
+
+        imres = DataRescale(imres,*OutputScaler[:,0])
+
+        # min and max value for global colour bar
+        IMMin, IMMax = imres.min(axis=0), imres.max(axis=0)
+
+        imres = imres.reshape(_disc+[*imres.shape[1:]])
+        # scaled vales for major axis
+        arr1 = DataRescale(DiscMaj,*InputScaler[:,AxMaj[0]])
+        arr2 = DataRescale(DiscMaj,*InputScaler[:,AxMaj[1]])
+
+        PlotTrain=False
+        df = DiscMaj[1] - DiscMaj[0]
+        # errmin, errmax = train_error.min(axis=0)[ResAx], train_error.max(axis=0)[ResAx]
+        # errbnd = max(abs(errmin),abs(errmax))
+
+        fig, ax = plt.subplots(nrows=arr1.size, ncols=arr2.size, sharex=True, sharey=True, dpi=200, figsize=(12,9))
+        ax = np.atleast_2d(ax)
+
+        fig.subplots_adjust(right=0.8)
+        for it1,(dsc1,nb1) in enumerate(zip(DiscMaj,arr1)):
+            _it1 = -(it1+1)
+            ax[_it1, 0].set_ylabel('{:.4f}'.format(nb1), fontsize=12)
+            for it2,(dsc2,nb2) in enumerate(zip(DiscMaj,arr2)):
+                sl = [slice(None)]*len(InTag)
+                sl[AxMaj[0]],sl[AxMaj[1]]  = it1, it2
+
+                Im = ax[_it1,it2].imshow(imres[tuple(sl)].T, cmap = 'coolwarm', vmin=IMMin, vmax=IMMax, origin='lower',extent=(0,1,0,1))
+                ax[_it1,it2].set_xticks([])
+                ax[_it1,it2].set_yticks([])
+
+                ax[-1, it2].set_xlabel("{:.4f}".format(nb2), fontsize=12)
+                if PlotTrain:
+                    limmin = TrainData_norm[:,AxMaj] > [dsc1-0.5*df,dsc2-0.5*df]
+                    limmax = TrainData_norm[:,AxMaj] < [dsc1+0.5*df,dsc2+0.5*df]
+                    bl = limmin[:,0]*limmin[:,1]*limmax[:,0]*limmax[:,1]
+                    dat = TrainData_norm[bl][:,AxMin]
+                    cl = train_error[:,ResAx][bl]
+                    cmap = cm.get_cmap('PiYG')
+                    Sc = ax[_it1,it2].scatter(*dat.T, c=cl, cmap=cmap, marker = 'x', vmin = -errbnd, vmax = errbnd, s=2)
+
+        if PlotTrain:
+            cbar_ax = fig.add_axes([0.85, 0.05, 0.05, 0.4])
+            fig.colorbar(Sc, cax=cbar_ax)
+            cbar_ax = fig.add_axes([0.85, 0.55, 0.05, 0.4])
+        else :
+            cbar_ax = fig.add_axes([0.85, 0.2, 0.05, 0.6])
+
+        bnds = np.linspace(*Im.get_clim(),12)
+        ticks = np.linspace(*Im.get_clim(),6)
+        fig.colorbar(Im, boundaries=bnds, ticks=ticks, cax=cbar_ax)
+
+        fig.suptitle(Res.capitalize())
+
+        fig.text(0.04, 0.5, InTag[AxMaj[0]].capitalize(), ha='center')
+        fig.text(0.5, 0.04, InTag[AxMaj[1]].capitalize(), va='center')
+        # plt.show()
+        plt.savefig("{}/4D_Plot.png".format(DADict["CALC_DIR"]))
+        plt.close()
+
+
+
     # Get bounds of data for optimisation
     bnds = list(zip(Train_x_scale.min(axis=0), Train_x_scale.max(axis=0)))
 
-    MeshFile = "{}/AMAZEsample.med".format(VL.MESH_DIR)
+    MeshFile = "{}/AMAZE_Sample.med".format(VL.MESH_DIR)
     ERMES_Parameters = {'CoilType':'HIVE',
                         'Current':1000,
                         'Frequency':1e4,
                         'Materials':{'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}}
+
+    OutString = ""
 
     # Optimsation 1: Find the point of max power
     # Find the point(s) which give the maximum power
@@ -264,9 +374,14 @@ def Single(VL, DADict):
         Power = np.sum(Watts)
         JH_Node /= 1000**2
         Uniformity = UniformityScore(JH_Node,ERMESMaxPower)
-        print(MaxPower_val)
+        # print(MaxPower_val)
         print("Anticipated power at optimum configuration: {0:.2f} W".format(MaxPower_val[0,0]))
         print("Actual power at optimum configuration: {:.2f} W\n".format(Power))
+
+        MPstr = "Anticipated power at optimum configuration: {:.2f} W\n"\
+        "Actual power at optimum configuration: {:.2f} W\n\n".format(MaxPower_val[0,0],Power)
+
+        OutString+=MPstr
 
         MaxPower["target"] = Power
 
@@ -319,11 +434,22 @@ def Single(VL, DADict):
                 Uniformity = UniformityScore(JH_Node,ERMESRes)
 
                 print("Anticipated at optimum configuration:\nPower: {:.2f} W\n"\
-                      "Uniformity: {}".format(*OptVar_val[0]))
+                      "Uniformity: {:.2f}".format(*OptVar_val[0]))
                 print("Actual values at optimum configuration:\nPower: {:.2f} W\n"\
-                      "Uniformity: {}".format(Power,Uniformity))
+                      "Uniformity: {:.2f}".format(Power,Uniformity))
+
+                COstr = "Anticipated at optimum configuration:\nPower: {:.2f} W\n"\
+                      "Uniformity: {:.2f}\nActual values at optimum "\
+                      "configuration:\nPower: {:.2f} W\nUniformity: {:.2f}"\
+                      .format(*OptVar_val[0],Power,Uniformity)
+
+                OutString+=COstr
 
                 C_Var['Target'] = [Power,Uniformity]
+
+    if OutString:
+        with open("{}/Summary.txt".format(DADict['CALC_DIR']),'w') as f:
+            f.write(OutString)
 
 
 def MSE(Predicted,Target):
@@ -433,6 +559,7 @@ def constraint(X, model, DesPower):
     '''
     X = torch.tensor(np.atleast_2d(X),dtype=torch.float32)
     # Function value
+
     Pred = model(X).mean.detach().numpy()
     constr = Pred - DesPower
     return constr

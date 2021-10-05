@@ -134,8 +134,8 @@ The default attributes of *Mesh* used to create the sample geometry in :file:`Do
     Mesh.GaugeLength = 0.04
     Mesh.TransRad = 0.012
     Mesh.HoleCentre = (0.0,0.0)
-    Mesh.Rad_a = 0.001
-    Mesh.Rad_b = 0.0005
+    Mesh.Rad_a = 0.0005
+    Mesh.Rad_b = 0.001
 
 The interpretation of these attributes in relation to the sample is shown in :numref:`Fig. %s <DogBone>`.
 
@@ -195,7 +195,7 @@ Task 1: Running a simulation
 
 Due to *Parameters_Var* being set to :code:`None`, a single mesh and simulation will be run using the information from *Parameters_Master*.
 
-The mesh generated for this simulation is ‘Notch1’, while the name for the simulation is ‘Single’, given by *Sim.Name*. All information relating to the simulation will be saved to the simulation directory Output/Tensile/Tutorials/Single.
+The mesh generated for this simulation is ‘Notch1’, while the name for the simulation is ‘Single’, given by *Sim.Name*. All information relating to the simulation will be saved to the simulation directory :file:`Output/Tensile/Tutorials/Single`.
 
 Since *Force* and *Displacement* are attributes of *Sim* a force controlled simulation (with mangitude 1000000N) is run, along with a displacement controlled simulation (with enforced displacement 0.01m). The material properties of copper will be used for the simulation.
 

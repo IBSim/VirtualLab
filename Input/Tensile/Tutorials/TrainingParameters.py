@@ -19,8 +19,8 @@ Mesh.GaugeLength = 0.04
 Mesh.TransRad = 0.012
 # Optional parameters to add hole to sample
 Mesh.HoleCentre = (0.0,0.0)
-Mesh.Rad_a = 0.001
-Mesh.Rad_b = 0.0005
+Mesh.Rad_a = 0.0005
+Mesh.Rad_b = 0.001
 
 # Meshing Parameters
 # Discretisation along edges (1D)

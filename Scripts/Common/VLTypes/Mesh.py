@@ -100,8 +100,8 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
         VL.Exit('Terminating after checking mesh')
 
     elif MeshCheck and MeshCheck not in VL.MeshData.keys():
-        VL.Exit("Error: '{}' specified for MeshCheck is not one of meshes to be created.\n"\
-                     "Meshes to be created are:{}".format(MeshCheck, list(VL.Data.keys())))
+        VL.Exit(VLF.ErrorMessage("'{}' specified for MeshCheck is not one of meshes to be created.\n"\
+                     "Meshes to be created are:{}".format(MeshCheck, list(VL.Data.keys()))))
 
     # ==========================================================================
     # Run Mesh routine
@@ -115,7 +115,7 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
 
     Errorfnc = VLPool(VL,PoolRun,MeshDicts,launcher=VL._Launcher,N=N,onall=True)
     if Errorfnc:
-        VL.Exit("\nThe following meshes finished with errors:\n{}".format(Errorfnc))
+        VL.Exit(VLF.ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)))
 
     VL.Logger('\n### Meshing Complete ###',Print=True)
 

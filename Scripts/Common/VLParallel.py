@@ -148,8 +148,8 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher='Sequential',N=1,onall=True):
 
         Category = "{}_{}".format(VL.Simulation,name)
         Action = "{}_{}_1".format(len(Dicts),N)
-        Label = VL.__ID__
-        Analytics.Run(Category,Action,Label)
+
+        Analytics.Run(Category,Action,VL._ID)
 
         if not hasattr(VL,'_Analytics'):
             VL._Analytics = {'Mesh':0,'Sim':0,'DA':0}

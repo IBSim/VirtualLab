@@ -67,11 +67,13 @@ if Force:
 	# Get stresses
 	CALC_CHAMP(reuse=Force,
 		       CONTRAINTE=('SIEF_NOEU'),
+               FORCE='FORC_NODA',
+               DEFORMATION=('EPSI_NOEU'),
 		       RESULTAT=Force)
 
 	IMPR_RESU(RESU=_F(RESULTAT=Force,
-                      NOM_CHAM=('DEPL','SIEF_NOEU'),
-                      NOM_CHAM_MED=('Force_Displacement','Force_Stress')),
+                      NOM_CHAM=('DEPL','SIEF_NOEU','EPSI_NOEU'),
+                      NOM_CHAM_MED=('Force_Displacement','Force_Stress','Force_Strain')),
               UNITE=80)
 
 # Constant Displacement simulation
@@ -88,13 +90,14 @@ if Displacement:
 
 	# Get stresses
 	CALC_CHAMP(reuse=Disp,
-		       CONTRAINTE=('SIEF_ELNO', 'SIEF_NOEU'),
+		       CONTRAINTE=('SIEF_NOEU'),
 			   FORCE='FORC_NODA',
+               DEFORMATION=('EPSI_NOEU'),
 		       RESULTAT=Disp)
 
 	IMPR_RESU(RESU=_F(RESULTAT=Disp,
-                      NOM_CHAM=('DEPL','SIEF_NOEU'),
-                      NOM_CHAM_MED=('Disp_Displacement','Disp_Stress')),
+                      NOM_CHAM=('DEPL','SIEF_NOEU','EPSI_NOEU'),
+                      NOM_CHAM_MED=('Disp_Displacement','Disp_Stress','Disp_Strain')),
               UNITE=80)
 
 FIN()

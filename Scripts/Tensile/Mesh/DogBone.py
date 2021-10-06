@@ -195,15 +195,11 @@ def Create(Parameters):
 
 	# If Radius is non-zero we will create the shape of the notch and then cut it from the sample
 	if Hole:
-		# Get major and minor diameter for ellipse
-		Diam_a = 2*Parameters.Rad_a
-		Diam_b = 2*Parameters.Rad_b
-
 		Vertex_17 = geompy.MakeVertex(Parameters.HandleLength + TransLength + Parameters.GaugeLength/2 + Parameters.HoleCentre[0], Parameters.HandleWidth/2 + Parameters.HoleCentre[1], 0)
 		if Parameters.Rad_a >= Parameters.Rad_b:
-			Ellipse_1 = geompy.MakeEllipse(Vertex_17, OZ, Diam_a, Diam_b, OX)
+			Ellipse_1 = geompy.MakeEllipse(Vertex_17, OZ, Parameters.Rad_a, Parameters.Rad_b, OX)
 		if Parameters.Rad_a < Parameters.Rad_b:
-			Ellipse_1 = geompy.MakeEllipse(Vertex_17, OZ, Diam_b, Diam_a, OY)
+			Ellipse_1 = geompy.MakeEllipse(Vertex_17, OZ, Parameters.Rad_b, Parameters.Rad_a, OY)
 		NotchFace = geompy.MakeFaceWires([Ellipse_1], 1)
 		Notch = geompy.MakePrismVecH(NotchFace, OZ, Parameters.Thickness)
 		Testpiece = geompy.MakeCutList(Full, [Notch], True)
@@ -301,7 +297,9 @@ def Create(Parameters):
 	### SubMesh 1 - Refinement near the hole
 	if Hole:
 		## Calculate circumference of the hole using Ramanujan approximation
-		HoleCirc = np.pi*(3*(Diam_a + Diam_b) - ((3*Diam_a + Diam_b)*(Diam_a + 3*Diam_b))**0.5)
+		HoleCirc = np.pi*(3*(Parameters.Rad_a + Parameters.Rad_b) - \
+				((3*Parameters.Rad_a + Parameters.Rad_b)*\
+				(Parameters.Rad_a + 3*Parameters.Rad_b))**0.5)
 		HoleLength = HoleCirc/Parameters.HoleSegmentN
 
 		Regular_1D_2 = Mesh_1.Segment(geom=Notch_Surf)

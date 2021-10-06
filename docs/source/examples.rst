@@ -134,8 +134,8 @@ The default attributes of *Mesh* used to create the sample geometry in :file:`Do
     Mesh.GaugeLength = 0.04
     Mesh.TransRad = 0.012
     Mesh.HoleCentre = (0.0,0.0)
-    Mesh.Rad_a = 0.001
-    Mesh.Rad_b = 0.0005
+    Mesh.Rad_a = 0.0005
+    Mesh.Rad_b = 0.001
 
 The interpretation of these attributes in relation to the sample is shown in :numref:`Fig. %s <DogBone>`.
 
@@ -195,7 +195,7 @@ Task 1: Running a simulation
 
 Due to *Parameters_Var* being set to :code:`None`, a single mesh and simulation will be run using the information from *Parameters_Master*.
 
-The mesh generated for this simulation is ‘Notch1’, while the name for the simulation is ‘Single’, given by *Sim.Name*. All information relating to the simulation will be saved to the simulation directory Output/Tensile/Tutorials/Single.
+The mesh generated for this simulation is ‘Notch1’, while the name for the simulation is ‘Single’, given by *Sim.Name*. All information relating to the simulation will be saved to the simulation directory :file:`Output/Tensile/Tutorials/Single`.
 
 Since *Force* and *Displacement* are attributes of *Sim* a force controlled simulation (with mangitude 1000000N) is run, along with a displacement controlled simulation (with enforced displacement 0.01m). The material properties of copper will be used for the simulation.
 
@@ -550,8 +550,8 @@ You will notice that each mesh has the group 'Top' and 'Bottom' in :guilabel:`Gr
 
 Once you have finished viewing the meshes you will need to close the **SALOME** GUI. Since this ``kwarg`` is designed to check mesh suitability, the script will terminate once the GUI is closed, meaning that no simulations will be run.
 
-Task 2: Post-Processing
-~~~~~~~~~~~~~~~~~~~~~~~
+Task 2: Transient simulation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You decide that you are happy with the quality of the meshes created for your simulation.
 
@@ -857,6 +857,7 @@ You will notice in *Parameters_Master* that *Sim* has the attribute *PreAsterFil
 The dictionary *Pipe* specifies information about the geometry of the pipe, while *Coolant* provides properties about the fluid in the pipe. *CreateHTC* is a boolean flag to indicate if this step is run or if previously calculated values are used.
 
 If **ERMES** is to be used for the thermal loading, then this is also launched in this script using the attributes::
+
     Sim.RunERMES = True
     Sim.CoilType = 'Test'
     Sim.CoilDisplacement = [0,0,0.0015]
@@ -1034,6 +1035,69 @@ This will overwrite the **Code_Aster** results copied across to 'ERMES_2' with n
 You should notice that with this scaling the power input is 900 W (some slight error may be due to rounding), which is printed to the terminal.
 
 Open the **Code_Aster** results from 'Uniform' in **ParaVis** alongside those from 'ERMES_2' in ``File/Open ParaView File``. The maximum temperature for the sample in 'ERMES_2' will be higher than that of 'Uniform' due to hotspots increased created by the coil design.
+
+Image-based Simulation
+**********************
+
+Image-based simulation is a technique which enables more accurate geometries of components to be modelled. Imaging techniques, such as X-ray or computerised tomography (CT) scanning, enable the visualisation of internal parts of a component, from which a more accurate mesh of the component can be generated compared with an idealised CAD-based version. These methods are able to capture imperfections in a component, such as asymmetry or cracks, yielding more realistic results from the simulation.
+
+Tensile Test
+############
+
+In this example a CT scan of a `dog-bone <examples.html#sample>`_ component is used in a `tensile test <examples.html#tensile-testing>`_. The image-based mesh used for this simulation can be downloaded `here <https://ibsim.co.uk/VirtualLab/downloads/Tensile_IBSim.med>`_.
+
+.. admonition:: Action
+   :class: Action
+
+   The *RunFile* ``RunTutorials.py`` should be set up as follows to run this simulation. The variables in the *Setup* section should be::
+
+       Simulation='Tensile'
+       Project='Tutorials'
+       Parameters_Master='TrainingParameters_IBSim'
+       Parameters_Var=None
+
+   And the *Enviornment* section should be::
+
+        VirtualLab=VLSetup(
+        	       Simulation,
+        	       Project)
+
+        VirtualLab.Settings(
+                   Mode='Interactive',
+                   Launcher='Process',
+                   NbThreads=1)
+
+        VirtualLab.Parameters(
+                   Parameters_Master,
+                   Parameters_Var,
+                   RunMesh=True,
+                   RunSim=True,
+                   RunDA=True)
+
+        VirtualLab.Mesh(
+                   ShowMesh=False,
+                   MeshCheck=None)
+
+        VirtualLab.Sim(
+                   RunPreAster=True,
+                   RunAster=True,
+                   RunPostAster=True,
+                   ShowRes=True)
+
+        VirtualLab.DA()
+
+        VirtualLab.Cleanup()
+
+   Ensure that the image-based mesh downloaded has been saved to the following location :file:`Output/Tensile/Tutorials/Meshes/Tensile_IBSim.med`
+
+   Launch **VirtualLab** using the followign command::
+
+        VirtalLab -f RunFiles/RunTutorials.py
+
+Looking at :file:`Input/Tensile/Tutorials/TrainingParameters_IBSim.py` you will notice *Sim* has the variable 'Displacement' but not 'Force', meaning only a controlled displacement simulation will be run.
+
+From the results shown in **ParaViS** you should notice the asymmetric nature of the displacement, stress and strain profiles. These are as a result of the subtle imperfections in the Tensile_IBSim mesh compared with an idealised CAD-based mesh.
+
 
 References
 **********

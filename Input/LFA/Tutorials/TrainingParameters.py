@@ -78,3 +78,4 @@ DA = Namespace()
 DA.Name = 'Linear'
 DA.File = 'Images'
 DA.CaptureTime = 0.01
+# DA.PVGUI = True

@@ -57,6 +57,8 @@ def HTC(VL, SimDict):
 
 		import matplotlib.pyplot as plt
 		plt.plot(HTC[:,0],HTC[:,1])
+		plt.xlabel('Temperature',fontsize=14)
+		plt.ylabel('Heat Transfer Coefficient',fontsize=14)
 		plt.savefig("{}/PipeHTC.png".format(SimDict['PREASTER']), bbox_inches='tight')
 		plt.close()
 

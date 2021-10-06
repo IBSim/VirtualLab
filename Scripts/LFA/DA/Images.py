@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import h5py
-from natsort import natsorted
 from Scripts.Common.VLPackages import SalomeRun
 
 def Single(VL,DADict):
@@ -11,7 +10,7 @@ def Single(VL,DADict):
 
     GlobalRange = [np.inf, -np.inf]
     ResData = {}
-    for ResName in natsorted(os.listdir(ResDir)):
+    for ResName in os.listdir(ResDir):
         ResSubDir = "{}/{}".format(ResDir,ResName)
         if not os.path.isdir(ResSubDir): continue
         if ResultNames and ResName not in ResultNames: continue

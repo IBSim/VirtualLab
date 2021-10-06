@@ -78,3 +78,4 @@ DA = Namespace()
 DA.Name = 'Nonlinear'
 DA.File = 'Images'
 DA.CaptureTime = 0.01
+# DA.PVGUI = True

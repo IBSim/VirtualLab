@@ -73,8 +73,8 @@ The next most straightforward method to use **VirtualLab** is to download the pr
 
 These are the login details for the VM:
 
-* username = ubuntu
-* password = ubuntu
+* username = ibsim
+* password = ibsim
 
 The limitation of VMs is that they cannot access your GPU for graphical acceleration and there will be a non-negligible impact to performance. However, this is a sufficiently smooth user experience for the majority of use-cases.
 
@@ -83,7 +83,7 @@ Non-interactive Installation
 
 The easiest way to download & install **VirtualLab** and its dependencies in a conda environment on **Ubuntu** is by running the following command in a terminal::
 
-    cd ~ && wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_VirtualLab.sh?inline=false && chmod 755 Install_VirtualLab.sh && sudo ~/./Install_VirtualLab.sh -P c -S y -E y -y && source ~/.bashrc 
+    cd ~ && wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_VirtualLab.sh?inline=false && chmod 755 Install_VirtualLab.sh && sudo ~/./Install_VirtualLab.sh -P c -S y -E y -y && source ~/.bashrc
 
 
 Usage of 'Install_VirtualLab.sh':
@@ -140,4 +140,3 @@ References
 .. bibliography:: refs.bib
    :style: plain
    :filter: docname in docnames
-

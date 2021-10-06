@@ -44,10 +44,15 @@ class VLSetup():
 		#=======================================================================
 		# Define & create temporary directory for work to be saved to
 		self._TempDir = VLconfig.TEMP_DIR
+		# timestamp
+		self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
 		# Unique ID
-		self.__ID__ = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
+		stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
+		output = stream.readlines()
+		ver,branch = output[0].split()[0],output[1].strip()
+		self._ID ="{}_{}_{}".format(ver,branch,self._time)
 
-		self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self.__ID__)
+		self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
 		try:
 			os.makedirs(self.TEMP_DIR)
 		except FileExistsError:
@@ -182,7 +187,7 @@ class VLSetup():
 			if self.mode in ('Interactive','Terminal'):
 				self.LogFile = None
 			else:
-				self.LogFile = "{}/.log/{}.log".format(self.PROJECT_DIR, self.__ID__)
+				self.LogFile = "{}/.log/{}.log".format(self.PROJECT_DIR, self._time)
 				os.makedirs(os.path.dirname(self.LogFile), exist_ok=True)
 				with open(self.LogFile,'w') as f:
 					f.write(Text)
@@ -209,8 +214,7 @@ class VLSetup():
 			DANb = self._Analytics.get('DANb',0)
 			Category = "{}_Overview".format(self.Simulation)
 			Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
-			Label = self.__ID__
-			Analytics.Run(Category,Action,Label)
+			Analytics.Run(Category,Action,self._ID)
 
 		if os.path.isdir(self.TEMP_DIR):
 			if KeepDirs:

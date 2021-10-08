@@ -143,7 +143,7 @@ The interpretation of these attributes in relation to the sample is shown in :nu
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/DogBone.png?inline=false
 
-    Drawing of the 'dog-bone' sample with the attirubtes of *Mesh* used to specify the dimensions.
+    Drawing of the 'dog-bone' sample with the attributes of *Mesh* used to specify the dimensions.
 
 2Rad_a and 2Rad_b refer to the radii of an elliptic hole machined through a point offset from the centre by *HoleCentre*. The attribute *TransRad* is the radius of the arc which transitions from the gauge to the handle.
 
@@ -206,7 +206,7 @@ With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`
 
    Launch your first **VirtualLab** simulation by executing the following command from command line (CL) of the terminal whilst within the **VirtualLab** directory::
 
-     VirtalLab -f RunFiles/RunTutorials.py
+     VirtualLab -f RunFiles/RunTutorials.py
 
 Running this simulation will create the following outputs:
 
@@ -559,7 +559,7 @@ You will notice in the *Parameters_Var* file :file:`Input/LFA/Tutorials/Parametr
 
     Sim.Name = ['Linear/SimNoVoid','Linear/SimVoid1','Linear/SimVoid2']
 
-**VirtualLab** supports writing names in this manner so that simulaions can be grouped togeth in to sub-directories. This is designed to give the user flexibility in how they save their results.
+**VirtualLab** supports writing names in this manner so that simulations can be grouped together in sub-directories. This is designed to give the user flexibility in how results are stored.
 
 .. admonition:: Action
    :class: Action
@@ -653,9 +653,11 @@ In the *Parameters_Master* file :file:`TrainingParameters.py` you will see the N
     DA.Name = 'Linear'
     DA.File = 'Images'
     DA.CaptureTime = 0.01
+    # DA.PVGUI = True
 
 The data anlysis will be performed on the results in the directory specified by *DA.Name*. The file :file:`Scripts/LFA/DA/Images.py` captures images of the simulations at time *CaptureTime*.
 
+Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using a Virtual Machine (VM). The attribute *PVGUI*, which is currently ignored due to the preceding '#', forces **ParaVis** to run the script in the GUI where the rendering works fine.
 
 .. admonition:: Action
    :class: Action
@@ -669,11 +671,14 @@ The data anlysis will be performed on the results in the directory specified by 
                   RunSim=False,
                   RunDA=True)
 
-   Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using a Virtual Machine (VM). If you are using a VM you will need to include the attribute *PVGUI* (ParaVis GUI) to *DA* also. ::
+   If you are using a VM you will need to uncomment *DA.PVGUI* in :file:`TrainingParameters.py` by removing the preceding '#'. ::
 
-       DA.PVGUI=True
+       DA.Name = 'Linear'
+       DA.File = 'Images'
+       DA.CaptureTime = 0.01
+       DA.PVGUI = True
 
-   This flag will force the **ParaVis** script to run in the GUI where the rendering works fine. You will need to manually close the GUI.
+   You will need to manually close the GUI once the imaging is complete.
 
    Launch **VirtualLab**.
 
@@ -694,9 +699,9 @@ The images :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used 
 
 .. note::
 
-   If errors have occured when creating images in **ParaVis** then include the attribute *DA.PVGUI* in :file:`TrainingParameters.py` as advised in the 'Action' section for VMs above.
+   If errors have occured when creating images in **ParaVis** uncomment *DA.PVGUI* in :file:`TrainingParameters.py` as advised in the 'Action' section for VMs above.
 
-   Also feel free to include this attribute in the file if you are interested in seeing how **ParaVis** is used to generate images.
+   Also feel free to uncomment this attribute if you are interested in seeing how **ParaVis** is used to generate images.
 
 Task 5: Non-linear Simulations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1092,7 +1097,7 @@ In this example a CT scan of a `dog-bone <examples.html#sample>`_ component is u
 
    Launch **VirtualLab** using the followign command::
 
-        VirtalLab -f RunFiles/RunTutorials.py
+        VirtualLab -f RunFiles/RunTutorials.py
 
 Looking at :file:`Input/Tensile/Tutorials/TrainingParameters_IBSim.py` you will notice *Sim* has the variable 'Displacement' but not 'Force', meaning only a controlled displacement simulation will be run.
 

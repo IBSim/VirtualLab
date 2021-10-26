@@ -31,7 +31,19 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc','sphinxcontrib.bibtex']
+# extensions = ['sphinx.ext.autodoc','sphinxcontrib.bibtex']
+extensions = [
+   # Sphinx's own extensions
+   "sphinx.ext.autodoc",
+   'sphinxcontrib.bibtex',
+   "sphinx.ext.extlinks",
+   "sphinx.ext.intersphinx",
+   "sphinx.ext.mathjax",
+   "sphinx.ext.todo",
+   "sphinx.ext.viewcode",
+]
+
+
 bibtex_bibfiles = ['refs.bib']
 
 # Add any paths that contain templates here, relative to this directory.
@@ -86,8 +98,9 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-#html_theme = 'alabaster'
-html_theme = 'sphinx_rtd_theme'
+
+html_theme = 'furo'
+html_title = 'VirtualLab'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -103,14 +116,6 @@ html_theme = 'sphinx_rtd_theme'
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
 #
-# This is required for the alabaster theme
-# refs: http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
-html_sidebars = {
-    '**': [
-        'relations.html',  # needs 'show_related': True theme option to display
-        'searchbox.html',
-    ]
-}
 
 
 # -- Options for HTMLHelp output ------------------------------------------
@@ -142,20 +147,21 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-    (master_doc, 'VirtualLab.tex', 'VirtualLab Documentation',
-     'Rhydian Lewis; Llion Marc Evans', 'manual'),
-]
+
+# latex_documents = [
+#     (master_doc, 'VirtualLab.tex', 'VirtualLab Documentation',
+#      'Rhydian Lewis; Llion Marc Evans', 'manual'),
+# ]
 
 
 # -- Options for manual page output ---------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'virtuallab', 'VirtualLab Documentation',
-     [author], 1)
-]
+# man_pages = [
+#     (master_doc, 'virtuallab', 'VirtualLab Documentation',
+#      [author], 1)
+# ]
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -163,17 +169,16 @@ man_pages = [
 # Grouping the document tree into Texinfo files. List of tuples
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
-texinfo_documents = [
-    (master_doc, 'VirtualLab', 'VirtualLab Documentation',
-     author, 'VirtualLab', 'One line description of project.',
-     'Miscellaneous'),
-]
+# texinfo_documents = [
+#     (master_doc, 'VirtualLab', 'VirtualLab Documentation',
+#      author, 'VirtualLab', 'One line description of project.',
+#      'Miscellaneous'),
+# ]
 
-# If true, figures, tables and code-blocks are automatically numbered if they 
-# have a caption. The numref role is enabled. Obeyed so far only by HTML and 
+# If true, figures, tables and code-blocks are automatically numbered if they
+# have a caption. The numref role is enabled. Obeyed so far only by HTML and
 # LaTeX builders. Default is False.
 numfig = True
 
 def setup(app):
-    app.add_css_file('css/custom.css') 
-
+    app.add_css_file('css/custom.css')

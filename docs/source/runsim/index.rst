@@ -1,10 +1,10 @@
-Running a simulation
+Running VirtualLab
 =====================
 
-Bob
+This section outlines how to run analyses using VirtualLab.
 
 .. toctree::
-    :hidden:
+    :maxdepth: 1
 
-    launch
     runfile
+    launch

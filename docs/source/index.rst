@@ -6,6 +6,8 @@
 .. role:: bash(code)
   :language: bash
 
+:hide-toc:
+
 Welcome to VirtualLab's documentation!
 ======================================
 
@@ -29,12 +31,12 @@ While this package has been written for use from the command line, some capabili
    structure
    virtual_exp
    runsim/index
-   examples
+   examples/index
    about
    contributing
 
 Indices and tables
-==================
+******************
 
 * :ref:`genindex`
 * :ref:`modindex`

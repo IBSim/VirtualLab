@@ -75,7 +75,7 @@ if [ "$PYTHON_INST" == "y" ]; then
   sudo apt install -y python3-pip
   #sudo apt install -y python3-sphinx
   sudo pip3 install -U sphinx
-  sudo -u ${SUDO_USER:-$USER} pip3 install sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
+  sudo -u ${SUDO_USER:-$USER} pip3 install furo sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
   sudo -u ${SUDO_USER:-$USER} pip3 install -r $VL_DIR/requirements.txt
   sudo -u ${SUDO_USER:-$USER} pip3 install scikit-learn==0.24.1
   sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps iapws==1.4
@@ -180,7 +180,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda config --append channels conda-forge
 
   conda install -y sphinx
-  conda install -y sphinx_rtd_theme=0.4.3 sphinxcontrib-bibtex=1.0.0
+  conda install -y furo sphinx_rtd_theme=0.4.3 sphinxcontrib-bibtex=1.0.0
   conda install -y --file $VL_DIR/requirements.txt
   conda install -y scikit-learn=0.24.1 iapws=1.4
 

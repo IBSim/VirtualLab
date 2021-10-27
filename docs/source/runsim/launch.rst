@@ -2,7 +2,7 @@ Launching VirtualLab
 ====================
 
 Command Line Interface
-######################
+**********************
 
 If **VirtualLab** has been installed correctly, the main program will have been added to your system :bash:`<path>`. In this case, it is possible to call **VirtualLab** from the terminal (also known as command line interface, CLI) or a bash script from any location in your system. To facilitate automation, **VirtualLab** has purposefully been designed to run without a graphical user interface (GUI).
 
@@ -12,16 +12,14 @@ Usage of 'VirtualLab':
   VirtualLab -f <path>
 
 Options:
-   | :bash:`-f <path>` Where <path> points to the location of the python *Run* file (relative to the current working directory).
+   | :bash:`-f <path>` Where <path> points to the location of the python `RunFiles <structure.html#runsim/runfile>`_ (relative to the current working      directory).
    | :bash:`-k <Name=Value>` Overwrite the value specified for variables/keyword arguments specified in the *Run* file.
    | :bash:`-h` Display the help menu.
 
-* The default behaviour is to exit if no :bash:`<path>` is given.
-
-The `RunFiles <structure.html#runfiles>`_ directory contains the *Run* files used to specify the settings of virtual experiments. These files contain the relevant information required to run analysis using **VirtualLab**, such as the type of virtual experiment or the mode in which it is run.
+.. note:: The default behaviour is to exit if no :bash:`<path>` is given.
 
 Containers
-##########
+**********
 
 Launching **VirtualLab** with a container can be carried out in several ways:
 
@@ -145,6 +143,6 @@ These commands are examples of how to launch the GUI interface of salome with th
   salome
 
 Virtual Machines
-################
+****************
 
-Once logged into the VM the user is presented with an Ubuntu desktop environment which can be used identically to a native Linux installation. That is, with the use of the CLI in a terminal **VirtualLab** may be launched as detailed in :ref:`'Usage' <usage>`.
+Once logged into the VM the user is presented with an Ubuntu desktop environment which can be used identically to a native Linux installation. That is, with the use of the CLI in a terminal **VirtualLab** may be launched as detailed in :ref:`Usage <usage>`.

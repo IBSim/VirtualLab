@@ -1,15 +1,19 @@
-.rst-content .action .admonition-title {
-   background: #b99976
+.admonition.action {
+   background-color: #e5d3b3;
+   border-color: #b99976
 }
 
-.rst-content .action {
-   background: #e5d3b3
+.admonition.action .admonition-title {
+   background-color: #b99976;
+   border-color: #b99976
 }
 
-.rst-content .Action2 .admonition-title {
-   background: #f5ed2c
-}
 
-.rst-content .Action2 {
-   background: #e6e163
+
+
+.admonition.pied-piper {
+  border-color: rgb(43, 155, 70);
 }
+.admonition.pied-piper > .admonition-title {
+  background-color: rgba(43, 155, 70, 0.3);
+  border-color: rgb(43, 155, 70);

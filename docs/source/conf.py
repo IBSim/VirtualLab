@@ -31,17 +31,18 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-# extensions = ['sphinx.ext.autodoc','sphinxcontrib.bibtex']
-extensions = [
-   # Sphinx's own extensions
-   "sphinx.ext.autodoc",
-   'sphinxcontrib.bibtex',
-   "sphinx.ext.extlinks",
-   "sphinx.ext.intersphinx",
-   "sphinx.ext.mathjax",
-   "sphinx.ext.todo",
-   "sphinx.ext.viewcode",
-]
+
+extensions = ['sphinx.ext.autodoc','sphinxcontrib.bibtex']
+# extensions = [
+#    # Sphinx's own extensions
+#    "sphinx.ext.autodoc",
+#    'sphinxcontrib.bibtex',
+#    "sphinx.ext.extlinks",
+#    "sphinx.ext.intersphinx",
+#    "sphinx.ext.mathjax",
+#    "sphinx.ext.todo",
+#    "sphinx.ext.viewcode",
+# ]
 
 
 bibtex_bibfiles = ['refs.bib']
@@ -50,7 +51,7 @@ bibtex_bibfiles = ['refs.bib']
 templates_path = ['_templates']
 
 html_static_path = ['_static']
-
+html_css_files = ["css/custom.css"]
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
@@ -88,6 +89,7 @@ exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
+pygments_dark_style = "monokai"
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
@@ -107,7 +109,11 @@ html_title = 'VirtualLab'
 # documentation.
 #
 # html_theme_options = {}
-
+# html_theme_options = {
+#     "light_css_variables": {
+#         "color-admonition-background": "orange",
+#     },
+# }
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".

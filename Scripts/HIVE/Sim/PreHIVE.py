@@ -335,14 +335,24 @@ def SetupERMES(VL, Parameters, ERMESMeshFile, tmpERMESdir, check=False):
 	# CoilIn terminal. This can then be verified against the answer calculated
 	# from the results
 	if check:
+		if True:
+			sample = ERMESMesh.GroupInfo('Sample')
+			strSample = ["PVIE({},{},{},{},32);\n".format(*FNodes) for FNodes in sample.Connect]
+			strSample.insert(0,"// // Field integration over a volume \n")
+			strSample = "".join(strSample)
+		else: strSample=""
+
 		strFace = ["PSIE({},{},{},32);\n".format(FNodes[0],FNodes[1],FNodes[2]) for FNodes in CoilInCnct]
 		strFace.insert(0,"// Field integration over a surface\n")
 		strFace = "".join(strFace)
-	else : strFace = ""
+
+		strSample = strSample + "\n" + strFace
+
+	else : strSample = ""
 
 	for Temp in Temperatures:
 		with open('{}/Wave{}-5.dat'.format(tmpERMESdir, Temp),'w+') as f:
-			f.write(Wave51 + strFace + Wave52)
+			f.write(Wave51 + strSample + Wave52)
 
 	### -9.dat file
 	# Output file where currents calculated in the electrostatic simulation is saved to
@@ -465,27 +475,36 @@ def RunERMES(VL, Parameters, ERMESMeshFile, ERMESResFile, tmpERMESdir, check=Fal
 	SetupERMES(VL, Parameters, ERMESMeshFile, tmpERMESdir, check)
 
 	# Run ERMES
-	err = ERMESRun('Static',cwd=tmpERMESdir) # Run ststic
+	err = ERMESRun('{}/Static'.format(tmpERMESdir)) # Run static
 	# Run Wave
 	for Temp in Temperatures:
-		err = ERMESRun('Wave{}'.format(Temp),cwd=tmpERMESdir)
+		err = ERMESRun('{}/Wave{}'.format(tmpERMESdir,Temp),Append=True)
 
 	# Convert ERMES results file to rmed
 	JH_Node = ERMES_Conversion(VL, Parameters, ERMESMeshFile, ERMESResFile, tmpERMESdir, check)
+
+	# Copy LogFile
+	shutil.copy("{}/ERMESLog".format(tmpERMESdir),os.path.dirname(ERMESResFile))
 
 	# Calculate Joule heating for each volume element
 	ERMESMesh = MeshInfo(ERMESMeshFile)
 	Coor = ERMESMesh.GetNodeXYZ(list(range(1,ERMESMesh.NbNodes+1)))
 	Sample = ERMESMesh.GroupInfo('Sample')
 	JH_Vol, Volumes = [], []
+	# tsts = np.zeros(Sample.NbNodes)
 	for Nds in  Sample.Connect:
 		v1,v2,v3,v4 = Coor[Nds-1]
 		vol = 1/float(6)*abs(np.dot(np.cross(v2-v1,v3-v1),v4-v1))
 		Volumes.append(vol)
+		# tsts[Nds-1]+=vol/4
+
 		# geometric average of 4 Joule heating values
 		JH_avg = np.sum(JH_Node[Nds-1,:])/4
 		JH_Vol.append(JH_avg)
 	ERMESMesh.Close()
+
+	# W = tsts*JH_Node.flatten()[:Sample.NbNodes]
+	# print(W.sum())
 
 	# Get sorted index (descending order) for JH_Vol & sort arrays by this
 	# This is used for the thresholding capability
@@ -526,7 +545,8 @@ def ERMES(VL,MeshFile,ERMESresfile,Parameters,CalcDir,RunSim=True,GUI=False):
 		if err: return sys.exit('Issue creating mesh')
 
 		# Run simulation using mesh created
-		return RunERMES(VL, Parameters, ERMESmesh, ERMESresfile, CalcDir)
+		CheckERMES = getattr(Parameters,'CheckERMES',False)
+		return RunERMES(VL, Parameters, ERMESmesh, ERMESresfile, CalcDir,CheckERMES)
 
 	elif os.path.isfile(ERMESresfile):
 		# Read in a previous set of ERMES results

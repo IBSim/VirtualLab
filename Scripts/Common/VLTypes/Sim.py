@@ -122,8 +122,20 @@ def PoolRun(VL, SimDict, Flags):
         CommFile = '{}/{}.comm'.format(VL.SIM_SIM, Parameters.AsterFile)
         MessFile = '{}/AsterLog'.format(SimDict['ASTER'])
         AsterSettings = getattr(Parameters,'AsterSettings',{})
-        Aster.ExportWriter(ExportFile, CommFile, SimDict["MeshFile"],
-        				   SimDict['ASTER'], MessFile, AsterSettings)
+
+        NbMpi = AsterSettings.get('mpi_nbcpu',1)
+        if NbMpi >1:
+            AsterSettings['actions'] = 'make_env'
+            rep_trav =  "{}/CA".format(SimDict['TMP_CALC_DIR'])
+            AsterSettings['rep_trav'] = rep_trav
+            AsterSettings['version'] = 'stable_mpi'
+            Aster.ExportWriter(ExportFile, CommFile, SimDict["MeshFile"],
+            				   SimDict['ASTER'], MessFile, AsterSettings)
+        else:
+            Aster.ExportWriter(ExportFile, CommFile, SimDict["MeshFile"],
+            				   SimDict['ASTER'], MessFile, AsterSettings)
+
+
 
         #=======================================================================
         # Write pickle of SimDict to file for code aster to find
@@ -136,11 +148,13 @@ def PoolRun(VL, SimDict, Flags):
         # Run CodeAster
         if 'Interactive' in SimDict:
             # Run in x-term window
-            SubProc = Aster.RunXterm(ExportFile, AddPath=[SimDict['TMP_CALC_DIR']],
+            err = Aster.RunXterm(ExportFile, AddPath=[SimDict['TMP_CALC_DIR']],
                                      tempdir=SimDict['TMP_CALC_DIR'])
+        elif NbMpi>1:
+            err = Aster.RunMPI(NbMpi, ExportFile, rep_trav, MessFile, SimDict['ASTER'], AddPath=[SimDict['TMP_CALC_DIR']])
         else:
-            SubProc = Aster.Run(ExportFile, AddPath=[SimDict['TMP_CALC_DIR']])
-        err = SubProc.wait()
+            err = Aster.Run(ExportFile, AddPath=[SimDict['TMP_CALC_DIR']])
+
         if err:
             return "Aster Error: Code {} returned".format(err)
 

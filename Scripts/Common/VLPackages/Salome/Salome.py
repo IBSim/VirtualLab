@@ -12,6 +12,11 @@ import VLconfig
 Exec = getattr(VLconfig,'SalomeExec','salome')
 Dir = os.path.dirname(os.path.abspath(__file__))
 
+Container = getattr(VLconfig,'SalomeContainer',None)
+if Container:
+    import ContainerConfig
+    SalomeContainer = getattr(ContainerConfig,Container)
+
 def Kill(Port):
 	if type(Port) == int:
 		KillPort=Port
@@ -20,11 +25,15 @@ def Kill(Port):
 			KillPort = int(f.readline())
 	else : KillPort = 0
 
-	if True:
+	if False:
 		cmlst = Exec.split() + ['kill', str(KillPort)]
 		SubProc = Popen(cmlst)
 	else :
-		SubProc = Popen("{} kill {}".format(Exec, KillPort), shell='TRUE')
+		if Container:
+			command = "{} {} kill {}".format(SalomeContainer.Call, SalomeContainer.SalomeExec,KillPort)
+		else:
+			command = "{} kill {}".format(Exec, KillPort)
+		SubProc = Popen(command, shell='TRUE')
 	SubProc.wait()
 
 def Run(Script, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = '/tmp'):
@@ -55,17 +64,18 @@ def Run(Script, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = 
 	env = {**os.environ, 'PYTHONPATH': PyPath + os.environ.get('PYTHONPATH','')}
 
 	# Run mesh in Salome
-	if False:
-		# This is dev work, need to add in output option for this call
-		cmlst = Exec.split() + [GUIflag, '--ns-port-log', portfile, Script, 'args:'+argstr]
-		SubProc = Popen(cmlst, cwd=tempdir, stdout=sys.stdout, stderr=sys.stderr, env=env)
-	else :
+	if Container:
+		command = "{} {} {} --ns-port-log {} {} args:{} ".format(SalomeContainer.Call,
+														  SalomeContainer.SalomeExec,
+														  GUIflag, portfile, Script, argstr)
+	else:
 		command = "{} {} --ns-port-log {} {} args:{} ".format(Exec, GUIflag, portfile, Script, argstr)
-		if OutFile:
-			with open(OutFile,'w') as f:
-				SubProc = Popen(command, shell='TRUE',cwd=tempdir, stdout=f, stderr=f,env=env)
-		else :
-			SubProc = Popen(command, shell='TRUE',cwd=tempdir, stdout=sys.stdout, stderr=sys.stderr,env=env)
+	if OutFile:
+		with open(OutFile,'w') as f:
+			SubProc = Popen(command, shell='TRUE',cwd=tempdir, stdout=f, stderr=f,env=env)
+	else :
+		SubProc = Popen(command, shell='TRUE',cwd=tempdir, stdout=sys.stdout, stderr=sys.stderr,env=env)
+
 	ReturnCode = SubProc.wait()
 
 	Kill(portfile)

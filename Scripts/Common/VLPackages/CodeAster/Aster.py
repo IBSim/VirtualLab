@@ -7,9 +7,15 @@ from subprocess import Popen, PIPE, STDOUT
 import uuid
 
 import VLconfig
+import shutil
 
 Exec = VLconfig.ASTER_DIR
 CADir = os.path.dirname(os.path.abspath(__file__))
+
+Container = getattr(VLconfig,'AsterContainer',None)
+if Container:
+    import ContainerConfig
+    AsterContainer = getattr(ContainerConfig,Container)
 
 def ExportWriter(ExportFile,CommFile,MeshFile,ResultsDir,MessFile,Settings):
     # Create export file and write to file
@@ -23,6 +29,9 @@ def ExportWriter(ExportFile,CommFile,MeshFile,ResultsDir,MessFile,Settings):
     version = Settings.get('version','stable')
     mode = Settings.get('mode','batch')
     actions = Settings.get('actions','make_etude')
+    rep_trav = Settings.get('rep_trav',None)
+    # mpi_cpu=1
+
 
     Settings='P actions {}\n'\
     'P mode {}\n'\
@@ -33,6 +42,8 @@ def ExportWriter(ExportFile,CommFile,MeshFile,ResultsDir,MessFile,Settings):
     'P ncpus {}\n'\
     'P memory_limit {!s}\n'\
     .format(actions,mode,version,time,mpi_cpu,mpi_nd,ncpus,float(1024*memory))
+    if rep_trav:
+        Settings+="P rep_trav {}\n".format(rep_trav)
 
     Paths = 'F mmed {} D  20\n'\
     'F comm {} D  1\n'\
@@ -54,7 +65,8 @@ def RunXterm(ExportFile, AddPath = [], tempdir = '/tmp'):
     "-e '{1} {2}; echo $? >{3}';exit $(cat {3})".format(ExportFile,Exec, ExportFile, errfile)
 
     proc = Popen(command , shell='TRUE', env=env)
-    return proc
+    err = proc.wait()
+    return err
 
 def Run(ExportFile, AddPath = [], OutFile=None):
 
@@ -64,14 +76,83 @@ def Run(ExportFile, AddPath = [], OutFile=None):
     env = {**os.environ, 'PYTHONPATH': PyPath + os.environ.get('PYTHONPATH','')}
     Output = ">>{} 2>&1".format(OutFile) if OutFile else ""
 
-    if True:
-        if OutFile:
-            with open(OutFile,'w') as f:
-                proc = Popen("{} {} ".format(Exec,ExportFile), shell='TRUE', stdout=f, stderr=f, env=env)
-        else:
-            proc = Popen("{} {} ".format(Exec,ExportFile), shell='TRUE', stdout=sys.stdout, stderr=sys.stderr, env=env)
-    else :
-        cmlst = [Exec,ExportFile] + Output
-        proc = Popen(cmlst, env=env)
+    if Container:
+        command = "{} {} {}".format(AsterContainer.Call,AsterContainer.AsterExec,ExportFile)
+    else:
+        command = "{} {} ".format(Exec,ExportFile)
 
-    return proc
+    if OutFile:
+        with open(OutFile,'w') as f:
+            proc = Popen(command, shell='TRUE', stdout=f, stderr=f, env=env)
+    else:
+        proc = Popen(command, shell='TRUE', stdout=sys.stdout, stderr=sys.stderr, env=env)
+    err = proc.wait()
+    return err
+
+def RunMPI(N, ExportFile, rep_trav, LogFile, ResDir, AddPath = [], OutFile=None):
+
+    AddPath = [AddPath] if type(AddPath) == str else AddPath
+    PyPath = ["{}:".format(path) for path in AddPath+[CADir]]
+    PyPath = "".join(PyPath)
+    env = {**os.environ, 'PYTHONPATH': PyPath + os.environ.get('PYTHONPATH','')}
+    Output = ">>{} 2>&1".format(OutFile) if OutFile else ""
+
+    # ==========================================================================
+    # Create CodeAster environment in 'rep_trav' directory
+    if Container:
+        command = "{} {} {} ".format(AsterContainer.Call,AsterContainer.AsterExec, ExportFile)
+    else:
+        command = "{} {} ".format(Exec,ExportFile)
+
+    proc1 = Popen(command, shell='TRUE', stdout=sys.stdout, stderr=sys.stderr, env=env)
+    err = proc1.wait()
+    if err: return err
+
+    # ==========================================================================
+    # Create file which loads paths
+    # Copy this file as this is what CodeAster calls
+    shutil.copy("{}/global/fort.1.1".format(rep_trav),"{}/global/fort.1".format(rep_trav))
+
+    # Create script to launch. mpi_script.sh is created by CodeAster but certain
+    # paths need to be loaded before hand
+    if Container:
+        AsterPath = getattr(AsterContainer, 'Path',
+                            os.path.dirname(os.path.dirname(AsterContainer.AsterExec)))
+    else:
+        AsterPath = os.path.dirname(os.path.dirname(Exec))
+
+    LaunchScript = "{}/Launch.sh".format(rep_trav)
+    LaunchString = ". {0}/etc/codeaster/profile.sh\n"\
+                   ". {0}/14.4_mpi/share/aster/profile.sh\n"\
+                   ". {1}/global/profile_tmp.sh\n\n"\
+                   "{1}/global/mpi_script.sh".format(AsterPath,rep_trav)
+
+    with open(LaunchScript,'w') as f:
+        f.write(LaunchString)
+    os.chmod(LaunchScript,0o777)
+
+    # =========================================================================
+    # Launch CodeAster with MPI
+    if Container:
+        command = "mpirun -np {} {} {} | tee {}/AsterLog".format(N,AsterContainer.Call,
+                                                                 LaunchScript,rep_trav)
+    else:
+        command = "mpirun -np {} {} | tee {}/AsterLog".format(N,LaunchScript,rep_trav)
+
+    proc2 = Popen(command, shell='TRUE', stdout=sys.stdout, stderr=sys.stderr, env=env)
+    err = proc2.wait()
+
+    # Copy AsterLog to LogFile location
+    shutil.copy2("{}/AsterLog".format(rep_trav),LogFile)
+
+    # Copy context of REPE_OUT to results directory
+    REPE_OUT = "{}/global/REPE_OUT".format(rep_trav)
+    for dir_,_,files in os.walk(REPE_OUT):
+        for file in files:
+            src = os.path.join(dir_, file)
+            relpath = os.path.relpath(dir_,REPE_OUT)
+            dst = os.path.join(ResDir,relpath, file)
+            shutil.copy(src,dst)
+
+
+    return err

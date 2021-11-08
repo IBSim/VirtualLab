@@ -76,7 +76,7 @@ def Verify(Parameters):
 
 	return error, warning
 
-def Create(Parameter):
+def Create(Parameters):
 	from salome.geom import geomBuilder
 	from salome.smesh import smeshBuilder
 	import  SMESH
@@ -92,7 +92,7 @@ def Create(Parameter):
 		geompy = geomBuilder.New()
 		smesh = smeshBuilder.New()
 
-	isVoid = True if Parameter.VoidHeight else False
+	isVoid = True if Parameters.VoidHeight else False
 
 	###
 	### GEOM component
@@ -107,18 +107,18 @@ def Create(Parameter):
 	geompy.addToStudy( OZ, 'OZ' )
 
 	### Bottom disc
-	Disc_b_orig = geompy.MakeCylinder(O, OZ, Parameter.Radius, Parameter.HeightB)
+	Disc_b_orig = geompy.MakeCylinder(O, OZ, Parameters.Radius, Parameters.HeightB)
 	geompy.addToStudy(Disc_b_orig,'Disc_b_orig')
 
 	## Top disc
-	Vertex_1 = geompy.MakeVertexWithRef(O, 0, 0, Parameter.HeightB)
-	Disc_t_orig = geompy.MakeCylinder(Vertex_1, OZ, Parameter.Radius, Parameter.HeightT)
+	Vertex_1 = geompy.MakeVertexWithRef(O, 0, 0, Parameters.HeightB)
+	Disc_t_orig = geompy.MakeCylinder(Vertex_1, OZ, Parameters.Radius, Parameters.HeightT)
 	geompy.addToStudy(Disc_t_orig,'Disc_t_orig')
 
 	if isVoid:
-		Vertex_Void = geompy.MakeVertexWithRef(O, *Parameter.VoidCentre, Parameter.HeightB)
-		VoidBase = geompy.MakeDiskPntVecR(Vertex_Void, OZ, Parameter.VoidRadius)
-		Void = geompy.MakePrismVecH(VoidBase, OZ, Parameter.VoidHeight)
+		Vertex_Void = geompy.MakeVertexWithRef(O, *Parameters.VoidCentre, Parameters.HeightB)
+		VoidBase = geompy.MakeDiskPntVecR(Vertex_Void, OZ, Parameters.VoidRadius)
+		Void = geompy.MakePrismVecH(VoidBase, OZ, Parameters.VoidHeight)
 		Disc_t = geompy.MakeCutList(Disc_t_orig,[Void], True)
 		Disc_b = geompy.MakeCutList(Disc_b_orig,[Void], True)
 
@@ -176,23 +176,23 @@ def Create(Parameter):
 	### Create Main Mesh
 	Mesh_1 = smesh.Mesh(Testpiece)
 	Regular_1D = Mesh_1.Segment()
-	Local_Length_1 = Regular_1D.LocalLength(Parameter.Length1D,None,1e-07)
+	Local_Length_1 = Regular_1D.LocalLength(Parameters.Length1D,None,1e-07)
 	NETGEN_2D = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D)
 	NETGEN_2D_Parameters_1 = NETGEN_2D.Parameters()
-	NETGEN_2D_Parameters_1.SetMaxSize( Parameter.Length2D )
+	NETGEN_2D_Parameters_1.SetMaxSize( Parameters.Length2D )
 	NETGEN_2D_Parameters_1.SetOptimize( 1 )
 	NETGEN_2D_Parameters_1.SetFineness( 3 )
 	NETGEN_2D_Parameters_1.SetChordalError( 0.1 )
 	NETGEN_2D_Parameters_1.SetChordalErrorEnabled( 0 )
-	NETGEN_2D_Parameters_1.SetMinSize( Parameter.Length2D )
+	NETGEN_2D_Parameters_1.SetMinSize( Parameters.Length2D )
 	NETGEN_2D_Parameters_1.SetUseSurfaceCurvature( 1 )
 	NETGEN_2D_Parameters_1.SetQuadAllowed( 0 )
 	NETGEN_3D = Mesh_1.Tetrahedron()
 	NETGEN_3D_Parameters_1 = NETGEN_3D.Parameters()
-	NETGEN_3D_Parameters_1.SetMaxSize( Parameter.Length3D )
+	NETGEN_3D_Parameters_1.SetMaxSize( Parameters.Length3D )
 	NETGEN_3D_Parameters_1.SetOptimize( 1 )
 	NETGEN_3D_Parameters_1.SetFineness( 2 )
-	NETGEN_3D_Parameters_1.SetMinSize( Parameter.Length3D )
+	NETGEN_3D_Parameters_1.SetMinSize( Parameters.Length3D )
 
 	smesh.SetName(Regular_1D.GetAlgorithm(), 'Regular_1D')
 	smesh.SetName(NETGEN_3D.GetAlgorithm(), 'NETGEN 3D')
@@ -200,7 +200,6 @@ def Create(Parameter):
 	smesh.SetName(NETGEN_2D_Parameters_1, 'NETGEN 2D Parameters_1')
 	smesh.SetName(Local_Length_1, 'Local Length_1')
 	smesh.SetName(NETGEN_3D_Parameters_1, 'NETGEN 3D Parameters_1')
-	smesh.SetName(Mesh_1, Parameter.Name)
 
 
 	## Add groups
@@ -218,8 +217,8 @@ def Create(Parameter):
 	Mesh_Top_Ext_Node = Mesh_1.GroupOnGeom(Top_Face,'NTop_Face',SMESH.NODE)
 
 	if isVoid:
-		HoleCirc = 2*np.pi*Parameter.VoidRadius
-		HoleLength = HoleCirc/Parameter.VoidSegmentN
+		HoleCirc = 2*np.pi*Parameters.VoidRadius
+		HoleLength = HoleCirc/Parameters.VoidSegmentN
 
 		### Sub Mesh creation
 		## Sub-Mesh 2

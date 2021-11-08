@@ -20,10 +20,7 @@ def Setup(VL, RunMesh=True):
     # if either MeshDicts is empty or RunMesh is False we will return
     if not (RunMesh and MeshDicts): return
 
-    os.makedirs(VL.MESH_DIR, exist_ok=True)
-
     sys.path.insert(0, VL.SIM_MESH)
-
     for MeshName, ParaDict in MeshDicts.items():
         Parameters = Namespace(**ParaDict)
         # ====================================================================
@@ -64,8 +61,13 @@ def Setup(VL, RunMesh=True):
         VL.MeshData[MeshName] = MeshDict.copy()
 
 def PoolRun(VL, MeshDict,**kwargs):
+    # Create directory for meshes.
+    # This method supports meshes nested in sub-directories
+    Meshfname = os.path.splitext(MeshDict['MESH_FILE'])[0]
+    os.makedirs(os.path.dirname(Meshfname),exist_ok=True)
+
     # Write Parameters used to make the mesh to the mesh directory
-    VLF.WriteData("{}/{}.py".format(VL.MESH_DIR, MeshDict['Name']), MeshDict['Parameters'])
+    VLF.WriteData("{}.py".format(Meshfname), MeshDict['Parameters'])
 
     # Use a user-made MeshRun file if it exists. If not use the default one.
     if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):

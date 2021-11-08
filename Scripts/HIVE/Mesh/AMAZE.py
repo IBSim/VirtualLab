@@ -11,21 +11,23 @@ def Example():
 	'''
 	Parameters = SimpleNamespace(Name='Test')
 	# === Geometry ===
-	Parameters.BlockWidth = 0.045
-	Parameters.BlockLength = 0.045
-	Parameters.BlockHeight = 0.035
+	Parameters.BlockWidth = 0.03
+	Parameters.BlockLength = 0.05
+	Parameters.BlockHeight = 0.02
 
 	Parameters.PipeShape = 'smooth tube'
 
-	Parameters.PipeDiam = 0.012 ###Inner Diameter
-	Parameters.PipeThick = 0.0014
-	Parameters.PipeLength = 0.2
+	Parameters.PipeDiam = 0.01 ###Inner Diameter
+	Parameters.PipeThick = 0.001
+	Parameters.PipeLength = Parameters.BlockLength
 
 	Parameters.TileCentre = [0,0]
 	Parameters.TileWidth = Parameters.BlockWidth
-	Parameters.TileLength = Parameters.BlockLength*0.6
-	Parameters.TileHeight = Parameters.BlockWidth-Parameters.BlockHeight
-	Parameters.PipeCentre = [0,Parameters.TileHeight/2]
+	Parameters.TileLength = 0.03
+	Parameters.TileHeight = 0.005
+	Parameters.PipeCentre = [0,0]
+
+	Parameters.Fillet = 0.00025
 
 	Parameters.VoidCentre = [[0.25, 0.25],[0.75, 0.75]] # in terms of tile corner
 	Parameters.Void = [[0.001, 0.002, 0.004, 10.0],[0.002, 0.001, 0.004, 0.0]]
@@ -35,9 +37,11 @@ def Example():
 	Parameters.Length2D = 0.005
 	Parameters.Length3D = 0.005
 	# === Pipe sub-mesh ===
-	Parameters.PipeSegmentN = 24
+	Parameters.PipeSegmentN = 20
 	# === Tile sub-mesh ===
-	Parameters.SubTile = 0.003
+	Parameters.SubTile = [0.0008,0.0008,0.001]
+	Parameters.CoilFace = 0.0008
+
 	# === Void sub-mesh
 	Parameters.VoidSegmentN = 16
 
@@ -113,8 +117,9 @@ def Create(Parameters):
 	TileCorner1 = geompy.MakeVertexWithRef(TileCentre, -Parameters.TileWidth/2, -Parameters.TileLength/2, 0)
 	TileCorner2 = geompy.MakeVertexWithRef(TileCentre, Parameters.TileWidth/2, Parameters.TileLength/2, Parameters.TileHeight)
 	Tile_orig = geompy.MakeBoxTwoPnt(TileCorner1, TileCorner2)
+	geompy.addToStudy( Tile_orig, 'Tile_orig1')
+	Tile_orig = geompy.MakeFillet(Tile_orig, Parameters.Fillet, geompy.ShapeType["FACE"], [33])
 	geompy.addToStudy( Tile_orig, 'Tile_orig')
-
 
 	# =============================================================================
 	# Add in artificial defects if they exist
@@ -174,8 +179,17 @@ def Create(Parameters):
 	GrpBlock = SalomeFunc.AddGroup(Sample, 'Block', Ix)
 
 	# Surfaces
-	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [33])[0]
+	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [45])[0]
 	GrpCoilFace = SalomeFunc.AddGroup(Sample, 'CoilFace', Ix)
+
+	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [20,40,50,53])[0]
+	GrpFillet = SalomeFunc.AddGroup(Sample, 'Fillet', Ix)
+
+	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [3,13,32,37])[0]
+	GrpTileSide= SalomeFunc.AddGroup(Sample, 'TileSide', Ix)
+
+	# Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [27])[0]
+	# GrpTileBase = SalomeFunc.AddGroup(Sample, 'TileBase', Ix)
 
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [20])[0]
 	GrpPipeFace = SalomeFunc.AddGroup(Sample, 'PipeFace', Ix)
@@ -185,6 +199,10 @@ def Create(Parameters):
 
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [10])[0]
 	GrpPipeOut = SalomeFunc.AddGroup(Sample, 'PipeOut', Ix)
+
+	# Edges
+	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [5,12,15,34])[0]
+	GrpTileEdge = SalomeFunc.AddGroup(Sample, 'TileEdge', Ix)
 
 	# Create groups for surfaces of the sample include additional surfaces
 	# created when parts join
@@ -200,15 +218,15 @@ def Create(Parameters):
 	# Block
 	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0]
 	# When the Block is longer/wider than the tile
-	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile_orig,[31])], True)
+	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile_orig,[27])], True)
 	_BlkIx = geompy.SubShapeAllIDs(CutBlkTl, geompy.ShapeType["FACE"])
 	if _BlkIx:
 		BlockExtIx += SalomeFunc.ObjIndex(Sample, CutBlkTl, _BlkIx)[0]
 
 	# Tile
-	TileExtIx = SalomeFunc.ObjIndex(Sample, Tile_orig, [3,13,23,27,33])[0]
+	TileExtIx = SalomeFunc.ObjIndex(Sample, Tile_orig, [3,13,20,32,37,40,45,50,53])[0]
 	# When the tile is longer/wider than the tile
-	CutTlBlk = geompy.MakeCutList(geompy.GetSubShape(Tile_orig,[31]), [geompy.GetSubShape(Block,[23])], True)
+	CutTlBlk = geompy.MakeCutList(geompy.GetSubShape(Tile_orig,[27]), [geompy.GetSubShape(Block,[23])], True)
 	_TlIx = geompy.SubShapeAllIDs(CutTlBlk, geompy.ShapeType["FACE"])
 	if _TlIx:
 		TileExtIx += SalomeFunc.ObjIndex(Sample, CutTlBlk, _TlIx)[0]
@@ -222,8 +240,8 @@ def Create(Parameters):
 
 
 	# Create groups to add virtual thermocouples to
-	TC_ID = [['Tile', 'Front', 13], ['Tile', 'Back', 3], ['Tile', 'SideA', 23],
-			 ['Tile', 'SideB', 27], ['Tile', 'Top', 33],
+	TC_ID = [['Tile', 'Front', 37], ['Tile', 'Back', 3], ['Tile', 'SideA', 13],
+			 ['Tile', 'SideB', 32], ['Tile', 'Top', 45],
 			 ['Block', 'Front', 39], ['Block', 'Back', 3], ['Block', 'SideA', 13],
 			 ['Block', 'SideB', 28],['Block', 'Bottom', 36]] # TC_ID: ThermoCouple ID
 
@@ -246,10 +264,10 @@ def Create(Parameters):
 	# Get surfaces whcich join the different parts together
 	# Tile-Block. need to consider if there are voids in the surface
 	if Void_List:
-		TB_Surf_Void = geompy.MakeCutList(geompy.GetSubShape(Tile_orig,[31]), Void_List, True)
+		TB_Surf_Void = geompy.MakeCutList(geompy.GetSubShape(Tile_orig,[27]), Void_List, True)
 		TileBlock = geompy.MakeCommonList([geompy.GetSubShape(Block,[23]), TB_Surf_Void], True)
 	else:
-		TileBlock = geompy.MakeCommonList([geompy.GetSubShape(Block,[23]), geompy.GetSubShape(Tile_orig,[31])], True)
+		TileBlock = geompy.MakeCommonList([geompy.GetSubShape(Block,[23]), geompy.GetSubShape(Tile_orig,[27])], True)
 	TileBlockId = geompy.SubShapeAllIDs(TileBlock, geompy.ShapeType["FACE"])
 	NewId = SalomeFunc.ObjIndex(Sample, TileBlock, TileBlockId)[0]
 	GrpTileBlock = SalomeFunc.AddGroup(Sample, 'TileBlock', NewId)
@@ -264,6 +282,8 @@ def Create(Parameters):
 	###
 	### SMESH component
 	###
+
+
 
 	# Main mesh
 	Mesh_1 = smesh.Mesh(Sample)
@@ -301,30 +321,30 @@ def Create(Parameters):
 	# Length1 = (Parameters.PipeDiam*np.pi/Parameters.PipeSegmentN)*0.75 #?????
 	Length1 = (Parameters.PipeDiam*np.pi/Parameters.PipeSegmentN)
 
-	Regular_1D_1 = Mesh_1.Segment(geom=GrpPipe)
-	Sub_mesh_1 = Regular_1D_1.GetSubMesh()
-	Local_Length_1 = Regular_1D_1.LocalLength(Length1,None,1e-07)
-	NETGEN_2D_1 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpPipe)
-	NETGEN_2D_Parameters_1 = NETGEN_2D_1.Parameters()
-	NETGEN_2D_Parameters_1.SetMaxSize( Length1 )
-	NETGEN_2D_Parameters_1.SetOptimize( 1 )
-	NETGEN_2D_Parameters_1.SetFineness( 3 )
-	NETGEN_2D_Parameters_1.SetChordalError( 0.1 )
-	NETGEN_2D_Parameters_1.SetChordalErrorEnabled( 0 )
-	NETGEN_2D_Parameters_1.SetMinSize( Length1 )
-	NETGEN_2D_Parameters_1.SetUseSurfaceCurvature( 1 )
-	NETGEN_2D_Parameters_1.SetQuadAllowed( 0 )
-	NETGEN_3D_1 = Mesh_1.Tetrahedron(geom=GrpPipe)
-	NETGEN_3D_Parameters_1 = NETGEN_3D_1.Parameters()
-	NETGEN_3D_Parameters_1.SetMaxSize( Length1 )
-	NETGEN_3D_Parameters_1.SetOptimize( 1 )
-	NETGEN_3D_Parameters_1.SetFineness( 3 )
-	NETGEN_3D_Parameters_1.SetMinSize( Length1 )
+	PipeSM_1D = Mesh_1.Segment(geom=GrpPipe)
+	PipeSM_1D_Parameters = PipeSM_1D.LocalLength(Length1,None,1e-07)
+	PipeSM_2D = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpPipe)
+	PipeSM_2D_Parameters = PipeSM_2D.Parameters()
+	PipeSM_2D_Parameters.SetMaxSize( Length1 )
+	PipeSM_2D_Parameters.SetOptimize( 1 )
+	PipeSM_2D_Parameters.SetFineness( 3 )
+	PipeSM_2D_Parameters.SetChordalError( 0.1 )
+	PipeSM_2D_Parameters.SetChordalErrorEnabled( 0 )
+	PipeSM_2D_Parameters.SetMinSize( Length1 )
+	PipeSM_2D_Parameters.SetUseSurfaceCurvature( 1 )
+	PipeSM_2D_Parameters.SetQuadAllowed( 0 )
+	PipeSM_3D = Mesh_1.Tetrahedron(geom=GrpPipe)
+	PipeSM_3D_Parameters = PipeSM_3D.Parameters()
+	PipeSM_3D_Parameters.SetMaxSize( Length1 )
+	PipeSM_3D_Parameters.SetOptimize( 1 )
+	PipeSM_3D_Parameters.SetFineness( 3 )
+	PipeSM_3D_Parameters.SetMinSize( Length1 )
+	PipeSM = PipeSM_1D.GetSubMesh()
 
-	smesh.SetName(Sub_mesh_1, 'Sub-mesh_1')
-	smesh.SetName(Local_Length_1, 'Local Length_1')
-	smesh.SetName(NETGEN_2D_Parameters_1, 'NETGEN 2D Parameters_1')
-	smesh.SetName(NETGEN_3D_Parameters_1, 'NETGEN 3D Parameters_1')
+	smesh.SetName(PipeSM, 'Pipe')
+	smesh.SetName(PipeSM_1D_Parameters, 'PipeSM_1D_Parameters')
+	smesh.SetName(PipeSM_2D_Parameters, 'Pipe 2D Parameters')
+	smesh.SetName(PipeSM_3D_Parameters, 'Pipe 3D Parameters')
 
 	# Update main mesh parameteres with new minimum sizes
 	NETGEN_2D_Parameters.SetMinSize( Length1 )
@@ -332,31 +352,102 @@ def Create(Parameters):
 
 	#==========================================================================
 	# Tile sub-mesh
-	Regular_1D_2 = Mesh_1.Segment(geom=GrpTile)
-	Sub_mesh_2 = Regular_1D_2.GetSubMesh()
-	Local_Length_2 = Regular_1D_2.LocalLength(Parameters.SubTile,None,1e-07)
-	NETGEN_2D_2 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpTile)
-	NETGEN_2D_Parameters_2 = NETGEN_2D_2.Parameters()
-	NETGEN_2D_Parameters_2.SetOptimize( 1 )
-	NETGEN_2D_Parameters_2.SetFineness( 3 )
-	NETGEN_2D_Parameters_2.SetChordalError( 0.01 )
-	NETGEN_2D_Parameters_2.SetChordalErrorEnabled( 0 )
-	NETGEN_2D_Parameters_2.SetUseSurfaceCurvature( 1 )
-	NETGEN_2D_Parameters_2.SetQuadAllowed( 0 )
-	NETGEN_2D_Parameters_2.SetMaxSize( Parameters.SubTile )
-	NETGEN_2D_Parameters_2.SetMinSize( 0.2*Parameters.SubTile )
+	# This is broken down in to many parts
 
-	NETGEN_3D_2 = Mesh_1.Tetrahedron(geom=GrpTile)
-	NETGEN_3D_Parameters_2 = NETGEN_3D_2.Parameters()
-	NETGEN_3D_Parameters_2.SetOptimize( 1 )
-	NETGEN_3D_Parameters_2.SetFineness( 3 )
-	NETGEN_3D_Parameters_2.SetMaxSize( Parameters.SubTile )
-	NETGEN_3D_Parameters_2.SetMinSize( 0.2*Parameters.SubTile )
+	#==========================================================================
+	# Fillet sub-mesh
+	# Frac of 1/25 pus about 2 elements over the fillet. Increasing to 1/50 will
+	# make 5 elements over the fillet
+	frac = 1/25
+	deflection = Parameters.Fillet*frac
+	minl = frac*Parameters.Fillet*6*11**0.5
+	maxl = 2*minl
 
-	smesh.SetName(Sub_mesh_2, 'Sub-mesh_2')
-	smesh.SetName(Local_Length_2, 'Local Length_2')
-	smesh.SetName(NETGEN_2D_Parameters_2, 'NETGEN 2D Parameters_2')
-	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
+	FilletSM_1D = Mesh_1.Segment(geom=GrpFillet)
+	FilletSM_1D_Parameters = FilletSM_1D.Adaptive(minl, maxl, deflection)
+	FilletSM_2D = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpFillet)
+	FilletSM_2D_Parameters = FilletSM_2D.Parameters()
+	FilletSM_2D_Parameters.SetOptimize( 1 )
+	FilletSM_2D_Parameters.SetFineness( 2 )
+	FilletSM_2D_Parameters.SetChordalError( 0.01 )
+	FilletSM_2D_Parameters.SetChordalErrorEnabled( 0 )
+	FilletSM_2D_Parameters.SetUseSurfaceCurvature( 1 )
+	FilletSM_2D_Parameters.SetQuadAllowed( 0 )
+	FilletSM_2D_Parameters.SetMaxSize( maxl )
+	FilletSM_2D_Parameters.SetMinSize( minl )
+	FilletSM = FilletSM_1D.GetSubMesh()
+
+	smesh.SetName(FilletSM, 'Fillet')
+	smesh.SetName(FilletSM_1D_Parameters, 'FilletSM_1D_Parameters')
+	smesh.SetName(FilletSM_2D_Parameters, 'FilletSM_2D_Parameters')
+
+	#==========================================================================
+	# Tile Sides
+	TileSideSM_2D = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpTileSide)
+	TileSideSM_2D_Parameters = TileSideSM_2D.Parameters()
+	TileSideSM_2D_Parameters.SetOptimize( 1 )
+	TileSideSM_2D_Parameters.SetFineness( 2 )
+	TileSideSM_2D_Parameters.SetUseSurfaceCurvature( 1 )
+	TileSideSM_2D_Parameters.SetQuadAllowed( 0 )
+	TileSideSM_2D_Parameters.SetMaxSize( Parameters.SubTile[1] )
+	TileSideSM_2D_Parameters.SetMinSize( minl )
+	TileSideSM = TileSideSM_2D.GetSubMesh()
+
+	smesh.SetName(TileSideSM, 'TileSide')
+	# smesh.SetName(NETGEN_2D_Parameters_20, 'NETGEN 2D Parameters_20')
+
+	#==========================================================================
+	# Tile Top
+	CoilFaceDisc = getattr(Parameters,'CoilFace',Parameters.SubTile[1])
+	TileTopSM_2D = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpCoilFace)
+	TileTopSM_2D_Parameters = TileTopSM_2D.Parameters()
+	TileTopSM_2D_Parameters.SetOptimize( 1 )
+	TileTopSM_2D_Parameters.SetFineness( 2 )
+	TileTopSM_2D_Parameters.SetUseSurfaceCurvature( 1 )
+	TileTopSM_2D_Parameters.SetQuadAllowed( 0 )
+	TileTopSM_2D_Parameters.SetMaxSize( CoilFaceDisc )
+	TileTopSM_2D_Parameters.SetMinSize( minl )
+	TileTopSM = TileTopSM_2D.GetSubMesh()
+
+	smesh.SetName(TileTopSM, 'TileTop')
+	# smesh.SetName(NETGEN_2D_Parameters_11, 'NETGEN 2D Parameters_11')
+
+	#==========================================================================
+	# Tile Edge
+	# Going from small to large top to bottom
+	TileEdgeSM_1D = Mesh_1.Segment(geom=GrpTileEdge)
+	TileEdgeSM_1D_Parameters = TileEdgeSM_1D.StartEndLength(minl,Parameters.SubTile[0],GrpTileEdge.GetSubShapeIndices())
+	TileEdgeSM = TileEdgeSM_1D.GetSubMesh()
+
+	smesh.SetName(TileEdgeSM, 'TileEdge')
+	# smesh.SetName(StartEnd, 'StartEnd')
+
+	#==========================================================================
+	# Tile
+	Tile_1D = Mesh_1.Segment(geom=GrpTile)
+	Tile_1D_Parameters = Tile_1D.LocalLength(Parameters.SubTile[0],None,1e-07)
+	Tile_2D = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpTile)
+	Tile_2D_Parameters = Tile_2D.Parameters()
+	Tile_2D_Parameters.SetOptimize( 1 )
+	Tile_2D_Parameters.SetFineness( 3 )
+	Tile_2D_Parameters.SetChordalError( 0.01 )
+	Tile_2D_Parameters.SetChordalErrorEnabled( 0 )
+	Tile_2D_Parameters.SetUseSurfaceCurvature( 1 )
+	Tile_2D_Parameters.SetQuadAllowed( 0 )
+	Tile_2D_Parameters.SetMaxSize( min(2*CoilFaceDisc,Parameters.Length2D) )
+	Tile_2D_Parameters.SetMinSize( minl )
+	Tile_3D = Mesh_1.Tetrahedron(geom=GrpTile)
+	Tile_3D_Parameters = Tile_3D.Parameters()
+	Tile_3D_Parameters.SetOptimize( 1 )
+	Tile_3D_Parameters.SetFineness( 3 )
+	Tile_3D_Parameters.SetMaxSize( Parameters.SubTile[2] )
+	Tile_3D_Parameters.SetMinSize( minl )
+	TileSM = Tile_1D.GetSubMesh()
+
+	smesh.SetName(TileSM, 'Tile')
+	# smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_4')
+
+	MeshOrder = [FilletSM,TileSideSM,TileTopSM,TileEdgeSM,TileSM]
 
 	#==========================================================================
 	# Void sub-mesh
@@ -382,11 +473,16 @@ def Create(Parameters):
 		smesh.SetName(NETGEN_2D_Parameters_3, 'NETGEN 2D Parameters-Void_{}'.format(i))
 		#NETGEN_2D_Parameters_2.SetMaxSize( local_mesh_size )
 		#NETGEN_3D_Parameters_2.SetMaxSize( local_mesh_size )
-		NETGEN_2D_Parameters_2.SetMinSize( sc*local_mesh_size )
-		NETGEN_3D_Parameters_2.SetMinSize( sc*local_mesh_size )
+		Tile_2D_Parameters.SetMinSize( sc*local_mesh_size )
+		Tile_3D_Parameters.SetMinSize( sc*local_mesh_size )
 
 		# Create mesh group for each void surface
 		Mesh_Void_Ext = Mesh_1.GroupOnGeom(VoidSurface, VoidSurface.GetName(),SMESH.FACE)
+
+		MeshOrder.insert(0,Sub_mesh_3)
+
+	Mesh_1.SetMeshOrder( [ MeshOrder ])
+
 
 	## Add Groups
 	# Volume
@@ -413,7 +509,6 @@ def Create(Parameters):
 	# Node
 	MPipe = Mesh_1.GroupOnGeom(GrpPipe,'PipeNd',SMESH.NODE)
 	MSample = Mesh_1.GroupOnGeom(GrpBlock,'BlockNd',SMESH.NODE)
-
 
 	isDone = Mesh_1.Compute() # have to compute mesh before duplicating faces
 

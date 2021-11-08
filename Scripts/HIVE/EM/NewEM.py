@@ -234,7 +234,7 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     smesh.SetName(CoilSub, 'Coil')
 
     # CoilOrder.append(CoilSub)
-    # ERMES.SetMeshOrder([CoilOrder])
+    # ERMES.SetMeshOrder([[SampleSub]])
 
     # Add groups from original coil mesh
     for grptype, grpdict in CoilMesh.Groups.items():

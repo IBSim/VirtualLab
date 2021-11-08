@@ -11,39 +11,35 @@ def Example():
 	'''
 	Parameters = SimpleNamespace(Name='Test')
 	# === Geometry ===
-	Parameters.BlockWidth = 0.03
-	Parameters.BlockLength = 0.05
-	Parameters.BlockHeight = 0.02
+	Parameters.BlockWidth = 0.045
+	Parameters.BlockLength = 0.045
+	Parameters.BlockHeight = 0.035
 
 	Parameters.PipeShape = 'smooth tube'
 
-	Parameters.PipeDiam = 0.01 ###Inner Diameter
-	Parameters.PipeThick = 0.001
-	Parameters.PipeLength = Parameters.BlockLength
+	Parameters.PipeDiam = 0.012 ###Inner Diameter
+	Parameters.PipeThick = 0.0014
+	Parameters.PipeLength = 0.2
 
 	Parameters.TileCentre = [0,0]
 	Parameters.TileWidth = Parameters.BlockWidth
-	Parameters.TileLength = 0.03
-	Parameters.TileHeight = 0.005
-	Parameters.PipeCentre = [0,0]
+	Parameters.TileLength = Parameters.BlockLength*0.6
+	Parameters.TileHeight = Parameters.BlockWidth-Parameters.BlockHeight
+	Parameters.PipeCentre = [0,Parameters.TileHeight/2]
 
-	Parameters.Fillet = 0.00025
-
-	# Parameters.VoidCentre = [[0.25, 0.25],[0.75, 0.75]] # in terms of tile corner
-	# Parameters.Void = [[0.001, 0.002, 0.004, 10.0],[0.002, 0.001, 0.004, 0.0]]
+	Parameters.VoidCentre = [[0.25, 0.25],[0.75, 0.75]] # in terms of tile corner
+	Parameters.Void = [[0.001, 0.002, 0.004, 10.0],[0.002, 0.001, 0.004, 0.0]]
 
 	# === Main mesh ===
 	Parameters.Length1D = 0.005
 	Parameters.Length2D = 0.005
 	Parameters.Length3D = 0.005
 	# === Pipe sub-mesh ===
-	Parameters.PipeSegmentN = 20
+	Parameters.PipeSegmentN = 24
 	# === Tile sub-mesh ===
-	Parameters.SubTile = 0.002
-	Parameters.CoilFace = 0.0005
-
+	Parameters.SubTile = 0.003
 	# === Void sub-mesh
-	# Parameters.VoidSegmentN = 16
+	Parameters.VoidSegmentN = 16
 
 	return Parameters
 
@@ -117,12 +113,8 @@ def Create(Parameters):
 	TileCorner1 = geompy.MakeVertexWithRef(TileCentre, -Parameters.TileWidth/2, -Parameters.TileLength/2, 0)
 	TileCorner2 = geompy.MakeVertexWithRef(TileCentre, Parameters.TileWidth/2, Parameters.TileLength/2, Parameters.TileHeight)
 	Tile_orig = geompy.MakeBoxTwoPnt(TileCorner1, TileCorner2)
-	geompy.addToStudy( Tile_orig, 'Tile_orig1')
-	Fillet=True
-	if Fillet:
-		Tile_orig = geompy.MakeFillet(Tile_orig, Parameters.Fillet, geompy.ShapeType["FACE"], [33])
-		geompy.addToStudy( Tile_orig, 'Tile_orig')
-	# geompy.addToStudy( Fillet_1, 'Fillet')
+	geompy.addToStudy( Tile_orig, 'Tile_orig')
+
 
 	# =============================================================================
 	# Add in artificial defects if they exist
@@ -182,12 +174,8 @@ def Create(Parameters):
 	GrpBlock = SalomeFunc.AddGroup(Sample, 'Block', Ix)
 
 	# Surfaces
-	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [45])[0]
+	Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [33])[0]
 	GrpCoilFace = SalomeFunc.AddGroup(Sample, 'CoilFace', Ix)
-
-	if Fillet:
-		Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [20,40,50,53])[0]
-		GrpFillet = SalomeFunc.AddGroup(Sample, 'Fillet', Ix)
 
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [20])[0]
 	GrpPipeFace = SalomeFunc.AddGroup(Sample, 'PipeFace', Ix)
@@ -197,9 +185,6 @@ def Create(Parameters):
 
 	Ix = SalomeFunc.ObjIndex(Sample, Pipe, [10])[0]
 	GrpPipeOut = SalomeFunc.AddGroup(Sample, 'PipeOut', Ix)
-
-	# # Edges
-	# [8,18,22,24,26,36,39,42,44,47,49,52]
 
 	# Create groups for surfaces of the sample include additional surfaces
 	# created when parts join
@@ -215,15 +200,15 @@ def Create(Parameters):
 	# Block
 	BlockExtIx = SalomeFunc.ObjIndex(Sample, Block, [3,13,28,36,39])[0]
 	# When the Block is longer/wider than the tile
-	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile_orig,[27])], True)
+	CutBlkTl = geompy.MakeCutList(geompy.GetSubShape(Block,[23]), [geompy.GetSubShape(Tile_orig,[31])], True)
 	_BlkIx = geompy.SubShapeAllIDs(CutBlkTl, geompy.ShapeType["FACE"])
 	if _BlkIx:
 		BlockExtIx += SalomeFunc.ObjIndex(Sample, CutBlkTl, _BlkIx)[0]
 
 	# Tile
-	TileExtIx = SalomeFunc.ObjIndex(Sample, Tile_orig, [3,13,20,32,37,40,45,50,53])[0]
+	TileExtIx = SalomeFunc.ObjIndex(Sample, Tile_orig, [3,13,23,27,33])[0]
 	# When the tile is longer/wider than the tile
-	CutTlBlk = geompy.MakeCutList(geompy.GetSubShape(Tile_orig,[27]), [geompy.GetSubShape(Block,[23])], True)
+	CutTlBlk = geompy.MakeCutList(geompy.GetSubShape(Tile_orig,[31]), [geompy.GetSubShape(Block,[23])], True)
 	_TlIx = geompy.SubShapeAllIDs(CutTlBlk, geompy.ShapeType["FACE"])
 	if _TlIx:
 		TileExtIx += SalomeFunc.ObjIndex(Sample, CutTlBlk, _TlIx)[0]
@@ -236,20 +221,20 @@ def Create(Parameters):
 	GrpBlockExternal = SalomeFunc.AddGroup(Sample, 'BlockExternal', BlockExtIx)
 
 
-	# # Create groups to add virtual thermocouples to
-	# TC_ID = [['Tile', 'Front', 13], ['Tile', 'Back', 3], ['Tile', 'SideA', 23],
-	# 		 ['Tile', 'SideB', 27], ['Tile', 'Top', 33],
-	# 		 ['Block', 'Front', 39], ['Block', 'Back', 3], ['Block', 'SideA', 13],
-	# 		 ['Block', 'SideB', 28],['Block', 'Bottom', 36]] # TC_ID: ThermoCouple ID
-	#
+	# Create groups to add virtual thermocouples to
+	TC_ID = [['Tile', 'Front', 13], ['Tile', 'Back', 3], ['Tile', 'SideA', 23],
+			 ['Tile', 'SideB', 27], ['Tile', 'Top', 33],
+			 ['Block', 'Front', 39], ['Block', 'Back', 3], ['Block', 'SideA', 13],
+			 ['Block', 'SideB', 28],['Block', 'Bottom', 36]] # TC_ID: ThermoCouple ID
+
 	GrpThermocouple = []
-	# for Part, Face, Id in TC_ID:
-	# 	# Convert ID to Sample specific ID
-	# 	if Part == 'Tile': SurfaceID = SalomeFunc.ObjIndex(Sample, Tile_orig, [Id])[0]
-	# 	elif Part == 'Block': SurfaceID = SalomeFunc.ObjIndex(Sample, Block, [Id])[0]
-	# 	# Create group & keep in list
-	# 	grp = SalomeFunc.AddGroup(Sample, Part+Face, SurfaceID)
-	# 	GrpThermocouple.append(grp)
+	for Part, Face, Id in TC_ID:
+		# Convert ID to Sample specific ID
+		if Part == 'Tile': SurfaceID = SalomeFunc.ObjIndex(Sample, Tile_orig, [Id])[0]
+		elif Part == 'Block': SurfaceID = SalomeFunc.ObjIndex(Sample, Block, [Id])[0]
+		# Create group & keep in list
+		grp = SalomeFunc.AddGroup(Sample, Part+Face, SurfaceID)
+		GrpThermocouple.append(grp)
 
 
 	#Create groups for void surfaces for finer meshing
@@ -261,10 +246,10 @@ def Create(Parameters):
 	# Get surfaces whcich join the different parts together
 	# Tile-Block. need to consider if there are voids in the surface
 	if Void_List:
-		TB_Surf_Void = geompy.MakeCutList(geompy.GetSubShape(Tile_orig,[27]), Void_List, True)
+		TB_Surf_Void = geompy.MakeCutList(geompy.GetSubShape(Tile_orig,[31]), Void_List, True)
 		TileBlock = geompy.MakeCommonList([geompy.GetSubShape(Block,[23]), TB_Surf_Void], True)
 	else:
-		TileBlock = geompy.MakeCommonList([geompy.GetSubShape(Block,[23]), geompy.GetSubShape(Tile_orig,[27])], True)
+		TileBlock = geompy.MakeCommonList([geompy.GetSubShape(Block,[23]), geompy.GetSubShape(Tile_orig,[31])], True)
 	TileBlockId = geompy.SubShapeAllIDs(TileBlock, geompy.ShapeType["FACE"])
 	NewId = SalomeFunc.ObjIndex(Sample, TileBlock, TileBlockId)[0]
 	GrpTileBlock = SalomeFunc.AddGroup(Sample, 'TileBlock', NewId)
@@ -279,8 +264,6 @@ def Create(Parameters):
 	###
 	### SMESH component
 	###
-
-
 
 	# Main mesh
 	Mesh_1 = smesh.Mesh(Sample)
@@ -348,32 +331,6 @@ def Create(Parameters):
 	NETGEN_3D_Parameters.SetMinSize( Length1 )
 
 	#==========================================================================
-	# Fillet sub-mesh
-	# Frac of 1/25 puts about 2 elements over the fillet. Increasing to 1/50 will
-	# make 5 elements over the fillet. 1/15 results in 1 element. 
-	frac = 1/25
-	deflection = Parameters.Fillet*frac
-	minl = frac*Parameters.Fillet*6*11**0.5
-	maxl = 2*minl
-	Regular_1D_10 = Mesh_1.Segment(geom=GrpFillet)
-	Sub_mesh_10 = Regular_1D_10.GetSubMesh()
-	Local_Length_10 = Regular_1D_10.Adaptive(minl, maxl, deflection)
-	NETGEN_2D_10 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpFillet)
-	NETGEN_2D_Parameters_10 = NETGEN_2D_10.Parameters()
-	NETGEN_2D_Parameters_10.SetOptimize( 1 )
-	NETGEN_2D_Parameters_10.SetFineness( 3 )
-	NETGEN_2D_Parameters_10.SetChordalError( 0.01 )
-	NETGEN_2D_Parameters_10.SetChordalErrorEnabled( 0 )
-	NETGEN_2D_Parameters_10.SetUseSurfaceCurvature( 1 )
-	NETGEN_2D_Parameters_10.SetQuadAllowed( 0 )
-	NETGEN_2D_Parameters_10.SetMaxSize( maxl )
-	NETGEN_2D_Parameters_10.SetMinSize( minl )
-
-	smesh.SetName(Sub_mesh_10, 'Sub-mesh_10')
-	smesh.SetName(Local_Length_10, 'Local Length_10')
-	smesh.SetName(NETGEN_2D_Parameters_10, 'NETGEN 2D Parameters_10')
-
-
 	# Tile sub-mesh
 	Regular_1D_2 = Mesh_1.Segment(geom=GrpTile)
 	Sub_mesh_2 = Regular_1D_2.GetSubMesh()
@@ -387,41 +344,19 @@ def Create(Parameters):
 	NETGEN_2D_Parameters_2.SetUseSurfaceCurvature( 1 )
 	NETGEN_2D_Parameters_2.SetQuadAllowed( 0 )
 	NETGEN_2D_Parameters_2.SetMaxSize( Parameters.SubTile )
-	NETGEN_2D_Parameters_2.SetMinSize( minl )
+	NETGEN_2D_Parameters_2.SetMinSize( 0.2*Parameters.SubTile )
 
 	NETGEN_3D_2 = Mesh_1.Tetrahedron(geom=GrpTile)
 	NETGEN_3D_Parameters_2 = NETGEN_3D_2.Parameters()
 	NETGEN_3D_Parameters_2.SetOptimize( 1 )
 	NETGEN_3D_Parameters_2.SetFineness( 3 )
 	NETGEN_3D_Parameters_2.SetMaxSize( Parameters.SubTile )
-	NETGEN_3D_Parameters_2.SetMinSize( minl )
+	NETGEN_3D_Parameters_2.SetMinSize( 0.2*Parameters.SubTile )
 
 	smesh.SetName(Sub_mesh_2, 'Sub-mesh_2')
 	smesh.SetName(Local_Length_2, 'Local Length_2')
 	smesh.SetName(NETGEN_2D_Parameters_2, 'NETGEN 2D Parameters_2')
 	smesh.SetName(NETGEN_3D_Parameters_2, 'NETGEN 3D Parameters_2')
-
-	Mesh_1.SetMeshOrder( [ [ Sub_mesh_10, Sub_mesh_2 ] ])
-
-	if hasattr(Parameters,'CoilFace'):
-		Regular_1D_11 = Mesh_1.Segment(geom=GrpCoilFace)
-		Sub_mesh_11 = Regular_1D_11.GetSubMesh()
-		Local_Length_11 = Regular_1D_11.LocalLength(Parameters.CoilFace,None,1e-07)
-		NETGEN_2D_11 = Mesh_1.Triangle(algo=smeshBuilder.NETGEN_2D,geom=GrpCoilFace)
-		NETGEN_2D_Parameters_11 = NETGEN_2D_11.Parameters()
-		NETGEN_2D_Parameters_11.SetOptimize( 1 )
-		NETGEN_2D_Parameters_11.SetFineness( 3 )
-		NETGEN_2D_Parameters_11.SetUseSurfaceCurvature( 1 )
-		NETGEN_2D_Parameters_11.SetQuadAllowed( 0 )
-		NETGEN_2D_Parameters_11.SetMaxSize( Parameters.CoilFace )
-		NETGEN_2D_Parameters_11.SetMinSize( minl )
-
-		smesh.SetName(Sub_mesh_11, 'Sub-mesh_11')
-		smesh.SetName(Local_Length_11, 'Local Length_11')
-		smesh.SetName(NETGEN_2D_Parameters_11, 'NETGEN 2D Parameters_11')
-
-		Mesh_1.SetMeshOrder( [ [ Sub_mesh_10, Sub_mesh_11, Sub_mesh_2 ] ])
-
 
 	#==========================================================================
 	# Void sub-mesh
@@ -478,6 +413,7 @@ def Create(Parameters):
 	# Node
 	MPipe = Mesh_1.GroupOnGeom(GrpPipe,'PipeNd',SMESH.NODE)
 	MSample = Mesh_1.GroupOnGeom(GrpBlock,'BlockNd',SMESH.NODE)
+
 
 	isDone = Mesh_1.Compute() # have to compute mesh before duplicating faces
 

@@ -5,17 +5,23 @@ import VLconfig
 
 Exec = getattr(VLconfig,'ERMESExec','ERMESv12.5')
 
+Container = getattr(VLconfig,'ERMESContainer',None)
+if Container:
+    import ContainerConfig
+    ERMESContainer = getattr(ContainerConfig,Container)
 def Run(Name, Append=False):
-
-    if True:
-        dirname = os.path.dirname(Name)
-        LogFile = "{}/ERMESLog".format(dirname)
-        if Append:
-            tee = "| tee -a {}".format(LogFile)
-        else:
-            tee = "| tee {}".format(LogFile)
-        ERMES_run = Popen("{} {} {}".format(Exec,Name,tee),stdout=sys.stdout,stderr=sys.stderr,cwd=dirname,shell='TRUE')
+    dirname = os.path.dirname(Name)
+    LogFile = "{}/ERMESLog".format(dirname)
+    if Append:
+        tee = "| tee -a {}".format(LogFile)
     else:
-        ERMES_run = Popen([Exec, Name], stdout=sys.stdout, stderr=sys.stderr, cwd=cwd)
+        tee = "| tee {}".format(LogFile)
+
+    if Container:
+        command = "{} {} {} {}".format(ERMESContainer.Call,ERMESContainer.ERMESExec,Name,tee)
+    else:
+        command = "{} {} {}".format(Exec,Name,tee)
+
+    ERMES_run = Popen(command,stdout=sys.stdout,stderr=sys.stderr,cwd=dirname,shell='TRUE')
     err = ERMES_run.wait()
     return err

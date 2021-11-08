@@ -24,7 +24,7 @@ Types available:
    | ``LFA``
    | ``HIVE``
 
-For further details on each simulation see `Virtual Experiments <virtual_exp.html#virtual-experiments>`_.
+For further details on each simulation see `Virtual Experiments <../virtual_exp.html#virtual-experiments>`_.
 
 Project
 *******
@@ -77,7 +77,7 @@ As in *Parameters_Master*, values will be assigned to the ``Namespaces`` ``Mesh`
 
 If set to :code:`None` a single study is run using the values defined in *Parameters_Master*.
 
-Please see the `Tutorials <examples.html>`_ to see this in action.
+Please see the `Tutorials <../examples/index.html>`_ to see this in action.
 
 .. note:: Do not include the '.py' file extension as part of $FNAME.
 

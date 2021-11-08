@@ -12,7 +12,7 @@ Usage of 'VirtualLab':
   VirtualLab -f <path>
 
 Options:
-   | :bash:`-f <path>` Where <path> points to the location of the python `RunFiles <structure.html#runsim/runfile>`_ (relative to the current working      directory).
+   | :bash:`-f <path>` Where <path> points to the location of the python `RunFiles <../structure.html#runsim/runfile>`_ (relative to the current working      directory).
    | :bash:`-k <Name=Value>` Overwrite the value specified for variables/keyword arguments specified in the *Run* file.
    | :bash:`-h` Display the help menu.
 

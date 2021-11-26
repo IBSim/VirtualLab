@@ -19,12 +19,12 @@ smesh = smeshBuilder.New()
 
 MeshDict = {}
 for Name, Path in Meshes.items():
-	(lstMesh, status) = smesh.CreateMeshesFromMED(Path)
-	for M in lstMesh:
-		if len(lstMesh)==1: nm=Name
-		else: nm = "{}_{}".format(Name,M.GetName())
-		M.SetName(nm)
-		MeshDict[nm] = M
+    (lstMesh, status) = smesh.CreateMeshesFromMED(Path)
+    for M in lstMesh:
+        if len(lstMesh)==1: nm=Name
+        else: nm = "{}_{}".format(Name,M.GetName())
+        M.SetName(nm)
+        MeshDict[nm] = M
 
 sg = SalomePyQt.SalomePyQt()
 sg.activateModule("Mesh") # Activate mesh module

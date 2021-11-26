@@ -41,7 +41,7 @@ area due to the way CA applies forces to the face.
 '''
 
 Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DX=0.0, GROUP_MA=('Constrain', )),
-		                DDL_IMPO=(_F(DY=0.0, DZ=0.0, GROUP_NO=('Constrain3', )),
+                        DDL_IMPO=(_F(DY=0.0, DZ=0.0, GROUP_NO=('Constrain3', )),
                                   _F(DY=0.0, GROUP_NO=('Constrain2', ))),
                         MODELE=model)
 
@@ -50,28 +50,28 @@ DEFI_FICHIER(FICHIER='./REPE_OUT/TensileTest.rmed', UNITE=80)
 # Constant Force simulation
 Force = getattr(Parameters,'Force',None)
 if Force:
-	# Use Area to correct the force applied (CodeAster treats it as a pressure so we divide by the area)
-	LoadFace = AsterFunc.BCinfo(mesh, Group = 'Load')[0]
-	LoadArea = sum(LoadFace)
-	CorrForce = Force/LoadArea
+    # Use Area to correct the force applied (CodeAster treats it as a pressure so we divide by the area)
+    LoadFace = AsterFunc.BCinfo(mesh, Group = 'Load')[0]
+    LoadArea = sum(LoadFace)
+    CorrForce = Force/LoadArea
 
-	LdFrc = AFFE_CHAR_MECA(FORCE_FACE=_F(FX=CorrForce, GROUP_MA='Load'),
-			               MODELE=model)
+    LdFrc = AFFE_CHAR_MECA(FORCE_FACE=_F(FX=CorrForce, GROUP_MA='Load'),
+                           MODELE=model)
 
-	Loading = (_F(CHARGE=Fix321), _F(CHARGE=LdFrc))
+    Loading = (_F(CHARGE=Fix321), _F(CHARGE=LdFrc))
 
-	Force = MECA_STATIQUE(CHAM_MATER=fieldmat,
-			              EXCIT=Loading,
-			              MODELE=model)
+    Force = MECA_STATIQUE(CHAM_MATER=fieldmat,
+                          EXCIT=Loading,
+                          MODELE=model)
 
-	# Get stresses
-	CALC_CHAMP(reuse=Force,
-		       CONTRAINTE=('SIEF_NOEU'),
+    # Get stresses
+    CALC_CHAMP(reuse=Force,
+               CONTRAINTE=('SIEF_NOEU'),
                FORCE='FORC_NODA',
                DEFORMATION=('EPSI_NOEU'),
-		       RESULTAT=Force)
+               RESULTAT=Force)
 
-	IMPR_RESU(RESU=_F(RESULTAT=Force,
+    IMPR_RESU(RESU=_F(RESULTAT=Force,
                       NOM_CHAM=('DEPL','SIEF_NOEU','EPSI_NOEU'),
                       NOM_CHAM_MED=('Force_Displacement','Force_Stress','Force_Strain')),
               UNITE=80)
@@ -79,23 +79,23 @@ if Force:
 # Constant Displacement simulation
 Displacement = getattr(Parameters,'Displacement',None)
 if Displacement:
-	LdDisp = AFFE_CHAR_MECA(FACE_IMPO=_F(DX=Displacement, GROUP_MA='Load'),
-		                    MODELE=model)
+    LdDisp = AFFE_CHAR_MECA(FACE_IMPO=_F(DX=Displacement, GROUP_MA='Load'),
+                            MODELE=model)
 
-	Loading = (_F(CHARGE=Fix321), _F(CHARGE=LdDisp))
+    Loading = (_F(CHARGE=Fix321), _F(CHARGE=LdDisp))
 
-	Disp = MECA_STATIQUE(CHAM_MATER=fieldmat,
-			             EXCIT=Loading,
-			             MODELE=model)
+    Disp = MECA_STATIQUE(CHAM_MATER=fieldmat,
+                         EXCIT=Loading,
+                         MODELE=model)
 
-	# Get stresses
-	CALC_CHAMP(reuse=Disp,
-		       CONTRAINTE=('SIEF_NOEU'),
-			   FORCE='FORC_NODA',
+    # Get stresses
+    CALC_CHAMP(reuse=Disp,
+               CONTRAINTE=('SIEF_NOEU'),
+               FORCE='FORC_NODA',
                DEFORMATION=('EPSI_NOEU'),
-		       RESULTAT=Disp)
+               RESULTAT=Disp)
 
-	IMPR_RESU(RESU=_F(RESULTAT=Disp,
+    IMPR_RESU(RESU=_F(RESULTAT=Disp,
                       NOM_CHAM=('DEPL','SIEF_NOEU','EPSI_NOEU'),
                       NOM_CHAM_MED=('Disp_Displacement','Disp_Stress','Disp_Strain')),
               UNITE=80)

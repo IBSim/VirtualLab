@@ -15,10 +15,10 @@ renderView1 = GetActiveViewOrCreate('RenderView')
 
 ResDict = {}
 for name, path in kwargs.items():
-	if os.path.isfile(path):
-		Res = MEDReader(FileName=path)
-		RenameSource(name, Res)
-		ResDict[name]=Res
+    if os.path.isfile(path):
+        Res = MEDReader(FileName=path)
+        RenameSource(name, Res)
+        ResDict[name]=Res
 Display = Show(Res, renderView1)
 renderView1.ResetCamera()
 

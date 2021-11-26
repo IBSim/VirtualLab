@@ -122,10 +122,10 @@ def Single(VL, DADict):
     colours = plt.cm.gray(np.linspace(0,0.6,len(Methods)))
     # colours = plt.cm.brg(np.linspace(0.1,0.9,len(Methods)))
     lim = [200,1000]
-    fnt = 24
+    fnt = 48
     for tp in ['Test','Train']:
         for i,res in enumerate(['Power','Variation']):
-            fig, axes = plt.subplots(nrows=1,ncols=1, sharex=True,figsize=(15,10))
+            fig, axes = plt.subplots(nrows=1,ncols=1, sharex=True,figsize=(18,12))
 
             for  j, Name in enumerate(Methods):
                 Nb = DataDict[Name]['TrainNb']
@@ -148,17 +148,18 @@ def Single(VL, DADict):
                 # axes.plot(Nb_Uni, max,c=colours[j],linestyle='--',alpha=0.3)
                 # plt.show()
             axes.set_ylabel('MSE',fontsize=fnt)
-            axes.set_xlabel('Number of points used for training',fontsize=fnt)
-            axes.legend(fontsize=fnt)
+            axes.set_xlabel('Training set size',fontsize=fnt)
+            axes.legend(fontsize=42)
             axes.set_yscale('log')
             axes.set_ylim(bottom=1,top=lim[i])
+            axes.set_xlim([700,5300])
             plt.xticks(fontsize=fnt)
             plt.yticks(fontsize=fnt)
             axes = plt.gca()
             axes.yaxis.grid()
             xlim = axes.get_xlim()
 
-            plt.savefig("{}/MSE_{}_{}.eps".format(ResDir,res,tp),dpi=600)
+            plt.savefig("{}/MSE_{}_{}.eps".format(ResDir,res,tp),dpi=600,bbox_inches="tight")
             plt.close()
 
     # fig, axes = plt.subplots(nrows=1,ncols=1,figsize=(15,10))
@@ -179,9 +180,9 @@ def Single(VL, DADict):
     # plt.savefig("{}/MSE_Power_Seed.png".format(ResDir))
 
     plt.close()
-    fnt = 36
+    fnt = 72
     for i, Name in enumerate(Methods):
-        fig, axes = plt.subplots(nrows=1,ncols=1, figsize=(15,10))
+        fig, axes = plt.subplots(nrows=1,ncols=1, figsize=(18,12))
         dat = DataDict[Name]
         # if Name=='Coupled_RBF': Name = 'Coupled Halton'
 
@@ -208,20 +209,20 @@ def Single(VL, DADict):
         Pred,Act = np.array(Pred),np.array(Act)
         bl = Act != 0
 
-        axes.scatter(Nb_Uni,Pred, marker='o', s=200, edgecolor='k',  facecolors='none', label='Predicted')
-        axes.scatter(Nb_Uni[bl],Act[bl], marker='+', s=300, edgecolor='k',  facecolors='k', label='Actual')
-        axes.scatter(Nb_Uni,MPData,s=200,c='0',marker='x', label='Max. Train')
+        axes.scatter(Nb_Uni,Pred, marker='o', s=500, edgecolor='k',  facecolors='none', label='Predicted')
+        axes.scatter(Nb_Uni[bl],Act[bl], marker='+', s=750, edgecolor='k',  facecolors='k', label='Actual')
+        axes.scatter(Nb_Uni,MPData,s=500,c='0',marker='x', label='Max. Train')
 
         axes.set_ylim([480,540])
         axes.set_ylabel('Power',fontsize=fnt)
-        axes.set_xlabel('Number of points used for training',fontsize=fnt)
+        axes.set_xlabel('Training set size',fontsize=fnt)
         axes.set_xlim(xlim)
         plt.xticks([1000,2000,3000,4000,5000],fontsize=fnt)
         plt.yticks(fontsize=fnt)
         axes = plt.gca()
         axes.yaxis.grid()
 
-        plt.savefig("{}/MaxPower_{}.eps".format(ResDir,Name),dpi=600)
+        plt.savefig("{}/MaxPower_{}.eps".format(ResDir,Name),dpi=600,bbox_inches="tight")
         plt.close()
 
 

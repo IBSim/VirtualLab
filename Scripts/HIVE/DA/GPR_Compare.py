@@ -135,11 +135,11 @@ def Single(VL, DADict):
     # monochrome = (cycler('color', ['k']) * cycler('marker', ['x']) * cycler('linestyle', ['-', '--',':', '-.']))
     colours = plt.cm.gray(np.linspace(0,0.6,len(Methods)))
     lim=[200,1000]
-    fnt = 24
+    fnt = 48
     for tp in ['Test','Train']:
         for i,res in enumerate(['Power','Variation']):
             nmh=''
-            fig, axes = plt.subplots(nrows=1,ncols=1, sharex=True,figsize=(15,10))
+            fig, axes = plt.subplots(nrows=1,ncols=1, sharex=True,figsize=(18,12))
             for  j, Name in enumerate(Methods):
 
                 Nb = DataDict[Name]['TrainNb']
@@ -150,16 +150,17 @@ def Single(VL, DADict):
                 axes.plot(Nb, mse*OutputScaler[1,i]**2,markersize=15,marker='x',c=colours[j], label=Name)
 
             axes.set_ylabel('MSE',fontsize=fnt)
-            axes.set_xlabel('Number of points used for training',fontsize=fnt)
+            axes.set_xlabel('Training set size',fontsize=fnt)
             axes.set_yscale('log')
             axes.set_ylim(bottom=1,top=lim[i])
-            axes.legend(fontsize=fnt)
+            axes.set_xlim([50,750])
+            axes.legend(fontsize=42)
             plt.xticks(fontsize=fnt)
             plt.yticks(fontsize=fnt)
             axes = plt.gca()
             axes.yaxis.grid()
 
-            plt.savefig("{}/MSE_{}_{}{}.eps".format(ResDir,res,tp,nmh),dpi=600)
+            plt.savefig("{}/MSE_{}_{}{}.eps".format(ResDir,res,tp,nmh),dpi=600,bbox_inches="tight")
             plt.close()
 
             xlim = axes.get_xlim()
@@ -190,9 +191,9 @@ def Single(VL, DADict):
     # plt.savefig("{}/MaxPower{}.png".format(ResDir,nmh))
     # plt.close()
 
-    fnt = 36
+    fnt = 72
     for i, Name in enumerate(Methods):
-        fig, axes = plt.subplots(nrows=1,ncols=1, figsize=(15,10))
+        fig, axes = plt.subplots(nrows=1,ncols=1, figsize=(18,12))
         dat = DataDict[Name]
 
         if Name=='Adaptive': Name = 'PyAdaptive'
@@ -202,14 +203,14 @@ def Single(VL, DADict):
         Act = np.array(dat['MaxPower_act'])
         bl = Act != 0
 
-        axes.scatter(Nb,Pred, marker='o', s=200, edgecolor='k',  facecolors='none', label='Predicted')
-        axes.scatter(Nb[bl],Act[bl], marker='+', s=300, edgecolor='k',  facecolors='k', label='Actual')
-        axes.scatter(Nb,dat['MaxPower_data'],s=200,c='0',marker='x', label='Max. Train')
+        axes.scatter(Nb,Pred, marker='o', s=500, edgecolor='k',  facecolors='none', label='Predicted')
+        axes.scatter(Nb[bl],Act[bl], marker='+', s=750, edgecolor='k',  facecolors='k', label='Actual')
+        axes.scatter(Nb,dat['MaxPower_data'],s=500,c='0',marker='x', label='Max. Train')
         print(dat['MaxPower_data'])
         nmh = ''
 
         axes.set_xlim(xlim)
-        axes.set_xlabel('Number of points used for training',fontsize=fnt)
+        axes.set_xlabel('Training set size',fontsize=fnt)
         axes.set_ylim([480,540])
         axes.set_ylabel('Power',fontsize=fnt)
 
@@ -219,7 +220,7 @@ def Single(VL, DADict):
         axes = plt.gca()
         axes.yaxis.grid()
 
-        plt.savefig("{}/MaxPower_{}{}.eps".format(ResDir,Name,nmh),dpi=600)
+        plt.savefig("{}/MaxPower_{}{}.eps".format(ResDir,Name,nmh),dpi=600,bbox_inches="tight")
         plt.close()
 
 

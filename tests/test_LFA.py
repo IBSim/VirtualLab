@@ -17,28 +17,28 @@ OutputDir = '{}/VLTutorial_{}'.format(VLconfig.TEMP_DIR,Name)
 ParsedArgs = '-k Mode=T -k ShowMesh=False -k ShowRes=False -k OutputDir={}'.format(OutputDir)
 
 def test_Task1():
-	# Run = Popen('VirtualLab -f {}/Task1_Run.py {}'.format(TutorialsDir,ParsedArgs),shell='TRUE')
-	_ParsedArgs = ParsedArgs + ' -k RunSim=False -k RunDA=False' # as ShowMesh is changed to False
-	Run = Popen(['VirtualLab','-f','{}/Task1_Run.py'.format(TutorialsDir),_ParsedArgs])
-	err = Run.wait()
-	assert err==0
+    # Run = Popen('VirtualLab -f {}/Task1_Run.py {}'.format(TutorialsDir,ParsedArgs),shell='TRUE')
+    _ParsedArgs = ParsedArgs + ' -k RunSim=False -k RunDA=False' # as ShowMesh is changed to False
+    Run = Popen(['VirtualLab','-f','{}/Task1_Run.py'.format(TutorialsDir),_ParsedArgs])
+    err = Run.wait()
+    assert err==0
 
 def test_Task2():
-	Run = Popen(['VirtualLab','-f','{}/Task2_Run.py'.format(TutorialsDir),ParsedArgs])
-	err = Run.wait()
-	assert err==0
+    Run = Popen(['VirtualLab','-f','{}/Task2_Run.py'.format(TutorialsDir),ParsedArgs])
+    err = Run.wait()
+    assert err==0
 
 def test_Task3():
-	Run = Popen(['VirtualLab','-f','{}/Task3_Run.py'.format(TutorialsDir),ParsedArgs])
-	err = Run.wait()
-	assert err==0
+    Run = Popen(['VirtualLab','-f','{}/Task3_Run.py'.format(TutorialsDir),ParsedArgs])
+    err = Run.wait()
+    assert err==0
 
 def test_Task4():
-	Run = Popen(['VirtualLab','-f','{}/Task4_Run.py'.format(TutorialsDir),ParsedArgs])
-	err = Run.wait()
-	assert err==0
+    Run = Popen(['VirtualLab','-f','{}/Task4_Run.py'.format(TutorialsDir),ParsedArgs])
+    err = Run.wait()
+    assert err==0
 
 def test_Task5():
-	Run = Popen(['VirtualLab','-f','{}/Task5_Run.py'.format(TutorialsDir),ParsedArgs])
-	err = Run.wait()
-	assert err==0
+    Run = Popen(['VirtualLab','-f','{}/Task5_Run.py'.format(TutorialsDir),ParsedArgs])
+    err = Run.wait()
+    assert err==0

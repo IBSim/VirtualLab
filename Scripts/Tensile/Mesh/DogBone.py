@@ -104,7 +104,7 @@ def Create(Parameters):
         geompy = geomBuilder.New()
         smesh = smeshBuilder.New()
 
-    Hole = hasattr(Parameters,'Rad_a')
+    Hole = getattr(Parameters,'Rad_a',0)
 
     ###
     ### GEOM component

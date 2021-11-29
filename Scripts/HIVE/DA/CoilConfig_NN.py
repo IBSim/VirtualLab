@@ -15,7 +15,7 @@ import torch.utils.data as Data
 
 from Scripts.Common.VLFunctions import MeshInfo
 from Functions import Uniformity2 as UniformityScore, DataScale, DataRescale, FuncOpt
-from PreAster.PreHIVE import ERMES
+from Sim.PreHIVE import ERMES
 
 def Single(VL, DADict):
     ML = DADict["Parameters"]
@@ -195,6 +195,9 @@ def Single(VL, DADict):
         plt.savefig("{}/Convergence.eps".format(DADict["CALC_DIR"]),dpi=600)
         plt.close()
 
+        np.save("{}/Train_C".format(DADict['CALC_DIR']),LossConv['loss_train'][0:epoch])
+        np.save("{}/Test_C".format(DADict['CALC_DIR']),LossConv['loss_test'][0:epoch])
+
         if True:
             plt.figure(figsize=(15,10))
             LossTrainSplit = np.array(LossConvSplit['loss_train'])
@@ -209,6 +212,10 @@ def Single(VL, DADict):
             plt.savefig("{}/Convergence_Split.eps".format(DADict["CALC_DIR"]),dpi=600)
             plt.close()
 
+            np.save("{}/Train_P".format(DADict['CALC_DIR']),LossTrainSplit[0:epoch,0])
+            np.save("{}/Test_P".format(DADict['CALC_DIR']),LossTestSplit[0:epoch,0])
+            np.save("{}/Train_V".format(DADict['CALC_DIR']),LossTrainSplit[0:epoch,1])
+            np.save("{}/Test_V".format(DADict['CALC_DIR']),LossTestSplit[0:epoch,1])
         # # Predicted values from test and train data
         # with torch.no_grad():
         #     NN_train = model.predict(In_train)

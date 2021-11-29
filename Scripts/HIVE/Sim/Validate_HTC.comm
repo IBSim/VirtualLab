@@ -17,70 +17,70 @@ DEBUT(PAR_LOT = 'NON',LANG='EN')
 
 ##### Read in the mesh and define the model #####
 mesh = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
-	
+
 Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model, ),
-	                      PHENOMENE='THERMIQUE',
-	                      TOUT='OUI'),
-	             	      MAILLAGE=mesh)
+                          PHENOMENE='THERMIQUE',
+                          TOUT='OUI'),
+                           MAILLAGE=mesh)
 
 ##### Define functions for NL material properties and assign materials to parts #####
 DictMat = AsterFunc.MaterialProps(Info.MATERIAL_DIR,Parameters.Materials.values())
 
 BlockRCP = DEFI_FONCTION(NOM_PARA='TEMP',
-	               PROL_DROITE='CONSTANT',
-	               PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat[Parameters.Materials['Block']]["RhoCp"])
+                   PROL_DROITE='CONSTANT',
+                   PROL_GAUCHE='CONSTANT',
+                   VALE=DictMat[Parameters.Materials['Block']]["RhoCp"])
 BlockLAM = DEFI_FONCTION(NOM_PARA='TEMP',
-	               PROL_DROITE='CONSTANT',
-		       PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat[Parameters.Materials['Block']]["Lambda"])
+                   PROL_DROITE='CONSTANT',
+               PROL_GAUCHE='CONSTANT',
+                   VALE=DictMat[Parameters.Materials['Block']]["Lambda"])
 #BlockLAM = DEFI_CONSTANTE(VALE=394)
 #BlockRCP = DEFI_CONSTANTE(VALE=344600)
 BlockMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA=BlockLAM, RHO_CP=BlockRCP))
 
 PipeRCP = DEFI_FONCTION(NOM_PARA='TEMP',
-	               PROL_DROITE='CONSTANT',
-	               PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat[Parameters.Materials['Pipe']]["RhoCp"])
+                   PROL_DROITE='CONSTANT',
+                   PROL_GAUCHE='CONSTANT',
+                   VALE=DictMat[Parameters.Materials['Pipe']]["RhoCp"])
 PipeLAM = DEFI_FONCTION(NOM_PARA='TEMP',
-	               PROL_DROITE='CONSTANT',
-		       PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat[Parameters.Materials['Pipe']]["Lambda"])
+                   PROL_DROITE='CONSTANT',
+               PROL_GAUCHE='CONSTANT',
+                   VALE=DictMat[Parameters.Materials['Pipe']]["Lambda"])
 #PipeLAM = DEFI_CONSTANTE(VALE=394)
 #PipeRCP = DEFI_CONSTANTE(VALE=344600)
 PipeMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA=PipeLAM, RHO_CP=PipeRCP))
 
 TileRCP = DEFI_FONCTION(NOM_PARA='TEMP',
-	               PROL_DROITE='CONSTANT',
-	               PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat[Parameters.Materials['Tile']]["RhoCp"])
+                   PROL_DROITE='CONSTANT',
+                   PROL_GAUCHE='CONSTANT',
+                   VALE=DictMat[Parameters.Materials['Tile']]["RhoCp"])
 TileLAM = DEFI_FONCTION(NOM_PARA='TEMP',
-	               PROL_DROITE='CONSTANT',
-		       PROL_GAUCHE='CONSTANT',
-	               VALE=DictMat[Parameters.Materials['Tile']]["Lambda"])
+                   PROL_DROITE='CONSTANT',
+               PROL_GAUCHE='CONSTANT',
+                   VALE=DictMat[Parameters.Materials['Tile']]["Lambda"])
 #TileLAM = DEFI_CONSTANTE(VALE=163.3)
 #TileRCP = DEFI_CONSTANTE(VALE=2502500)
 TileMat = DEFI_MATERIAU(THER_NL=_F(LAMBDA=TileLAM, RHO_CP=TileRCP))
 
 Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TileMat, GROUP_MA='Tile'),_F(MATER=PipeMat, GROUP_MA='Pipe'),_F(MATER=BlockMat, GROUP_MA='Block')),
-	                MAILLAGE=mesh)
+                    MAILLAGE=mesh)
 
 ##### Create BCs #####
 h=1000
 flux = 1e5
 UniFlux = DEFI_CONSTANTE(VALE=flux)
 EMI = AFFE_CHAR_THER_F(FLUX_REP=_F(FLUN=UniFlux, GROUP_MA=('CoilFace', )),
-			  MODELE=Thermod)
+              MODELE=Thermod)
 
 ##### Create list of time steps #####
 fintime, TotStep, start = 0, 0, 0
 timelist = [np.array([start])]
 for tup in Parameters.dt:
-	dt, Nstep = tup
-	TotStep += Nstep
-	fintime += dt*Nstep
-	timelist.append(np.linspace(start+dt,fintime,Nstep))
-	start = fintime
+    dt, Nstep = tup
+    TotStep += Nstep
+    fintime += dt*Nstep
+    timelist.append(np.linspace(start+dt,fintime,Nstep))
+    start = fintime
 timearr = timearrOrig = np.concatenate(timelist)
 
 timestp1 = DEFI_LIST_REEL(VALE=timearr)
@@ -89,24 +89,24 @@ Storing = DEFI_LIST_REEL(VALE=timearr[::Parameters.ResStore])
 ### Flux Pipe loading
 PipeFluxdat = []
 for i in range(0,200,10):
-	PipeFluxdat.append(i)
-	PipeFluxdat.append(-h*(i - Parameters.FluidT))
+    PipeFluxdat.append(i)
+    PipeFluxdat.append(-h*(i - Parameters.FluidT))
 
 PipeFlux = DEFI_FONCTION(NOM_PARA='TEMP',
-		       PROL_DROITE='CONSTANT',
-		       PROL_GAUCHE='CONSTANT',
-		       VALE=PipeFluxdat)
+               PROL_DROITE='CONSTANT',
+               PROL_GAUCHE='CONSTANT',
+               VALE=PipeFluxdat)
 F_HTC = AFFE_CHAR_THER_F(FLUX_NL=_F(FLUN=PipeFlux,GROUP_MA=('PipeFace')),
-			  MODELE=Thermod)
+              MODELE=Thermod)
 
 res_f = THER_NON_LINE(ARCHIVAGE=_F(LIST_INST=Storing),
-		CHAM_MATER=Thermat,
-		ETAT_INIT=_F(VALE=Parameters.InitTemp),
-		EXCIT=(_F(CHARGE=EMI),_F(CHARGE=F_HTC)),
-		INCREMENT=_F(LIST_INST=timestp1),
-		MODELE=Thermod,
-		PARM_THETA=Parameters.Theta,
-		SOLVEUR=_F(METHODE=Parameters.Solver))
+        CHAM_MATER=Thermat,
+        ETAT_INIT=_F(VALE=Parameters.InitTemp),
+        EXCIT=(_F(CHARGE=EMI),_F(CHARGE=F_HTC)),
+        INCREMENT=_F(LIST_INST=timestp1),
+        MODELE=Thermod,
+        PARM_THETA=Parameters.Theta,
+        SOLVEUR=_F(METHODE=Parameters.Solver))
 
 DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName[0]), UNITE=80)
 IMPR_RESU(RESU=_F(RESULTAT=res_f), UNITE=80)
@@ -119,16 +119,16 @@ IMPR_RESU(RESU=_F(RESULTAT=res_f), UNITE=80)
 HT = DEFI_CONSTANTE(VALE=h)
 T_ext = DEFI_CONSTANTE(VALE=Parameters.FluidT)
 E_HTC = AFFE_CHAR_THER_F(ECHANGE=_F(COEF_H=HT, GROUP_MA=('PipeFace'),TEMP_EXT=T_ext),
-			  MODELE=Thermod)
+              MODELE=Thermod)
 
 res_e = THER_NON_LINE(ARCHIVAGE=_F(LIST_INST=Storing),
-		CHAM_MATER=Thermat,
-		ETAT_INIT=_F(VALE=Parameters.InitTemp),
-		EXCIT=(_F(CHARGE=EMI),_F(CHARGE=E_HTC)),
-		INCREMENT=_F(LIST_INST=timestp1),
-		MODELE=Thermod,
-		PARM_THETA=Parameters.Theta,
-		SOLVEUR=_F(METHODE=Parameters.Solver))
+        CHAM_MATER=Thermat,
+        ETAT_INIT=_F(VALE=Parameters.InitTemp),
+        EXCIT=(_F(CHARGE=EMI),_F(CHARGE=E_HTC)),
+        INCREMENT=_F(LIST_INST=timestp1),
+        MODELE=Thermod,
+        PARM_THETA=Parameters.Theta,
+        SOLVEUR=_F(METHODE=Parameters.Solver))
 
 DEFI_FICHIER(FICHIER='./REPE_OUT/{}.rmed'.format(Parameters.ResName[1]),TYPE='BINARY', UNITE=81)
 IMPR_RESU(RESU=_F(RESULTAT=res_e), UNITE=81)

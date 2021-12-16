@@ -15,59 +15,62 @@ from DA.Functions import Uniformity3 as UniformityScore
 
 
 def HTC(VL, SimDict):
-    '''
-    This function calculates the Heat transfer coefficient between the fluid and pipe
-    as a function of temperature. This data is used to apply a BC in the CodeAster simulation
-    '''
+    '''This function calculates the heat flux between the fluid and pipe as a
+    function of wall temperature. This data is used to apply a BC in the
+    CodeAster simulation.'''
 
     CreateHTC = getattr(SimDict['Parameters'], 'CreateHTC', True)
 
     # if None then no HTC will be generated
     if CreateHTC == None: return
 
+    HeatFlux = "{}/HeatTransfer.dat"
     if CreateHTC:
         # Create a new set of HTC values based on pipe geometries and coolant properties
-        from HTC.Coolant import Properties as ClProp
-        from HTC.Pipe import PipeGeom
-        from HTC.ITER import htc as htc_ITER
-        from HTC.berglesrohsenow import get_T_onb
+        from CoolantHT.Coolant import Properties as ClProp
+        from CoolantHT.Pipe import PipeGeom
+        from CoolantHT.HeatFlux1D import HIVE_Coolant, Verify
 
         Pipedict = SimDict['Parameters'].Pipe
         Pipe = PipeGeom(shape=Pipedict['Type'], pipediameter=Pipedict['Diameter'], length=Pipedict['Length'])
 
         Cooldict = SimDict['Parameters'].Coolant
-        Coolant = ClProp(T=Cooldict['Temperature']+273, P=Cooldict['Pressure'], velocity=Cooldict['Velocity'])
+        Coolant = ClProp(T=Cooldict['Temperature']+273.15, P=Cooldict['Pressure'], velocity=Cooldict['Velocity'])
 
-        # Onset of Nucleat boiling
-        T_onb = get_T_onb(Coolant,Pipe)
+        # Check if properties of coolant are applicable for the correlations used.
+        VerifyCorr = Verify(Coolant,Pipe,CorrFC='st', CorrSB='jaeri', CorrCHF='mt')
 
-        # Starting WallTemp and increment between temperatures to check
-        WallTemp, incr = 5, 5
-        HTC = []
-        while True:
-            h = htc_ITER(Coolant, Pipe, WallTemp+273,T_onb=T_onb)
-            # if h == 0: break
-            if WallTemp > 200: break
-            HTC.append([WallTemp, h])
-            WallTemp += incr
+        # Get heat transfer data
+        HTdata, HTdict = HIVE_Coolant([10,None,1], Coolant, Pipe, CorrFC='st', CorrSB='jaeri', CorrCHF='mt')
 
-        HTC = np.array(HTC)
-        np.savetxt("{}/HTC.dat".format(SimDict['PREASTER']), HTC, fmt = '%.2f %.8f')
-        np.savetxt("{}/HTC.dat".format(SimDict['TMP_CALC_DIR']), HTC, fmt = '%.2f %.8f')
+        np.savetxt(HeatFlux.format(SimDict['PREASTER']), HTdata, fmt = '%.2f %.8f')
+        np.savetxt(HeatFlux.format(SimDict['TMP_CALC_DIR']), HTdata, fmt = '%.2f %.8f')
 
         import matplotlib.pyplot as plt
-        plt.plot(HTC[:,0],HTC[:,1])
-        plt.xlabel('Temperature',fontsize=14)
-        plt.ylabel('Heat Transfer Coefficient',fontsize=14)
-        plt.savefig("{}/PipeHTC.png".format(SimDict['PREASTER']), bbox_inches='tight')
+        plt.plot(HTdata[:,0],HTdata[:,1])
+        plt.scatter(*HTdict['Saturation'],marker='x',label='Saturation\nTemperature')
+        plt.scatter(*HTdict['ONB'],marker='x',label='Onset Nucleate\nBoiling')
+        plt.scatter(*HTdict['CHF'],marker='x',label='Critical Heat\nFlux')
+        plt.xlabel('Temperature C',fontsize=14)
+        plt.ylabel('Heat Flux (W/m^2)',fontsize=14)
+        plt.legend()
+        plt.savefig("{}/HeatTransfer.png".format(SimDict['PREASTER']), bbox_inches='tight')
         plt.close()
 
-    elif os.path.isfile("{}/HTC.dat".format(SimDict['PREASTER'])):
+        HTdict['VerifyFC'] = VerifyCorr[0]
+        HTdict['VerifySB'] = VerifyCorr[1]
+        HTdict['VerifyCHF'] = VerifyCorr[2]
+
+        SimDict['Data']['HTdict'] = HTdict
+
+    elif os.path.isfile(HeatFlux.format(SimDict['PREASTER'])):
         ### Use previous HTC values from PreAster directory
-        shutil.copy("{}/HTC.dat".format(SimDict['PREASTER']), SimDict['TMP_CALC_DIR'])
+        shutil.copy(HeatFlux.format(SimDict['PREASTER']), SimDict['TMP_CALC_DIR'])
     else:
         ### Exit due to errors
-        sys.exit("CreateHTC not 'True' and {} contains no HTC.dat file".format(SimDict['PREASTER']))
+        sys.exit("CreateHTC not 'True' and {} doesn't exist".format(HeatFlux.format(SimDict['PREASTER'])))
+
+    SimDict['HTData'] = HeatFlux.format(SimDict['TMP_CALC_DIR'])
 
 def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, tempdir='/tmp', AddPath=[], LogFile=None, GUI=0):
     '''
@@ -608,8 +611,8 @@ def EMI(VL, SimDict):
     print("Power delivered by coil: {:.4f}W".format(CoilPower))
     SimDict['CoilPower'] = CoilPower
 
-    Uniformity = UniformityScore(JH_Node,ERMESresfile)
-    SimDict['Uniformity'] = Uniformity
+    # Uniformity = UniformityScore(JH_Node,ERMESresfile)
+    # SimDict['Uniformity'] = Uniformity
 
     Threshold = getattr(Parameters,'Threshold', 0)
     if not Threshold:
@@ -665,6 +668,7 @@ def EMI(VL, SimDict):
         The Goodness of Fit Value (GFV) describes how well the clustering
         represents the data, ranging from 0 (worst) to 1 (best).
         '''
+        np.random.seed(123)
         from sklearn.cluster import KMeans
         X = JH_Vol.reshape(-1,1)
         X_sc = (X - X.min())/(X.max()-X.min())

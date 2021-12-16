@@ -84,18 +84,13 @@ elif Parameters.EMLoad == 'ERMES':
     EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
 
 # Cooling due to coolant. HTC data generated during PreAster
-PipeHTCdat = np.fromfile('{}/HTC.dat'.format(SimDict['TMP_CALC_DIR']),dtype=float,count=-1,sep=" ")
-HTC_Temps, HTC_Values = PipeHTCdat[::2], PipeHTCdat[1::2]
-HTC_Temps = np.hstack((HTC_Temps[0]-1,HTC_Temps,HTC_Temps[-1]+1))
-HTC_Values = np.hstack((HTC_Values[0],HTC_Values,HTC_Values[-1]))
-
-PipeFluxdat = [None]*(len(HTC_Temps)*2)
-PipeFluxdat[::2], PipeFluxdat[1::2] = HTC_Temps, -HTC_Values*(HTC_Temps - Parameters.Coolant['Temperature'])
-
+HTdata = np.fromfile(SimDict['HTData'],dtype=float,count=-1,sep=" ")
+# Change flux to negative for energy to leave sample
+HTdata[1::2] = -HTdata[1::2]
 PipeFlux = DEFI_FONCTION(NOM_PARA='TEMP',
                             PROL_DROITE='LINEAIRE',
                             PROL_GAUCHE='LINEAIRE',
-                            VALE=PipeFluxdat)
+                            VALE=HTdata)
 
 PipeHTC = AFFE_CHAR_THER_F(FLUX_NL=_F(FLUN=PipeFlux,GROUP_MA='PipeFace'),
                              MODELE=Thermod)

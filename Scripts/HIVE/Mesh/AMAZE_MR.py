@@ -204,6 +204,13 @@ def Create(Parameters):
     Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [5,12,15,34])[0]
     GrpTileEdge = SalomeFunc.AddGroup(Sample, 'TileEdge', Ix)
 
+    # Vertices
+    Ix = SalomeFunc.ObjIndex(Sample, Pipe, [8])[0]
+    GrpPipeInV1 = SalomeFunc.AddGroup(Sample, 'PipeInV1', Ix)
+
+    Ix = SalomeFunc.ObjIndex(Sample, Pipe, [19])[0]
+    GrpPipeInV2 = SalomeFunc.AddGroup(Sample, 'PipeInV2', Ix)
+
     # Create groups for surfaces of the sample include additional surfaces
     # created when parts join
     # Pipe
@@ -505,6 +512,8 @@ def Create(Parameters):
         Mesh_1.GroupOnGeom(TCgeom, TCgeom.GetName(), SMESH.FACE)
 
     # Node
+    MPipeInV1 = Mesh_1.GroupOnGeom(GrpPipeInV1,'PipeInV1',SMESH.NODE)
+    MPipeInV2 = Mesh_1.GroupOnGeom(GrpPipeInV2,'PipeInV2',SMESH.NODE)
     MPipe = Mesh_1.GroupOnGeom(GrpPipe,'PipeNd',SMESH.NODE)
     MSample = Mesh_1.GroupOnGeom(GrpBlock,'BlockNd',SMESH.NODE)
 

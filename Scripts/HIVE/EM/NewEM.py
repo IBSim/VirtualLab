@@ -87,31 +87,34 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     CrdPipeOut = np.array(geompy.PointCoordinates(cPipeOut))
     PipeMid = (CrdPipeIn + CrdPipeOut)/2
 
-    from EM import CoilDesigns
-    CoilFnc = getattr(CoilDesigns, Parameters.CoilType)
-    CoilMesh = GetMesh(CoilFnc())
+    from EM.CoilDesigns import Coils
+    CoilData, Reference = Coils(Parameters.CoilType)
+    CoilMesh = GetMesh(CoilData)
 
-    cCoilIn = geompy.MakeCDG(geompy.GetSubShape(CoilMesh.Geom, CoilMesh.Groups['FACE']['CoilIn']))
-    cCoilOut = geompy.MakeCDG(geompy.GetSubShape(CoilMesh.Geom, CoilMesh.Groups['FACE']['CoilOut']))
-    CoilVect = geompy.MakeVector(cCoilIn, cCoilOut)
-    CrdCoilIn = np.array(geompy.PointCoordinates(cCoilIn))
-    CrdCoilOut = np.array(geompy.PointCoordinates(cCoilOut))
-    CrdCoilMid = (CrdCoilIn + CrdCoilOut)/2
+    V1,V2 = Reference.GetDependency()
+    cV1 = np.array(geompy.PointCoordinates(V1))
 
+    geompy.addToStudy( CoilMesh.Geom, 'Coil_orig' )
+    geompy.addToStudy(Reference,'RefVect')
+
+    # Get coil and sample tight in z direction
+    # This assumes coil is in x-y plane
     SampleBB = geompy.BoundingBox(SampleGeom)
     CoilBB = geompy.BoundingBox(geompy.MakeBoundingBox(CoilMesh.Geom,True))
+    Coil = geompy.MakeTranslation(CoilMesh.Geom, 0, 0, SampleBB[5] - CoilBB[4])
 
-    CoilTight = PipeMid + np.array([0.090915, 0, SampleBB[5]-PipeMid[2] + CrdCoilMid[2]-CoilBB[4]])
-    CoilTerminal = CoilTight + np.array(Parameters.CoilDisplacement)
-    Translation = CoilTerminal - CrdCoilMid
+    # Position coil in x-y plane using Reference
+    CoilTrans = PipeMid - cV1
+    CoilRot = geompy.GetAngleRadians(OX,Reference)
 
-    Coil = geompy.MakeTranslation(CoilMesh.Geom, *Translation)
+    if CoilRot:
+        RotateVector = geompy.MakeTranslation(OZ, *cV1)
+        Coil = geompy.MakeRotation(Coil,RotateVector,-CoilRot)
+    Coil = geompy.MakeTranslation(Coil, *CoilTrans[:-1],0)
 
-    RotateVector = geompy.MakeTranslation(OZ, *CoilTerminal)
-    RotateAngle = geompy.GetAngleRadians(CoilVect, PipeVect)
-    Coil = geompy.MakeRotation(Coil, RotateVector, -RotateAngle)
-
-    Coil = geompy.MakeRotation(Coil, PipeVect, Parameters.Rotation/180*np.pi)
+    Coil = geompy.MakeTranslation(Coil, *Parameters.CoilDisplacement)
+    if getattr(Parameters,'Rotation',0):
+        Coil = geompy.MakeRotation(Coil, PipeVect, Parameters.Rotation/180*np.pi)
     geompy.addToStudy( Coil, 'Coil' )
 
     Common = geompy.MakeCommonList([SampleGeom,Coil], True)

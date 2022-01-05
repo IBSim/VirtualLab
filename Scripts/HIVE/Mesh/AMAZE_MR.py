@@ -29,8 +29,8 @@ def Example():
 
     Parameters.Fillet = 0.00025
 
-    Parameters.VoidCentre = [[0.25, 0.25],[0.75, 0.75]] # in terms of tile corner
-    Parameters.Void = [[0.001, 0.002, 0.004, 10.0],[0.002, 0.001, 0.004, 0.0]]
+    # Parameters.VoidCentre = [[0.25, 0.25],[0.75, 0.75]] # in terms of tile corner
+    # Parameters.Void = [[0.001, 0.002, 0.004, 10.0],[0.002, 0.001, 0.004, 0.0]]
 
     # === Main mesh ===
     Parameters.Length1D = 0.005
@@ -421,7 +421,7 @@ def Create(Parameters):
     # Tile Edge
     # Going from small to large top to bottom
     TileEdgeSM_1D = Mesh_1.Segment(geom=GrpTileEdge)
-    TileEdgeSM_1D_Parameters = TileEdgeSM_1D.StartEndLength(minl,Parameters.SubTile[0],GrpTileEdge.GetSubShapeIndices())
+    TileEdgeSM_1D_Parameters = TileEdgeSM_1D.StartEndLength(minl,Parameters.SubTile[0])
     TileEdgeSM = TileEdgeSM_1D.GetSubMesh()
 
     smesh.SetName(TileEdgeSM, 'TileEdge')

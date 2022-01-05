@@ -600,9 +600,10 @@ def EMI(VL, SimDict):
     ERMESdir = "{}/ERMES".format(SimDict['TMP_CALC_DIR'])
     os.makedirs(ERMESdir)
     RunERMES = getattr(Parameters,'RunERMES',True)
+    EM_GUI = getattr(Parameters,'EM_GUI',False)
     JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,SimDict['MeshFile'],
                                         ERMESresfile,Parameters,
-                                        ERMESdir,RunERMES, GUI=0)
+                                        ERMESdir,RunERMES, GUI=EM_GUI)
     shutil.rmtree(ERMESdir) #rm ERMES dir here as this can be quite large
 
     Watts = JH_Vol*Volumes

@@ -166,7 +166,7 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     Vacuum_2D = ERMES.Triangle(algo=smeshBuilder.NETGEN_2D)
     Vacuum_2D_Parameters = Vacuum_2D.Parameters()
     Vacuum_2D_Parameters.SetOptimize( 1 )
-    Vacuum_2D_Parameters.SetFineness( 3 )
+    Vacuum_2D_Parameters.SetFineness( 2 )
     Vacuum_2D_Parameters.SetChordalError( 0.1 )
     Vacuum_2D_Parameters.SetChordalErrorEnabled( 0 )
     Vacuum_2D_Parameters.SetUseSurfaceCurvature( 1 )
@@ -177,7 +177,7 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     Vacuum_3D = ERMES.Tetrahedron()
     Vacuum_3D_Parameters = Vacuum_3D.Parameters()
     Vacuum_3D_Parameters.SetOptimize( 1 )
-    Vacuum_3D_Parameters.SetFineness( 3 )
+    Vacuum_3D_Parameters.SetFineness( 2 )
     Vacuum_3D_Parameters.SetMaxSize( Vacuum3D )
     Vacuum_3D_Parameters.SetMinSize( 0.001 )
 

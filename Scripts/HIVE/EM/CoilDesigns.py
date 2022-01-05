@@ -206,7 +206,7 @@ def HIVE(dirname=None):
 
     ### Mesh ###
     # Number of segments which define a circle
-    CircSeg = 10
+    CircSeg = 16
     CoilWidth = 0.005
     Mesh1D = np.pi*CoilWidth/CircSeg
     Mesh2D = Mesh1D
@@ -265,7 +265,7 @@ def HIVE_old(dirname=None):
 
     ### Mesh ###
     # Number of segments which define a circle
-    CircSeg = 10
+    CircSeg = 16
     CoilWidth = 0.005
     Mesh1D = np.pi*CoilWidth/CircSeg
     Mesh2D = Mesh1D

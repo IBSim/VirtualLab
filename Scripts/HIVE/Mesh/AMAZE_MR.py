@@ -420,8 +420,17 @@ def Create(Parameters):
     #==========================================================================
     # Tile Edge
     # Going from small to large top to bottom
+    # Orientation od edges can change so need to find the ones which require 'reversing'
+    Reverse = []
+    for e in GrpTileEdge.GetSubShapeIndices():
+        b1,b2 = geompy.SubShapeAll(geompy.GetSubShape(Sample,[e]),geompy.ShapeType["VERTEX"])
+        cb1,cb2 = geompy.PointCoordinates(b1),geompy.PointCoordinates(b2)
+        # if point 1 is less than point 2 in z direction then it needs reversing.
+        # this is because edge goes point1 to point2, and we need higher point first.
+        if cb1[2]<cb2[2]:Reverse.append(e)
+
     TileEdgeSM_1D = Mesh_1.Segment(geom=GrpTileEdge)
-    TileEdgeSM_1D_Parameters = TileEdgeSM_1D.StartEndLength(minl,Parameters.SubTile[0])
+    TileEdgeSM_1D_Parameters = TileEdgeSM_1D.StartEndLength(minl,Parameters.SubTile[0],Reverse)
     TileEdgeSM = TileEdgeSM_1D.GetSubMesh()
 
     smesh.SetName(TileEdgeSM, 'TileEdge')

@@ -38,6 +38,7 @@ def HIVE_Coolant(Temprange, coolant, geometry, CorrFC='st', CorrSB='jaeri', Corr
 
     data = []
     # Forced convection part
+
     for T_K in np.arange(Start+273.15,min(Tonb,End),Gap):
         q = FC(T_K,coolant, geometry,CorrFC)
         # print(T_K,q)
@@ -49,6 +50,8 @@ def HIVE_Coolant(Temprange, coolant, geometry, CorrFC='st', CorrSB='jaeri', Corr
             data.append([T_K,q])
         data.append([End,SB(End,coolant,geometry,CorrFC,CorrSB,Tonb)])
         data = np.array(data)
+    # print()
+    # print(data)
 
     f = interp1d(data[:,0],data[:,1])
     q_sat, q_onb = f([coolant.T_sat, Tonb])
@@ -58,5 +61,13 @@ def HIVE_Coolant(Temprange, coolant, geometry, CorrFC='st', CorrSB='jaeri', Corr
 
     # Convert to Celcius
     data[:,0]-=273.15
+
+    # Remove potential duplicates
+    dataround = np.around(data[:,0],2)
+    u,c = np.unique(dataround,return_counts=True)
+    bl = c>1
+    if bl.any():
+        a = np.where(dataround==u[bl])[0] #indicies of duplicates
+        data = np.delete(data,a[0],axis=0)
 
     return data, Info

@@ -172,11 +172,12 @@ Solver = getattr(Parameters,'Solver', 'MUMPS')
 MaxIter = getattr(Parameters,'MaxIter',50)
 
 # Steady state analysis
+# Set initial guess as the coolant temperature to speed up convergence
 resther = THER_NON_LINE(CHAM_MATER=Thermat,
                         EXCIT=Loading,
                         MODELE=Thermod,
                         SOLVEUR=_F(METHODE=Solver),
-                        # ETAT_INIT=_F(STATIONNAIRE='OUI',VALE=20),
+                        ETAT_INIT=_F(STATIONNAIRE='OUI',VALE=Parameters.Coolant['Temperature']),
                         CONVERGENCE=_F(ITER_GLOB_MAXI=MaxIter))
 
 # ==============================================================================

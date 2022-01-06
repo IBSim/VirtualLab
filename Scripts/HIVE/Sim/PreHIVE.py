@@ -673,7 +673,7 @@ def EMI(VL, SimDict):
         from sklearn.cluster import KMeans
         X = JH_Vol.reshape(-1,1)
         X_sc = (X - X.min())/(X.max()-X.min())
-        kmeans = KMeans(n_clusters=NbClusters).fit(X_sc)
+        kmeans = KMeans(n_clusters=NbClusters,n_init=3,n_jobs=1).fit(X_sc)
 
         # Goodness of Fit Value is a metric of how good the clustering is
         SDAM = ((X_sc - X_sc.mean())**2).sum() # Squared deviation for mean array

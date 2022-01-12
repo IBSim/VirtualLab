@@ -65,13 +65,18 @@ def Run(VL):
     if not VL.DAData: return
     sys.path.insert(0,VL.SIM_DA)
 
-    VL.Logger('\n### Starting Data Analysis ###\n', Print=True)
+    VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+              '~~~ Starting Data Analysis ~~~\n'\
+              '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n', Print=True)
 
     NbDA = len(VL.DAData)
     DADicts = list(VL.DAData.values())
 
     Errorfnc = VLPool(VL,PoolRun,DADicts)
     if Errorfnc:
-        VL.Exit(VLF.ErrorMessage("The following DA routine(s) finished with errors:\n{}".format(Errorfnc)))
+        VL.Exit(VLF.ErrorMessage("The following DA routine(s) finished with errors:\n{}".format(Errorfnc)),
+                Cleanup=False)
 
-    VL.Logger('\n### Data Analysis Complete ###',Print=True)
+    VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+              '~~~ Data Analysis Complete ~~~\n'\
+              '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)

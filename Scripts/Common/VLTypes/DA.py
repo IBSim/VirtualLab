@@ -70,9 +70,7 @@ def Run(VL):
     NbDA = len(VL.DAData)
     DADicts = list(VL.DAData.values())
 
-    N = min(VL._NbThreads,NbDA)
-
-    Errorfnc = VLPool(VL,PoolRun,DADicts,launcher=VL._Launcher,N=N,onall=True)
+    Errorfnc = VLPool(VL,PoolRun,DADicts)
     if Errorfnc:
         VL.Exit(VLF.ErrorMessage("The following DA routine(s) finished with errors:\n{}".format(Errorfnc)))
 

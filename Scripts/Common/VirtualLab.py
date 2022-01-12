@@ -79,6 +79,7 @@ class VLSetup():
         if Launcher.lower() == 'sequential': self._Launcher = 'Sequential'
         elif Launcher.lower() == 'process': self._Launcher = 'Process'
         elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
+        elif Launcher.lower() == 'mpi_worker': self._Launcher = 'MPI_Worker'
         else: self.Exit(ErrorMessage("Launcher must be one of; 'Sequential',\
                                      'Process', 'MPI'"))
 

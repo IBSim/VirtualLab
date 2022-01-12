@@ -113,9 +113,7 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
     NbMeshes = len(VL.MeshData)
     MeshDicts = list(VL.MeshData.values())
 
-    N = min(VL._NbThreads,NbMeshes)
-
-    Errorfnc = VLPool(VL,PoolRun,MeshDicts,launcher=VL._Launcher,N=N,onall=True)
+    Errorfnc = VLPool(VL,PoolRun,MeshDicts)
     if Errorfnc:
         VL.Exit(VLF.ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)))
 

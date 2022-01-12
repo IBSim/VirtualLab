@@ -140,9 +140,9 @@ def PoolRun(VL, SimDict, Flags):
         #=======================================================================
         # Write pickle of SimDict to file for code aster to find
         pth = "{}/SimDict.pkl".format(SimDict['TMP_CALC_DIR'])
-        SimDict = {**SimDict,'MATERIAL_DIR':VL.MATERIAL_DIR,'SIM_SCRIPTS':VL.SIM_SCRIPTS}
+        SimDictN = {**SimDict,'MATERIAL_DIR':VL.MATERIAL_DIR,'SIM_SCRIPTS':VL.SIM_SCRIPTS}
         with open(pth,'wb') as f:
-        	pickle.dump(SimDict,f)
+        	pickle.dump(SimDictN,f)
 
         #=======================================================================
         # Run CodeAster

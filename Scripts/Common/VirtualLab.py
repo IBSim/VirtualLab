@@ -9,6 +9,7 @@ import shutil
 import copy
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
+import atexit
 
 import VLconfig
 from . import Analytics
@@ -32,7 +33,7 @@ class VLSetup():
         # Specify default settings
         self.Settings(Mode='H',Launcher='Process',NbThreads=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir)
+                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
 
         # ======================================================================
         # Define path to scripts
@@ -60,7 +61,9 @@ class VLSetup():
             self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
             os.makedirs(self.TEMP_DIR)
 
-        self.Logger('### Launching VirtualLab ###',Print=True)
+        self.Logger('\n############################\n'\
+                      '### Launching VirtualLab ###\n'\
+                      '############################\n',Print=True)
 
 
     def _SetMode(self,Mode='H'):
@@ -118,10 +121,15 @@ class VLSetup():
         MaterialDir = self._ParsedArgs.get('MaterialDir',MaterialDir)
         self.MATERIAL_DIR = MaterialDir
 
+    def _SetCleanup(self,Cleanup=True):
+        if not hasattr(self,'_CleanupFlag'): self._CleanupFlag=Cleanup
+        else: atexit.unregister(self._Cleanup)
+        atexit.register(self._Cleanup,Cleanup)
+
     def Settings(self,**kwargs):
 
         Diff = set(kwargs).difference(['Mode','Launcher','NbThreads','InputDir',
-                                    'OutputDir','MaterialDir'])
+                                    'OutputDir','MaterialDir','Cleanup'])
         if Diff:
             self.Exit("Error: {} are not option(s) for settings".format(list(Diff)))
 
@@ -131,6 +139,8 @@ class VLSetup():
             self._SetLauncher(kwargs['Launcher'])
         if 'NbThreads' in kwargs:
             self._SetNbThreads(kwargs['NbThreads'])
+        if 'Cleanup' in kwargs:
+            self._SetCleanup(kwargs['Cleanup'])
         if 'InputDir' in kwargs:
             self._SetInputDir(kwargs['InputDir'])
         if 'OutputDir' in kwargs:
@@ -202,12 +212,11 @@ class VLSetup():
             with open(self.LogFile,'a') as f:
                 f.write(Text+"\n")
 
-    def Exit(self,mess='',KeepDirs=[]):
-        # self.Logger(mess, Print=True)
-        self.Cleanup(KeepDirs)
+    def Exit(self, mess='', Cleanup=True):
+        self._SetCleanup(Cleanup=Cleanup)
         sys.exit(mess)
 
-    def Cleanup(self,KeepDirs=[]):
+    def _Cleanup(self,Cleanup=True):
         # Report overview of VirtualLab usage
         if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
             MeshNb = self._Analytics.get('Mesh',0)
@@ -217,19 +226,20 @@ class VLSetup():
             Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
             Analytics.Run(Category,Action,self._ID)
 
-        if os.path.isdir(self.TEMP_DIR):
-            if KeepDirs:
-                kept = []
-                for ct in os.listdir(self.TEMP_DIR):
-                    SubDir = '{}/{}'.format(self.TEMP_DIR,ct)
-                    if os.path.isdir(SubDir):
-                        if ct in KeepDirs: kept.append(SubDir)
-                        else : shutil.rmtree(SubDir)
-                self.Logger("The following tmp directories have not been deleted:\n{}".format(kept),Print=True)
-            else:
-                shutil.rmtree(self.TEMP_DIR)
+        exitstr = '\n#############################\n'\
+                    '### VirtualLab Terminated ###\n'\
+                    '#############################\n'\
 
-        # self.Logger('### VirtualLab Finished###\n',Print=True)
+        if not Cleanup:
+            exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
+        elif os.path.isdir(self.TEMP_DIR):
+            shutil.rmtree(self.TEMP_DIR)
+
+        print(exitstr)
+
+
+    def Cleanup(self,KeepDirs=[]):
+        print('Cleanup() is depreciated. You can remove this from your script')
 
     def ImportParameters(self, Rel_Parameters):
         '''

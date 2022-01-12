@@ -186,7 +186,9 @@ def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
     # ==========================================================================
     # Run Sim routine
 
-    VL.Logger('\n### Starting Simulations ###\n', Print=True)
+    VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+              '~~~ Starting Simulations ~~~\n'\
+              '~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n', Print=True)
 
     # Run high throughput part in parallel
     NbSim = len(VL.SimData)
@@ -196,9 +198,12 @@ def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
 
     Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs)
     if Errorfnc:
-        VL.Exit(VLF.ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)))
+        VL.Exit(VLF.ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)),
+                Cleanup=False)
 
-    VL.Logger('### Simulations Completed ###',Print=True)
+    VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+              '~~~ Simulations Complete ~~~\n'\
+              '~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
     # ==========================================================================
     # Open up all results in ParaVis

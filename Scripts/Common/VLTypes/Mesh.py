@@ -108,16 +108,21 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
     # ==========================================================================
     # Run Mesh routine
 
-    VL.Logger('\n### Starting Meshing ###\n',Print=True)
+    VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+              '~~~ Starting Meshing ~~~\n'\
+              '~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
     NbMeshes = len(VL.MeshData)
     MeshDicts = list(VL.MeshData.values())
 
     Errorfnc = VLPool(VL,PoolRun,MeshDicts)
     if Errorfnc:
-        VL.Exit(VLF.ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)))
+        VL.Exit(VLF.ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)),
+                Cleanup=False)
 
-    VL.Logger('\n### Meshing Complete ###',Print=True)
+    VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+              '~~~ Meshing Complete ~~~\n'\
+              '~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
     # ==========================================================================
     # Open meshes in GUI to view

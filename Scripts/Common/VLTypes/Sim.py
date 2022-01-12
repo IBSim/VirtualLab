@@ -193,9 +193,8 @@ def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
     SimDicts = list(VL.SimData.values())
     Flags = [RunPreAster,RunAster,RunPostAster]
     AddArgs = [[Flags]*NbSim] #Additional arguments
-    N = min(VL._NbThreads,NbSim)
 
-    Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs,launcher=VL._Launcher,N=N,onall=True)
+    Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs)
     if Errorfnc:
         VL.Exit(VLF.ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)))
 

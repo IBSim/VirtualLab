@@ -87,10 +87,14 @@ def PoolReturn(Dicts,Returners):
 
     return PlError
 
-def VLPool(VL,fnc,Dicts,Args=[],launcher='Sequential',N=1,onall=True):
+def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
 
     fnclist = [fnc]*len(Dicts)
     PoolArgs = [[VL]*len(Dicts),Dicts] + Args
+
+    if not N: N = VL._NbThreads
+    if not launcher: launcher = VL._Launcher
+
     try:
     # if True:
         if launcher == 'Sequential':
@@ -107,10 +111,12 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher='Sequential',N=1,onall=True):
             Res = pool.map(PoolWrap,fnclist, *PoolArgs)
             Res=list(Res)
             pool.terminate()
-        elif launcher == 'MPI':
+        elif launcher in ('MPI','MPI_Worker'):
             # Run studies in parallel of N using pyina. Works for multi-node clusters.
-            # If available add 1 to work as a 'delegator'
-            if not onall and NumThreads > N: N=N+1
+            # onall specifies if there is a worker. True = no worker
+            if launcher == 'MPI' or N==1: onall = True # Cant have worker if N is 1
+            else: onall = False
+
             # Ensure that sys.path is the same for pyinas MPI subprocess
             PyPath_orig = os.environ.get('PYTHONPATH',"")
             addpath = set(sys.path) - set(VL._pypath) # group subtraction

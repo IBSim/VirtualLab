@@ -4,19 +4,26 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from scipy.optimize import minimize, differential_evolution, shgo, basinhopping
 from types import SimpleNamespace as Namespace
 import torch
 import gpytorch
+import time
 
 from Scripts.Common.VLFunctions import MeshInfo
-from Functions import Uniformity3 as UniformityScore, DataScale, DataRescale, FuncOpt
+from Functions import Uniformity3 as UniformityScore, DataScale, DataRescale
+from Optimise import FuncOpt
 from Sim.PreHIVE import ERMES
+
+dtype = 'float64' # float64 is more accurate for optimisation purposes
+torch_dtype = getattr(torch,dtype)
 
 def InputParameters():
     pass
 
 def Single(VL, DADict):
+
+    torch.set_default_dtype(torch_dtype)
+
     ML = DADict["Parameters"]
 
     NbTorchThread = getattr(ML,'NbTorchThread',1)
@@ -71,7 +78,7 @@ def Single(VL, DADict):
     #=======================================================================
 
     # Convert data to float32 (needed for pytorch)
-    TrainData = TrainData.astype('float32')
+    TrainData = TrainData.astype(dtype)
     Train_x, Train_y = TrainData[:,:4], TrainData[:,4:]
 
     # Scale test & train input data to [0,1] (based on training data)
@@ -88,7 +95,7 @@ def Single(VL, DADict):
 
     Train_y_tf = torch.from_numpy(Train_y_scale)
 
-    TestData = TestData.astype('float32')
+    TestData = TestData.astype(dtype)
     Test_x, Test_y = TestData[:,:4], TestData[:,4:]
     Test_x_scale = DataScale(Test_x,*InputScaler)
     Test_y_scale = DataScale(Test_y,*OutputScaler)
@@ -199,7 +206,7 @@ def Single(VL, DADict):
     if getattr(ML,'Input',None) != None:
         with torch.no_grad():
             x_scale = DataScale(np.atleast_2d(ML.Input),*InputScaler)
-            x_scale = torch.tensor(x_scale, dtype=torch.float32)
+            x_scale = torch.tensor(x_scale, dtype=torch_dtype)
             y = Power(x_scale)
             y_mean = DataRescale(y.mean.numpy(),*OutputScaler[:,0])
             y_stddev = DataRescale(y.stddev,0,OutputScaler[1,0])
@@ -240,7 +247,7 @@ def Single(VL, DADict):
         grid = grid.reshape([np.prod(_disc),ndim])
         # print(grid)
 
-        grid_tf = torch.tensor(grid, dtype=torch.float32)
+        grid_tf = torch.tensor(grid, dtype=torch_dtype)
         # decide what component of Res to print - gradient (magnitude or individual) or the value
         if Component.lower().startswith('grad'):
             imres = model.Gradient(grid_tf).detach().numpy()
@@ -330,20 +337,48 @@ def Single(VL, DADict):
     # Find the point(s) which give the maximum power
     print("Locating optimum configuration(s) for maximum power")
     NbInit = ML.MaxPowerOpt.get('NbInit',20)
+    np.random.seed(123)
+    init_guess = np.random.uniform(0,1,size=(NbInit,4))
 
-    Optima = FuncOpt(GPR_Opt, NbInit, bnds, args=[Power],
-                    find='max', tol=0.01, order='decreasing')
-    MaxPower_cd,MaxPower_val,MaxPower_grad = Optima
+    if True:
+        Optima = FuncOpt(GPR_Opt, init_guess, find='max', tol=0.01,
+                         order='decreasing',
+                         bounds=bnds, jac=True, args=[Power])
+    else:
+        ''' Test speed difference for optimisation (no constraints)'''
+        m = 5
+        tots,totp = 0, 0
+        for _ in range(m):
+            st = time.time()
+            Optima = FuncOpt(GPR_Opt, init_guess, find='max', tol=0.01,
+                            order='decreasing', version='individual',
+                            bounds=bnds, jac=True, args=[Power])
+            ends = time.time()-st
+            tots+=ends
+
+            st = time.time()
+            Optima = FuncOpt(GPR_Opt, init_guess, find='max', tol=0.01,
+                             order='decreasing',
+                             bounds=bnds, jac=True, args=[Power])
+
+            endp = time.time()-st
+            totp+=endp
+
+        print('Scipy',tots/m)
+        print('Parallel',totp/m)
+
+    MaxPower_cd,MaxPower_val = Optima
+
     # for _MaxPower_cd in MaxPower_cd:
     #     with torch.no_grad():
-    #         MaxPower_cd_tf = torch.tensor(np.atleast_2d(_MaxPower_cd), dtype=torch.float32)
+    #         MaxPower_cd_tf = torch.tensor(np.atleast_2d(_MaxPower_cd), dtype=torch_dtype)
     #         GPR_Out = Power(MaxPower_cd_tf)
     #     _MaxPower_cd = DataRescale(_MaxPower_cd, *InputScaler)
     #     _MaxPower_val = DataRescale(GPR_Out.mean.numpy(),*OutputScaler[:,0])
     #     print(_MaxPower_cd, _MaxPower_val)
 
     with torch.no_grad():
-        MaxPower_cd_tf = torch.tensor(MaxPower_cd, dtype=torch.float32)
+        MaxPower_cd_tf = torch.tensor(MaxPower_cd, dtype=torch_dtype)
         MPPower = Power(MaxPower_cd_tf)
         MPVar = Variation(MaxPower_cd_tf)
     MaxPower_cd = DataRescale(MaxPower_cd, *InputScaler)
@@ -392,18 +427,48 @@ def Single(VL, DADict):
         else:
             print("Locating optimum configuration(s) for maximum uniformity, ensuring power >= {} W".format(ML.DesPowerOpt['Power']))
             NbInit = ML.DesPowerOpt.get('NbInit',20)
-
+            np.random.seed(123)
+            init_guess = np.random.uniform(0,1,size=(NbInit,4))
             # constraint to ensure power requirement is met
             DesPower_norm = DataScale(ML.DesPowerOpt['Power'], *OutputScaler[:,0]) #scale power
             con1 = {'type': 'ineq', 'fun': constraint, 'jac':dconstraint, 'args':(Power, DesPower_norm)}
 
-            Optima = FuncOpt(GPR_Opt, NbInit, bnds, args=[Variation],
-                            find='min', tol=0.01, order='increasing',
-                            constraints=con1, options={'maxiter':100})
+            if True:
+                Optima = FuncOpt(GPR_Opt, init_guess, find='min', tol=0.01,
+                                order='increasing',
+                                bounds=bnds, jac=True,
+                                args=[Variation], constraints=con1)
+            else:
+                m=5
+                tots,totp = 0,0
+                for _ in range(m):
+                    ''' Test speed difference for optimisation with no constraint'''
+                    st = time.time()
+                    Optima = FuncOpt(GPR_Opt, init_guess, find='min', tol=0.01,
+                                     order='increasing', version='individual',
+                                     bounds = bnds, jac=True,
+                                     args=[Variation], constraints=con1)
+                    ends = time.time() - st
+                    tots+=ends
+                    print(ends)
+                    st = time.time()
+                    Optima = FuncOpt(GPR_Opt, init_guess, find='min', tol=0.01,
+                                    order='increasing',
+                                    bounds=bnds, jac=True,
+                                    args=[Variation], constraints=con1)
+                    endp = time.time() - st
+                    totp+=endp
+                    print(endp)
+                print('Scipy',tots/m)
+                print('Multi',totp/m)
 
-            OptVar_cd,OptVar_val,OptVar_grad = Optima
+
+            OptVar_cd,OptVar_val = Optima
+
+
+
             with torch.no_grad():
-                OptVar_tf = torch.tensor(OptVar_cd, dtype=torch.float32)
+                OptVar_tf = torch.tensor(OptVar_cd, dtype=torch_dtype)
                 _P,_V = Power(OptVar_tf), Variation(OptVar_tf)
                 PV = _P.mean.numpy(),_V.mean.numpy()
 
@@ -544,11 +609,12 @@ def Param_ERMES(x,y,z,r,Parameters):
     return Namespace(**Parameters)
 
 def GPR_Opt(X,model):
-    X = torch.tensor(np.atleast_2d(X),dtype=torch.float32)
+    X = torch.tensor(np.atleast_2d(X),dtype=torch_dtype)
     # Function value
     Pred = model(X).mean.detach().numpy()
     # Gradient
-    Grad = model.Gradient(X)[0]
+    Grad = model.Gradient(X)
+    # print(Grad.shape)
     # print(X,Pred)
     return Pred, Grad
 
@@ -557,9 +623,8 @@ def constraint(X, model, DesPower):
     Constraint which must be met during the optimisation of func. This specifies
     that the power must be greater than or equal to 'DesPower'
     '''
-    X = torch.tensor(np.atleast_2d(X),dtype=torch.float32)
+    X = torch.tensor(np.atleast_2d(X),dtype=torch_dtype)
     # Function value
-
     Pred = model(X).mean.detach().numpy()
     constr = Pred - DesPower
     return constr
@@ -569,9 +634,9 @@ def dconstraint(X, model, DesPower):
     Constraint which must be met during the optimisation of func. This specifies
     that the power must be greater than or equal to 'DesPower'
     '''
-    X = torch.tensor(np.atleast_2d(X),dtype=torch.float32)
+    X = torch.tensor(np.atleast_2d(X),dtype=torch_dtype)
     # Gradient
-    Grad = model.Gradient(X)[0]
+    Grad = model.Gradient(X)
 
     return Grad
 

@@ -6,14 +6,14 @@ from importlib import import_module
 import copy
 import pickle
 
-import Scripts.Common.VLFunctions as VLF
+from Scripts.Common.VLFunctions import ErrorMessage, ImportUpdate, WriteData
 from Scripts.Common.VLParallel import VLPool
 
 '''
 DA - Data Analysis
 '''
 
-def Setup(VL, RunDA=True):
+def Setup(VL, RunDA=True, Import=False):
     VL.SIM_DA = "{}/DA".format(VL.SIM_SCRIPTS)
     VL.DAData = {}
     DADicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'DA')
@@ -25,11 +25,14 @@ def Setup(VL, RunDA=True):
     os.makedirs(VL.tmpDA_DIR, exist_ok=True)
 
     for DAName, ParaDict in DADicts.items():
+        CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, DAName)
+        if Import:
+            ImportUpdate("{}/Parameters.py".format(CALC_DIR), ParaDict)
+
         if not os.path.isfile('{}/{}.py'.format(VL.SIM_DA,ParaDict['File'])):
-            VL.Exit(VLF.ErrorMessage("The file {}/{}.py does not "\
+            VL.Exit(ErrorMessage("The file {}/{}.py does not "\
                     "exist".format(VL.SIM_DA,ParaDict['File'])))
 
-        CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, DAName)
         DADict = {'Name':DAName,
                  'CALC_DIR':CALC_DIR,
                  'TMP_CALC_DIR':"{}/{}".format(VL.tmpDA_DIR, DAName),
@@ -54,7 +57,7 @@ def PoolRun(VL, DADict):
     Parameters = DADict["Parameters"]
 
     os.makedirs(DADict['CALC_DIR'], exist_ok=True)
-    VLF.WriteData("{}/Parameters.py".format(DADict['CALC_DIR']), Parameters)
+    WriteData("{}/Parameters.py".format(DADict['CALC_DIR']), Parameters)
 
     DAmod = import_module(Parameters.File)
     DASgl = getattr(DAmod, 'Single', None)
@@ -74,7 +77,7 @@ def Run(VL):
 
     Errorfnc = VLPool(VL,PoolRun,DADicts)
     if Errorfnc:
-        VL.Exit(VLF.ErrorMessage("The following DA routine(s) finished with errors:\n{}".format(Errorfnc)),
+        VL.Exit(ErrorMessage("The following DA routine(s) finished with errors:\n{}".format(Errorfnc)),
                 Cleanup=False)
 
     VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\

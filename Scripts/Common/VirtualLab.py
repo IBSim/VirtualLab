@@ -149,7 +149,7 @@ class VLSetup():
             self._SetMaterialDir(kwargs['MaterialDir'])
 
     def Parameters(self, Parameters_Master, Parameters_Var=None,
-                    RunMesh=True, RunSim=True, RunDA=True):
+                    RunMesh=True, RunSim=True, RunDA=True, Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -157,14 +157,15 @@ class VLSetup():
         RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
         RunSim = self._ParsedArgs.get('RunSim',RunSim)
         RunDA = self._ParsedArgs.get('RunDA',RunDA)
+        Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
         VLNamespaces = ['Mesh','Sim','DA']
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
-        MeshFn.Setup(self,RunMesh)
-        SimFn.Setup(self,RunSim)
-        DAFn.Setup(self,RunDA)
+        MeshFn.Setup(self,RunMesh, Import)
+        SimFn.Setup(self,RunSim, Import)
+        DAFn.Setup(self,RunDA, Import)
 
     def ImportParameters(self, Rel_Parameters):
         '''

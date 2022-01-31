@@ -10,7 +10,7 @@ import pickle
 
 from Scripts.Common.VLPackages.Salome import Salome
 from Scripts.Common.VLPackages.CodeAster import Aster
-import Scripts.Common.VLFunctions as VLF
+from Scripts.Common.VLFunctions import ErrorMessage, ImportUpdate, WriteData
 from Scripts.Common.VLParallel import VLPool
 
 def CheckFile(Directory,fname,ext):
@@ -19,7 +19,7 @@ def CheckFile(Directory,fname,ext):
     else:
         return os.path.isfile('{}/{}.{}'.format(Directory,fname,ext))
 
-def Setup(VL,RunSim=True):
+def Setup(VL,RunSim=True,Import=False):
     VL.SIM_SIM = "{}/Sim".format(VL.SIM_SCRIPTS)
 
     VL.SimData = {}
@@ -29,20 +29,24 @@ def Setup(VL,RunSim=True):
 
     sys.path.insert(0,VL.SIM_SIM)
     for SimName, ParaDict in SimDicts.items():
+        CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, SimName)
+        if Import:
+            ImportUpdate("{}/Parameters.py".format(CALC_DIR), ParaDict)
+
         # Run checks
         # Check files exist
         if not CheckFile(VL.SIM_SIM,ParaDict.get('PreAsterFile'),'py'):
-        	VL.Exit(VLF.ErrorMessage("PreAsterFile '{}.py' not in directory "\
+        	VL.Exit(ErrorMessage("PreAsterFile '{}.py' not in directory "\
                             "{}".format(ParaDict['PreAsterFile'],VL.SIM_SIM)))
         if not CheckFile(VL.SIM_SIM,ParaDict.get('AsterFile'),'comm'):
-        	VL.Exit(VLF.ErrorMessage("AsterFile '{}.comm' not in directory "\
+        	VL.Exit(ErrorMessage("AsterFile '{}.comm' not in directory "\
                             "{}".format(ParaDict['AsterFile'],VL.SIM_SIM)))
         if not CheckFile(VL.SIM_SIM, ParaDict.get('PostAsterFile'), 'py'):
-        	VL.Exit(VLF.ErrorMessage("PostAsterFile '{}.py' not in directory "\
+        	VL.Exit(ErrorMessage("PostAsterFile '{}.py' not in directory "\
                             "{}".format(ParaDict['PostAsterFile'],VL.SIM_SIM)))
         # Check mesh will be available
         if not (ParaDict['Mesh'] in VL.MeshData or CheckFile(VL.MESH_DIR, ParaDict['Mesh'], 'med')):
-        	VL.Exit(VLF.ErrorMessage("Mesh '{}' isn't being created and is "\
+        	VL.Exit(ErrorMessage("Mesh '{}' isn't being created and is "\
             "not in the mesh directory '{}'".format(ParaDict['Mesh'], VL.MESH_DIR)))
         # Check materials used
         Materials = ParaDict.get('Materials',[])
@@ -50,12 +54,11 @@ def Setup(VL,RunSim=True):
         elif type(Materials)==dict: Materials = Materials.values()
         MatErr = [mat for mat in set(Materials) if not os.path.isdir('{}/{}'.format(VL.MATERIAL_DIR, mat))]
         if MatErr:
-        		VL.Exit(VLF.ErrorMessage("Material(s) {} specified for {} not available.\n"\
+        		VL.Exit(ErrorMessage("Material(s) {} specified for {} not available.\n"\
         		"Please see the materials directory {} for options.".format(MatErr,SimName,VL.MATERIAL_DIR)))
         # Checks complete
 
         # Create dict of simulation specific information to be nested in SimData
-        CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, SimName)
         SimDict = {'Name':SimName,
                     'TMP_CALC_DIR':"{}/Sim/{}".format(VL.TEMP_DIR, SimName),
                     'CALC_DIR':CALC_DIR,
@@ -94,7 +97,7 @@ def PoolRun(VL, SimDict, Flags):
     # Create CALC_DIR where results for this sim will be stored
     os.makedirs(SimDict['CALC_DIR'],exist_ok=True)
     # Write Parameters used for this sim to CALC_DIR
-    VLF.WriteData("{}/Parameters.py".format(SimDict['CALC_DIR']), Parameters)
+    WriteData("{}/Parameters.py".format(SimDict['CALC_DIR']), Parameters)
 
     # ==========================================================================
     # Run pre aster step
@@ -198,7 +201,7 @@ def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
 
     Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs)
     if Errorfnc:
-        VL.Exit(VLF.ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)),
+        VL.Exit(ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)),
                 Cleanup=False)
 
     VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\

@@ -7,10 +7,10 @@ from importlib import import_module
 import shutil
 from Scripts.Common.VLPackages.Salome import Salome
 
-import Scripts.Common.VLFunctions as VLF
+from Scripts.Common.VLFunctions import ErrorMessage, WarningMessage, ImportUpdate, WriteData
 from Scripts.Common.VLParallel import VLPool
 
-def Setup(VL, RunMesh=True):
+def Setup(VL, RunMesh=True, Import=False):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
     VL.SIM_MESH = "{}/Mesh".format(VL.SIM_SCRIPTS)
 
@@ -22,13 +22,17 @@ def Setup(VL, RunMesh=True):
 
     sys.path.insert(0, VL.SIM_MESH)
     for MeshName, ParaDict in MeshDicts.items():
+        MeshPath = "{}/{}".format(VL.MESH_DIR, MeshName)
+        if Import:
+            ImportUpdate("{}.py".format(MeshPath), ParaDict)
+
         Parameters = Namespace(**ParaDict)
         # ====================================================================
         # Perform checks
         # Check that mesh file exists
         filepath = '{}/{}.py'.format(VL.SIM_MESH,Parameters.File)
         if not os.path.exists(filepath):
-            VL.Exit(VLF.ErrorMessage('Mesh file\n{}\n does not exist'.format(filepath)))
+            VL.Exit(ErrorMessage('Mesh file\n{}\n does not exist'.format(filepath)))
 
         # Check Verify function, if it exists
         MeshFile = import_module(Parameters.File)
@@ -37,18 +41,17 @@ def Setup(VL, RunMesh=True):
             if warning:
                 mess = "Warning issed for mesh '{}':\n\n".format(MeshName)
                 mess+= "\n\n".join(warning)
-                print(VLF.WarningMessage(mess))
+                print(WarningMessage(mess))
 
             if error:
                 mess = "Error issued for mesh '{}':\n\n".format(MeshName)
                 mess+= "\n\n".join(error)
-                print(VLF.ErrorMessage(mess))
-                VL.Exit()
+                VL.Exit(ErrorMessage(mess))
 
         ## Checks complete ##
 
         MeshDict = {'Name':MeshName,
-                    'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
+                    'MESH_FILE':"{}.med".format(MeshPath),
                     'TMP_CALC_DIR':"{}/Mesh/{}".format(VL.TEMP_DIR, MeshName),
                     'Parameters':Parameters
                     }
@@ -67,7 +70,7 @@ def PoolRun(VL, MeshDict,**kwargs):
     os.makedirs(os.path.dirname(Meshfname),exist_ok=True)
 
     # Write Parameters used to make the mesh to the mesh directory
-    VLF.WriteData("{}.py".format(Meshfname), MeshDict['Parameters'])
+    WriteData("{}.py".format(Meshfname), MeshDict['Parameters'])
 
     # Use a user-made MeshRun file if it exists. If not use the default one.
     if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
@@ -102,7 +105,7 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
         VL.Exit('Terminating after checking mesh')
 
     elif MeshCheck and MeshCheck not in VL.MeshData.keys():
-        VL.Exit(VLF.ErrorMessage("'{}' specified for MeshCheck is not one of meshes to be created.\n"\
+        VL.Exit(ErrorMessage("'{}' specified for MeshCheck is not one of meshes to be created.\n"\
                      "Meshes to be created are:{}".format(MeshCheck, list(VL.Data.keys()))))
 
     # ==========================================================================
@@ -117,7 +120,7 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
 
     Errorfnc = VLPool(VL,PoolRun,MeshDicts)
     if Errorfnc:
-        VL.Exit(VLF.ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)),
+        VL.Exit(ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)),
                 Cleanup=False)
 
     VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~\n'\

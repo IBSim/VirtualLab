@@ -168,6 +168,129 @@ class VLSetup():
         DAFn.Setup(self,RunDA)
         VoxFn.Setup(self,RunVox)
 
+    def ImportParameters(self, Rel_Parameters):
+        '''
+        Rel_Parameters is a file name relative to the Input directory
+        '''
+        # Strip .py off the end if it's in the name
+        if os.path.splitext(Rel_Parameters)[1]=='.py':
+            Rel_Parameters = os.path.splitext(Rel_Parameters)[0]
+
+        Abs_Parameters = "{}/{}.py".format(self.PARAMETERS_DIR,Rel_Parameters)
+        # Check File exists
+        if not os.path.exists(Abs_Parameters):
+            message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
+            self.Exit(ErrorMessage(message))
+
+        sys.path.insert(0, os.path.dirname(Abs_Parameters))
+        Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
+        sys.path.pop(0)
+
+        return Parameters
+
+    def GetParams(self, Master, Var, VLTypes):
+        '''Master & Var can be a module, namespace, string or None.
+        A string references a file to import from within the input directory.
+        '''
+
+        if Master == None and Var == None:
+            message = "Both Parameters_Master or Parameters_Var can't be None"
+            self.Exit(ErrorMessage(message))
+
+        # ======================================================================
+        # If string, import files
+        if type(Master)==str:
+            Master = self.ImportParameters(Master)
+        if type(Var)==str:
+            Var = self.ImportParameters(Var)
+
+        # ======================================================================
+        # Check any of the attributes of NS are included
+        if Master != None and not set(Master.__dict__).intersection(VLTypes):
+            message = "Parameters_Master contains none of the attrbutes {}".format(VLTypes)
+            self.Exit(ErrorMessage(message))
+        if Var != None and not set(Var.__dict__).intersection(VLTypes):
+            message = "Parameters_Var contains none of the attrbutes {}".format(VLTypes)
+            self.Exit(ErrorMessage(message))
+
+        # ======================================================================
+        self.Parameters_Master = Namespace()
+        self.Parameters_Var = Namespace()
+        for nm in VLTypes:
+            master_nm = getattr(Master, nm, None)
+            var_nm = getattr(Var, nm, None)
+            # ==================================================================
+            # Check all in NS have the attribute 'Name'
+            if master_nm != None and not hasattr(master_nm,'Name'):
+                message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(nm)
+                self.Exit(ErrorMessage(message))
+            if master_nm != None and not hasattr(master_nm,'Name'):
+                message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(nm)
+                self.Exit(ErrorMessage(message))
+
+            # ==================================================================
+            setattr(self.Parameters_Master, nm, master_nm)
+            setattr(self.Parameters_Var, nm, var_nm)
+
+    def CreateParameters(self, junk1, junk2, VLType):
+        '''
+        Create parameter dictionary of attribute VLType using Parameters_Master and Var.
+        '''
+        # ======================================================================
+        # Get VLType from Parameters_Master and _Parameters_Var (if they are defined)
+        Master = getattr(self.Parameters_Master, VLType, None)
+        Var = getattr(self.Parameters_Var, VLType, None)
+
+        # ======================================================================
+        # VLType isn't in Master of Var
+        if Master==None and Var==None: return {}
+
+        # ======================================================================
+        # VLType is in Master but not in Var
+        elif Var==None: return {Master.Name : Master.__dict__}
+
+        # ======================================================================
+        # VLType is in Var
+
+        # Check all entires in Parameters_Var have the same length
+        NbNames = len(Var.Name)
+        VarNames, NewVals, errVar = [],[],[]
+        for VariableName, NewValues in Var.__dict__.items():
+            VarNames.append(VariableName)
+            NewVals.append(NewValues)
+            if len(NewValues) != NbNames:
+                errVar.append(VariableName)
+
+        if errVar:
+            attrstr = "\n".join(["{}.{}".format(VLType,i) for i in errVar])
+            message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
+                "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(VLType,attrstr)
+            self.Exit(ErrorMesage(message))
+
+        # VLType is in Master and Var
+        if Master!=None and Var !=None:
+            # Check if there are attributes defined in Var which are not in Master
+            dfattrs = set(Var.__dict__.keys()) - set(list(Master.__dict__.keys())+['Run'])
+            if dfattrs:
+                attstr = "\n".join(["{}.{}".format(VLType,i) for i in dfattrs])
+                message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
+                    "{}\n\nThis may lead to unexpected results.".format(attstr)
+                print(WarningMessage(message))
+
+        # ======================================================================
+        # Create dictionary for each entry in Parameters_Var
+        VarRun = getattr(Var,'Run',[True]*NbNames) # create True list if Run not an attribute of VLType
+        ParaDict = {}
+        for Name, NewValues, Run in zip(Var.Name,zip(*NewVals),VarRun):
+            if not Run: continue
+            base = {} if Master==None else copy.deepcopy(Master.__dict__)
+            for VariableName, NewValue in zip(VarNames,NewValues):
+                base[VariableName]=NewValue
+            ParaDict[Name] = base
+
+        return ParaDict
+
+
     def Mesh(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return MeshFn.Run(self,**kwargs)
@@ -244,120 +367,10 @@ class VLSetup():
 
         print(exitstr)
 
-
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
 
-    def ImportParameters(self, Rel_Parameters):
-        '''
-        Rel_Parameters is a file name relative to the Input directory
-        '''
-        # Strip .py off the end if it's in the name
-        if os.path.splitext(Rel_Parameters)[1]=='.py':
-            Rel_Parameters = os.path.splitext(Rel_Parameters)[0]
 
-        Abs_Parameters = "{}/{}.py".format(self.PARAMETERS_DIR,Rel_Parameters)
-        # Check File exists
-        if not os.path.exists(Abs_Parameters):
-            message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
-            self.Exit(ErrorMessage(message))
-
-        sys.path.insert(0, os.path.dirname(Abs_Parameters))
-        Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
-        sys.path.pop(0)
-
-        return Parameters
-
-    def GetParams(self, Parameters_Master, Parameters_Var, NS):
-        # Parameters_Master &/or Var can be module, a namespace or string.
-        # A string references a file in the input directory
-
-        # ======================================================================
-        # Parameters Master
-        if type(Parameters_Master)==str:
-            Main = self.ImportParameters(Parameters_Master)
-        elif any(hasattr(Parameters_Master,nm) for nm in NS):
-            Main = Parameters_Master
-        else: sys.exit()
-
-        self.Parameters_Master = Namespace()
-        for nm in NS:
-            setattr(self.Parameters_Master, nm, getattr(Main, nm, None))
-
-        # ======================================================================
-        # Parameters Var
-        if type(Parameters_Var)==str:
-            Var = self.ImportParameters(Parameters_Var)
-        elif any(hasattr(Parameters_Var,nm) for nm in NS):
-            Var = Parameters_Var
-        elif Parameters_Var==None:
-            Var = None
-        else: sys.exit()
-
-        self.Parameters_Var = Namespace()
-        for nm in NS:
-            setattr(self.Parameters_Var, nm, getattr(Var, nm, None))
-
-        # ======================================================================
-
-    def CreateParameters(self, Parameters_Master, Parameters_Var, InstName):
-        '''
-        Create parameter dictionary for instance 'InstName' using Parameters_Master and Var.
-        '''
-        # ======================================================================
-        # Performs Checks & return warnings or errors
-
-        # Get instance 'InstName' from Parameters_Master and _Parameters_Var (if they are defined)
-        # and check they have the attribute 'Name'
-        Master=getattr(Parameters_Master,InstName, None)
-        if not Master: return {}
-        if not hasattr(Master,'Name'):
-            message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(InstName)
-            self.Exit(ErrorMessage(message))
-
-        Var=getattr(Parameters_Var,InstName, None)
-        if not Var: return {Master.Name : Master.__dict__}
-        if not hasattr(Var,'Name'):
-            message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(InstName)
-            self.Exit(ErrorMessage(message))
-
-        # Check if there are attributes defined in Var which are not in Master
-        dfattrs = set(Var.__dict__.keys()) - set(list(Master.__dict__.keys())+['Run'])
-        if dfattrs:
-            attstr = "\n".join(["{}.{}".format(InstName,i) for i in dfattrs])
-            message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
-                "{}\n\nThis may lead to unexpected results.".format(attstr)
-            print(WarningMessage(message))
-
-        # Check all entires in Parameters_Var have the same length
-        NbNames = len(Var.Name)
-        VarNames, NewVals, errVar = [],[], []
-        for VariableName, NewValues in Var.__dict__.items():
-            VarNames.append(VariableName)
-            NewVals.append(NewValues)
-            if len(NewValues) != NbNames:
-                errVar.append(VariableName)
-
-        if errVar:
-            attrstr = "\n".join(["{}.{}".format(InstName,i) for i in errVar])
-            message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
-                "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(InstName,attrstr)
-            self.Exit(ErrorMesage(message))
-
-        # ======================================================================
-        # Create dictionary for each entry in Parameters_Var
-        VarRun = getattr(Var,'Run',[True]*NbNames) # create True list if Run not an attribute of InstName
-        ParaDict = {}
-        for Name, NewValues, Run in zip(Var.Name,zip(*NewVals),VarRun):
-            if not Run: continue
-
-            cpMaster = copy.deepcopy(Master.__dict__)
-            for VariableName, NewValue in zip(VarNames,NewValues):
-                # if type(NewValue)==dict:
-                cpMaster[VariableName]=NewValue
-            ParaDict[Name] = cpMaster
-
-        return ParaDict
 
     def _GetParsedArgs(self):
         self._ParsedArgs = {}

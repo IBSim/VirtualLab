@@ -9,8 +9,8 @@ import torch
 import gpytorch
 import time
 
-from Scripts.Common.VLFunctions import MeshInfo
-from Functions import Uniformity3 as UniformityScore, DataScale, DataRescale
+from Functions import Uniformity3 as UniformityScore
+import ML
 from Optimise import FuncOpt
 from Sim.PreHIVE import ERMES
 
@@ -24,30 +24,30 @@ def Single(VL, DADict):
 
     torch.set_default_dtype(torch_dtype)
 
-    ML = DADict["Parameters"]
+    Parameters = DADict["Parameters"]
 
-    NbTorchThread = getattr(ML,'NbTorchThread',1)
+    NbTorchThread = getattr(Parameters,'NbTorchThread',1)
     torch.set_num_threads(NbTorchThread)
-    torch.manual_seed(getattr(ML,'Seed',100))
+    torch.manual_seed(getattr(Parameters,'Seed',100))
 
     # device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
     device = torch.device('cpu')
 
     # File where all data is stored
-    DataFile = "{}/{}".format(VL.PROJECT_DIR,ML.DataFile)
+    DataFile = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
 
-    if ML.Train:
-        DataSplit = getattr(ML,'DataSplit',0.7)
-        TrainNb = getattr(ML,'TrainNb',None)
+    if Parameters.Train:
+        DataSplit = getattr(Parameters,'DataSplit',0.7)
+        TrainNb = getattr(Parameters,'TrainNb',None)
 
         #=======================================================================
         # Get Training & Testing data from file
         MLData = h5py.File(DataFile,'r')
 
-        if ML.TrainData in MLData:
-            _TrainData = MLData[ML.TrainData][:]
-        elif "{}/{}".format(VL.StudyName,ML.TrainData) in MLData:
-            _TrainData = MLData["{}/{}".format(VL.StudyName,ML.TrainData)][:]
+        if Parameters.TrainData in MLData:
+            _TrainData = MLData[Parameters.TrainData][:]
+        elif "{}/{}".format(VL.StudyName,Parameters.TrainData) in MLData:
+            _TrainData = MLData["{}/{}".format(VL.StudyName,Parameters.TrainData)][:]
         else : sys.exit("Training data not found")
 
         if not TrainNb:
@@ -57,11 +57,11 @@ def Single(VL, DADict):
         np.save("{}/TrainData".format(DADict["CALC_DIR"]),TrainData)
 
         TestNb = int(np.ceil(TrainNb*(1-DataSplit)/DataSplit))
-        if hasattr(ML,'TestData'):
-            if ML.TestData == ML.TrainData:
+        if hasattr(Parameters,'TestData'):
+            if Parameters.TestData == Parameters.TrainData:
                 TestData = _TrainData[TrainNb:,:]
-            elif ML.TestData in MLData :
-                TestData = MLData[ML.TestData][:]
+            elif Parameters.TestData in MLData :
+                TestData = MLData[Parameters.TestData][:]
             else : sys.exit('Testing data not found')
         else:
             TestData = _TrainData[TrainNb:,:]
@@ -79,26 +79,23 @@ def Single(VL, DADict):
 
     # Convert data to float32 (needed for pytorch)
     TrainData = TrainData.astype(dtype)
+    TestData = TestData.astype(dtype)
     Train_x, Train_y = TrainData[:,:4], TrainData[:,4:]
+    Test_x, Test_y = TestData[:,:4], TestData[:,4:]
 
     # Scale test & train input data to [0,1] (based on training data)
     InputScaler = np.array([Train_x.min(axis=0),Train_x.max(axis=0) - Train_x.min(axis=0)])
-    # InputScaler = np.array([np.mean(Train_x,axis=0),np.std(Train_x,axis=0)])
-    Train_x_scale = DataScale(Train_x,*InputScaler)
-    # Scale test & train output data to [0,1] (based on training data)
     OutputScaler = np.array([Train_y.min(axis=0),Train_y.max(axis=0) - Train_y.min(axis=0)])
-
+    # InputScaler = np.array([np.mean(Train_x,axis=0),np.std(Train_x,axis=0)])
     # OutputScaler = np.array([np.mean(Train_y,axis=0),np.std(Train_y,axis=0)])
-    Train_y_scale = DataScale(Train_y,*OutputScaler)
 
+    Train_x_scale = ML.DataScale(Train_x,*InputScaler)
+    Train_y_scale = ML.DataScale(Train_y,*OutputScaler)
     Train_x_tf = torch.from_numpy(Train_x_scale)
-
     Train_y_tf = torch.from_numpy(Train_y_scale)
 
-    TestData = TestData.astype(dtype)
-    Test_x, Test_y = TestData[:,:4], TestData[:,4:]
-    Test_x_scale = DataScale(Test_x,*InputScaler)
-    Test_y_scale = DataScale(Test_y,*OutputScaler)
+    Test_x_scale = ML.DataScale(Test_x,*InputScaler)
+    Test_y_scale = ML.DataScale(Test_y,*OutputScaler)
     Test_x_tf = torch.from_numpy(Test_x_scale)
     Test_y_tf = torch.from_numpy(Test_y_scale)
 
@@ -107,7 +104,7 @@ def Single(VL, DADict):
     Train_P_tf,Train_V_tf = Train_y_tf[:,0],Train_y_tf[:,1]
     Test_P_tf,Test_V_tf = Test_y_tf[:,0],Test_y_tf[:,1]
 
-    if getattr(ML,'Noise',True):
+    if getattr(Parameters,'Noise',True):
         PowerLH = gpytorch.likelihoods.GaussianLikelihood()
         VarLH = gpytorch.likelihoods.GaussianLikelihood()
     else:
@@ -116,21 +113,18 @@ def Single(VL, DADict):
         PowerLH = gpytorch.likelihoods.FixedNoiseGaussianLikelihood(sig)
         VarLH = gpytorch.likelihoods.FixedNoiseGaussianLikelihood(sig)
 
-    # If kernel is 'Matern' then nu must be specified in Parameters
-    options = {}
-    if hasattr(ML,'Nu'): options['nu']=ML.Nu
 
-    Power = ExactGPmodel(Train_x_tf, Train_P_tf, PowerLH,
-                    ML.Kernel,options)
-    Variation = ExactGPmodel(Train_x_tf, Train_V_tf, VarLH,
-                    ML.Kernel,options)
+    Power = ML.ExactGPmodel(Train_x_tf, Train_P_tf, PowerLH,
+                    Parameters.Kernel)
+    Variation = ML.ExactGPmodel(Train_x_tf, Train_V_tf, VarLH,
+                    Parameters.Kernel)
 
-    if ML.Train:
+    if Parameters.Train:
         # Power
-        lr = getattr(ML,'lr', 0.01)
+        lr = getattr(Parameters,'lr', 0.01)
         DADict['Data']['MSE'] = MSEvals = {}
         print('Training Power')
-        Conv_P,MSE_P = Power.Training(PowerLH,ML.Iterations,lr=lr,Print=100)
+        Conv_P,MSE_P = Power.Training(PowerLH,Parameters.Iterations,lr=lr,Print=50)
         print()
         ModelFile = '{}/Power.pth'.format(DADict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Power.state_dict(), ModelFile)
@@ -142,8 +136,8 @@ def Single(VL, DADict):
             plt.close()
 
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500), gpytorch.settings.debug(False):
-            Power_test = MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])
-            Power_train = MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])
+            Power_test = ML.MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])
+            Power_train = ML.MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])
         Power_test *= OutputScaler[1,0]**2
         Power_train *= OutputScaler[1,0]**2
         print("Train MSE: {}\nTest MSE: {}\n".format(Power_train,Power_test))
@@ -154,7 +148,7 @@ def Single(VL, DADict):
 
         # Variation
         print('Training Variation')
-        Conv_V,MSE_V = Variation.Training(VarLH,ML.Iterations,lr=lr,Print=100)
+        Conv_V,MSE_V = Variation.Training(VarLH,Parameters.Iterations,lr=lr,Print=100)
         print()
         ModelFile = '{}/Variation.pth'.format(DADict["CALC_DIR"]) # File model will be saved to/loaded from
         torch.save(Variation.state_dict(), ModelFile)
@@ -166,8 +160,8 @@ def Single(VL, DADict):
             plt.close()
 
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500), gpytorch.settings.debug(False):
-            Vari_test = MSE(Variation(Test_x_tf).mean.numpy(), Test_y_scale[:,1])
-            Vari_train = MSE(Variation(Train_x_tf).mean.numpy(), Train_y_scale[:,1])
+            Vari_test = ML.MSE(Variation(Test_x_tf).mean.numpy(), Test_y_scale[:,1])
+            Vari_train = ML.MSE(Variation(Train_x_tf).mean.numpy(), Train_y_scale[:,1])
         Vari_test  *= OutputScaler[1,1]**2
         Vari_train *= OutputScaler[1,1]**2
         print("Train MSE: {}\nTest MSE: {}\n".format(Vari_train,Vari_test))
@@ -175,10 +169,10 @@ def Single(VL, DADict):
         MSEvals["Variation_Train"] = Vari_train
 
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500), gpytorch.settings.debug(False):
-            Test_MSE_P = MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])
+            Test_MSE_P = ML.MSE(Power(Test_x_tf).mean.numpy(), Test_y_scale[:,0])
             Test_MSE_P *= OutputScaler[1,0]**2 #scale MSE to correct range
 
-            Train_MSE_P = MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])
+            Train_MSE_P = ML.MSE(Power(Train_x_tf).mean.numpy(), Train_y_scale[:,0])
             Train_MSE_P *= OutputScaler[1,0]**2 #scale MSE to correct range
 
         fnt=36
@@ -203,13 +197,13 @@ def Single(VL, DADict):
         Variation.load_state_dict(state_dict_V)
         Variation.eval(); VarLH.eval()
 
-    if getattr(ML,'Input',None) != None:
+    if getattr(Parameters,'Input',None) != None:
         with torch.no_grad():
-            x_scale = DataScale(np.atleast_2d(ML.Input),*InputScaler)
+            x_scale = ML.DataScale(np.atleast_2d(Parameters.Input),*InputScaler)
             x_scale = torch.tensor(x_scale, dtype=torch_dtype)
             y = Power(x_scale)
-            y_mean = DataRescale(y.mean.numpy(),*OutputScaler[:,0])
-            y_stddev = DataRescale(y.stddev,0,OutputScaler[1,0])
+            y_mean = ML.DataRescale(y.mean.numpy(),*OutputScaler[:,0])
+            y_stddev = ML.DataRescale(y.stddev,0,OutputScaler[1,0])
             print(y_mean)
             print(y_stddev)
             # print(y_mean)
@@ -218,7 +212,7 @@ def Single(VL, DADict):
 
 
 
-    if 1:
+    if 0:
         model=Power
         Slice = 'xy'
         Res = 'Power' # 'Uniformity'
@@ -261,15 +255,15 @@ def Single(VL, DADict):
             with torch.no_grad():
                 imres = model(grid_tf).mean.detach().numpy()
 
-        imres = DataRescale(imres,*OutputScaler[:,0])
+        imres = ML.DataRescale(imres,*OutputScaler[:,0])
 
         # min and max value for global colour bar
         IMMin, IMMax = imres.min(axis=0), imres.max(axis=0)
 
         imres = imres.reshape(_disc+[*imres.shape[1:]])
         # scaled vales for major axis
-        arr1 = DataRescale(DiscMaj,*InputScaler[:,AxMaj[0]])
-        arr2 = DataRescale(DiscMaj,*InputScaler[:,AxMaj[1]])
+        arr1 = ML.DataRescale(DiscMaj,*InputScaler[:,AxMaj[0]])
+        arr2 = ML.DataRescale(DiscMaj,*InputScaler[:,AxMaj[1]])
 
         PlotTrain=False
         df = DiscMaj[1] - DiscMaj[0]
@@ -336,7 +330,7 @@ def Single(VL, DADict):
     # Optimsation 1: Find the point of max power
     # Find the point(s) which give the maximum power
     print("Locating optimum configuration(s) for maximum power")
-    NbInit = ML.MaxPowerOpt.get('NbInit',20)
+    NbInit = Parameters.MaxPowerOpt.get('NbInit',20)
     np.random.seed(123)
     init_guess = np.random.uniform(0,1,size=(NbInit,4))
 
@@ -369,25 +363,17 @@ def Single(VL, DADict):
 
     MaxPower_cd,MaxPower_val = Optima
 
-    # for _MaxPower_cd in MaxPower_cd:
-    #     with torch.no_grad():
-    #         MaxPower_cd_tf = torch.tensor(np.atleast_2d(_MaxPower_cd), dtype=torch_dtype)
-    #         GPR_Out = Power(MaxPower_cd_tf)
-    #     _MaxPower_cd = DataRescale(_MaxPower_cd, *InputScaler)
-    #     _MaxPower_val = DataRescale(GPR_Out.mean.numpy(),*OutputScaler[:,0])
-    #     print(_MaxPower_cd, _MaxPower_val)
-
     with torch.no_grad():
         MaxPower_cd_tf = torch.tensor(MaxPower_cd, dtype=torch_dtype)
         MPPower = Power(MaxPower_cd_tf)
         MPVar = Variation(MaxPower_cd_tf)
-    MaxPower_cd = DataRescale(MaxPower_cd, *InputScaler)
+    MaxPower_cd = ML.DataRescale(MaxPower_cd, *InputScaler)
     MPMean = np.vstack((MPPower.mean.numpy(),MPVar.mean.numpy())).T
     MPStd = np.vstack((MPPower.stddev.detach(),MPVar.stddev.detach())).T
 
-    MaxPower_val = DataRescale(MPMean,*OutputScaler)
+    MaxPower_val = ML.DataRescale(MPMean,*OutputScaler)
 
-    MaxPower_std = DataRescale(MPStd,0,OutputScaler[1,:])
+    MaxPower_std = ML.DataRescale(MPStd,0,OutputScaler[1,:])
     print("    {:7}{:7}{:7}{:11}{:9}".format('x','y','z','r','Power'))
     for coord, val, std in zip(MaxPower_cd,MaxPower_val,MaxPower_std):
         print("({0:.4f},{1:.4f},{2:.4f},{3:.4f}) ---> {4:.2f} W ({6}) {5:.2f} ({7})".format(*coord,*val,*std))
@@ -395,11 +381,11 @@ def Single(VL, DADict):
 
     DADict["Data"]['MaxPower'] = MaxPower = {'x':MaxPower_cd[0],'y':MaxPower_val[0,0]}
 
-    if ML.MaxPowerOpt.get('Verify',True):
+    if Parameters.MaxPowerOpt.get('Verify',True):
         print("Checking results at optima\n")
         ERMESMaxPower = '{}/MaxPower.rmed'.format(DADict["CALC_DIR"])
         EMParameters = Param_ERMES(*MaxPower_cd[0],ERMES_Parameters)
-        RunERMES = ML.MaxPowerOpt.get('NewSim',True)
+        RunERMES = Parameters.MaxPowerOpt.get('NewSim',True)
 
         JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,MeshFile,ERMESMaxPower,
                                                 EMParameters, DADict["TMP_CALC_DIR"],
@@ -421,16 +407,16 @@ def Single(VL, DADict):
         MaxPower["target"] = Power
 
 
-    if hasattr(ML,'DesPowerOpt'):
-        if ML.DesPowerOpt['Power'] >= MaxPower_val[0,0]:
+    if hasattr(Parameters,'DesPowerOpt'):
+        if Parameters.DesPowerOpt['Power'] >= MaxPower_val[0,0]:
             print('DesiredPower greater than power available.\n')
         else:
-            print("Locating optimum configuration(s) for maximum uniformity, ensuring power >= {} W".format(ML.DesPowerOpt['Power']))
-            NbInit = ML.DesPowerOpt.get('NbInit',20)
+            print("Locating optimum configuration(s) for maximum uniformity, ensuring power >= {} W".format(Parameters.DesPowerOpt['Power']))
+            NbInit = Parameters.DesPowerOpt.get('NbInit',20)
             np.random.seed(123)
             init_guess = np.random.uniform(0,1,size=(NbInit,4))
             # constraint to ensure power requirement is met
-            DesPower_norm = DataScale(ML.DesPowerOpt['Power'], *OutputScaler[:,0]) #scale power
+            DesPower_norm = ML.DataScale(Parameters.DesPowerOpt['Power'], *OutputScaler[:,0]) #scale power
             con1 = {'type': 'ineq', 'fun': constraint, 'jac':dconstraint, 'args':(Power, DesPower_norm)}
 
             if True:
@@ -472,8 +458,8 @@ def Single(VL, DADict):
                 _P,_V = Power(OptVar_tf), Variation(OptVar_tf)
                 PV = _P.mean.numpy(),_V.mean.numpy()
 
-            OptVar_val = DataRescale(np.array(PV).T,*OutputScaler)
-            OptVar_cd = DataRescale(OptVar_cd, *InputScaler)
+            OptVar_val = ML.DataRescale(np.array(PV).T,*OutputScaler)
+            OptVar_cd = ML.DataRescale(OptVar_cd, *InputScaler)
 
             print("    {:7}{:7}{:7}{:11}{:9}{:8}".format('x','y','z','r','Power','Variation'))
             for coord, val in zip(OptVar_cd, OptVar_val):
@@ -482,10 +468,10 @@ def Single(VL, DADict):
 
             DADict["Data"]['C_Var'] = C_Var = {'x':OptVar_cd,'y':OptVar_val}
 
-            if ML.DesPowerOpt.get('Verify',True):
+            if Parameters.DesPowerOpt.get('Verify',True):
                 print("Checking results at optima\n")
-                ERMESRes = '{}/MinVar_{}.rmed'.format(DADict["CALC_DIR"],ML.DesPowerOpt['Power'])
-                RunERMES = ML.DesPowerOpt.get('NewSim',True)
+                ERMESRes = '{}/MinVar_{}.rmed'.format(DADict["CALC_DIR"],Parameters.DesPowerOpt['Power'])
+                RunERMES = Parameters.DesPowerOpt.get('NewSim',True)
                 EMParameters = Param_ERMES(*OptVar_cd[0],ERMES_Parameters)
 
                 JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,MeshFile,ERMESRes,
@@ -516,93 +502,6 @@ def Single(VL, DADict):
         with open("{}/Summary.txt".format(DADict['CALC_DIR']),'w') as f:
             f.write(OutString)
 
-
-def MSE(Predicted,Target):
-    sqdiff = (Predicted - Target)**2
-    return np.mean(sqdiff)
-
-
-class ExactGPmodel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, kernel,options={}):
-        super(ExactGPmodel, self).__init__(train_x, train_y, likelihood)
-
-        self.mean_module = gpytorch.means.ConstantMean()
-
-        if kernel.lower() in ('rbf'):
-            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=4))
-        if kernel.lower() in ('matern'):
-            nu = options.get('nu',2.5)
-            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=nu,ard_num_dims=4))
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-    def Training(self,LH,Iterations=1000, lr=0.01,test=None, Print=50, ConvCheck=50,**kwargs):
-
-        self.train()
-        LH.train()
-        # Use the adam optimizer
-        optimizer = torch.optim.Adam(self.parameters(), lr=lr)  # Includes GaussianLikelihood parameters
-        # "Loss" for GPs - the marginal log likelihood
-        mll = gpytorch.mlls.ExactMarginalLogLikelihood(LH,self)
-
-        ConvAvg = float('inf')
-        Convergence = []
-        TrainMSE, TestMSE = [],[]
-        print("Iteration      Loss    Lengthscale    Noise    OutputScale")
-        for i in range(Iterations):
-            optimizer.zero_grad() # Zero gradients from previous iteration
-            # Output from model
-            with gpytorch.settings.max_cholesky_size(1500):
-                output = self(self.train_inputs[0])
-                # Calc loss and backprop gradients
-                loss = -mll(output, self.train_targets)
-                loss.backward()
-                optimizer.step()
-
-            with torch.no_grad():
-                if i==0 or (i+1) % Print == 0:
-                    print("{}    {}    {}    {}    {}".format(i+1, loss.numpy(),
-                                                self.covar_module.base_kernel.lengthscale.numpy()[0],
-                                                self.likelihood.noise.numpy()[0],
-                                                self.covar_module.outputscale.numpy()))
-                    # print(i+1, loss.item(),self.covar_module.base_kernel.lengthscale,
-                    #         self.covar_module.outputscale)
-                Convergence.append(loss.item())
-
-            if test and i%50==0:
-                with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500),gpytorch.settings.fast_pred_var():
-                    self.eval(); LH.eval()
-                    x,y = test
-                    pred = LH(self(x))
-                    MSE = np.mean(((pred.mean-y).numpy())**2)
-                    print("MSE",MSE)
-                    TestMSE.append(MSE)
-                    self.train();LH.train()
-                    if (i+1) % ConvCheck == 0:
-                        print(MSE)
-
-            if (i+1) % ConvCheck == 0:
-                Avg = np.mean(Convergence[-ConvCheck:])
-                if Avg > ConvAvg:
-                    print("Training terminated due to convergence")
-                    break
-                ConvAvg = Avg
-
-
-        self.eval()
-        LH.eval()
-        return Convergence,TestMSE
-
-    def Gradient(self, x):
-        x.requires_grad=True
-        with gpytorch.settings.fast_pred_var():
-            # pred = self.likelihood(self(x))
-            pred = self(x)
-            grads = torch.autograd.grad(pred.mean.sum(), x)[0]
-            return grads
 
 def Param_ERMES(x,y,z,r,Parameters):
     Parameters.update(CoilDisplacement=[x,y,z],Rotation=r)

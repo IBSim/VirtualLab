@@ -7,7 +7,7 @@ import pickle
 from natsort import natsorted
 from importlib import import_module, reload
 
-import Optimise
+from Optimise import FuncOpt
 
 class ExactGPmodel(gpytorch.models.ExactGP):
     '''
@@ -98,6 +98,59 @@ class ExactGPmodel(gpytorch.models.ExactGP):
             grads = torch.autograd.grad(pred.mean.sum(), x)[0]
             return grads
 
+    def Gradient_mean(self, x):
+        x.requires_grad=True
+        # pred = self.likelihood(self(x))
+        mean = self(x).mean
+        dmean = torch.autograd.grad(mean.sum(), x)[0]
+        return dmean, mean
+
+    def Gradient_variance(self, x):
+        x.requires_grad=True
+        with gpytorch.settings.fast_pred_var():
+            # pred = self.likelihood(self(x))
+            var = self(x).variance
+            dvar = torch.autograd.grad(var.sum(), x)[0]
+        return dvar, var
+
+    def EI(self, Candidates, sort=True):
+        with torch.no_grad():
+            _Candidates = torch.tensor(Candidates)
+            score = self(_Candidates).variance.numpy()
+
+        if sort:
+            sortix = np.argsort(score)[::-1]
+            score, Candidates = score[sortix],Candidates[sortix]
+
+        return score, Candidates
+
+    def EIGF(self, Candidates, NN_val, sort=True):
+        with torch.no_grad():
+            _Candidates = torch.tensor(Candidates)
+            comp = self(_Candidates)
+            pred = comp.mean.numpy()
+            UQ = comp.variance.numpy()
+            score = UQ + (pred - NN_val)**2
+
+        if sort:
+            sortix = np.argsort(score)[::-1]
+            score, Candidates = score[sortix],Candidates[sortix]
+
+        return score, Candidates
+
+    def MaximisedEI(self, Candidates, bounds, tol=0, sort=True):
+        order = 'decreasing' if sort else None
+        Optima = FuncOpt(_MaxUQ, Candidates, find='max', tol=None,
+                         order=order, bounds=bounds, jac=True, args=[self])
+        Candidates, score = Optima
+        return score, Candidates
+
+def _MaxUQ(Candidates,GPR_model):
+    _Candidates = torch.tensor(Candidates)
+    dvar, var = GPR_model.Gradient_variance(_Candidates)
+    dvar, var = dvar.detach().numpy(), var.detach().numpy()
+    return var, dvar
+
 def DataScale(data,const,scale):
     '''
     This function scales n-dim data to a specific range.
@@ -143,25 +196,8 @@ def Writehdf(File, array, dsetpath):
     Database.create_dataset(dsetpath,data=array)
     Database.close()
 
-def LHS_Samples(bounds,NbCandidates):
+def LHS_Samples(bounds,NbCandidates,seed=None):
     from skopt.sampler import Lhs
     lhs = Lhs(criterion="maximin", iterations=1000)
-    Candidates = lhs.generate(bounds, NbCandidates)
+    Candidates = lhs.generate(bounds, NbCandidates,seed)
     return Candidates
-
-def EI(GPR_model,Candidates):
-    with torch.no_grad():
-        UQ = GPR_model(Candidates).variance.numpy()
-    return UQ
-
-def EIGF(GPR_model,Candidates,NN_val):
-    with torch.no_grad():
-        comp = GPR_model(Candidates)
-        pred = comp.mean.numpy()
-        UQ = comp.variance.numpy()
-        score = UQ + (pred - NN_val)**2
-    return score
-
-# def MaximisedEI(GPR_model,Candidates):
-#
-#     pass

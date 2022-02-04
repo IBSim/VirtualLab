@@ -1,8 +1,5 @@
 import os
-import h5py
 import numpy as np
-from natsort import natsorted
-import pickle
 import torch
 import gpytorch
 import matplotlib.pyplot as plt
@@ -41,12 +38,12 @@ def Single(VL,DADict):
     OutputName = getattr(Parameters,'OutputName','Output')
 
     if hasattr(Parameters,'CompileData'):
-        _CompileData = Parameters.CompileData
-        if type(_CompileData)==str:_CompileData = [CompileData]
+        CompileData = Parameters.CompileData
+        if type(CompileData)==str:CompileData = [CompileData]
 
-        ResDirs = ["{}/{}".format(VL.PROJECT_DIR,resname) for resname in _CompileData]
+        ResDirs = ["{}/{}".format(VL.PROJECT_DIR,resname) for resname in CompileData]
         InData, OutData = ML.CompileData(ResDirs,MLMapping)#
-        ML.WriteMLdata(DataFile_path, _CompileData, InputName,
+        ML.WriteMLdata(DataFile_path, CompileData, InputName,
                        OutputName, InData, OutData)
 
     TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData, InputName,
@@ -55,10 +52,9 @@ def Single(VL,DADict):
     TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData, InputName,
                                    OutputName,getattr(Parameters,'TestNb',-1))
 
-    TrainOut, TestOut = TrainOut.flatten(), TestOut.flatten()
+    NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
 
-    NbInput = TrainIn.shape[1] if TrainIn.ndim >1 else 1
-    NbOutput = TrainOut.shape[1] if TrainOut.ndim>1 else 1
+    TrainOut, TestOut = TrainOut.flatten(), TestOut.flatten()
 
     TrainIn,TrainOut = TrainIn.astype(dtype),TrainOut.astype(dtype)
     TestIn, TestOut = TestIn.astype(dtype), TestOut.astype(dtype)
@@ -125,7 +121,49 @@ def Single(VL,DADict):
         #         print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
 
 
+    Adaptive = getattr(Parameters,'Adaptive',{})
+    if Adaptive:
+        Method = Adaptive['Method']
+        NbNext = Adaptive['Nb']
+        NbCand = Adaptive['NbCandidates']
+        Seed = Adaptive.get('Seed',None)
 
+        bounds = [[0,1]]*NbInput
+        # Candidates = ML.LHS_Samples(bounds,N,123)
+        # Candidates = np.array(Candidates,dtype=dtype)
+        if Seed!=None: np.random.seed(Seed)
+        Candidates = np.random.uniform(0,1,size=(NbCand,NbInput))
+        # print(Candidates)
+        BestPoints = []
+        for i in range(NbNext):
+            if Method.lower()=='ei':
+                score,srtCandidates = model.EI(Candidates,sort=True)
+            elif Method.lower()=='eigf':
+                # Get value at nearest neighbour
+                NN = []
+                for c in Candidates:
+                    d = np.linalg.norm(TrainIn_scale - c,axis=1)
+                    ix = np.argmin(d)
+                    NN.append(TrainOut_scale[ix])
+                NN = np.array(NN)
+                score,srtCandidates = model.EIGF(Candidates,NN,sort=True)
+            elif Method.lower()=='maximisedei':
+                score,srtCandidates = model.MaximisedEI(Candidates, bounds, sort=True)
+
+            BestPoint = srtCandidates[0:1]
+            BestPoint_pth = torch.from_numpy(BestPoint)
+            with torch.no_grad():
+                BestPoint_mean = model(BestPoint_pth).mean
+            # Update model with new point & predicted value
+            model = model.get_fantasy_model(BestPoint_pth,BestPoint_mean)
+
+            Candidates = srtCandidates[1:]
+            BestPoints.append(BestPoint.flatten())
+
+        BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
+        print(BestPoints)
+        DADict['Data']['BestPoints'] = BestPoints
+        # print(BestPoints.shape)
 
 
 

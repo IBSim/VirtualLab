@@ -14,20 +14,24 @@ import ML
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
 
-def CompileData(DADict,Dirs):
-    In,Out = [],[]
-    for Dir in Dirs:
-        datapkl = "{}/Data.pkl".format(Dir)
-        with open(datapkl,'rb') as f:
-            Data = pickle.load(f)
-            Out.append(Data['MaxTemp'])
-        parapkl = "{}/.Parameters.pkl".format(Dir)
-        with open(parapkl,'rb') as f:
-            Para = pickle.load(f)
-            Coolant = [Para.Coolant[n] for n in ['Pressure','Temperature','Velocity']]
-            In.append([*Para.CoilDisplacement,*Coolant,Para.Current])
+def MLMapping(Dir):
+    datapkl = "{}/Data.pkl".format(Dir)
+    DataDict = ReadData(datapkl)
+    paramfile = "{}/Parameters.py".format(Dir)
+    Parameters = ReadParameters(paramfile)
 
-    return In,Out
+    Coolant = [Parameters.Coolant[n] for n in ['Pressure','Temperature','Velocity']]
+    In = [*Parameters.CoilDisplacement,*Coolant,Parameters.Current]
+    Out = DataDict['MaxTemp']
+    return In, Out
+
+def ModelDefine(TrainIn,TrainOut,Kernel,prev_state=None):
+    likelihood = gpytorch.likelihoods.GaussianLikelihood()
+    model = ML.ExactGPmodel(TrainIn, TrainOut, likelihood, Kernel)
+    if prev_state:
+        state_dict = torch.load(prev_state)
+        model.load_state_dict(state_dict)
+    return likelihood, model
 
 def Single(VL,DADict):
     Parameters = DADict['Parameters']
@@ -36,35 +40,28 @@ def Single(VL,DADict):
     InputName = getattr(Parameters,'InputName','Input')
     OutputName = getattr(Parameters,'OutputName','Output')
 
-    # Add data to data file
-    _CompileData = getattr(Parameters,'_CompileData',None)
-    if _CompileData:
-        if type(_CompileData)==str:_CompileData=[_CompileData]
-        for resname in _CompileData:
-            ResDir = "{}/{}".format(VL.PROJECT_DIR,resname)
-            ResPaths = ML.GetResPaths(ResDir)
+    if hasattr(Parameters,'CompileData'):
+        _CompileData = Parameters.CompileData
+        if type(_CompileData)==str:_CompileData = [CompileData]
 
-            In, Out = CompileData(DADict,ResPaths)
-            In, Out = np.array(In), np.array(Out)
+        ResDirs = ["{}/{}".format(VL.PROJECT_DIR,resname) for resname in _CompileData]
+        InData, OutData = ML.CompileData(ResDirs,MLMapping)#
+        ML.WriteMLdata(DataFile_path, _CompileData, InputName,
+                       OutputName, InData, OutData)
 
-            InPath = "{}/{}".format(resname,InputName)
-            OutPath = "{}/{}".format(resname,OutputName)
-            ML.Writehdf(DataFile_path,In,InPath)
-            ML.Writehdf(DataFile_path,Out,OutPath)
+    TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData, InputName,
+                                     OutputName,getattr(Parameters,'TrainNb',-1))
 
-    Database = h5py.File(DataFile_path,'r')
-    TrainData,TestData = Parameters.TrainData, Parameters.TestData
-    TrainIn = Database["{}/{}".format(TrainData,InputName)][:]
-    TrainOut = Database["{}/{}".format(TrainData,OutputName)][:].flatten()
-    TestIn = Database["{}/{}".format(TestData,InputName)][:]
-    TestOut = Database["{}/{}".format(TestData,OutputName)][:].flatten()
-    Database.close()
+    TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData, InputName,
+                                   OutputName,getattr(Parameters,'TestNb',-1))
+
+    TrainOut, TestOut = TrainOut.flatten(), TestOut.flatten()
+
+    NbInput = TrainIn.shape[1] if TrainIn.ndim >1 else 1
+    NbOutput = TrainOut.shape[1] if TrainOut.ndim>1 else 1
 
     TrainIn,TrainOut = TrainIn.astype(dtype),TrainOut.astype(dtype)
     TestIn, TestOut = TestIn.astype(dtype), TestOut.astype(dtype)
-
-    TrainIn = TrainIn[:Parameters.TrainNb]
-    TrainOut = TrainOut[:Parameters.TrainNb]
 
     # Scale test & train input * output data to [0,1] (based on training data)
     InputScaler = np.array([TrainIn.min(axis=0),TrainIn.max(axis=0) - TrainIn.min(axis=0)])
@@ -80,20 +77,16 @@ def Single(VL,DADict):
     TestIn_scale = torch.from_numpy(TestIn_scale)
     TestOut_scale = torch.from_numpy(TestOut_scale)
 
-    likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = ML.ExactGPmodel(TrainIn_scale, TrainOut_scale, likelihood,
-                Parameters.Kernel)
-
     ModelFile = '{}/Model.pth'.format(DADict["CALC_DIR"]) # File model will be saved to/loaded from
-    if 0:
+    if Parameters.Train:
+        likelihood, model = ModelDefine(TrainIn_scale, TrainOut_scale, Parameters.Kernel)
         lr = 0.01
         DADict['Data']['MSE'] = MSEvals = {}
         print()
         testdat = [TestIn_scale,TestOut_scale]
         testdat=[]
-        Conv_P,MSE_P = model.Training(likelihood,3000,test=testdat,lr=lr,Print=100)
+        Conv_P,MSE_P = model.Training(likelihood,Parameters.Epochs,test=testdat,lr=lr,Print=100)
         print()
-        print(MSE_P)
 
         torch.save(model.state_dict(), ModelFile)
 
@@ -101,10 +94,9 @@ def Single(VL,DADict):
         plt.plot(Conv_P)
         plt.savefig("{}/Convergence.eps".format(DADict["CALC_DIR"]),dpi=600)
         plt.close()
-
     else:
-        state_dict = torch.load(ModelFile)
-        model.load_state_dict(state_dict)
+        likelihood, model = ModelDefine(TrainIn_scale, TrainOut_scale,
+                                        Parameters.Kernel, ModelFile)
 
     model.eval(); likelihood.eval()
 
@@ -120,14 +112,29 @@ def Single(VL,DADict):
         print(TrainMSE.mean())
         print(TestMSE.mean())
 
-        if 0:
-            UQ = TrainPred.stddev.numpy()*OutputScaler[1]
-            sortix = np.argsort(UQ)[::-1]
-            for pred,act,uq in zip(TrainPred_R[sortix],TrainOut[sortix],UQ[sortix]):
-                print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
+        # if 0:
+        #     UQ = TrainPred.stddev.numpy()*OutputScaler[1]
+        #     sortix = np.argsort(UQ)[::-1]
+        #     for pred,act,uq in zip(TrainPred_R[sortix],TrainOut[sortix],UQ[sortix]):
+        #         print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
+        #
+        # if 0:
+        #     UQ = TestPred.stddev.numpy()*OutputScaler[1]
+        #     sortix = np.argsort(UQ)[::-1]
+        #     for pred,act,uq in zip(TestPred_R[sortix],TestOut[sortix],UQ[sortix]):
+        #         print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
 
-        if 0:
-            UQ = TestPred.stddev.numpy()*OutputScaler[1]
-            sortix = np.argsort(UQ)[::-1]
-            for pred,act,uq in zip(TestPred_R[sortix],TestOut[sortix],UQ[sortix]):
-                print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
+
+
+
+
+
+
+
+
+
+
+
+
+
+#

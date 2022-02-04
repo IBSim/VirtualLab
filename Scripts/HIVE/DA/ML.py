@@ -196,6 +196,63 @@ def Writehdf(File, array, dsetpath):
     Database.create_dataset(dsetpath,data=array)
     Database.close()
 
+def Readhdf(Database_path,data_paths):
+    if type(data_paths)==str: data_paths = [data_paths]
+    data = []
+    Database = h5py.File(Database_path,'r')
+    for data_path in data_paths:
+        _data = Database[data_path][:]
+        data.append(_data)
+    Database.close()
+    return data
+
+def GetMLdata(DataFile_path,DataNames,InputName,OutputName,Nb=-1):
+    if type(DataNames)==str:DataNames = [DataNames]
+    N = len(DataNames)
+
+    data_input, data_output = [],[]
+    for dataname in DataNames:
+        data_input.append("{}/{}".format(dataname,InputName))
+        data_output.append("{}/{}".format(dataname,OutputName))
+
+    Data = Readhdf(DataFile_path,data_input+data_output)
+    In,Out = Data[:N],Data[N:]
+
+    for i in range(N):
+        _Nb = Nb[i] if type(Nb)==list else Nb
+        if _Nb==-1:continue
+
+        if type(_Nb)==int:
+            In[i] = In[i][:_Nb]
+            Out[i] = Out[i][:_Nb]
+        if type(_Nb) in (list,tuple):
+            l,u = _Nb
+            In[i] = In[i][l:u]
+            Out[i] = Out[i][l:u]
+    In,Out = np.vstack(In),np.vstack(Out)
+
+    return In, Out
+
+def WriteMLdata(DataFile_path,DataNames,InputName,OutputName,InList,OutList):
+    for resname, _in, _out in zip(DataNames, InList, OutList):
+        InPath = "{}/{}".format(resname,InputName)
+        OutPath = "{}/{}".format(resname,OutputName)
+        Writehdf(DataFile_path,_in,InPath)
+        Writehdf(DataFile_path,_out,OutPath)
+
+def CompileData(ResDirs,MapFnc,args=[]):
+    In,Out = [],[]
+    for ResDir in ResDirs:
+        ResPaths = GetResPaths(ResDir)
+        _In, _Out =[] ,[]
+        for ResPath in ResPaths:
+            _in, _out = MapFnc(ResPath,*args)
+            _In.append(_in)
+            _Out.append(_out)
+        In.append(_In)
+        Out.append(_Out)
+    return In, Out
+
 def LHS_Samples(bounds,NbCandidates,seed=None):
     from skopt.sampler import Lhs
     lhs = Lhs(criterion="maximin", iterations=1000)

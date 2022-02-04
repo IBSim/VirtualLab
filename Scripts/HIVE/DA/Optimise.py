@@ -3,8 +3,8 @@ from scipy.optimize.optimize import wrap_function, OptimizeResult, _check_unknow
 from scipy.optimize._slsqp import slsqp
 from scipy.optimize import minimize
 _epsilon = np.sqrt(np.finfo(float).eps)
-import pathos.multiprocessing as pathosmp
 
+import time
 
 def _call_slsqp(*args):
     r = slsqp(*args)
@@ -198,7 +198,11 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
         print("%5s %5s %16s %16s" % ("NIT", "FC", "OBJFUN", "GNORM"))
 
     if NProc>1:
+        # This is inefficient, likely due to the pickling
+        import pathos.multiprocessing as pathosmp
         pool = pathosmp.ProcessPool(nodes=int(NProc))
+        # from pathos.threading import ThreadPool
+        # pool = ThreadPool(nodes=int(NProc))
         mlst,meqlst,acclst = [m]*nbPoint,[meq]*nbPoint,[acc]*nbPoint
         xllst,xulst = [xl]*nbPoint,[xu]*nbPoint
     elif NProc<1: NProc=1
@@ -268,15 +272,16 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
 
         # iterx,iterf,iterg = [],[],[]
         if NProc==1:
-            ''' If problem is small this is probably faster'''
             for xi, fx, _g,_c,_a, mode, vars in zip(x,_fx,g2,c,a,modelst,varlst):
                 _call_slsqp(m, meq, xi, xl, xu, fx, _c, _g, _a, acc, vars[0],mode, *vars[1:])
         else:
+            '''This implementation is likely slower than sequential'''
             # a bit hacky with multiple zips but works currently
             varlst2 = list(zip(*varlst))
             args = [mlst,meqlst,x,xllst,xulst,_fx,c,g2,a,acclst,varlst2[0],modelst,*varlst2[1:]]
 
             ret_args = pool.map(_call_slsqp,*args)
+
             ret_args = list(map(list,zip(*ret_args)))
 
             x = np.atleast_2d(ret_args[2])
@@ -327,7 +332,7 @@ def _MinMax(X, fn, sign, *args):
     val,grad = fn(X,*args)
     return sign*val,sign*grad
 
-def FuncOpt(fnc, init_points, find='max',order='decreasing', tol=0.01, version='multi', **kwargs):
+def FuncOpt(fnc, init_points, find='max',order=None, tol=0.01, version='multi', **kwargs):
 
 
     if find.lower()=='max':sign=-1
@@ -353,11 +358,11 @@ def FuncOpt(fnc, init_points, find='max',order='decreasing', tol=0.01, version='
         return
     f = sign*f
 
-    #Sort Optimas in increasing/decreasing order
-    ord = -1 if order.lower()=='decreasing' else 1
-    sortIx = np.argsort(f,None)[::ord]
-
-    f,x = f[sortIx],x[sortIx]
+    if order:
+        #Sort Optimas in increasing/decreasing order
+        ord = -1 if order.lower()=='decreasing' else 1
+        sortIx = np.argsort(f,None)[::ord]
+        f,x = f[sortIx],x[sortIx]
 
     if tol:
         tolCd,Ix = x[:1],[0] # keep the best
@@ -387,30 +392,29 @@ def dconstr1(x):
     f,df = np.sin(x),np.cos(x)
     return df
 
-def fn2(x):
-    x = np.atleast_2d(x) # Needed to work for original scipy and new version
-    f = np.sin(x[:,0]) + np.sin(x[:,1])
-    df1,df2 = np.cos(x[:,0]), np.cos(x[:,1])
-    df = np.atleast_2d([df1,df2]).T
-    return f, df
+def fnN(x):
+    x = np.atleast_2d(x)
+    f = np.sin(x).sum(1)
+    df = np.cos(x)
+    return f,df
 
-def constr2(x):
-    f, df = fn2(x)
+def constrN(x):
+    f, df = fnN(x)
     return f - 0.8
 
-def dconstr2(x):
-    f, df = fn2(x)
+def dconstrN(x):
+    f, df = fnN(x)
     return df
 
 
-def Test_Time(D1=True,D2=True,N=10):
-    import time
-    m=10 # Number of loops to average time out
+def Test_Time(D1=True,DN=True,m=10):
+    count=2 # Number of loops to average time out
+    np.random.seed(123)
     if D1:
         # ==========================================================================
         # 1d
 
-        x = np.random.uniform(0,1,size=(N,1))
+        x = np.random.uniform(0,1,size=(m,1))
 
         bnds = [(-3,3)]
         # bnds=None
@@ -420,13 +424,13 @@ def Test_Time(D1=True,D2=True,N=10):
         cons = ()
 
         print('===============================================================')
-        print('1D\n')
+        print('1-D\n')
 
         tots,totp = 0,0
-        for _ in range(m):
+        for _ in range(count):
             # parallel
             st = time.time()
-            xlst,flst,successlst = slsqp_min(fn1, x, jac=True,maxiter=100,bounds=bnds,constraints=cons,NProc=1)
+            xlst,flst,successlst = slsqp_min(fn1, x, jac=True,maxiter=100,bounds=bnds,constraints=cons)
             endp = time.time()-st
             totp+=endp
 
@@ -435,42 +439,42 @@ def Test_Time(D1=True,D2=True,N=10):
                 a = minimize(fn1,x_init,jac=True,method='SLSQP',options={'maxiter':100},bounds=bnds,constraints=cons)
             ends = time.time()-st
             tots+=ends
-        print('Scipy',tots/m)
-        print('Multi',totp/m)
-    if D2:
+        print('Scipy',tots/count)
+        print('Multi',totp/count)
+    if DN:
         # ==========================================================================
-        # 2d
-
+        # N-dimensional
+        N=10
         np.random.seed(123)
-        x = np.random.uniform(0,1,size=(N,2))
+        x = np.random.uniform(-5,5,size=(m,N))
 
-        bnds = [(-3,3),(-3,3)]
-        # bnds = None
+        bnds = None
 
-        con1 = {'type': 'ineq', 'fun': constr2, 'jac':dconstr2}
-        con2 = {'type': 'ineq', 'fun': constr2, 'jac':dconstr2}
+        con1 = {'type': 'ineq', 'fun': constrN, 'jac':dconstrN}
+        con2 = {'type': 'ineq', 'fun': constrN, 'jac':dconstrN}
         cons = (con1)
 
         print('===============================================================')
-        print('2D\n')
+        print('N-D\n')
 
         tots,totp = 0,0
-        for _ in range(m):
+        for _ in range(count):
             # parallel
             st = time.time()
-            xlst,flst,EClst = slsqp_min(fn2, x, jac=True,maxiter=100,bounds=bnds,constraints=cons)
+            xlst,flst,EClst = slsqp_min(fnN, x, jac=True,maxiter=100,bounds=bnds,constraints=cons)
             endp = time.time()-st
             totp+=endp
 
             st = time.time()
             for x_init,endx,endf in zip(x,xlst,flst):
-                a = minimize(fn2,x_init,jac=True,method='SLSQP',options={'maxiter':100},bounds=bnds, constraints=cons)
+                a = minimize(fnN,x_init,jac=True,method='SLSQP',options={'maxiter':100},bounds=bnds, constraints=cons)
             ends = time.time()-st
             tots+=ends
-        print('Scipy',tots/m)
-        print('Multi',totp/m)
 
-def Test(D1=True,D2=True):
+        print('Scipy',tots/count)
+        print('Multi',totp/count)
+
+def Test(D1=True,DN=True):
     if D1:
         # ==========================================================================
         # 1d
@@ -478,47 +482,48 @@ def Test(D1=True,D2=True):
         x = [[0],[2],[-1]]
         # x = x[:1]
 
-        bnds = [(-3,3)]
-        # bnds=None
+        # bnds = [(-3,3)]
+        bnds=None
 
         con1 = {'type': 'ineq', 'fun': constr1, 'jac':dconstr1}
         con2 = {'type': 'ineq', 'fun': constr1, 'jac':dconstr1}
         cons = ()
 
         print('===============================================================')
-        print('1D\n')
+        print('1-D\n')
 
         # parallel
-        xlst,flst,successlst = slsqp_min(fn1, x, jac=True,maxiter=100,bounds=bnds,constraints=cons,NProc=1)
+        xlst,flst,successlst = slsqp_min(fn1, x, jac=True,maxiter=100,bounds=bnds,constraints=cons)
 
         for x_init,endx,endf in zip(x,xlst,flst):
             a = minimize(fn1,x_init,jac=True,method='SLSQP',options={'maxiter':100},bounds=bnds,constraints=cons)
             str = "Initial: {}\nx_scipy: {}, f_scipy: {}\nx_paral: {}, f_paral: {}\n".format(x_init,a.x,a.fun,endx,endf)
             print(str)
-    if D2:
+    if DN:
         # ==========================================================================
         # 2d
 
         x = [[1,0],[2,2],[3,1],[-2,-3]]
         # x = x[:1]
 
-        bnds = [(-3,3),(-3,3)]
-        # bnds = None
+        # bnds = [(-3,3),(-3,3)]
+        bnds = None
 
-        con1 = {'type': 'ineq', 'fun': constr2, 'jac':dconstr2}
-        con2 = {'type': 'ineq', 'fun': constr2, 'jac':dconstr2}
-        cons = (con1)
+        con1 = {'type': 'ineq', 'fun': constrN, 'jac':dconstrN}
+        con2 = {'type': 'ineq', 'fun': constrN, 'jac':dconstrN}
+        cons = ()
 
         print('===============================================================')
-        print('2D\n')
+        print('N-D\n')
 
-        xlst,flst,EClst = slsqp_min(fn2, x, jac=True,maxiter=100,bounds=bnds,constraints=cons)
+        xlst,flst,EClst = slsqp_min(fnN, x, jac=True,maxiter=100,bounds=bnds,constraints=cons)
 
         for x_init,endx,endf in zip(x,xlst,flst):
-            a = minimize(fn2,x_init,jac=True,method='SLSQP',options={'maxiter':100},bounds=bnds, constraints=cons)
+            a = minimize(fnN,x_init,jac=True,method='SLSQP',options={'maxiter':100},bounds=bnds, constraints=cons)
             st = "Initial: {}\nx_scipy: {}, f_scipy: {}\nx_paral: {}, f_paral: {}\n".format(x_init,a.x,a.fun,endx,endf)
             print(st)
 
+
 if __name__ == '__main__':
-    # Test(D1=1,D2=0)
-    Test_Time(D1=0,D2=1,N=10000)
+    # Test(D1=1,DN=1)
+    Test_Time(D1=0,DN=1,m=100)

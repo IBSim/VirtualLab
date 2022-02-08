@@ -31,14 +31,14 @@ def PoolWrap(fn,VL,Dict,*args):
     try:
         if LogFile:
             # Output is piped to LogFile
-            print("Running {}.\nOutput is piped to {}.\n".format(Name, LogFile))
+            print("Running {}.\nOutput is piped to {}.\n".format(Name, LogFile),flush=True)
             LogDir = os.path.dirname(LogFile)
             os.makedirs(LogDir,exist_ok=True)
             with open(LogFile,'w') as f:
                 with redirect_stdout(f), redirect_stderr(f):
                     err = fn(VL,Dict,*args)
         else:
-            print("Running {}.\n".format(Name))
+            print("Running {}.\n".format(Name),flush=True)
             err = fn(VL,Dict,*args)
 
         if not err: mess = "{} completed successfully.\n".format(Name)
@@ -51,7 +51,7 @@ def PoolWrap(fn,VL,Dict,*args):
             # Save information in Data to location specified by __file__
             Data = Dict.get('Data',{})
             if '__file__' in Data and len(Data)>1:
-            	with open(Data['__file__'],'wb') as f:
+                with open(Data['__file__'],'wb') as f:
                     pickle.dump(Data,f)
 
         return Returner
@@ -70,7 +70,7 @@ def PoolWrap(fn,VL,Dict,*args):
         elif err:
             mess += "{}\n".format(err)
 
-        print(mess,flush=True)
+        print(mess)
 
 def PoolReturn(Dicts,Returners):
     cpDicts = copy.deepcopy(Dicts)

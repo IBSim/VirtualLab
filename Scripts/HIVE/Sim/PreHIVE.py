@@ -11,7 +11,6 @@ import shutil
 
 from Scripts.Common.VLFunctions import MeshInfo,ASCIIname
 from Scripts.Common.VLPackages import SalomeRun, ERMESRun
-from DA.Functions import Uniformity3 as UniformityScore
 
 
 def HTC(VL, SimDict):
@@ -611,9 +610,6 @@ def EMI(VL, SimDict):
     CoilPower = Watts.sum()
     print("Power delivered by coil: {:.4f}W".format(CoilPower))
     SimDict['CoilPower'] = CoilPower
-
-    # Uniformity = UniformityScore(JH_Node,ERMESresfile)
-    # SimDict['Uniformity'] = Uniformity
 
     Threshold = getattr(Parameters,'Threshold', 0)
     if not Threshold:

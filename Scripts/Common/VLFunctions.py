@@ -11,6 +11,39 @@ from importlib import import_module, reload
 
 sys.dont_write_bytecode=True
 
+def GetFunc(FilePath, funcname):
+    path,ext = os.path.splitext(FilePath)
+    dirname = os.path.dirname(path)
+    basename = os.path.basename(path)
+
+    sys.path.insert(0,dirname)
+    module = import_module(basename) #reload?
+    sys.path.pop(0)
+    
+    func = getattr(module, funcname, None)
+    return func
+
+def CheckFile(FilePath,Attr=None):
+    FileExist = os.path.isfile(FilePath)
+    FuncExist = True
+    if not FileExist:
+        pass
+    elif Attr:
+        func = GetFunc(FilePath,Attr)
+        if func==None: FuncExist = False
+
+    return FileExist, FuncExist
+
+def FileFunc(DirName, FileName, ext = 'py', FuncName = 'Single'):
+    if type(FileName) in (list,tuple):
+        if len(FileName)==2:
+            FileName,FuncName = FileName
+        else:
+            print('Error: If FileName is a list it must have length 2')
+    FilePath = "{}/{}.{}".format(DirName,FileName,ext)
+
+    return FilePath,FuncName
+
 def ImportUpdate(ParameterFile,ParaDict):
     Parameters = ReadParameters(ParameterFile)
     for Var, Value in Parameters.__dict__.items():
@@ -41,7 +74,7 @@ def ReadData(datapkl):
         except EOFError:
             pass
     return DataDict
-    
+
 def WriteData(FileName, Data, pkl=True):
     # Check Data type
     if type(Data)==dict:

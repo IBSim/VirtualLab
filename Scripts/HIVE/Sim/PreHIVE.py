@@ -609,7 +609,11 @@ def EMI(VL, SimDict):
 
     CoilPower = Watts.sum()
     print("Power delivered by coil: {:.4f}W".format(CoilPower))
-    SimDict['CoilPower'] = CoilPower
+
+
+    GroupCreate = getattr(Parameters,'GroupCreate',True)
+    if not GroupCreate: return
+
 
     Threshold = getattr(Parameters,'Threshold', 0)
     if not Threshold:
@@ -761,5 +765,6 @@ def EMI(VL, SimDict):
 def Single(VL, SimDict):
     HTC(VL, SimDict)
 
-    if SimDict['Parameters'].EMLoad == 'ERMES':
+    EMLoad = getattr(SimDict['Parameters'],'EMLoad', True)
+    if EMLoad:
         EMI(VL, SimDict)

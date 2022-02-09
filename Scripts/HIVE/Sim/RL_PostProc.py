@@ -1,4 +1,5 @@
 from AsterPostProc import TC_Temperature, MaxTemperature
+from ERMESPostProc import Power, Variation
 
 def Single(VL,SimDict):
     Parameters = SimDict["Parameters"]
@@ -11,6 +12,12 @@ def Single(VL,SimDict):
         TC_Temp = TC_Temperature(ResFile,Parameters.ThermoCouple)[0]
         SimDict['Data']['TC_Temp'] = TC_Temp
 
+def ERMES_PV(VL,SimDict):
+    Parameters = SimDict["Parameters"]
+    ResFile = '{}/ERMES.rmed'.format(SimDict['PREASTER'])
 
+    P = Power(ResFile)
+    SimDict['Data']['Power'] = P
 
-    # SimDict['Data']['Test'] = 1
+    V = Variation(ResFile)
+    SimDict['Data']['Variation'] = V

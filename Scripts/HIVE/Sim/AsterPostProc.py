@@ -2,12 +2,7 @@ import h5py
 import numpy as np
 import os
 import sys
-from VLFunctions import MeshInfo, MaterialProperty
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import matplotlib.gridspec as gridspec
-import scipy.ndimage
-from importlib import import_module
+from VLFunctions import MeshInfo
 
 def TC_Temperature(ResFile,TCLocations,ResName='Temperature',Collect='nearest'):
 
@@ -142,3 +137,17 @@ def MaxTemperature(ResFile,ResName='Temperature'):
 
     Temperatures = np.array(Temperatures)
     return Temperatures,Times
+
+def MaxStress(ResFile,ResName='Stress'):
+    g = h5py.File(ResFile, 'r')
+    gRes = g['/CHA/Stress/']
+    step = list(gRes.keys())[0]
+    Stress = gRes['{}/MAI.TE4/MED_NO_PROFILE_INTERNAL/CO'.format(step)][:]
+
+    g.close()
+
+    Stress = Stress.reshape((int(Stress.size/6),6),order='F')
+    Stress_mag = np.linalg.norm(Stress, axis=1)
+    MaxStress = Stress_mag.max()
+
+    return MaxStress

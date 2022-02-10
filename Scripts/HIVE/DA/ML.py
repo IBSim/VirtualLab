@@ -419,3 +419,60 @@ def EIGF_Multi(model, Candidates, scoring='sum',sort=True):
         score, Candidates = score[sortix],Candidates[sortix]
 
     return score, Candidates
+
+def _MaxUQ_Multi(Candidates,GPR_model,scoring='sum'):
+    _Candidates = torch.tensor(Candidates)
+    dvar, var = [], []
+    for mod in GPR_model.models:
+        _dvar, _var = mod.Gradient_variance(_Candidates)
+        dvar.append(_dvar.detach().numpy())
+        var.append(_var.detach().numpy())
+    dvar, var = np.array(dvar),np.array(var)
+    if scoring=='sum':
+        var = var.sum(axis=0)
+        dvar = dvar.sum(axis=0)
+
+    return var, dvar
+
+def MaxEI_Multi(model, Candidates, scoring='sum',sort=True):
+    NbOutput = len(model.models)
+    order = 'decreasing' if sort else None
+    Optima = FuncOpt(_MaxUQ_Multi, Candidates, find='max', tol=None,
+                     order=order, bounds=[[0,1]]*4, jac=True, args=[model])
+    Candidates, score = Optima
+    return score, Candidates
+
+def EIGrad_Multi(model, Candidates, scoring='sum',sort=True):
+    NbOutput = len(model.models)
+    # ==========================================================================
+    # Use model to make prediction
+
+    _Candidates = torch.tensor(Candidates)
+    dmean,var = [],[]
+    for mod in model.models:
+         _var = mod(_Candidates).variance
+         _dmean, _mean = mod.Gradient_mean(_Candidates)
+         dmean.append(_dmean.detach().numpy())
+         var.append(_var.detach().numpy())
+    dmean,var = np.array(dmean),np.array(var)
+    dmean_mag = np.linalg.norm(dmean,axis=2)
+
+    # ==========================================================================
+    # Get nearest neighbour values (assumes same inputs for all dimensions)
+    TrainIn = model.train_inputs[0][0].numpy()
+    NN = []
+    for c in Candidates:
+        dmin = np.linalg.norm(TrainIn - c,axis=1).min()
+        NN.append(dmin)
+    NN = np.array(NN)
+    score_multi = var + NN*dmean_mag
+
+    if scoring=='sum':
+        score = score_multi.sum(axis=0)
+
+    # ==========================================================================
+    # Sort, if required
+    if sort:
+        sortix = np.argsort(score)[::-1]
+        score, Candidates = score[sortix],Candidates[sortix]
+    return score, Candidates

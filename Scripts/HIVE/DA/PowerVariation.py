@@ -145,10 +145,14 @@ def Single(VL, DADict):
                 score,srtCandidates = ML.EI_Multi(model,Candidates,sort=sort)
             if Method.lower()=='eigf':
                 score,srtCandidates = ML.EIGF_Multi(model,Candidates,sort=sort)
+            if Method.lower()=='maxei':
+                score,srtCandidates = ML.MaxEI_Multi(model,Candidates,sort=sort)
+            if Method.lower()=='eigrad':
+                score,srtCandidates = ML.EIGrad_Multi(model,Candidates,sort=sort)
 
-            for _s, _c in zip(score[:5], srtCandidates):
-                print(_c,_s)
-            print()
+            # for _s, _c in zip(score[:5], srtCandidates):
+            #     print(_c,_s)
+            # print()
 
             BestPoint = srtCandidates[0:1]
             BestPoint_pth = torch.from_numpy(BestPoint)
@@ -160,7 +164,7 @@ def Single(VL, DADict):
 
             Candidates = srtCandidates[1:]
             BestPoints.append(BestPoint.flatten())
-
+        print(np.around(BestPoints,3))
         BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
-        print(BestPoints)
+        # print(BestPoints)
         DADict['Data']['BestPoints'] = BestPoints

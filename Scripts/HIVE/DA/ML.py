@@ -39,6 +39,7 @@ def GPRModel_Single(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
         # Start noise at lower level to avoid bad optima, but ensure it isn't zero
         noise_lower = likelihood.noise_covar.raw_noise_constraint.lower_bound
         noise_init = max(5*noise_lower,1e-8)
+        # noise_init = 0
         hypers = {'likelihood.noise_covar.noise': noise_init}
         model.initialize(**hypers)
     else:
@@ -479,17 +480,22 @@ def EIGrad_Multi(model, Candidates, scoring='sum',sort=True):
          dmean.append(_dmean.detach().numpy())
          var.append(_var.detach().numpy())
     dmean,var = np.array(dmean),np.array(var)
-    dmean_mag = np.linalg.norm(dmean,axis=2)
+
 
     # ==========================================================================
     # Get nearest neighbour values (assumes same inputs for all dimensions)
     TrainIn = model.train_inputs[0][0].numpy()
     NN = []
     for c in Candidates:
-        dmin = np.linalg.norm(TrainIn - c,axis=1).min()
-        NN.append(dmin)
+        diff = TrainIn - c
+        d = np.linalg.norm(diff,axis=1)
+        ix = np.argmin(d)
+        NN.append(diff[ix])
     NN = np.array(NN)
-    score_multi = var + NN*dmean_mag
+
+    gradsc = (NN.T[:,:,None]*dmean.T)**2
+    gradsc = gradsc.sum(axis=0).T
+    score_multi = var + gradsc
 
     if scoring=='sum':
         score = score_multi.sum(axis=0)

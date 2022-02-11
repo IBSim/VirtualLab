@@ -85,11 +85,11 @@ def Single(VL, DADict):
 
         torch.save(model.state_dict(), ModelFile)
 
-        # for mod in model.models:
-        #     print('Lengthscale:',mod.covar_module.base_kernel.lengthscale.detach().numpy()[0])
-        #     print('Outputscale', mod.covar_module.outputscale.detach().numpy())
-        #     print('Noise',mod.likelihood.noise.detach().numpy()[0])
-        #     print()
+        for mod in model.models:
+            print('Lengthscale:',mod.covar_module.base_kernel.lengthscale.detach().numpy()[0])
+            print('Outputscale', mod.covar_module.outputscale.detach().numpy())
+            print('Noise',mod.likelihood.noise.detach().numpy()[0])
+            print()
 
         # TrainMSE, TestMSE = np.array(TrainMSE),np.array(TestMSE)
         # plt.figure()
@@ -137,6 +137,7 @@ def Single(VL, DADict):
 
         if Seed!=None: np.random.seed(Seed)
         Candidates = np.random.uniform(0,1,size=(NbCand,NbInput))
+        OrigCandidates = np.copy(Candidates)
 
         sort=True
         BestPoints = []
@@ -149,12 +150,34 @@ def Single(VL, DADict):
                 score,srtCandidates = ML.MaxEI_Multi(model,Candidates,sort=sort)
             if Method.lower()=='eigrad':
                 score,srtCandidates = ML.EIGrad_Multi(model,Candidates,sort=sort)
+            if Method.lower().startswith('conmaxei'):
+                _split = Method.split('_')
+                rad = float(_split[1]) if len(_split)==2 else 0.05
+                score,srtCandidates = ML.ConMaxEI_Multi(model,Candidates,OrigCandidates,rad=rad, sort=False)
+                # sort here instead as we have to sort OrigCandidates also
+                if sort:
+                    sortix = np.argsort(score)[::-1]
+                    score,srtCandidates = score[sortix],srtCandidates[sortix]
+                    OrigCandidates = (OrigCandidates[sortix])[1:]
 
-            # for _s, _c in zip(score[:5], srtCandidates):
-            #     print(_c,_s)
-            # print()
+                    # dis = np.linalg.norm(srtCandidates[1:] - OrigCandidates,axis=1)
+                    # for _s, _c,_dis in zip(score, srtCandidates[1:],dis):
+                    #     print(_c,_s,_dis)
+                    # print()
 
+            Show=5
+            if Show:
+                for i,j in zip(score[:Show],srtCandidates):
+                    print(j,i)
+                print()
+
+            # Add best point to list
             BestPoint = srtCandidates[0:1]
+            BestPoints.append(BestPoint.flatten())
+            # Remove best point from future candidates
+            Candidates = srtCandidates[1:]
+
+            # Update model with best point & mean value for better predictions
             BestPoint_pth = torch.from_numpy(BestPoint)
             with torch.no_grad():
                 output = model(*[BestPoint_pth]*NbOutput)
@@ -162,9 +185,8 @@ def Single(VL, DADict):
                 _mod = mod.get_fantasy_model(BestPoint_pth,output[j].mean)
                 model.models[j] = _mod
 
-            Candidates = srtCandidates[1:]
-            BestPoints.append(BestPoint.flatten())
+
         print(np.around(BestPoints,3))
         BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
-        # print(BestPoints)
+
         DADict['Data']['BestPoints'] = BestPoints

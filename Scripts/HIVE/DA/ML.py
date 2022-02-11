@@ -434,11 +434,35 @@ def _MaxUQ_Multi(Candidates,GPR_model,scoring='sum'):
 
     return var, dvar
 
+def _Constrain_Multi(Candidates,OrigPoint,rad):
+    a = rad**2 - np.linalg.norm(Candidates - OrigPoint,axis=1)**2
+    return a
+
+def _dConstrain_Multi(Candidates,OrigPoint,rad):
+    da = -2*(Candidates - OrigPoint)
+    return da
+
+def ConMaxEI_Multi(model, Candidates, OrigPoint, rad=0.05, scoring='sum', sort=True):
+    NbOutput = len(model.models)
+    NbInput = (model.train_inputs[0][0]).shape[1]
+    order = 'decreasing' if sort else None
+    con1 = {'type': 'ineq',
+            'fun': _Constrain_Multi,
+            'jac':_dConstrain_Multi,
+            'args':[OrigPoint,rad]}
+
+    Optima = FuncOpt(_MaxUQ_Multi, Candidates, find='max', tol=None,
+                     order=order, bounds=[[0,1]]*NbInput, jac=True, args=[model],
+                     constraints=(con1))
+    Candidates, score = Optima
+    return score, Candidates
+
 def MaxEI_Multi(model, Candidates, scoring='sum',sort=True):
     NbOutput = len(model.models)
+    NbInput = (model.train_inputs[0][0]).shape[1]
     order = 'decreasing' if sort else None
     Optima = FuncOpt(_MaxUQ_Multi, Candidates, find='max', tol=None,
-                     order=order, bounds=[[0,1]]*4, jac=True, args=[model])
+                     order=order, bounds=[[0,1]]*NbInput, jac=True, args=[model])
     Candidates, score = Optima
     return score, Candidates
 

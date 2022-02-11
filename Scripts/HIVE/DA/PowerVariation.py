@@ -38,7 +38,8 @@ def Single(VL, DADict):
     InputName = getattr(Parameters,'InputName','Input')
     OutputName = getattr(Parameters,'OutputName','Output')
 
-    if hasattr(Parameters,'CompileData'):
+    CompileData = getattr(Parameters,'CompileData',None)
+    if CompileData:
         CompileData = Parameters.CompileData
         if type(CompileData)==str:CompileData = [CompileData]
 
@@ -104,6 +105,12 @@ def Single(VL, DADict):
         likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
                                         Parameters.Kernel,prev_state=ModelFile)
 
+    # for mod in model.models:
+    #     print('Lengthscale:',mod.covar_module.base_kernel.lengthscale.detach().numpy()[0])
+    #     print('Outputscale', mod.covar_module.outputscale.detach().numpy())
+    #     print('Noise',mod.likelihood.noise.detach().numpy()[0])
+    #     print()
+
     model.eval();likelihood.eval()
 
     with torch.no_grad():
@@ -126,6 +133,26 @@ def Single(VL, DADict):
             print('Train',TrainMSE_R)
             print('Test',TestMSE_R)
             print()
+
+            TestErr = np.abs(Test_mean/TestOut_scale[:,i].numpy()-1)*100
+            TestErr_mean = TestErr.mean()
+            TestErr_med = np.median(TestErr)
+            TestErr_max = TestErr.max()
+            ix = np.argmax(TestErr)
+            print(Test_mean[ix],TestOut_scale[ix,i].numpy())
+            print(TestErr_mean,TestErr_med,TestErr_max)
+            print()
+
+
+            # TestSE = (TestPred_R - TestOut[:,i])**2
+            # sortix = np.argsort(TestSE)[::-1]
+            # j=0
+            # for pred,act,cd in zip(TestPred_R[sortix],TestOut[sortix,i],TestIn[sortix]):
+            #     print(cd,pred, act)
+            #     j+=1
+            #     if j==5: break
+            # print()
+
 
     Adaptive = getattr(Parameters,'Adaptive',{})
     if Adaptive:
@@ -165,7 +192,7 @@ def Single(VL, DADict):
                     #     print(_c,_s,_dis)
                     # print()
 
-            Show=5
+            Show=0
             if Show:
                 for i,j in zip(score[:Show],srtCandidates):
                     print(j,i)

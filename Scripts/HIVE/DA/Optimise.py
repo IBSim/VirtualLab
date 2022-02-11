@@ -191,7 +191,7 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
         Resf.append(None) # funcion value
         EC.append(None) # exit code
 
-    carryon = np.ones(nbPoint,dtype=bool)
+    complete = np.zeros(nbPoint)
 
     # Print the header if iprint >= 2
     if iprint >= 2:
@@ -207,11 +207,11 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
         xllst,xulst = [xl]*nbPoint,[xu]*nbPoint
     elif NProc<1: NProc=1
 
+
+    First=True
     xlst,flst,glst = [],[],[]
     while True:
         Modearr = np.array(modelst)
-
-        nbPointLeft = carryon.sum()
 
         bl = (Modearr==0)+(Modearr==1)
         if bl.any(): # objective and constraint evaluation required
@@ -228,13 +228,13 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
                 c_ieq = np.stack([np.array(con['fun'](x, *con['args'])).flatten()
                                      for con in cons['eq']], axis=1)
             else:
-                c_eq = np.zeros((nbPointLeft,0))
+                c_eq = np.zeros((nbPoint,0))
             if cons['ineq']:
                 c_ieq = np.stack([np.array(con['fun'](x, *con['args'])).flatten()
                                      for con in cons['ineq']], axis=1)
 
             else:
-                c_ieq = np.zeros((nbPointLeft,0))
+                c_ieq = np.zeros((nbPoint,0))
             # Now combine c_eq and c_ieq into a single matrix
             c = np.concatenate((c_eq, c_ieq),axis=1)
 
@@ -251,28 +251,29 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
                                for con in cons['eq']],axis=1)
                 # a_eq = np.swapaxes(a_eq,1,2)
             else:  # no equality constraint
-                a_eq = np.zeros((nbPointLeft, meq, n))
+                a_eq = np.zeros((nbPoint, meq, n))
 
             if cons['ineq']:
                 a_ieq = np.stack([con['jac'](x, *con['args'])
                                 for con in cons['ineq']],axis=1)
             else:  # no inequality constraint
-                a_ieq = np.zeros((nbPointLeft, mieq, n))
+                a_ieq = np.zeros((nbPoint, mieq, n))
 
             # Now combine a_eq and a_ieq into a single a matrix
             if m == 0:  # no constraints
-                a = np.zeros((nbPointLeft,la, n))
+                a = np.zeros((nbPoint,la, n))
             else:
                 a = np.concatenate((a_eq, a_ieq),axis=1)
 
-            # print(np.zeros([nbPointLeft,la, 1]).shape)
-            a = np.concatenate((a, np.zeros([nbPointLeft,la, 1])), 2)
+            # print(np.zeros([nbPoint,la, 1]).shape)
+            a = np.concatenate((a, np.zeros([nbPoint,la, 1])), 2)
 
-        g2 = np.concatenate([g,np.zeros([nbPointLeft,1])],axis=1)
+        g2 = np.concatenate([g,np.zeros([nbPoint,1])],axis=1)
 
         # iterx,iterf,iterg = [],[],[]
         if NProc==1:
             for xi, fx, _g,_c,_a, mode, vars in zip(x,_fx,g2,c,a,modelst,varlst):
+                if not First and abs(mode)!=1:continue
                 _call_slsqp(m, meq, xi, xl, xu, fx, _c, _g, _a, acc, vars[0],mode, *vars[1:])
         else:
             '''This implementation is likely slower than sequential'''
@@ -294,35 +295,22 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
         # flst.append(iterf)
         # glst.append(iterg)
 
-        # Check if any attempt has terminated
-        mdbl = np.abs(modelst) != 1
-        if mdbl.any():
-            locixs = mdbl.nonzero()[0] # local indexes
-            coixs = carryon.nonzero()[0]
-            globixs = coixs[mdbl] # # global indexes
-            # Do in reverse order so we remove indexes further on in the list
-            for globix,locix in zip(globixs[::-1],locixs[::-1]):
+        # Check if any has terminated
+        _complete = (np.abs(modelst) != 1)*1
+
+        complete_new = _complete - complete # Find the indexes which have recently switched to 1
+        if complete_new.any():
+            complete = _complete
+            new_ixs = complete_new.nonzero()[0] # local indexes
+            for ix in new_ixs:
                 # Save results
-                Resx[globix] = x[locix,:]
-                Resf[globix] = _fx.flatten()[locix]
-                EC[globix] = modelst[locix]
-                # Remove some list entries
-                modelst.pop(locix)
-                varlst.pop(locix)
-            # Remove array entries
-            c = np.delete(c,locixs,axis=0)
-            a = np.delete(a,locixs,axis=0)
-            # Change completed ones to False
-            carryon[globixs] = False
+                Resx[ix] = x[ix,:]
+                Resf[ix] = _fx.flatten()[ix]
+                EC[ix] = modelst[ix]
 
-            # invert boolean array & keep the ones which are unfinished
-            _mdbl = ~mdbl
-            x = x[_mdbl,:]
-            _fx = _fx[_mdbl]
-            g = g[_mdbl,:]
+            if complete.all(): break
 
-            if len(x) == 0:
-                break
+        First=False
 
     success = np.array(EC) == 0
 
@@ -525,5 +513,5 @@ def Test(D1=True,DN=True):
 
 
 if __name__ == '__main__':
-    # Test(D1=1,DN=1)
-    Test_Time(D1=0,DN=1,m=100)
+    Test(D1=1,DN=1)
+    # Test_Time(D1=0,DN=1,m=100)

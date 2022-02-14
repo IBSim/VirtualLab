@@ -6,6 +6,7 @@ import h5py
 import pickle
 from natsort import natsorted
 from importlib import import_module, reload
+from scipy.stats import norm
 
 from Optimise import FuncOpt
 
@@ -355,7 +356,7 @@ def LHS_Samples(bounds,NbCandidates,seed=None):
     Candidates = lhs.generate(bounds, NbCandidates,seed)
     return Candidates
 
-def EI_Multi(model, Candidates, scoring='sum',sort=True):
+def Var_Multi(model, Candidates, scoring='sum',sort=True):
     NbOutput = len(model.models)
     # ==========================================================================
     # Use model to make prediction
@@ -370,6 +371,38 @@ def EI_Multi(model, Candidates, scoring='sum',sort=True):
 
     if scoring=='sum':
         score = score_multi.sum(axis=1)
+    # Todo, f1 score
+
+    # ==========================================================================
+    # Sort, if required
+    if sort:
+        sortix = np.argsort(score)[::-1]
+        score, Candidates = score[sortix],Candidates[sortix]
+
+    return score, Candidates
+
+def EI_Multi(model, Candidates, scoring='sum',sort=True):
+    NbOutput = len(model.models)
+
+    # ==========================================================================
+    # Use model to make prediction
+    with torch.no_grad():
+        _Candidates = torch.tensor(Candidates)
+        output = model(*[_Candidates]*NbOutput)
+
+    # ==========================================================================
+    # Calculate score & combine in to single value
+    score_multi = []
+    for i,out in enumerate(output):
+        ymin = model.train_targets[i].numpy().min()
+        stddev = out.stddev.numpy()
+        diff = ymin - out.mean.numpy()
+        z = diff/stddev
+        score_ind = diff*norm.cdf(z) + stddev*norm.pdf(z)
+        score_multi.append(score_ind)
+    score_multi = np.array(score_multi)
+    if scoring=='sum':
+        score = score_multi.sum(axis=0)
     # Todo, f1 score
 
     # ==========================================================================
@@ -421,7 +454,7 @@ def EIGF_Multi(model, Candidates, scoring='sum',sort=True):
 
     return score, Candidates
 
-def _MaxUQ_Multi(Candidates,GPR_model,scoring='sum'):
+def OptVar_Multi(Candidates,GPR_model,scoring='sum'):
     _Candidates = torch.tensor(Candidates)
     dvar, var = [], []
     for mod in GPR_model.models:
@@ -443,27 +476,20 @@ def _dConstrain_Multi(Candidates,OrigPoint,rad):
     da = -2*(Candidates - OrigPoint)
     return da
 
-def ConMaxEI_Multi(model, Candidates, OrigPoint, rad=0.05, scoring='sum', sort=True):
+def ConMax_Multi(model, Candidates, func, OrigPoint, rad=0.05, scoring='sum', sort=True):
+    con1 = {'type': 'ineq', 'fun': _Constrain_Multi,
+            'jac':_dConstrain_Multi, 'args':[OrigPoint,rad]}
+    return Max_Multi(model,Candidates,func,scoring=scoring,sort=sort,constraints=(con1))
+
+def Max_Multi(model, Candidates, func, scoring='sum',sort=True, constraints=()):
     NbOutput = len(model.models)
     NbInput = (model.train_inputs[0][0]).shape[1]
     order = 'decreasing' if sort else None
-    con1 = {'type': 'ineq',
-            'fun': _Constrain_Multi,
-            'jac':_dConstrain_Multi,
-            'args':[OrigPoint,rad]}
+    if func.lower() == 'var': fn = OptVar_Multi
 
-    Optima = FuncOpt(_MaxUQ_Multi, Candidates, find='max', tol=None,
-                     order=order, bounds=[[0,1]]*NbInput, jac=True, args=[model],
-                     constraints=(con1))
-    Candidates, score = Optima
-    return score, Candidates
-
-def MaxEI_Multi(model, Candidates, scoring='sum',sort=True):
-    NbOutput = len(model.models)
-    NbInput = (model.train_inputs[0][0]).shape[1]
-    order = 'decreasing' if sort else None
-    Optima = FuncOpt(_MaxUQ_Multi, Candidates, find='max', tol=None,
-                     order=order, bounds=[[0,1]]*NbInput, jac=True, args=[model])
+    Optima = FuncOpt(fn, Candidates, find='max', tol=None,
+                     order=order, bounds=[[0,1]]*NbInput, jac=True,
+                     constraints=constraints, args=[model])
     Candidates, score = Optima
     return score, Candidates
 

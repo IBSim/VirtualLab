@@ -2,7 +2,7 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import cm
+from matplotlib.colors import LogNorm
 from types import SimpleNamespace as Namespace
 import torch
 import gpytorch
@@ -14,6 +14,7 @@ from Optimise import FuncOpt
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
+InTag, OutTag = ['x','y','z','rotation'],['power','uniformity']
 
 def MLMapping(Dir):
     datapkl = "{}/Data.pkl".format(Dir)
@@ -171,16 +172,20 @@ def Single(VL, DADict):
         for i in range(NbNext):
             if Method.lower()=='ei':
                 score,srtCandidates = ML.EI_Multi(model,Candidates,sort=sort)
+            if Method.lower()=='var':
+                score,srtCandidates = ML.Var_Multi(model,Candidates,sort=sort)
             if Method.lower()=='eigf':
                 score,srtCandidates = ML.EIGF_Multi(model,Candidates,sort=sort)
-            if Method.lower()=='maxei':
-                score,srtCandidates = ML.MaxEI_Multi(model,Candidates,sort=sort)
             if Method.lower()=='eigrad':
                 score,srtCandidates = ML.EIGrad_Multi(model,Candidates,sort=sort)
-            if Method.lower().startswith('conmaxei'):
+            if Method.lower().startswith('max'):
+                fn = Method[3:]
+                score,srtCandidates = ML.Max_Multi(model,Candidates,fn,sort=sort)
+            if Method.lower().startswith('conmax'):
                 _split = Method.split('_')
+                fn = _split[0][6:]
                 rad = float(_split[1]) if len(_split)==2 else 0.05
-                score,srtCandidates = ML.ConMaxEI_Multi(model,Candidates,OrigCandidates,rad=rad, sort=False)
+                score,srtCandidates = ML.ConMax_Multi(model,Candidates,fn,OrigCandidates,rad=rad, sort=False)
                 # sort here instead as we have to sort OrigCandidates also
                 if sort:
                     sortix = np.argsort(score)[::-1]
@@ -217,3 +222,124 @@ def Single(VL, DADict):
         BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
 
         DADict['Data']['BestPoints'] = BestPoints
+
+    bnds = [[0,1]]*NbInput
+
+    np.random.seed(123)
+    NbInit = 50
+    init_guess = np.random.uniform(0,1,size=(NbInit,4))
+
+    '''
+    # ==========================================================================
+    # Get min and max values for each
+    RangeDict = {}
+    for i, name in enumerate(['Power','Variation']):
+        for tp,order in zip(['Max','Min'],['decreasing','increasing']):
+            Optima = FuncOpt(GPR_Opt, init_guess, find=tp, tol=0.01,
+                             order=order,
+                             bounds=bnds, jac=True, args=[model.models[i]])
+            MaxPower_cd,MaxPower_val = Optima
+            Opt_cd = ML.DataRescale(Optima[0],*InputScaler)
+            Opt_val = ML.DataRescale(Optima[1],*OutputScaler[:,i])
+            mess = "{} {}:\n{}, {}\n".format(tp,name,Opt_cd[0],Opt_val[0])
+            print(mess)
+            RangeDict["{}_{}".format(tp,name)] = Opt_val[0]
+
+    # ==========================================================================
+    # Get minimum variation for different powers
+
+    space = 100
+    rdlow = int(np.ceil(RangeDict['Min_Power'] / space)) * space
+    rdhigh = int(np.ceil(RangeDict['Max_Power'] / space)) * space
+    vals = []
+    for i in range(rdlow,rdhigh,space):
+        iscale = ML.DataScale(i,*OutputScaler[:,0])
+        con = {'type': 'ineq', 'fun': constraint,
+               'jac':dconstraint, 'args':(model.models[0], iscale)}
+        Optima = FuncOpt(GPR_Opt, init_guess, find='min', tol=0.01,
+                         order='increasing', constraints=con,
+                         bounds=bnds, jac=True, args=[model.models[1]])
+
+        # print(i)
+        # with torch.no_grad():
+        #     x = torch.tensor(Optima[0])
+        #     out = model(*[x]*NbOutput)
+        #     Power = ML.DataRescale(out[0].mean.numpy(),*OutputScaler[:,0])
+        #     Variation = ML.DataRescale(out[1].mean.numpy(),*OutputScaler[:,1])
+        #
+        #     for P,V in zip(Power,Variation):
+        #         print(P,V)
+        # print()
+        Opt_cd = ML.DataRescale(Optima[0],*InputScaler)
+        Opt_val = ML.DataRescale(Optima[1],*OutputScaler[:,1])
+        mess = 'Minimised variaition for power above {} W:\n{}, {}\n'.format(i,Opt_cd[0],Opt_val[0])
+        print(mess)
+        vals.append([i,Opt_val[0]])
+
+    vals = np.array(vals)
+    plt.figure()
+    plt.plot(vals[:,0],vals[:,1])
+    plt.show()
+
+
+    AxMaj,ResAx = [2,3],0
+    grid = Gridmaker(AxMaj,ResAx)
+    grid_unroll = grid.reshape((int(grid.size/NbInput),NbInput))
+    grid_unroll = torch.tensor(grid_unroll, dtype=torch_dtype)
+    with torch.no_grad():
+        out_grid = model.models[ResAx](grid_unroll).mean.numpy()
+    out_grid = ML.DataRescale(out_grid,*OutputScaler[:,ResAx])
+    outmax,outmin = out_grid.max(),out_grid.min()
+    out_grid = out_grid.reshape(grid.shape[:-1])
+
+    fig, ax = plt.subplots(nrows=7, ncols=7, sharex=True, sharey=True, dpi=200, figsize=(12,9))
+    ax = np.atleast_2d(ax)
+    fig.subplots_adjust(right=0.8)
+    for i in range(7):
+        _i = -(i+1)
+        for j in range(7):
+            sl = [slice(None)]*NbInput
+            sl[AxMaj[0]],sl[AxMaj[1]]  = i,j
+            Im = ax[_i,j].imshow(out_grid[tuple(sl)].T, cmap = 'coolwarm', norm=LogNorm(vmax=outmax, vmin=outmin),
+                                                        origin='lower',extent=(0,1,0,1))
+    plt.show()
+    '''
+def Gridmaker(AxMaj,ResAx,MajorN=7,MinorN=20):
+    AxMin = list(set(range(len(InTag))).difference(AxMaj))
+    # Discretisation
+    DiscMin = np.linspace(0+0.5*1/MinorN,1-0.5*1/MinorN,MinorN)
+    DiscMaj = np.linspace(0,1,MajorN)
+    # DiscMaj = np.linspace(0+0.5*1/MajorN,1-0.5*1/MajorN,MajorN)
+    disc = [DiscMaj]*4
+    disc[AxMin[0]] = disc[AxMin[1]] = DiscMin
+    grid = np.meshgrid(*disc, indexing='ij')
+    grid = np.moveaxis(np.array(grid),0,-1) #grid point is now the last axis
+    return grid
+
+def GPR_Opt(X,model):
+    X = torch.tensor(X,dtype=torch_dtype)
+    dmean, mean = model.Gradient_mean(X)
+    dmean, mean = dmean.detach().numpy(),mean.detach().numpy()
+    return mean, dmean
+
+def constraint(X, model, DesPower):
+    '''
+    Constraint which must be met during the optimisation of func. This specifies
+    that the power must be greater than or equal to 'DesPower'
+    '''
+    X = torch.tensor(np.atleast_2d(X),dtype=torch_dtype)
+    # Function value
+    Pred = model(X).mean.detach().numpy()
+    constr = Pred - DesPower
+    return constr
+
+def dconstraint(X, model, DesPower):
+    '''
+    Constraint which must be met during the optimisation of func. This specifies
+    that the power must be greater than or equal to 'DesPower'
+    '''
+    X = torch.tensor(np.atleast_2d(X),dtype=torch_dtype)
+    # Gradient
+    Grad = model.Gradient(X)
+
+    return Grad

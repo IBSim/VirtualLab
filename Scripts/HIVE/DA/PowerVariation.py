@@ -10,7 +10,6 @@ import gpytorch
 from VLFunctions import ReadData, ReadParameters
 import ML
 from Optimise import FuncOpt
-# from Sim.PreHIVE import ERMES
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
@@ -81,7 +80,7 @@ def Single(VL, DADict):
     if Parameters.Train:
         min_noise = getattr(Parameters,'MinNoise',None)
         likelihood, model = ML.GPRModel_Multi(TrainIn_scale, TrainOut_scale,
-                                        Parameters.Kernel,min_noise=min_noise)
+                                        Parameters.Kernel,min_noise=min_noise,prev_state=ModelFile)
 
         ML.GPR_Train_Multi(model, Parameters.Epochs)
 
@@ -106,63 +105,31 @@ def Single(VL, DADict):
         likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
                                         Parameters.Kernel,prev_state=ModelFile)
 
-    # for mod in model.models:
-    #     print('Lengthscale:',mod.covar_module.base_kernel.lengthscale.detach().numpy()[0])
-    #     print('Outputscale', mod.covar_module.outputscale.detach().numpy())
-    #     print('Noise',mod.likelihood.noise.detach().numpy()[0])
-    #     print()
-
     model.eval();likelihood.eval()
 
-    with torch.no_grad():
-        TrainPred = model(*[TrainIn_scale]*NbOutput)
-        TestPred = model(*[TestIn_scale]*NbOutput)
+    # =========================================================================
+    # Get error metrics for model
 
-        for i in range(NbOutput):
-            Train_mean = TrainPred[i].mean.numpy()
-            Test_mean = TestPred[i].mean.numpy()
+    TestMetrics = ML.GetMetrics(model,TestIn_scale,TestOut_scale.detach().numpy())
+    TrainMetrics = ML.GetMetrics(model,TrainIn_scale,TrainOut_scale.detach().numpy())
 
-            TrainMSE = ML.MSE(Train_mean,TrainOut_scale[:,i].numpy())
-            TestMSE = ML.MSE(Test_mean,TestOut_scale[:,i].numpy())
-            print('Train_scale',TrainMSE)
-            print('Test_scale',TestMSE)
+    outmess = "    {}\nMSE: {}\nMAE: {}\nRMSE: {}\nR^2: {}\n"
+    print(outmess.format(OutTag, TrainMetrics['MSE'],TrainMetrics['MAE'],
+                         TrainMetrics['RMSE'],TrainMetrics['Rsq']))
+    print(outmess.format(OutTag, TestMetrics['MSE'],TestMetrics['MAE'],
+                         TestMetrics['RMSE'],TestMetrics['Rsq']))
 
-            TrainPred_R = ML.DataRescale(Train_mean,*OutputScaler[:,i])
-            TestPred_R = ML.DataRescale(Test_mean,*OutputScaler[:,i])
-            TrainMSE_R = ML.MSE(TrainPred_R,TrainOut[:,i])
-            TestMSE_R = ML.MSE(TestPred_R,TestOut[:,i])
-            print('Train',TrainMSE_R)
-            print('Test',TestMSE_R)
-            print()
+    DADict['Data']['TestMetrics'] = TestMetrics
 
-            TestErr = np.abs(Test_mean/TestOut_scale[:,i].numpy()-1)*100
-            TestErr_mean = TestErr.mean()
-            TestErr_med = np.median(TestErr)
-            TestErr_max = TestErr.max()
-            ix = np.argmax(TestErr)
-            print(Test_mean[ix],TestOut_scale[ix,i].numpy())
-            print(TestErr_mean,TestErr_med,TestErr_max)
-            print()
-
-
-            # TestSE = (TestPred_R - TestOut[:,i])**2
-            # sortix = np.argsort(TestSE)[::-1]
-            # j=0
-            # for pred,act,cd in zip(TestPred_R[sortix],TestOut[sortix,i],TestIn[sortix]):
-            #     print(cd,pred, act)
-            #     j+=1
-            #     if j==5: break
-            # print()
-
-
+    bounds = [[0,1]]*NbInput
     Adaptive = getattr(Parameters,'Adaptive',{})
     if Adaptive:
         Method = Adaptive['Method']
         NbNext = Adaptive['Nb']
         NbCand = Adaptive['NbCandidates']
-        Seed = Adaptive.get('Seed',None)
-        bndmax = Adaptive.get('bndmax',0)
+        maximise = Adaptive.get('Maximise',False)
 
+        Seed = Adaptive.get('Seed',None)
         if Seed!=None: np.random.seed(Seed)
         Candidates = np.random.uniform(0,1,size=(NbCand,NbInput))
         OrigCandidates = np.copy(Candidates)
@@ -170,32 +137,22 @@ def Single(VL, DADict):
         sort=True
         BestPoints = []
         for i in range(NbNext):
-            if Method.lower()=='ei':
-                score,srtCandidates = ML.EI_Multi(model,Candidates,sort=sort)
-            if Method.lower()=='var':
-                score,srtCandidates = ML.Var_Multi(model,Candidates,sort=sort)
-            if Method.lower()=='eigf':
-                score,srtCandidates = ML.EIGF_Multi(model,Candidates,sort=sort)
-            if Method.lower()=='eigrad':
-                score,srtCandidates = ML.EIGrad_Multi(model,Candidates,sort=sort)
-            if Method.lower().startswith('max'):
-                fn = Method[3:]
-                score,srtCandidates = ML.Max_Multi(model,Candidates,fn,sort=sort)
-            if Method.lower().startswith('conmax'):
-                _split = Method.split('_')
-                fn = _split[0][6:]
-                rad = float(_split[1]) if len(_split)==2 else 0.05
-                score,srtCandidates = ML.ConMax_Multi(model,Candidates,fn,OrigCandidates,rad=rad, sort=False)
-                # sort here instead as we have to sort OrigCandidates also
+            if maximise:
+                constr_rad = Adaptive.get('Constraint',0)
+                if constr_rad:
+                    constraint = ML.ConstrainRad(OrigCandidates,constr_rad)
+                else: constraint = []
+                score,srtCandidates = ML.AdaptSLSQP(model,Candidates,Method,[[0,1]]*NbInput,
+                                                    constraints=constraint,
+                                                    scoring='sum',sort=False)
                 if sort:
                     sortix = np.argsort(score)[::-1]
                     score,srtCandidates = score[sortix],srtCandidates[sortix]
-                    OrigCandidates = (OrigCandidates[sortix])[1:]
-
-                    # dis = np.linalg.norm(srtCandidates[1:] - OrigCandidates,axis=1)
-                    # for _s, _c,_dis in zip(score, srtCandidates[1:],dis):
-                    #     print(_c,_s,_dis)
-                    # print()
+                    if constr_rad:
+                        OrigCandidates = (OrigCandidates[sortix])[1:]
+            else:
+                score, srtCandidates = ML.Adaptive(model,Candidates,Method,
+                                                scoring='sum',sort=sort)
 
             Show=0
             if Show:
@@ -223,32 +180,32 @@ def Single(VL, DADict):
 
         DADict['Data']['BestPoints'] = BestPoints
 
-    bnds = [[0,1]]*NbInput
-
     np.random.seed(123)
     NbInit = 50
     init_guess = np.random.uniform(0,1,size=(NbInit,4))
 
-    '''
     # ==========================================================================
     # Get min and max values for each
     RangeDict = {}
-    for i, name in enumerate(['Power','Variation']):
+    for i, name in enumerate(OutTag):
         for tp,order in zip(['Max','Min'],['decreasing','increasing']):
             Optima = FuncOpt(GPR_Opt, init_guess, find=tp, tol=0.01,
                              order=order,
-                             bounds=bnds, jac=True, args=[model.models[i]])
+                             bounds=bounds, jac=True, args=[model.models[i]])
             MaxPower_cd,MaxPower_val = Optima
             Opt_cd = ML.DataRescale(Optima[0],*InputScaler)
             Opt_val = ML.DataRescale(Optima[1],*OutputScaler[:,i])
-            mess = "{} {}:\n{}, {}\n".format(tp,name,Opt_cd[0],Opt_val[0])
+            mess = "{} {}:\n{}, {}\n".format(tp,name.capitalize(),Opt_cd[0],Opt_val[0])
             print(mess)
             RangeDict["{}_{}".format(tp,name)] = Opt_val[0]
+
+
 
     # ==========================================================================
     # Get minimum variation for different powers
 
-    space = 100
+    '''
+    space = 50
     rdlow = int(np.ceil(RangeDict['Min_Power'] / space)) * space
     rdhigh = int(np.ceil(RangeDict['Max_Power'] / space)) * space
     vals = []
@@ -278,9 +235,10 @@ def Single(VL, DADict):
 
     vals = np.array(vals)
     plt.figure()
+    plt.xlabel('Power')
+    plt.ylabel('Variation')
     plt.plot(vals[:,0],vals[:,1])
     plt.show()
-
 
     AxMaj,ResAx = [2,3],0
     grid = Gridmaker(AxMaj,ResAx)
@@ -304,6 +262,7 @@ def Single(VL, DADict):
                                                         origin='lower',extent=(0,1,0,1))
     plt.show()
     '''
+
 def Gridmaker(AxMaj,ResAx,MajorN=7,MinorN=20):
     AxMin = list(set(range(len(InTag))).difference(AxMaj))
     # Discretisation
@@ -319,8 +278,7 @@ def Gridmaker(AxMaj,ResAx,MajorN=7,MinorN=20):
 def GPR_Opt(X,model):
     X = torch.tensor(X,dtype=torch_dtype)
     dmean, mean = model.Gradient_mean(X)
-    dmean, mean = dmean.detach().numpy(),mean.detach().numpy()
-    return mean, dmean
+    return mean.detach().numpy(), dmean.detach().numpy()
 
 def constraint(X, model, DesPower):
     '''
@@ -343,3 +301,82 @@ def dconstraint(X, model, DesPower):
     Grad = model.Gradient(X)
 
     return Grad
+
+
+def Compare(VL, DADict):
+    Parameters = DADict['Parameters']
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
+
+
+    DispX = DispY = [-0.01,0.01]
+    DispZ,Rotation = [0.01,0.03],[-15,15]
+    bounds = np.transpose([DispX,DispY,DispZ,Rotation]) # could import this for consistency
+    InputScaler = np.array([bounds[0],bounds[1] - bounds[0]])
+
+    ResDict = {}
+    for mldir in Parameters.Dirs:
+        if mldir not in ResDict:ResDict[mldir] = []
+        path = "{}/ML/{}".format(VL.PROJECT_DIR,mldir)
+        resdirs = ML.GetResPaths(path)
+        for resdir in resdirs:
+            paramfile = "{}/Parameters.py".format(resdir)
+            Parameters = ReadParameters(paramfile)
+
+            TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
+                                            'Input', 'Output', Parameters.TrainNb)
+            TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData,
+                                           'Input', 'Output', Parameters.TestNb)
+
+            TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
+            TestIn_scale = ML.DataScale(TestIn,*InputScaler)
+
+            # Scale output to [0,1]
+            OutputScaler = np.array([TrainOut.min(axis=0),TrainOut.max(axis=0) - TrainOut.min(axis=0)])
+            TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
+            TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
+
+            # Convert to tensors
+            TrainIn_scale = torch.from_numpy(TrainIn_scale)
+            TrainOut_scale = torch.from_numpy(TrainOut_scale)
+            TestIn_scale = torch.from_numpy(TestIn_scale)
+            TestOut_scale = torch.from_numpy(TestOut_scale)
+
+            NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
+            TrainNb = len(TrainIn)
+            ModelFile = "{}/Model.pth".format(resdir)
+            likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
+                                            Parameters.Kernel,prev_state=ModelFile)
+            likelihood.eval()
+            model.eval()
+            reslst = [TrainNb]
+            with torch.no_grad():
+                TrainPred = model(*[TrainIn_scale]*NbOutput)
+                TestPred = model(*[TestIn_scale]*NbOutput)
+
+                for i in range(NbOutput):
+                    Train_mean = TrainPred[i].mean.numpy()
+                    Test_mean = TestPred[i].mean.numpy()
+
+                    TrainMSE = ML.MSE(Train_mean,TrainOut_scale[:,i].numpy())
+                    TestMSE = ML.MSE(Test_mean,TestOut_scale[:,i].numpy())
+                    reslst.append(TestMSE)
+
+            ResDict[mldir].append(reslst)
+
+    plt.figure()
+    for key, val in ResDict.items():
+        npval = np.array(val).T
+        plt.plot(npval[0],npval[1],marker='x',label=key[:-4])
+    plt.xlabel('Nb Training Points')
+    plt.ylabel('Power MSE')
+    plt.legend()
+    plt.show()
+
+    plt.figure()
+    for key, val in ResDict.items():
+        npval = np.array(val).T
+        plt.plot(npval[0],npval[2],marker='x',label=key[:-4])
+    plt.xlabel('Nb Training Points')
+    plt.ylabel('Variation MSE')
+    plt.legend()
+    plt.show()

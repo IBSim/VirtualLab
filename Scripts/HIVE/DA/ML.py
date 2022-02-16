@@ -3,108 +3,10 @@ import numpy as np
 import torch
 import gpytorch
 import h5py
-import pickle
 from natsort import natsorted
-from importlib import import_module, reload
 from scipy.stats import norm
 
 from Optimise import FuncOpt
-
-def GPRModel_Multi(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
-    NbModel = TrainOut.shape[1]
-    models,likelihoods = [], []
-    for i in range(NbModel):
-        _kernel = Kernel if type(Kernel)==str else Kernel[i]
-        _min_noise = min_noise[i] if type(min_noise) in (list,tuple) else min_noise
-
-        likelihood, model = GPRModel_Single(TrainIn,TrainOut[:,i],_kernel,min_noise=_min_noise)
-        models.append(model)
-        likelihoods.append(likelihood)
-
-    model = gpytorch.models.IndependentModelList(*models)
-    likelihood = gpytorch.likelihoods.LikelihoodList(*likelihoods)
-    if prev_state:
-        state_dict = torch.load(prev_state)
-        model.load_state_dict(state_dict)
-    return likelihood, model
-
-def GPRModel_Single(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
-
-    likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = ExactGPmodel(TrainIn, TrainOut, likelihood, Kernel)
-
-    if not prev_state:
-        if min_noise != None:
-            likelihood.noise_covar.register_constraint('raw_noise',gpytorch.constraints.GreaterThan(min_noise))
-
-        # Start noise at lower level to avoid bad optima, but ensure it isn't zero
-        noise_lower = likelihood.noise_covar.raw_noise_constraint.lower_bound
-        noise_init = max(5*noise_lower,1e-8)
-        # noise_init = 0
-        hypers = {'likelihood.noise_covar.noise': noise_init}
-        model.initialize(**hypers)
-    else:
-        state_dict = torch.load(prev_state)
-        model.load_state_dict(state_dict)
-
-    return likelihood, model
-
-def GPR_Train_Multi(model,Iterations, lr=0.1, test=None, Print=50, ConvCheck=50, Verbose=False):
-    likelihood = model.likelihood
-
-    model.train()
-    likelihood.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # Includes GaussianLikelihood parameters
-    mll = gpytorch.mlls.SumMarginalLogLikelihood(likelihood, model)
-
-
-    Convergence,tol = [],1e-6
-    for i in range(Iterations):
-        optimizer.zero_grad() # Zero gradients from previous iteration
-
-        with gpytorch.settings.max_cholesky_size(1500):
-            output = model(*model.train_inputs)
-            loss = -mll(output, model.train_targets)
-            loss.backward()
-            optimizer.step()
-
-            if i==0 or (i+1) % Print == 0:
-                message = "Iteration: {}, Loss: {}".format(i+1,loss.item())
-                if Verbose:
-                    for i,mod in enumerate(model.models):
-                        Lscales = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
-                        Outscale = mod.covar_module.outputscale.detach().numpy()
-                        noise = mod.likelihood.noise.detach().numpy()[0]
-                        message += "Model output {}:\nLength scale: {}\nOutput scale: {}\n"\
-                                  "Noise: {}\n".format(i,Lscales,Outscale,noise)
-                print(message)
-
-            Convergence.append(loss.item())
-
-            if i>2*ConvCheck and (i+1)%ConvCheck==0:
-                mean_new = np.mean(Convergence[-ConvCheck:])
-                mean_old = np.mean(Convergence[-2*ConvCheck:-ConvCheck])
-                if mean_new>mean_old:
-                    print('Terminating due to increasing loss')
-                    break
-                elif np.abs(mean_new-mean_old)<tol:
-                    print('Terminating due to convergence')
-                    break
-
-            # if i%100==0:
-            #     with torch.no_grad():
-            #         model.eval();likelihood.eval()
-            #         TrainMSEtmp,TestMSEtmp = [i],[i]
-            #         for i,mod in enumerate(model.models):
-            #             _TrainMSE = ML.MSE(mod(TrainIn_scale).mean.numpy(),TrainOut_scale[:,i].numpy())
-            #             _TestMSE = ML.MSE(mod(TestIn_scale).mean.numpy(),TestOut_scale[:,i].numpy())
-            #             TrainMSEtmp.append(_TrainMSE)
-            #             TestMSEtmp.append(_TestMSE)
-            #         TestMSE.append(TestMSEtmp)
-            #         TrainMSE.append(TrainMSEtmp)
-            #         model.train();likelihood.train()
-
-    return Convergence
 
 class ExactGPmodel(gpytorch.models.ExactGP):
     '''
@@ -210,44 +112,105 @@ class ExactGPmodel(gpytorch.models.ExactGP):
             dvar = torch.autograd.grad(var.sum(), x)[0]
         return dvar, var
 
-    def EI(self, Candidates, sort=True):
-        with torch.no_grad():
-            _Candidates = torch.tensor(Candidates)
-            score = self(_Candidates).variance.numpy()
+def GPRModel_Multi(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
+    NbModel = TrainOut.shape[1]
+    models,likelihoods = [], []
+    for i in range(NbModel):
+        _kernel = Kernel if type(Kernel)==str else Kernel[i]
+        _min_noise = min_noise[i] if type(min_noise) in (list,tuple) else min_noise
 
-        if sort:
-            sortix = np.argsort(score)[::-1]
-            score, Candidates = score[sortix],Candidates[sortix]
+        likelihood, model = GPRModel_Single(TrainIn,TrainOut[:,i],_kernel,min_noise=_min_noise)
+        models.append(model)
+        likelihoods.append(likelihood)
 
-        return score, Candidates
+    model = gpytorch.models.IndependentModelList(*models)
+    likelihood = gpytorch.likelihoods.LikelihoodList(*likelihoods)
+    if prev_state:
+        state_dict = torch.load(prev_state)
+        model.load_state_dict(state_dict)
+    return likelihood, model
 
-    def EIGF(self, Candidates, NN_val, sort=True):
-        with torch.no_grad():
-            _Candidates = torch.tensor(Candidates)
-            comp = self(_Candidates)
-            pred = comp.mean.numpy()
-            UQ = comp.variance.numpy()
-            score = UQ + (pred - NN_val)**2
+def GPRModel_Single(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
 
-        if sort:
-            sortix = np.argsort(score)[::-1]
-            score, Candidates = score[sortix],Candidates[sortix]
+    likelihood = gpytorch.likelihoods.GaussianLikelihood()
+    model = ExactGPmodel(TrainIn, TrainOut, likelihood, Kernel)
 
-        return score, Candidates
+    if not prev_state:
+        if min_noise != None:
+            likelihood.noise_covar.register_constraint('raw_noise',gpytorch.constraints.GreaterThan(min_noise))
 
-    def MaximisedEI(self, Candidates, bounds, tol=0, sort=True):
-        order = 'decreasing' if sort else None
-        Optima = FuncOpt(_MaxUQ, Candidates, find='max', tol=None,
-                         order=order, bounds=bounds, jac=True, args=[self])
-        Candidates, score = Optima
-        return score, Candidates
+        # Start noise at lower level to avoid bad optima, but ensure it isn't zero
+        noise_lower = likelihood.noise_covar.raw_noise_constraint.lower_bound
+        noise_init = max(5*noise_lower,1e-8)
+        # noise_init = 0
+        hypers = {'likelihood.noise_covar.noise': noise_init}
+        model.initialize(**hypers)
+    else:
+        state_dict = torch.load(prev_state)
+        model.load_state_dict(state_dict)
 
-def _MaxUQ(Candidates,GPR_model):
-    _Candidates = torch.tensor(Candidates)
-    dvar, var = GPR_model.Gradient_variance(_Candidates)
-    dvar, var = dvar.detach().numpy(), var.detach().numpy()
-    return var, dvar
+    return likelihood, model
 
+def GPR_Train_Multi(model,Iterations, lr=0.1, test=None, Print=50, ConvCheck=50, Verbose=False):
+    likelihood = model.likelihood
+
+    model.train()
+    likelihood.train()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # Includes GaussianLikelihood parameters
+    mll = gpytorch.mlls.SumMarginalLogLikelihood(likelihood, model)
+
+
+    Convergence,tol = [],1e-6
+    for i in range(Iterations):
+        optimizer.zero_grad() # Zero gradients from previous iteration
+
+        with gpytorch.settings.max_cholesky_size(1500):
+            output = model(*model.train_inputs)
+            loss = -mll(output, model.train_targets)
+            loss.backward()
+            optimizer.step()
+
+            if i==0 or (i+1) % Print == 0:
+                message = "Iteration: {}, Loss: {}".format(i+1,loss.item())
+                if Verbose:
+                    for i,mod in enumerate(model.models):
+                        Lscales = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
+                        Outscale = mod.covar_module.outputscale.detach().numpy()
+                        noise = mod.likelihood.noise.detach().numpy()[0]
+                        message += "Model output {}:\nLength scale: {}\nOutput scale: {}\n"\
+                                  "Noise: {}\n".format(i,Lscales,Outscale,noise)
+                print(message)
+
+            Convergence.append(loss.item())
+
+            if i>2*ConvCheck and (i+1)%ConvCheck==0:
+                mean_new = np.mean(Convergence[-ConvCheck:])
+                mean_old = np.mean(Convergence[-2*ConvCheck:-ConvCheck])
+                if mean_new>mean_old:
+                    print('Terminating due to increasing loss')
+                    break
+                elif np.abs(mean_new-mean_old)<tol:
+                    print('Terminating due to convergence')
+                    break
+
+            # if i%100==0:
+            #     with torch.no_grad():
+            #         model.eval();likelihood.eval()
+            #         TrainMSEtmp,TestMSEtmp = [i],[i]
+            #         for i,mod in enumerate(model.models):
+            #             _TrainMSE = ML.MSE(mod(TrainIn_scale).mean.numpy(),TrainOut_scale[:,i].numpy())
+            #             _TestMSE = ML.MSE(mod(TestIn_scale).mean.numpy(),TestOut_scale[:,i].numpy())
+            #             TrainMSEtmp.append(_TrainMSE)
+            #             TestMSEtmp.append(_TestMSE)
+            #         TestMSE.append(TestMSEtmp)
+            #         TrainMSE.append(TrainMSEtmp)
+            #         model.train();likelihood.train()
+
+    return Convergence
+
+
+# ==============================================================================
+# Data scaling and rescaling functions
 def DataScale(data,const,scale):
     '''
     This function scales n-dim data to a specific range.
@@ -271,10 +234,39 @@ def DataRescale(data,const,scale):
     '''
     return data*scale + const
 
+# ==============================================================================
+# Metrics used to asses model performance
 def MSE(Predicted,Target):
     sqdiff = (Predicted - Target)**2
     return np.mean(sqdiff)
 
+def MAE(Predicted,Target):
+    return np.abs(Predicted - Target).mean()/(Target.max() - Target.min())
+
+def RMSE(Predicted,Target):
+    return ((Predicted - Target)**2).mean()**0.5/(Target.max() - Target.min())
+
+def Rsq(Predicted,Target):
+    mean_pred = Predicted.mean()
+    divisor = ((Predicted - mean_pred)**2).sum()
+    MSE_val = ((Predicted - Target)**2).sum()
+    return 1-(MSE_val/divisor)
+
+def GetMetrics(model,x,Target):
+    with torch.no_grad():
+        output = model(*[x]*len(model.models))
+        Metrics = {'MSE':[],'MAE':[],'RMSE':[],'Rsq':[]}
+        for i,out in enumerate(output):
+            target = Target[:,i]
+            pred = out.mean.numpy()
+            Metrics['MSE'].append(MSE(pred,target))
+            Metrics['MAE'].append(MAE(pred,target))
+            Metrics['RMSE'].append(RMSE(pred,target))
+            Metrics['Rsq'].append(Rsq(pred,target))
+    return Metrics
+
+# ==============================================================================
+# Functions used for reading & writing data
 def GetResPaths(ResDir,DirOnly=True,Skip=['_']):
     ''' This returns a naturally sorted list of the directories in ResDir'''
     ResPaths = []
@@ -350,48 +342,27 @@ def CompileData(ResDirs,MapFnc,args=[]):
         Out.append(_Out)
     return In, Out
 
+# ==============================================================================
+
 def LHS_Samples(bounds,NbCandidates,seed=None):
     from skopt.sampler import Lhs
     lhs = Lhs(criterion="maximin", iterations=1000)
     Candidates = lhs.generate(bounds, NbCandidates,seed)
     return Candidates
 
-def Var_Multi(model, Candidates, scoring='sum',sort=True):
-    NbOutput = len(model.models)
-    # ==========================================================================
-    # Use model to make prediction
+# ==============================================================================
+# Adaptive scheme (no optimisation used)
+def _MMSE(model, Candidates, NbOutput):
     with torch.no_grad():
-        _Candidates = torch.tensor(Candidates)
-        output = model(*[_Candidates]*NbOutput)
-
-    # ==========================================================================
-    # Calculate score & combine in to single value
+        output = model(*[Candidates]*NbOutput)
     vars = [out.variance.numpy() for out in output]
-    score_multi = np.transpose(vars)
+    score_multi = np.array(vars)
+    return score_multi
 
-    if scoring=='sum':
-        score = score_multi.sum(axis=1)
-    # Todo, f1 score
-
-    # ==========================================================================
-    # Sort, if required
-    if sort:
-        sortix = np.argsort(score)[::-1]
-        score, Candidates = score[sortix],Candidates[sortix]
-
-    return score, Candidates
-
-def EI_Multi(model, Candidates, scoring='sum',sort=True):
-    NbOutput = len(model.models)
-
-    # ==========================================================================
-    # Use model to make prediction
+def _EI(model, Candidates,NbOutput):
     with torch.no_grad():
-        _Candidates = torch.tensor(Candidates)
-        output = model(*[_Candidates]*NbOutput)
+        output = model(*[Candidates]*NbOutput)
 
-    # ==========================================================================
-    # Calculate score & combine in to single value
     score_multi = []
     for i,out in enumerate(output):
         ymin = model.train_targets[i].numpy().min()
@@ -401,104 +372,33 @@ def EI_Multi(model, Candidates, scoring='sum',sort=True):
         score_ind = diff*norm.cdf(z) + stddev*norm.pdf(z)
         score_multi.append(score_ind)
     score_multi = np.array(score_multi)
-    if scoring=='sum':
-        score = score_multi.sum(axis=0)
-    # Todo, f1 score
+    return score_multi
 
-    # ==========================================================================
-    # Sort, if required
-    if sort:
-        sortix = np.argsort(score)[::-1]
-        score, Candidates = score[sortix],Candidates[sortix]
-
-    return score, Candidates
-
-def EIGF_Multi(model, Candidates, scoring='sum',sort=True):
-    NbOutput = len(model.models)
-    # ==========================================================================
-    # Use model to make prediction
+def _EIGF(model, Candidates, NbOutput):
     with torch.no_grad():
-        _Candidates = torch.tensor(Candidates)
-        output = model(*[_Candidates]*NbOutput)
-    vars,diff = [],[]
-
+        output = model(*[Candidates]*NbOutput)
     # ==========================================================================
     # Get nearest neighbour values (assumes same inputs for all dimensions)
     TrainIn = model.train_inputs[0][0].numpy()
     TrainOut = np.transpose([model.train_targets[i].numpy() for i in range(NbOutput)])
-    NN = []
-    for c in Candidates:
+    NN_val = []
+    for c in Candidates.detach().numpy():
         d = np.linalg.norm(TrainIn - c,axis=1)
-        NN.append(TrainOut[np.argmin(d)])
-    NN = np.array(NN)
+        NN_val.append(TrainOut[np.argmin(d)])
+    NN_val = np.array(NN_val)
 
     # ==========================================================================
-    # Calculate score & combine in to single value
+    # calculate score
+    score_multi = []
     for i,out in enumerate(output):
         mean = out.mean.numpy()
-        _diff = (mean - NN[:,i])**2
-        diff.append(_diff)
-        vars.append(out.variance.numpy())
-    vars,diff = np.transpose(vars),np.transpose(diff)
-    score_multi = vars+diff
+        diff = (mean - NN_val[:,i])**2
+        var = out.variance.numpy()
+        score_multi.append(diff + var)
+    score_multi = np.array(score_multi)
+    return score_multi
 
-    if scoring=='sum':
-        score = score_multi.sum(axis=1)
-    # Todo, f1 score
-
-    # ==========================================================================
-    # Sort, if required
-    if sort:
-        sortix = np.argsort(score)[::-1]
-        score, Candidates = score[sortix],Candidates[sortix]
-
-    return score, Candidates
-
-def OptVar_Multi(Candidates,GPR_model,scoring='sum'):
-    _Candidates = torch.tensor(Candidates)
-    dvar, var = [], []
-    for mod in GPR_model.models:
-        _dvar, _var = mod.Gradient_variance(_Candidates)
-        dvar.append(_dvar.detach().numpy())
-        var.append(_var.detach().numpy())
-    dvar, var = np.array(dvar),np.array(var)
-    if scoring=='sum':
-        var = var.sum(axis=0)
-        dvar = dvar.sum(axis=0)
-
-    return var, dvar
-
-def _Constrain_Multi(Candidates,OrigPoint,rad):
-    a = rad**2 - np.linalg.norm(Candidates - OrigPoint,axis=1)**2
-    return a
-
-def _dConstrain_Multi(Candidates,OrigPoint,rad):
-    da = -2*(Candidates - OrigPoint)
-    return da
-
-def ConMax_Multi(model, Candidates, func, OrigPoint, rad=0.05, scoring='sum', sort=True):
-    con1 = {'type': 'ineq', 'fun': _Constrain_Multi,
-            'jac':_dConstrain_Multi, 'args':[OrigPoint,rad]}
-    return Max_Multi(model,Candidates,func,scoring=scoring,sort=sort,constraints=(con1))
-
-def Max_Multi(model, Candidates, func, scoring='sum',sort=True, constraints=()):
-    NbOutput = len(model.models)
-    NbInput = (model.train_inputs[0][0]).shape[1]
-    order = 'decreasing' if sort else None
-    if func.lower() == 'var': fn = OptVar_Multi
-
-    Optima = FuncOpt(fn, Candidates, find='max', tol=None,
-                     order=order, bounds=[[0,1]]*NbInput, jac=True,
-                     constraints=constraints, args=[model])
-    Candidates, score = Optima
-    return score, Candidates
-
-def EIGrad_Multi(model, Candidates, scoring='sum',sort=True):
-    NbOutput = len(model.models)
-    # ==========================================================================
-    # Use model to make prediction
-
-    _Candidates = torch.tensor(Candidates)
+def _EIGrad(model, Candidates, NbOutput):
     dmean,var = [],[]
     for mod in model.models:
          _var = mod(_Candidates).variance
@@ -507,28 +407,93 @@ def EIGrad_Multi(model, Candidates, scoring='sum',sort=True):
          var.append(_var.detach().numpy())
     dmean,var = np.array(dmean),np.array(var)
 
-
     # ==========================================================================
     # Get nearest neighbour values (assumes same inputs for all dimensions)
     TrainIn = model.train_inputs[0][0].numpy()
-    NN = []
+    TrainOut = np.transpose([model.train_targets[i].numpy() for i in range(NbOutput)])
+    NN_val = []
     for c in Candidates:
-        diff = TrainIn - c
-        d = np.linalg.norm(diff,axis=1)
-        ix = np.argmin(d)
-        NN.append(diff[ix])
-    NN = np.array(NN)
+        d = np.linalg.norm(TrainIn - c,axis=1)
+        NN_val.append(TrainOut[np.argmin(d)])
+    NN_val = np.array(NN_val)
 
-    gradsc = (NN.T[:,:,None]*dmean.T)**2
+    gradsc = (NN_val.T[:,:,None]*dmean.T)**2
     gradsc = gradsc.sum(axis=0).T
     score_multi = var + gradsc
+    return score_multi
 
-    if scoring=='sum':
-        score = score_multi.sum(axis=0)
+def Adaptive(model, Candidates, scheme, scoring='sum',sort=True):
+    NbOutput = len(model.models)
+    _Candidates = torch.tensor(Candidates)
+    if scheme.lower()=='mmse':
+        score = _MMSE(model, _Candidates, NbOutput)
+    elif scheme.lower()=='ei':
+        score = _EI(model, _Candidates, NbOutput)
+    elif scheme.lower()=='eigf':
+        score = _EIGF(model, _Candidates, NbOutput)
+    elif scheme.lower()=='eigrad':
+        score = _EIGrad(model, _Candidates, NbOutput)
 
     # ==========================================================================
-    # Sort, if required
+    # Combine scores
+    if scoring=='sum':
+        score = score.sum(axis=0)
+
+    # ==========================================================================
+    # Sort
     if sort:
-        sortix = np.argsort(score)[::-1]
-        score, Candidates = score[sortix],Candidates[sortix]
+        # sort by sum if score is not a 1d array
+        if score.ndim>1:
+            sortix = np.argsort(score.sum(axis=0))[::-1]
+            score, Candidates = score.T[sortix],Candidates[sortix]
+        else:
+            sortix = np.argsort(score)[::-1]
+            score, Candidates = score[sortix],Candidates[sortix]
+
     return score, Candidates
+
+# ==============================================================================
+# Optimised adaptive routine
+def _MMSE_Grad(Candidates,GPR_model,scoring='sum'):
+    _Candidates = torch.tensor(Candidates)
+    dvar, var = [], []
+    for mod in GPR_model.models:
+        _dvar, _var = mod.Gradient_variance(_Candidates)
+        dvar.append(_dvar.detach().numpy())
+        var.append(_var.detach().numpy())
+    dvar, var = np.array(dvar),np.array(var)
+    if scoring=='sum':
+        var,dvar = var.sum(axis=0),dvar.sum(axis=0)
+
+    return var, dvar
+
+def AdaptSLSQP(model, Candidates, scheme, bounds, constraints=(), scoring='sum',sort=True):
+    # Finds optima in parameter space usign slsqp
+    NbOutput = len(model.models)
+
+    order = 'decreasing' if sort else None
+    args = [model]
+    if scheme.lower() == 'mmse':
+        fn = _MMSE_Grad
+
+    Optima = FuncOpt(fn, Candidates, find='max', tol=None,
+                     order=order, bounds=bounds, jac=True,
+                     constraints=constraints, args=args)
+    Candidates, score = Optima
+
+    return score, Candidates
+
+# ==============================================================================
+# Optimised adaptive routine with limit on initial movement
+def _Constrain_Multi(Candidates,OrigPoint,rad):
+    a = rad**2 - np.linalg.norm(Candidates - OrigPoint,axis=1)**2
+    return a
+
+def _dConstrain_Multi(Candidates,OrigPoint,rad):
+    da = -2*(Candidates - OrigPoint)
+    return da
+
+def ConstrainRad(OrigPoint, rad):
+    con1 = {'type': 'ineq', 'fun': _Constrain_Multi,
+            'jac':_dConstrain_Multi, 'args':[OrigPoint,rad]}
+    return [con1]

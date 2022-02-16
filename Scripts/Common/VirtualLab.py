@@ -264,7 +264,7 @@ class VLSetup():
             attrstr = "\n".join(["{}.{}".format(VLType,i) for i in errVar])
             message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
                 "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(VLType,attrstr)
-            self.Exit(ErrorMesage(message))
+            self.Exit(ErrorMessage(message))
 
         # VLType is in Master and Var
         if Master!=None and Var !=None:

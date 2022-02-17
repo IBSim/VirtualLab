@@ -7,6 +7,7 @@ from natsort import natsorted
 from scipy.stats import norm
 
 from Optimise import FuncOpt
+from GeneticAlgorithm import ga
 
 class ExactGPmodel(gpytorch.models.ExactGP):
     '''
@@ -344,22 +345,22 @@ def CompileData(ResDirs,MapFnc,args=[]):
 
 # ==============================================================================
 
-def LHS_Samples(bounds,NbCandidates,seed=None):
+def LHS_Samples(bounds,NbCandidates,seed=None,iterations=1000):
     from skopt.sampler import Lhs
-    lhs = Lhs(criterion="maximin", iterations=1000)
+    lhs = Lhs(criterion="maximin", iterations=iterations)
     Candidates = lhs.generate(bounds, NbCandidates,seed)
     return Candidates
 
 # ==============================================================================
 # Adaptive scheme (no optimisation used)
-def _MMSE(model, Candidates, NbOutput):
+def _MMSE(Candidates, model, NbOutput):
     with torch.no_grad():
         output = model(*[Candidates]*NbOutput)
-    vars = [out.variance.numpy() for out in output]
+        vars = [out.variance.numpy() for out in output]
     score_multi = np.array(vars)
     return score_multi
 
-def _EI(model, Candidates,NbOutput):
+def _EI(Candidates, model, NbOutput):
     with torch.no_grad():
         output = model(*[Candidates]*NbOutput)
 
@@ -374,7 +375,7 @@ def _EI(model, Candidates,NbOutput):
     score_multi = np.array(score_multi)
     return score_multi
 
-def _EIGF(model, Candidates, NbOutput):
+def _EIGF(Candidates, model, NbOutput):
     with torch.no_grad():
         output = model(*[Candidates]*NbOutput)
     # ==========================================================================
@@ -393,12 +394,13 @@ def _EIGF(model, Candidates, NbOutput):
     for i,out in enumerate(output):
         mean = out.mean.numpy()
         diff = (mean - NN_val[:,i])**2
-        var = out.variance.numpy()
+        with torch.no_grad(): # due to bug in pytorch
+            var = out.variance.numpy()
         score_multi.append(diff + var)
     score_multi = np.array(score_multi)
     return score_multi
 
-def _EIGrad(model, Candidates, NbOutput):
+def _EIGrad(Candidates, model, NbOutput):
     dmean,var = [],[]
     for mod in model.models:
          _var = mod(_Candidates).variance
@@ -422,22 +424,28 @@ def _EIGrad(model, Candidates, NbOutput):
     score_multi = var + gradsc
     return score_multi
 
-def Adaptive(model, Candidates, scheme, scoring='sum',sort=True):
+def _Adaptive(Candidates, model, scheme, scoring='sum'):
     NbOutput = len(model.models)
     _Candidates = torch.tensor(Candidates)
     if scheme.lower()=='mmse':
-        score = _MMSE(model, _Candidates, NbOutput)
+        score = _MMSE(_Candidates, model, NbOutput)
     elif scheme.lower()=='ei':
-        score = _EI(model, _Candidates, NbOutput)
+        score = _EI(_Candidates, model, NbOutput)
     elif scheme.lower()=='eigf':
-        score = _EIGF(model, _Candidates, NbOutput)
+        score = _EIGF(_Candidates, model, NbOutput)
     elif scheme.lower()=='eigrad':
-        score = _EIGrad(model, _Candidates, NbOutput)
+        score = _EIGrad(_Candidates, model, NbOutput)
 
     # ==========================================================================
     # Combine scores
     if scoring=='sum':
         score = score.sum(axis=0)
+
+    return score
+
+def Adaptive(Candidates, model, scheme, scoring='sum',sort=True):
+
+    score = _Adaptive(Candidates,model,scheme,scoring)
 
     # ==========================================================================
     # Sort
@@ -449,7 +457,6 @@ def Adaptive(model, Candidates, scheme, scoring='sum',sort=True):
         else:
             sortix = np.argsort(score)[::-1]
             score, Candidates = score[sortix],Candidates[sortix]
-
     return score, Candidates
 
 # ==============================================================================
@@ -467,24 +474,8 @@ def _MMSE_Grad(Candidates,GPR_model,scoring='sum'):
 
     return var, dvar
 
-def AdaptSLSQP(model, Candidates, scheme, bounds, constraints=(), scoring='sum',sort=True):
-    # Finds optima in parameter space usign slsqp
-    NbOutput = len(model.models)
-
-    order = 'decreasing' if sort else None
-    args = [model]
-    if scheme.lower() == 'mmse':
-        fn = _MMSE_Grad
-
-    Optima = FuncOpt(fn, Candidates, find='max', tol=None,
-                     order=order, bounds=bounds, jac=True,
-                     constraints=constraints, args=args)
-    Candidates, score = Optima
-
-    return score, Candidates
-
 # ==============================================================================
-# Optimised adaptive routine with limit on initial movement
+# Constraint for pptimised adaptive routine with limit on initial movement
 def _Constrain_Multi(Candidates,OrigPoint,rad):
     a = rad**2 - np.linalg.norm(Candidates - OrigPoint,axis=1)**2
     return a
@@ -497,3 +488,27 @@ def ConstrainRad(OrigPoint, rad):
     con1 = {'type': 'ineq', 'fun': _Constrain_Multi,
             'jac':_dConstrain_Multi, 'args':[OrigPoint,rad]}
     return [con1]
+
+def AdaptSLSQP(Candidates, model, scheme, bounds, constraints=(), scoring='sum',sort=True,**kwargs):
+    # Finds optima in parameter space usign slsqp
+    NbOutput = len(model.models)
+
+    order = 'decreasing' if sort else None
+    args = [model]
+    if scheme.lower() == 'mmse':
+        fn = _MMSE_Grad
+
+    Optima = FuncOpt(fn, Candidates, find='max', tol=None,
+                     order=order, bounds=bounds, jac=True,
+                     constraints=constraints, args=args,**kwargs)
+    Candidates, score = Optima
+
+    return score, Candidates
+
+def AdaptGA(model, scheme, bounds, n_pop=100,n_gen=100, scoring='sum',sort=True):
+    NbOutput = len(model.models)
+
+    find='max'
+    args = (model,scheme)
+    coord,score = ga(_Adaptive,bounds,n_gen,n_pop,find=find,args=args)
+    return score,coord

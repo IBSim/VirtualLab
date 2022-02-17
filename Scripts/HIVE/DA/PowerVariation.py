@@ -6,6 +6,7 @@ from matplotlib.colors import LogNorm
 from types import SimpleNamespace as Namespace
 import torch
 import gpytorch
+import time
 
 from VLFunctions import ReadData, ReadParameters
 import ML
@@ -127,32 +128,45 @@ def Single(VL, DADict):
         Method = Adaptive['Method']
         NbNext = Adaptive['Nb']
         NbCand = Adaptive['NbCandidates']
-        maximise = Adaptive.get('Maximise',False)
+        maximise = Adaptive.get('Maximise',None)
 
         Seed = Adaptive.get('Seed',None)
         if Seed!=None: np.random.seed(Seed)
         Candidates = np.random.uniform(0,1,size=(NbCand,NbInput))
+        # Candidates = ML.LHS_Samples([[0.001,0.999]]*NbInput,NbCand,Seed,100)
+        # Candidates = np.array(Candidates)
         OrigCandidates = np.copy(Candidates)
 
         sort=True
         BestPoints = []
+        tm = 0
         for i in range(NbNext):
-            if maximise:
+            st = time.time()
+
+            if not maximise:
+                score, srtCandidates = ML.Adaptive(Candidates,model,Method,
+                                                scoring='sum',sort=sort)
+                BestPoint = srtCandidates[0:1]
+                Candidates = srtCandidates #srtCandidates[1:]
+
+            elif maximise.lower()=='slsqp':
                 constr_rad = Adaptive.get('Constraint',0)
                 if constr_rad:
                     constraint = ML.ConstrainRad(OrigCandidates,constr_rad)
                 else: constraint = []
-                score,srtCandidates = ML.AdaptSLSQP(model,Candidates,Method,[[0,1]]*NbInput,
+
+                score,srtCandidates = ML.AdaptSLSQP(Candidates,model,Method,[[0,1]]*NbInput,
                                                     constraints=constraint,
-                                                    scoring='sum',sort=False)
-                if sort:
-                    sortix = np.argsort(score)[::-1]
-                    score,srtCandidates = score[sortix],srtCandidates[sortix]
-                    if constr_rad:
-                        OrigCandidates = (OrigCandidates[sortix])[1:]
-            else:
-                score, srtCandidates = ML.Adaptive(model,Candidates,Method,
-                                                scoring='sum',sort=sort)
+                                                    scoring='sum',sort=sort)
+                BestPoint = srtCandidates[0:1]
+                Candidates = srtCandidates #srtCandidates[1:]
+
+            elif maximise.lower()=='ga':
+                score,BestPoint = ML.AdaptGA(model,Method,bounds)
+                BestPoint = np.atleast_2d(BestPoint)
+
+            end1 = time.time()-st
+            tm+=end1
 
             Show=0
             if Show:
@@ -160,11 +174,10 @@ def Single(VL, DADict):
                     print(j,i)
                 print()
 
+            #d = np.linalg.norm(TrainIn_scale.detach().numpy() - BestPoint,axis=1)
+
             # Add best point to list
-            BestPoint = srtCandidates[0:1]
             BestPoints.append(BestPoint.flatten())
-            # Remove best point from future candidates
-            Candidates = srtCandidates[1:]
 
             # Update model with best point & mean value for better predictions
             BestPoint_pth = torch.from_numpy(BestPoint)
@@ -174,7 +187,7 @@ def Single(VL, DADict):
                 _mod = mod.get_fantasy_model(BestPoint_pth,output[j].mean)
                 model.models[j] = _mod
 
-
+        print('Total time:',tm)
         print(np.around(BestPoints,3))
         BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
 

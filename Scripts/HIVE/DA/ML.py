@@ -5,6 +5,7 @@ import gpytorch
 import h5py
 from natsort import natsorted
 from scipy.stats import norm
+import time
 
 from Optimise import FuncOpt
 from GeneticAlgorithm import ga
@@ -238,6 +239,7 @@ def DataRescale(data,const,scale):
 # ==============================================================================
 # Metrics used to asses model performance
 def MSE(Predicted,Target):
+    # this is not normnalised
     sqdiff = (Predicted - Target)**2
     return np.mean(sqdiff)
 
@@ -280,7 +282,14 @@ def GetResPaths(ResDir,DirOnly=True,Skip=['_']):
     return ResPaths
 
 def Writehdf(File, array, dsetpath):
-    Database = h5py.File(File,'a')
+    st = time.time()
+    while True:
+        try:
+            Database = h5py.File(File,'a')
+            break
+        except OSError:
+            if time.time() - st > 20: break
+
     if dsetpath in Database:
         del Database[dsetpath]
     Database.create_dataset(dsetpath,data=array)
@@ -289,7 +298,13 @@ def Writehdf(File, array, dsetpath):
 def Readhdf(Database_path,data_paths):
     if type(data_paths)==str: data_paths = [data_paths]
     data = []
-    Database = h5py.File(Database_path,'r')
+    st = time.time()
+    while True:
+        try:
+            Database = h5py.File(Database_path,'r')
+            break
+        except OSError:
+            if time.time() - st > 20: break
     for data_path in data_paths:
         _data = Database[data_path][:]
         data.append(_data)
@@ -351,16 +366,26 @@ def LHS_Samples(bounds,NbCandidates,seed=None,iterations=1000):
     Candidates = lhs.generate(bounds, NbCandidates,seed)
     return Candidates
 
+def NN_Ix(NewPoints,OldPoints):
+    # Returns the index of the nearest neighbour to NewPoitns in OldPoints
+    Ixs = []
+    for c in NewPoints:
+        d_mag = np.linalg.norm(OldPoints - c,axis=1)
+        Ixs.append(np.argmin(d_mag))
+    return np.array(Ixs)
+
 # ==============================================================================
 # Adaptive scheme (no optimisation used)
-def _MMSE(Candidates, model, NbOutput):
+def _MMSE(Candidates, model):
+    NbOutput = len(model.models)
     with torch.no_grad():
         output = model(*[Candidates]*NbOutput)
         vars = [out.variance.numpy() for out in output]
     score_multi = np.array(vars)
     return score_multi
 
-def _EI(Candidates, model, NbOutput):
+def _EI(Candidates, model):
+    NbOutput = len(model.models)
     with torch.no_grad():
         output = model(*[Candidates]*NbOutput)
 
@@ -375,18 +400,16 @@ def _EI(Candidates, model, NbOutput):
     score_multi = np.array(score_multi)
     return score_multi
 
-def _EIGF(Candidates, model, NbOutput):
+def _EIGF(Candidates, model):
+    NbOutput = len(model.models)
     with torch.no_grad():
         output = model(*[Candidates]*NbOutput)
     # ==========================================================================
     # Get nearest neighbour values (assumes same inputs for all dimensions)
     TrainIn = model.train_inputs[0][0].numpy()
     TrainOut = np.transpose([model.train_targets[i].numpy() for i in range(NbOutput)])
-    NN_val = []
-    for c in Candidates.detach().numpy():
-        d = np.linalg.norm(TrainIn - c,axis=1)
-        NN_val.append(TrainOut[np.argmin(d)])
-    NN_val = np.array(NN_val)
+    Ixs = NN_Ix(Candidates.detach().numpy(),TrainIn)
+    NN_val = TrainOut[Ixs]
 
     # ==========================================================================
     # calculate score
@@ -400,11 +423,12 @@ def _EIGF(Candidates, model, NbOutput):
     score_multi = np.array(score_multi)
     return score_multi
 
-def _EIGrad(Candidates, model, NbOutput):
+def _EIGrad(Candidates, model):
+    NbOutput = len(model.models)
     dmean,var = [],[]
     for mod in model.models:
-         _var = mod(_Candidates).variance
-         _dmean, _mean = mod.Gradient_mean(_Candidates)
+         _var = mod(Candidates).variance
+         _dmean, _mean = mod.Gradient_mean(Candidates)
          dmean.append(_dmean.detach().numpy())
          var.append(_var.detach().numpy())
     dmean,var = np.array(dmean),np.array(var)
@@ -413,28 +437,53 @@ def _EIGrad(Candidates, model, NbOutput):
     # Get nearest neighbour values (assumes same inputs for all dimensions)
     TrainIn = model.train_inputs[0][0].numpy()
     TrainOut = np.transpose([model.train_targets[i].numpy() for i in range(NbOutput)])
-    NN_val = []
-    for c in Candidates:
-        d = np.linalg.norm(TrainIn - c,axis=1)
-        NN_val.append(TrainOut[np.argmin(d)])
-    NN_val = np.array(NN_val)
-
-    gradsc = (NN_val.T[:,:,None]*dmean.T)**2
+    Ixs = NN_Ix(Candidates.detach().numpy(),TrainIn)
+    NN = TrainIn[Ixs]
+    distance = NN - Candidates.detach().numpy()
+    gradsc = (distance.T[:,:,None]*dmean.T)**2
     gradsc = gradsc.sum(axis=0).T
     score_multi = var + gradsc
+    # print(var.T)
+    # print(gradsc.T)
     return score_multi
 
+def _MASA(Candidates,committee):
+    preds = []
+    for model in committee:
+        tmp = []
+        for mod in model.models:
+            with torch.no_grad():
+                _pred = mod(Candidates).mean.numpy()
+            tmp.append(_pred)
+        preds.append(tmp)
+    preds = np.transpose(preds)
+    # preds lst is NbCandidate x NbOutput x NbCommittee
+    pred_mean = preds.mean(axis=2)
+    committee_sq = (preds - pred_mean[:,:,None])**2
+    committe_var = committee_sq.mean(axis=2)
+    committee_var = committe_var/committe_var.max()
+
+    TrainIn = committee[0].train_inputs[0][0].numpy()
+    Ixs = NN_Ix(Candidates.detach().numpy(),TrainIn)
+    NN = TrainIn[Ixs]
+    distance = np.linalg.norm(NN - Candidates.detach().numpy(),axis=1)
+    distance = distance/distance.max()
+
+    score_multi = committee_var + distance[:,None]
+    return score_multi.T
+
 def _Adaptive(Candidates, model, scheme, scoring='sum'):
-    NbOutput = len(model.models)
     _Candidates = torch.tensor(Candidates)
     if scheme.lower()=='mmse':
-        score = _MMSE(_Candidates, model, NbOutput)
+        score = _MMSE(_Candidates, model)
     elif scheme.lower()=='ei':
-        score = _EI(_Candidates, model, NbOutput)
+        score = _EI(_Candidates, model)
     elif scheme.lower()=='eigf':
-        score = _EIGF(_Candidates, model, NbOutput)
+        score = _EIGF(_Candidates, model)
     elif scheme.lower()=='eigrad':
-        score = _EIGrad(_Candidates, model, NbOutput)
+        score = _EIGrad(_Candidates, model)
+    elif scheme.lower()=='masa':
+        score = _MASA(_Candidates,model)
 
     # ==========================================================================
     # Combine scores

@@ -16,6 +16,11 @@ dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
 InTag, OutTag = ['x','y','z','rotation'],['power','uniformity']
 
+DispX = DispY = [-0.01,0.01]
+DispZ,Rotation = [0.01,0.03],[-15,15]
+bounds = np.transpose([DispX,DispY,DispZ,Rotation]) # could import this for consistency
+InputScaler = np.array([bounds[0],bounds[1] - bounds[0]])
+
 def MLMapping(Dir):
     datapkl = "{}/Data.pkl".format(Dir)
     DataDict = ReadData(datapkl)
@@ -59,10 +64,6 @@ def Single(VL, DADict):
 
     # Scale input to [0,1] (based on parameter space)
     # InputScaler = np.array([TrainIn.min(axis=0),TrainIn.max(axis=0) - TrainIn.min(axis=0)])
-    DispX = DispY = [-0.01,0.01]
-    DispZ,Rotation = [0.01,0.03],[-15,15]
-    bounds = np.transpose([DispX,DispY,DispZ,Rotation]) # could import this for consistency
-    InputScaler = np.array([bounds[0],bounds[1] - bounds[0]])
     TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
     TestIn_scale = ML.DataScale(TestIn,*InputScaler)
 
@@ -81,7 +82,7 @@ def Single(VL, DADict):
     if Parameters.Train:
         min_noise = getattr(Parameters,'MinNoise',None)
         likelihood, model = ML.GPRModel_Multi(TrainIn_scale, TrainOut_scale,
-                                        Parameters.Kernel,min_noise=min_noise,prev_state=ModelFile)
+                                        Parameters.Kernel,min_noise=min_noise)
 
         ML.GPR_Train_Multi(model, Parameters.Epochs)
 
@@ -125,78 +126,16 @@ def Single(VL, DADict):
     bounds = [[0,1]]*NbInput
     Adaptive = getattr(Parameters,'Adaptive',{})
     if Adaptive:
-        Method = Adaptive['Method']
-        NbNext = Adaptive['Nb']
-        NbCand = Adaptive['NbCandidates']
-        maximise = Adaptive.get('Maximise',None)
-
-        Seed = Adaptive.get('Seed',None)
-        if Seed!=None: np.random.seed(Seed)
-        Candidates = np.random.uniform(0,1,size=(NbCand,NbInput))
-        # Candidates = ML.LHS_Samples([[0.001,0.999]]*NbInput,NbCand,Seed,100)
-        # Candidates = np.array(Candidates)
-        OrigCandidates = np.copy(Candidates)
-
-        sort=True
-        BestPoints = []
-        tm = 0
-        for i in range(NbNext):
-            st = time.time()
-
-            if not maximise:
-                score, srtCandidates = ML.Adaptive(Candidates,model,Method,
-                                                scoring='sum',sort=sort)
-                BestPoint = srtCandidates[0:1]
-                Candidates = srtCandidates #srtCandidates[1:]
-
-            elif maximise.lower()=='slsqp':
-                constr_rad = Adaptive.get('Constraint',0)
-                if constr_rad:
-                    constraint = ML.ConstrainRad(OrigCandidates,constr_rad)
-                else: constraint = []
-
-                score,srtCandidates = ML.AdaptSLSQP(Candidates,model,Method,[[0,1]]*NbInput,
-                                                    constraints=constraint,
-                                                    scoring='sum',sort=sort)
-                BestPoint = srtCandidates[0:1]
-                Candidates = srtCandidates #srtCandidates[1:]
-
-            elif maximise.lower()=='ga':
-                score,BestPoint = ML.AdaptGA(model,Method,bounds)
-                BestPoint = np.atleast_2d(BestPoint)
-
-            end1 = time.time()-st
-            tm+=end1
-
-            Show=0
-            if Show:
-                for i,j in zip(score[:Show],srtCandidates):
-                    print(j,i)
-                print()
-
-            #d = np.linalg.norm(TrainIn_scale.detach().numpy() - BestPoint,axis=1)
-
-            # Add best point to list
-            BestPoints.append(BestPoint.flatten())
-
-            # Update model with best point & mean value for better predictions
-            BestPoint_pth = torch.from_numpy(BestPoint)
-            with torch.no_grad():
-                output = model(*[BestPoint_pth]*NbOutput)
-            for j,mod in enumerate(model.models):
-                _mod = mod.get_fantasy_model(BestPoint_pth,output[j].mean)
-                model.models[j] = _mod
-
-        print('Total time:',tm)
+        BestPoints = AdaptRoutine(model, Adaptive, bounds)
         print(np.around(BestPoints,3))
         BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
-
         DADict['Data']['BestPoints'] = BestPoints
 
+
+    '''
     np.random.seed(123)
     NbInit = 50
     init_guess = np.random.uniform(0,1,size=(NbInit,4))
-
     # ==========================================================================
     # Get min and max values for each
     RangeDict = {}
@@ -217,7 +156,7 @@ def Single(VL, DADict):
     # ==========================================================================
     # Get minimum variation for different powers
 
-    '''
+
     space = 50
     rdlow = int(np.ceil(RangeDict['Min_Power'] / space)) * space
     rdhigh = int(np.ceil(RangeDict['Max_Power'] / space)) * space
@@ -275,6 +214,70 @@ def Single(VL, DADict):
                                                         origin='lower',extent=(0,1,0,1))
     plt.show()
     '''
+def ModelUpdate(model,NewPoints):
+    for j,mod in enumerate(model.models):
+        with torch.no_grad():
+            output = mod(NewPoints)
+        modnew = mod.get_fantasy_model(NewPoints,output.mean)
+        model.models[j] = modnew
+    return model
+
+def AdaptRoutine(model,AdaptDict,bounds,Show=0):
+    Adaptive = AdaptDict
+    NbInput = len(bounds)
+
+    Method = Adaptive['Method']
+    Nb = Adaptive['Nb']
+    NbCand = Adaptive['NbCandidates']
+    maximise = Adaptive.get('Maximise',None)
+    Seed = Adaptive.get('Seed',None)
+
+    if Seed!=None: np.random.seed(Seed)
+    Candidates = np.random.uniform(0,1,size=(NbCand,NbInput))
+    # Candidates = ML.LHS_Samples([[0.001,0.999]]*NbInput,NbCand,Seed,100)
+    # Candidates = np.array(Candidates)
+    OrigCandidates = np.copy(Candidates)
+
+    BestPoints = []
+    for _ in range(Nb):
+        if not maximise or maximise.lower()=='slsqp':
+            sort=True
+            if not maximise:
+                score, srtCandidates = ML.Adaptive(Candidates,model,Method,
+                                                scoring='sum',sort=sort)
+            else:
+                constr_rad = Adaptive.get('Constraint',0)
+                if constr_rad:
+                    constraint = ML.ConstrainRad(OrigCandidates,constr_rad)
+                else: constraint = []
+
+                score,srtCandidates = ML.AdaptSLSQP(Candidates,model,Method,[[0,1]]*NbInput,
+                                                    constraints=constraint,
+                                                    scoring='sum',sort=sort)
+            BestPoint = srtCandidates[0:1]
+            Candidates = srtCandidates[1:]
+            if Show:
+                for i,j in zip(score[:Show],srtCandidates):
+                    print(j,i)
+                print()
+
+        elif maximise.lower()=='ga':
+            score,BestPoint = ML.AdaptGA(model,Method,bounds)
+            BestPoint = np.atleast_2d(BestPoint)
+
+        # Add best point to list
+        BestPoints.append(BestPoint.flatten())
+
+        # Update model with best point & mean value for better predictions
+        BestPoint_pth = torch.from_numpy(BestPoint)
+        if type(model)==list:
+            # Committee of models
+            for k,_model in enumerate(model):
+                model[k] = ModelUpdate(_model,BestPoint_pth)
+        else:
+            model = ModelUpdate(model,BestPoint_pth)
+
+    return BestPoints
 
 def Gridmaker(AxMaj,ResAx,MajorN=7,MinorN=20):
     AxMin = list(set(range(len(InTag))).difference(AxMaj))
@@ -320,11 +323,11 @@ def Compare(VL, DADict):
     Parameters = DADict['Parameters']
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
 
+    TestIn, TestOut = ML.GetMLdata(DataFile_path,'Test','Input','Output')
+    TestIn_scale = ML.DataScale(TestIn,*InputScaler)
+    TestIn_scale = torch.from_numpy(TestIn_scale)
 
-    DispX = DispY = [-0.01,0.01]
-    DispZ,Rotation = [0.01,0.03],[-15,15]
-    bounds = np.transpose([DispX,DispY,DispZ,Rotation]) # could import this for consistency
-    InputScaler = np.array([bounds[0],bounds[1] - bounds[0]])
+    metric = 'RMSE'
 
     ResDict = {}
     for mldir in Parameters.Dirs:
@@ -337,59 +340,79 @@ def Compare(VL, DADict):
 
             TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
                                             'Input', 'Output', Parameters.TrainNb)
-            TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData,
-                                           'Input', 'Output', Parameters.TestNb)
-
             TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
-            TestIn_scale = ML.DataScale(TestIn,*InputScaler)
+            TrainIn_scale = torch.from_numpy(TrainIn_scale)
 
-            # Scale output to [0,1]
             OutputScaler = np.array([TrainOut.min(axis=0),TrainOut.max(axis=0) - TrainOut.min(axis=0)])
             TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
-            TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
-
-            # Convert to tensors
-            TrainIn_scale = torch.from_numpy(TrainIn_scale)
             TrainOut_scale = torch.from_numpy(TrainOut_scale)
-            TestIn_scale = torch.from_numpy(TestIn_scale)
+            TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
             TestOut_scale = torch.from_numpy(TestOut_scale)
 
+            # print(mldir,len(TrainOut),TrainOut.max(axis=0))
             NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
             TrainNb = len(TrainIn)
+
             ModelFile = "{}/Model.pth".format(resdir)
             likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
                                             Parameters.Kernel,prev_state=ModelFile)
             likelihood.eval()
             model.eval()
             reslst = [TrainNb]
-            with torch.no_grad():
-                TrainPred = model(*[TrainIn_scale]*NbOutput)
-                TestPred = model(*[TestIn_scale]*NbOutput)
+            TestMetrics = ML.GetMetrics(model,TestIn_scale,TestOut_scale.detach().numpy())
 
-                for i in range(NbOutput):
-                    Train_mean = TrainPred[i].mean.numpy()
-                    Test_mean = TestPred[i].mean.numpy()
+            ResDict[mldir].append([TrainNb] + TestMetrics[metric])
 
-                    TrainMSE = ML.MSE(Train_mean,TrainOut_scale[:,i].numpy())
-                    TestMSE = ML.MSE(Test_mean,TestOut_scale[:,i].numpy())
-                    reslst.append(TestMSE)
 
-            ResDict[mldir].append(reslst)
 
-    plt.figure()
-    for key, val in ResDict.items():
-        npval = np.array(val).T
-        plt.plot(npval[0],npval[1],marker='x',label=key[:-4])
-    plt.xlabel('Nb Training Points')
-    plt.ylabel('Power MSE')
-    plt.legend()
+    fig, axs = plt.subplots(2)
+    for i, name in enumerate(OutTag):
+        for key, val in ResDict.items():
+            npval = np.array(val).T
+            axs[i].plot(npval[0,1:],npval[i+1,1:],marker='x',label=key[:-4])
+        axs[i].set_title(name.capitalize())
+        axs[i].set_ylabel(metric)
+        axs[i].legend()
+    axs[-1].set_xlabel('Nb Training Points')
     plt.show()
 
-    plt.figure()
-    for key, val in ResDict.items():
-        npval = np.array(val).T
-        plt.plot(npval[0],npval[2],marker='x',label=key[:-4])
-    plt.xlabel('Nb Training Points')
-    plt.ylabel('Variation MSE')
-    plt.legend()
-    plt.show()
+
+def CommitteeBuild(VL,DADict):
+    Parameters = DADict['Parameters']
+
+
+    Likelihoods, Models = [], []
+    for modeldir in Parameters.CommitteeModels:
+        dirfull = "{}/{}".format(VL.PROJECT_DIR,modeldir)
+        paramfile = "{}/Parameters.py".format(dirfull)
+        ModParameters = ReadParameters(paramfile)
+        DataFile_path = "{}/{}".format(VL.PROJECT_DIR,ModParameters.DataFile)
+        TrainIn, TrainOut = ML.GetMLdata(DataFile_path, ModParameters.TrainData,
+                                        'Input', 'Output', ModParameters.TrainNb)
+        TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
+        TrainIn_scale = torch.from_numpy(TrainIn_scale)
+
+        OutputScaler = np.array([TrainOut.min(axis=0),TrainOut.max(axis=0) - TrainOut.min(axis=0)])
+        TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
+        TrainOut_scale = torch.from_numpy(TrainOut_scale)
+
+        ModelFile = "{}/Model.pth".format(dirfull)
+        likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
+                                        ModParameters.Kernel,prev_state=ModelFile)
+
+        likelihood.eval();model.eval()
+        Likelihoods.append(likelihood)
+        Models.append(model)
+
+    bounds = [[0,1]]*len(InTag)
+    Adaptive = getattr(Parameters,'Adaptive',{})
+    if Adaptive:
+        st = time.time()
+        BestPoints = AdaptRoutine(Models, Adaptive, bounds)
+        end = time.time() - st
+        print('Time',end)
+        print(np.around(BestPoints,3))
+        BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
+        DADict['Data']['BestPoints'] = BestPoints
+
+    pass

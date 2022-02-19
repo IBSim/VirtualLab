@@ -472,6 +472,31 @@ def _MASA(Candidates,committee):
     score_multi = committee_var + distance[:,None]
     return score_multi.T
 
+def _QBC_Var(Candidates,committee):
+    preds,vars = [], []
+    for model in committee:
+        tmp,tmp1 = [],[]
+        for mod in model.models:
+            with torch.no_grad():
+                _pred = mod(Candidates)
+                tmp.append(_pred.mean.numpy())
+                tmp1.append(_pred.variance.numpy())
+        preds.append(tmp)
+        vars.append(tmp1)
+    preds, vars = np.transpose(preds), np.transpose(vars)
+
+    # preds lst is NbCandidate x NbOutput x NbCommittee
+    pred_mean = preds.mean(axis=2)
+    committee_sq = (preds - pred_mean[:,:,None])**2
+    committe_var = committee_sq.mean(axis=2)
+    committee_var = committe_var/committe_var.max()
+
+    var_mean = vars.mean(axis=2)
+    var_mean = var_mean/var_mean.max()
+
+    score_multi = committee_var + var_mean
+    return score_multi.T
+
 def _Adaptive(Candidates, model, scheme, scoring='sum'):
     _Candidates = torch.tensor(Candidates)
     if scheme.lower()=='mmse':
@@ -484,7 +509,8 @@ def _Adaptive(Candidates, model, scheme, scoring='sum'):
         score = _EIGrad(_Candidates, model)
     elif scheme.lower()=='masa':
         score = _MASA(_Candidates,model)
-
+    elif scheme.lower()=='qbc_var':
+        score = _QBC_Var(_Candidates,model)
     # ==========================================================================
     # Combine scores
     if scoring=='sum':
@@ -555,8 +581,6 @@ def AdaptSLSQP(Candidates, model, scheme, bounds, constraints=(), scoring='sum',
     return score, Candidates
 
 def AdaptGA(model, scheme, bounds, n_pop=100,n_gen=100, scoring='sum',sort=True):
-    NbOutput = len(model.models)
-
     find='max'
     args = (model,scheme)
     coord,score = ga(_Adaptive,bounds,n_gen,n_pop,find=find,args=args)

@@ -253,9 +253,14 @@ def AdaptRoutine(model,AdaptDict,bounds,Show=0):
 
                 score,srtCandidates = ML.AdaptSLSQP(Candidates,model,Method,[[0,1]]*NbInput,
                                                     constraints=constraint,
-                                                    scoring='sum',sort=sort)
+                                                    scoring='sum',sort=False)
+
+                sortix = np.argsort(score)[::-1]
+                score,srtCandidates = score[sortix],srtCandidates[sortix]
+                OrigCandidates = OrigCandidates[sortix][1:]
             BestPoint = srtCandidates[0:1]
             Candidates = srtCandidates[1:]
+
             if Show:
                 for i,j in zip(score[:Show],srtCandidates):
                     print(j,i)
@@ -264,6 +269,7 @@ def AdaptRoutine(model,AdaptDict,bounds,Show=0):
         elif maximise.lower()=='ga':
             score,BestPoint = ML.AdaptGA(model,Method,bounds)
             BestPoint = np.atleast_2d(BestPoint)
+            # print(BestPoint,score)
 
         # Add best point to list
         BestPoints.append(BestPoint.flatten())
@@ -318,6 +324,27 @@ def dconstraint(X, model, DesPower):
 
     return Grad
 
+def GetModel(resdir,DataFile_path):
+    paramfile = "{}/Parameters.py".format(resdir)
+    Parameters = ReadParameters(paramfile)
+
+    TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
+                                    'Input', 'Output', Parameters.TrainNb)
+    TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
+    TrainIn_scale = torch.from_numpy(TrainIn_scale)
+
+    OutputScaler = np.array([TrainOut.min(axis=0),TrainOut.max(axis=0) - TrainOut.min(axis=0)])
+    TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
+    TrainOut_scale = torch.from_numpy(TrainOut_scale)
+
+    # print(mldir,len(TrainOut),TrainOut.max(axis=0))
+    NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
+    TrainNb = len(TrainIn)
+
+    ModelFile = "{}/Model.pth".format(resdir)
+    likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
+                                    Parameters.Kernel,prev_state=ModelFile)
+    return model, likelihood, OutputScaler
 
 def Compare(VL, DADict):
     Parameters = DADict['Parameters']
@@ -331,50 +358,55 @@ def Compare(VL, DADict):
 
     ResDict = {}
     for mldir in Parameters.Dirs:
-        if mldir not in ResDict:ResDict[mldir] = []
         path = "{}/ML/{}".format(VL.PROJECT_DIR,mldir)
         resdirs = ML.GetResPaths(path)
         for resdir in resdirs:
-            paramfile = "{}/Parameters.py".format(resdir)
-            Parameters = ReadParameters(paramfile)
+            if mldir.lower() in ('masa','qbc_var'):
+                for k in ['RBF','Matern_1.5','Matern_2.5'][:1]:
+                    nm = "{}_{}".format(mldir,k)
+                    if nm not in ResDict:ResDict[nm] = []
+                    if os.path.basename(resdir).startswith('Model'): continue
+                    _resdir = "{}/{}".format(resdir,k)
+                    model,likelihood,OutputScaler = GetModel(_resdir,DataFile_path)
+                    likelihood.eval(); model.eval()
 
-            TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
-                                            'Input', 'Output', Parameters.TrainNb)
-            TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
-            TrainIn_scale = torch.from_numpy(TrainIn_scale)
-
-            OutputScaler = np.array([TrainOut.min(axis=0),TrainOut.max(axis=0) - TrainOut.min(axis=0)])
-            TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
-            TrainOut_scale = torch.from_numpy(TrainOut_scale)
-            TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
-            TestOut_scale = torch.from_numpy(TestOut_scale)
-
-            # print(mldir,len(TrainOut),TrainOut.max(axis=0))
-            NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
-            TrainNb = len(TrainIn)
-
-            ModelFile = "{}/Model.pth".format(resdir)
-            likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
-                                            Parameters.Kernel,prev_state=ModelFile)
-            likelihood.eval()
-            model.eval()
-            reslst = [TrainNb]
-            TestMetrics = ML.GetMetrics(model,TestIn_scale,TestOut_scale.detach().numpy())
-
-            ResDict[mldir].append([TrainNb] + TestMetrics[metric])
+                    TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
+                    TestMetrics = ML.GetMetrics(model,TestIn_scale,TestOut_scale)
 
 
+                    TrainNb = len(model.train_inputs[0][0].numpy())
+                    ResDict[nm].append([TrainNb] + TestMetrics[metric])
 
-    fig, axs = plt.subplots(2)
-    for i, name in enumerate(OutTag):
-        for key, val in ResDict.items():
-            npval = np.array(val).T
-            axs[i].plot(npval[0,1:],npval[i+1,1:],marker='x',label=key[:-4])
-        axs[i].set_title(name.capitalize())
-        axs[i].set_ylabel(metric)
-        axs[i].legend()
-    axs[-1].set_xlabel('Nb Training Points')
+            else:
+                model,likelihood,OutputScaler = GetModel(resdir,DataFile_path)
+                if mldir not in ResDict:ResDict[mldir] = []
+                likelihood.eval(); model.eval()
+
+                TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
+                TestMetrics = ML.GetMetrics(model,TestIn_scale,TestOut_scale)
+
+                TrainNb = len(model.train_inputs[0][0].numpy())
+                ResDict[mldir].append([TrainNb] + TestMetrics[metric])
+
+    fig = plt.figure()
+    for key, val in ResDict.items():
+        npval = np.array(val).T
+        plt.plot(npval[0,1:],npval[1:,1:].sum(axis=0),marker='x',label=key)
+    plt.ylabel(metric)
+    plt.legend()
+    plt.xlabel('Nb Training Points')
     plt.show()
+
+    # fig, axs = plt.subplots(2)
+    # for i, name in enumerate(OutTag):
+    #     for key, val in ResDict.items():
+    #         npval = np.array(val).T
+    #         axs[i].plot(npval[0,1:],npval[i+1,1:],marker='x',label=key)
+    #     axs[i].set_title(name.capitalize())
+    #     axs[i].set_ylabel(metric)
+    #     axs[i].legend()
+    # axs[-1].set_xlabel('Nb Training Points')
+    # plt.show()
 
 
 def CommitteeBuild(VL,DADict):
@@ -408,7 +440,7 @@ def CommitteeBuild(VL,DADict):
     Adaptive = getattr(Parameters,'Adaptive',{})
     if Adaptive:
         st = time.time()
-        BestPoints = AdaptRoutine(Models, Adaptive, bounds)
+        BestPoints = AdaptRoutine(Models, Adaptive, bounds,Show=3)
         end = time.time() - st
         print('Time',end)
         print(np.around(BestPoints,3))

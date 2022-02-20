@@ -489,12 +489,15 @@ def _QBC_Var(Candidates,committee):
     pred_mean = preds.mean(axis=2)
     committee_sq = (preds - pred_mean[:,:,None])**2
     committe_var = committee_sq.mean(axis=2)
-    committee_var = committe_var/committe_var.max()
+
+    cvmax = committe_var.max()
+    committee_var = committe_var/cvmax
 
     var_mean = vars.mean(axis=2)
-    var_mean = var_mean/var_mean.max()
-
+    vmax = var_mean.max()
+    var_mean = var_mean/vmax
     score_multi = committee_var + var_mean
+
     return score_multi.T
 
 def _Adaptive(Candidates, model, scheme, scoring='sum'):
@@ -544,10 +547,65 @@ def _MMSE_Grad(Candidates,GPR_model,scoring='sum'):
         dvar.append(_dvar.detach().numpy())
         var.append(_var.detach().numpy())
     dvar, var = np.array(dvar),np.array(var)
+
     if scoring=='sum':
         var,dvar = var.sum(axis=0),dvar.sum(axis=0)
 
     return var, dvar
+
+def _QBC_Var_Grad(Candidates,committee,scoring='sum'):
+    _Candidates = torch.tensor(Candidates)
+    # _Candidates.requires_grad=True
+    preds,vars,dpreds,dvars = [],[],[],[]
+    for model in committee:
+        tmp_pred,tmp_var,dtmp_pred,dtmp_var = [],[],[],[]
+        for mod in model.models:
+            _dmean, _mean = mod.Gradient_mean(_Candidates)
+            _dvar, _var = mod.Gradient_variance(_Candidates)
+            # _pred = mod(_Candidates)
+            # grad_mean = torch.autograd.grad(_pred.mean.sum(), _Candidates)[0]
+            # grad_var = torch.autograd.grad(_pred.variance.sum(), _Candidates)[0]
+            tmp_pred.append(_mean.detach().numpy())
+            tmp_var.append(_var.detach().numpy())
+            dtmp_pred.append(_dmean.detach().numpy())
+            dtmp_var.append(_dvar.detach().numpy())
+        preds.append(tmp_pred); vars.append(tmp_var)
+        dpreds.append(dtmp_pred); dvars.append(dtmp_var)
+    preds, vars = np.array(preds), np.array(vars)
+    dpreds, dvars = np.array(dpreds), np.array(dvars)
+
+    # preds lst is NbCandidate x NbOutput x NbCommittee
+    pred_mean = preds.mean(axis=0)
+
+    committee_diff = preds.T - pred_mean.T[:,:,None]
+    committee_sq = committee_diff**2
+    committe_var = committee_sq.mean(axis=2)
+
+    cvmax = committe_var.max()
+    committee_var = committe_var/cvmax
+
+    var_mean = vars.mean(axis=0)
+    vmax = var_mean.max()
+    var_mean = var_mean/vmax
+
+    score = committee_var.T + var_mean
+
+    dpred_mean = dpreds.mean(axis=0)
+    dcommittee_diff = dpreds.T - dpred_mean.T[:,:,:,None]
+    dcommittee_sq = 2*committee_diff.T[:,:,:,None]*dcommittee_diff.T
+
+    dcommittee_var = dcommittee_sq.mean(axis=0)
+    dcommittee_var = dcommittee_var/cvmax
+
+    dvar_mean = dvars.mean(axis=0)
+    dvar_mean = dvar_mean/vmax
+
+    dscore = dcommittee_var + dvar_mean
+
+    if scoring=='sum':
+        score,dscore = score.sum(axis=0),dscore.sum(axis=0)
+
+    return score, dscore
 
 # ==============================================================================
 # Constraint for pptimised adaptive routine with limit on initial movement
@@ -566,12 +624,13 @@ def ConstrainRad(OrigPoint, rad):
 
 def AdaptSLSQP(Candidates, model, scheme, bounds, constraints=(), scoring='sum',sort=True,**kwargs):
     # Finds optima in parameter space usign slsqp
-    NbOutput = len(model.models)
 
     order = 'decreasing' if sort else None
     args = [model]
     if scheme.lower() == 'mmse':
         fn = _MMSE_Grad
+    if scheme.lower() == 'qbc_var':
+        fn = _QBC_Var_Grad
 
     Optima = FuncOpt(fn, Candidates, find='max', tol=None,
                      order=order, bounds=bounds, jac=True,

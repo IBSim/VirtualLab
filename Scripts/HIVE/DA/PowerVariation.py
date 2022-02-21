@@ -278,8 +278,20 @@ def AdaptRoutine(model,AdaptDict,bounds,Show=0):
         BestPoint_pth = torch.from_numpy(BestPoint)
         if type(model)==list:
             # Committee of models
+            res = []
             for k,_model in enumerate(model):
-                model[k] = ModelUpdate(_model,BestPoint_pth)
+                tmp = []
+                for j,mod in enumerate(_model.models):
+                    with torch.no_grad():
+                        output = mod(BestPoint_pth)
+                    tmp.extend(output.mean.numpy())
+                res.append(tmp)
+            res = np.array(res)
+            res_avg = torch.from_numpy(res.mean(axis=0))
+            for k,_model in enumerate(model):
+                for j,mod in enumerate(_model.models):
+                    modnew = mod.get_fantasy_model(BestPoint_pth,res_avg[j:j+1])
+                    model[k].models[j] = modnew
         else:
             model = ModelUpdate(model,BestPoint_pth)
 
@@ -361,7 +373,7 @@ def Compare(VL, DADict):
         path = "{}/ML/{}".format(VL.PROJECT_DIR,mldir)
         resdirs = ML.GetResPaths(path)
         for resdir in resdirs:
-            if mldir.lower() in ('masa','qbc_var'):
+            if mldir.lower()=='masa' or mldir.lower().startswith('qbc_var'):
                 for k in ['RBF','Matern_1.5','Matern_2.5'][:1]:
                     nm = "{}_{}".format(mldir,k)
                     if nm not in ResDict:ResDict[nm] = []

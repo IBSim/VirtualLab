@@ -494,6 +494,7 @@ def _QBC_Var(Candidates,committee):
     committee_var = committe_var/cvmax
 
     var_mean = vars.mean(axis=2)
+
     vmax = var_mean.max()
     var_mean = var_mean/vmax
     score_multi = committee_var + var_mean
@@ -553,7 +554,7 @@ def _MMSE_Grad(Candidates,GPR_model,scoring='sum'):
 
     return var, dvar
 
-def _QBC_Var_Grad(Candidates,committee,scoring='sum'):
+def _QBC_Var_Grad(Candidates,committee,cvmax,vmax,scoring='sum'):
     _Candidates = torch.tensor(Candidates)
     # _Candidates.requires_grad=True
     preds,vars,dpreds,dvars = [],[],[],[]
@@ -580,12 +581,13 @@ def _QBC_Var_Grad(Candidates,committee,scoring='sum'):
     committee_diff = preds.T - pred_mean.T[:,:,None]
     committee_sq = committee_diff**2
     committe_var = committee_sq.mean(axis=2)
-
-    cvmax = committe_var.max()
+    _cvmax = committe_var.max()
+    if _cvmax>cvmax[0]: cvmax[0] = _cvmax
     committee_var = committe_var/cvmax
 
     var_mean = vars.mean(axis=0)
-    vmax = var_mean.max()
+    _vmax = var_mean.max()
+    if _vmax>vmax[0]: vmax[0] = _vmax
     var_mean = var_mean/vmax
 
     score = committee_var.T + var_mean
@@ -631,6 +633,7 @@ def AdaptSLSQP(Candidates, model, scheme, bounds, constraints=(), scoring='sum',
         fn = _MMSE_Grad
     if scheme.lower() == 'qbc_var':
         fn = _QBC_Var_Grad
+        args+=[[0],[0]]
 
     Optima = FuncOpt(fn, Candidates, find='max', tol=None,
                      order=order, bounds=bounds, jac=True,

@@ -255,18 +255,14 @@ def Rsq(Predicted,Target):
     MSE_val = ((Predicted - Target)**2).sum()
     return 1-(MSE_val/divisor)
 
-def GetMetrics(model,x,Target):
+def GetMetrics(model,x,target):
     with torch.no_grad():
-        output = model(*[x]*len(model.models))
-        Metrics = {'MSE':[],'MAE':[],'RMSE':[],'Rsq':[]}
-        for i,out in enumerate(output):
-            target = Target[:,i]
-            pred = out.mean.numpy()
-            Metrics['MSE'].append(MSE(pred,target))
-            Metrics['MAE'].append(MAE(pred,target))
-            Metrics['RMSE'].append(RMSE(pred,target))
-            Metrics['Rsq'].append(Rsq(pred,target))
-    return Metrics
+        pred = model(x).mean.numpy()
+    mse = MSE(pred,target)
+    mae = MAE(pred,target)
+    rmse = RMSE(pred,target)
+    rsq = Rsq(pred,target)
+    return mse,mae,rmse,rsq
 
 # ==============================================================================
 # Functions used for reading & writing data
@@ -376,154 +372,7 @@ def NN_Ix(NewPoints,OldPoints):
 
 # ==============================================================================
 # Adaptive scheme (no optimisation used)
-def _MMSE(Candidates, model):
-    NbOutput = len(model.models)
-    with torch.no_grad():
-        output = model(*[Candidates]*NbOutput)
-        vars = [out.variance.numpy() for out in output]
-    score_multi = np.array(vars)
-    return score_multi
-
-def _EI(Candidates, model):
-    NbOutput = len(model.models)
-    with torch.no_grad():
-        output = model(*[Candidates]*NbOutput)
-
-    score_multi = []
-    for i,out in enumerate(output):
-        ymin = model.train_targets[i].numpy().min()
-        stddev = out.stddev.numpy()
-        diff = ymin - out.mean.numpy()
-        z = diff/stddev
-        score_ind = diff*norm.cdf(z) + stddev*norm.pdf(z)
-        score_multi.append(score_ind)
-    score_multi = np.array(score_multi)
-    return score_multi
-
-def _EIGF(Candidates, model):
-    NbOutput = len(model.models)
-    with torch.no_grad():
-        output = model(*[Candidates]*NbOutput)
-    # ==========================================================================
-    # Get nearest neighbour values (assumes same inputs for all dimensions)
-    TrainIn = model.train_inputs[0][0].numpy()
-    TrainOut = np.transpose([model.train_targets[i].numpy() for i in range(NbOutput)])
-    Ixs = NN_Ix(Candidates.detach().numpy(),TrainIn)
-    NN_val = TrainOut[Ixs]
-
-    # ==========================================================================
-    # calculate score
-    score_multi = []
-    for i,out in enumerate(output):
-        mean = out.mean.numpy()
-        diff = (mean - NN_val[:,i])**2
-        with torch.no_grad(): # due to bug in pytorch
-            var = out.variance.numpy()
-        score_multi.append(diff + var)
-    score_multi = np.array(score_multi)
-    return score_multi
-
-def _EIGrad(Candidates, model):
-    NbOutput = len(model.models)
-    dmean,var = [],[]
-    for mod in model.models:
-         _var = mod(Candidates).variance
-         _dmean, _mean = mod.Gradient_mean(Candidates)
-         dmean.append(_dmean.detach().numpy())
-         var.append(_var.detach().numpy())
-    dmean,var = np.array(dmean),np.array(var)
-
-    # ==========================================================================
-    # Get nearest neighbour values (assumes same inputs for all dimensions)
-    TrainIn = model.train_inputs[0][0].numpy()
-    TrainOut = np.transpose([model.train_targets[i].numpy() for i in range(NbOutput)])
-    Ixs = NN_Ix(Candidates.detach().numpy(),TrainIn)
-    NN = TrainIn[Ixs]
-    distance = NN - Candidates.detach().numpy()
-    gradsc = (distance.T[:,:,None]*dmean.T)**2
-    gradsc = gradsc.sum(axis=0).T
-    score_multi = var + gradsc
-    # print(var.T)
-    # print(gradsc.T)
-    return score_multi
-
-def _MASA(Candidates,committee):
-    preds = []
-    for model in committee:
-        tmp = []
-        for mod in model.models:
-            with torch.no_grad():
-                _pred = mod(Candidates).mean.numpy()
-            tmp.append(_pred)
-        preds.append(tmp)
-    preds = np.transpose(preds)
-    # preds lst is NbCandidate x NbOutput x NbCommittee
-    pred_mean = preds.mean(axis=2)
-    committee_sq = (preds - pred_mean[:,:,None])**2
-    committe_var = committee_sq.mean(axis=2)
-    committee_var = committe_var/committe_var.max()
-
-    TrainIn = committee[0].train_inputs[0][0].numpy()
-    Ixs = NN_Ix(Candidates.detach().numpy(),TrainIn)
-    NN = TrainIn[Ixs]
-    distance = np.linalg.norm(NN - Candidates.detach().numpy(),axis=1)
-    distance = distance/distance.max()
-
-    score_multi = committee_var + distance[:,None]
-    return score_multi.T
-
-def _QBC_Var(Candidates,committee):
-    preds,vars = [], []
-    for model in committee:
-        tmp,tmp1 = [],[]
-        for mod in model.models:
-            with torch.no_grad():
-                _pred = mod(Candidates)
-                tmp.append(_pred.mean.numpy())
-                tmp1.append(_pred.variance.numpy())
-        preds.append(tmp)
-        vars.append(tmp1)
-    preds, vars = np.transpose(preds), np.transpose(vars)
-
-    # preds lst is NbCandidate x NbOutput x NbCommittee
-    pred_mean = preds.mean(axis=2)
-    committee_sq = (preds - pred_mean[:,:,None])**2
-    committe_var = committee_sq.mean(axis=2)
-
-    cvmax = committe_var.max()
-    committee_var = committe_var/cvmax
-
-    var_mean = vars.mean(axis=2)
-
-    vmax = var_mean.max()
-    var_mean = var_mean/vmax
-    score_multi = committee_var + var_mean
-
-    return score_multi.T
-
-def _Adaptive(Candidates, model, scheme, scoring='sum'):
-    _Candidates = torch.tensor(Candidates)
-    if scheme.lower()=='mmse':
-        score = _MMSE(_Candidates, model)
-    elif scheme.lower()=='ei':
-        score = _EI(_Candidates, model)
-    elif scheme.lower()=='eigf':
-        score = _EIGF(_Candidates, model)
-    elif scheme.lower()=='eigrad':
-        score = _EIGrad(_Candidates, model)
-    elif scheme.lower()=='masa':
-        score = _MASA(_Candidates,model)
-    elif scheme.lower()=='qbc_var':
-        score = _QBC_Var(_Candidates,model)
-    # ==========================================================================
-    # Combine scores
-    if scoring=='sum':
-        score = score.sum(axis=0)
-
-    return score
-
 def Adaptive(Candidates, model, scheme, scoring='sum',sort=True):
-
     score = _Adaptive(Candidates,model,scheme,scoring)
 
     # ==========================================================================
@@ -539,102 +388,192 @@ def Adaptive(Candidates, model, scheme, scoring='sum',sort=True):
     return score, Candidates
 
 # ==============================================================================
-# Optimised adaptive routine
-def _MMSE_Grad(Candidates,GPR_model,scoring='sum'):
+# Optimisaion using genetic algorithm
+def AdaptGA(model, scheme, bounds, n_pop=100,n_gen=100, scoring='sum',sort=True):
+    find='max'
+    args = (model,scheme)
+    coord,score = ga(_Adaptive,bounds,n_gen,n_pop,find=find,args=args)
+    return score,coord
+
+def _Adaptive(Candidates, model, scheme, scoring='sum'):
     _Candidates = torch.tensor(Candidates)
-    dvar, var = [], []
-    for mod in GPR_model.models:
-        _dvar, _var = mod.Gradient_variance(_Candidates)
-        dvar.append(_dvar.detach().numpy())
-        var.append(_var.detach().numpy())
-    dvar, var = np.array(dvar),np.array(var)
+    args = [_Candidates, model]
+    if scheme.lower()=='mmse':
+        score = _Caller(MMSE,*args)
+    elif scheme.lower()=='ei':
+        score = _Caller(EI,*args)
+    elif scheme.lower()=='eigf':
+        score = _Caller(EIGF,*args)
+    # elif scheme.lower()=='eigrad':
+    #     score = _Caller(EIGrad,*args)
+    elif scheme.lower()=='masa':
+        score = MASA(*args)
+    elif scheme.lower()=='qbc_var':
+        score = QBC_Var(*args)
 
-    if scoring=='sum':
-        var,dvar = var.sum(axis=0),dvar.sum(axis=0)
 
-    return var, dvar
+    # ==========================================================================
+    # Combine scores
+    if score.ndim>1 and scoring=='sum':
+        score = score.sum(axis=0)
 
-def _QBC_Var_Grad(Candidates,committee,cvmax,vmax,scoring='sum'):
-    _Candidates = torch.tensor(Candidates)
-    # _Candidates.requires_grad=True
-    preds,vars,dpreds,dvars = [],[],[],[]
-    for model in committee:
-        tmp_pred,tmp_var,dtmp_pred,dtmp_var = [],[],[],[]
+    return score
+
+def _Caller(fn,Candidates,model):
+    if hasattr(model,'models'):
+        # Multioutput model
+        score = []
         for mod in model.models:
-            _dmean, _mean = mod.Gradient_mean(_Candidates)
-            _dvar, _var = mod.Gradient_variance(_Candidates)
-            # _pred = mod(_Candidates)
-            # grad_mean = torch.autograd.grad(_pred.mean.sum(), _Candidates)[0]
-            # grad_var = torch.autograd.grad(_pred.variance.sum(), _Candidates)[0]
-            tmp_pred.append(_mean.detach().numpy())
-            tmp_var.append(_var.detach().numpy())
-            dtmp_pred.append(_dmean.detach().numpy())
-            dtmp_var.append(_dvar.detach().numpy())
-        preds.append(tmp_pred); vars.append(tmp_var)
-        dpreds.append(dtmp_pred); dvars.append(dtmp_var)
-    preds, vars = np.array(preds), np.array(vars)
-    dpreds, dvars = np.array(dpreds), np.array(dvars)
+            _score = fn(Candidates, mod)
+            score.append(_score)
+    else:
+        # single output
+        score = fn(Candidates, model)
 
-    # preds lst is NbCandidate x NbOutput x NbCommittee
-    pred_mean = preds.mean(axis=0)
-
-    committee_diff = preds.T - pred_mean.T[:,:,None]
-    committee_sq = committee_diff**2
-    committe_var = committee_sq.mean(axis=2)
-    _cvmax = committe_var.max()
-    if _cvmax>cvmax[0]: cvmax[0] = _cvmax
-    committee_var = committe_var/cvmax
-
-    var_mean = vars.mean(axis=0)
-    _vmax = var_mean.max()
-    if _vmax>vmax[0]: vmax[0] = _vmax
-    var_mean = var_mean/vmax
-
-    score = committee_var.T + var_mean
-
-    dpred_mean = dpreds.mean(axis=0)
-    dcommittee_diff = dpreds.T - dpred_mean.T[:,:,:,None]
-    dcommittee_sq = 2*committee_diff.T[:,:,:,None]*dcommittee_diff.T
-
-    dcommittee_var = dcommittee_sq.mean(axis=0)
-    dcommittee_var = dcommittee_var/cvmax
-
-    dvar_mean = dvars.mean(axis=0)
-    dvar_mean = dvar_mean/vmax
-
-    dscore = dcommittee_var + dvar_mean
-
-    if scoring=='sum':
-        score,dscore = score.sum(axis=0),dscore.sum(axis=0)
-
-    return score, dscore
+    return np.array(score)
 
 # ==============================================================================
-# Constraint for pptimised adaptive routine with limit on initial movement
-def _Constrain_Multi(Candidates,OrigPoint,rad):
-    a = rad**2 - np.linalg.norm(Candidates - OrigPoint,axis=1)**2
-    return a
+# Adaptive routines implemented for stationary & genetic algorithm optimisation
+def MMSE(Candidates, model):
+    with torch.no_grad():
+        variance = model(Candidates).variance.numpy()
+    return variance
 
-def _dConstrain_Multi(Candidates,OrigPoint,rad):
-    da = -2*(Candidates - OrigPoint)
-    return da
+def EI(Candidates, model):
+    with torch.no_grad():
+        output = model(Candidates)
+        pred = output.mean.numpy()
+        stddev = output.stddev.numpy()
 
-def ConstrainRad(OrigPoint, rad):
-    con1 = {'type': 'ineq', 'fun': _Constrain_Multi,
-            'jac':_dConstrain_Multi, 'args':[OrigPoint,rad]}
-    return [con1]
+    ymin = model.train_targets.numpy().min()
+    diff = ymin - pred
+    z = diff/stddev
+    return diff*norm.cdf(z) + stddev*norm.pdf(z)
 
+def EIGF(Candidates, model):
+    with torch.no_grad():
+        output = model(Candidates)
+        pred = output.mean.numpy()
+        variance = output.variance.numpy()
+    # ==========================================================================
+    # Get nearest neighbour values (assumes same inputs for all dimensions)
+    TrainIn = model.train_inputs[0].numpy()
+    TrainOut = model.train_targets.numpy()
+    Ixs = NN_Ix(Candidates.detach().numpy(),TrainIn)
+    NN_val = TrainOut[Ixs]
+
+    return (pred - NN_val)**2 + variance
+
+# def EIGrad(Candidates, model):
+#
+#     with torch.no_grad():
+#         variance = mod(Candidates).variance
+#          _dmean, _mean = mod.Gradient_mean(Candidates)
+#          dmean.append(_dmean.detach().numpy())
+#          var.append(_var.detach().numpy())
+#     dmean,var = np.array(dmean),np.array(var)
+#
+#     # ==========================================================================
+#     # Get nearest neighbour values (assumes same inputs for all dimensions)
+#     TrainIn = model.train_inputs[0][0].numpy()
+#     TrainOut = np.transpose([model.train_targets[i].numpy() for i in range(NbOutput)])
+#     Ixs = NN_Ix(Candidates.detach().numpy(),TrainIn)
+#     NN = TrainIn[Ixs]
+#     distance = NN - Candidates.detach().numpy()
+#     gradsc = (distance.T[:,:,None]*dmean.T)**2
+#     gradsc = gradsc.sum(axis=0).T
+#     score_multi = var + gradsc
+#     # print(var.T)
+#     # print(gradsc.T)
+#     return score_multi
+
+def MASA(Candidates, committee):
+    NbOutput = len(committee[0].models) if hasattr(committee[0],'models') else 1
+    if NbOutput==1:
+        d,cv = _MASA(Candidates,committee)
+    else:
+        d,cv = [],[]
+        for i in range(NbOutput):
+            _committee = [model.models[i] for model in committee]
+            _d,_cv = _MASA(Candidates,_committee)
+            d.append(_d);cv.append(_cv)
+    d,cv = np.array(d),np.array(cv)
+
+    return d/d.max() + cv/cv.max()
+
+def _MASA(Candidates,committee):
+    preds = []
+    for model in committee:
+        with torch.no_grad():
+            pred = model(Candidates).mean.numpy()
+        preds.append(pred)
+    preds = np.transpose(preds)
+
+    # preds lst is NbCandidate x NbCommittee
+    pred_mean = preds.mean(axis=1)
+    committee_sq = (preds - pred_mean[:,None])**2
+    committee_var = committee_sq.mean(axis=1)
+
+    TrainIn = committee[0].train_inputs[0].numpy()
+    Ixs = NN_Ix(Candidates.detach().numpy(),TrainIn)
+    NN = TrainIn[Ixs]
+    distance = np.linalg.norm(NN - Candidates.detach().numpy(),axis=1)
+
+    return distance, committee_var
+
+def QBC_Var(Candidates, committee):
+    NbOutput = len(committee[0].models) if hasattr(committee[0],'models') else 1
+    if NbOutput==1:
+        var,cv = _QBC_Var(Candidates,committee)
+    else:
+        var,cv = [],[]
+        for i in range(NbOutput):
+            _committee = [model.models[i] for model in committee]
+            _var,_cv = _QBC_Var(Candidates,_committee)
+            var.append(_var);cv.append(_cv)
+    var,cv = np.array(var),np.array(cv)
+
+    return var/var.max() + cv/cv.max()
+
+def _QBC_Var(Candidates,committee,varavg='average'):
+    preds,vars = [],[]
+    for model in committee:
+        with torch.no_grad():
+            output = model(Candidates)
+            pred = output.mean.numpy()
+            variance = output.variance.numpy()
+        preds.append(pred);vars.append(variance)
+    preds,vars = np.transpose(preds),np.transpose(vars)
+
+    # preds lst is NbCandidate x NbCommittee
+    pred_mean = preds.mean(axis=1)
+    committee_sq = (preds - pred_mean[:,None])**2
+    committee_var = committee_sq.mean(axis=1)
+
+    if varavg=='single':
+        # Use the first of the committee members
+        vars = vars[0]
+    elif type(varavg)==int:
+        # Use the best model (varavg is an index)
+        vars = vars[varavg]
+    else:
+        vars = vars.mean(axis=1)
+
+    return vars, committee_var
+
+# ==============================================================================
+# Optimisation using slsqp
 def AdaptSLSQP(Candidates, model, scheme, bounds, constraints=(), scoring='sum',sort=True,**kwargs):
     # Finds optima in parameter space usign slsqp
-
-    order = 'decreasing' if sort else None
     args = [model]
     if scheme.lower() == 'mmse':
-        fn = _MMSE_Grad
+        fn = _Caller_slsqp
+        args.insert(0,MMSE_Grad)
     if scheme.lower() == 'qbc_var':
-        fn = _QBC_Var_Grad
-        args+=[[0],[0]]
+        fn = QBC_Var_Grad
+        args += [[0],[0]]
 
+    order = 'decreasing' if sort else None
     Optima = FuncOpt(fn, Candidates, find='max', tol=None,
                      order=order, bounds=bounds, jac=True,
                      constraints=constraints, args=args,**kwargs)
@@ -642,8 +581,104 @@ def AdaptSLSQP(Candidates, model, scheme, bounds, constraints=(), scoring='sum',
 
     return score, Candidates
 
-def AdaptGA(model, scheme, bounds, n_pop=100,n_gen=100, scoring='sum',sort=True):
-    find='max'
-    args = (model,scheme)
-    coord,score = ga(_Adaptive,bounds,n_gen,n_pop,find=find,args=args)
-    return score,coord
+def _Caller_slsqp(Candidates,fn,model,scoring='sum'):
+    _Candidates = torch.tensor(Candidates)
+    if hasattr(model,'models'):
+        # Multioutput model
+        score, dscore = [],[]
+        for mod in model.models:
+            _score,_dscore = fn(_Candidates, mod)
+            score.append(_score);dscore.append(_dscore)
+    else:
+        # single output
+        score, dscore = fn(_Candidates, model)
+    score,dscore = np.array(score),np.array(dscore)
+
+    if score.ndim>1 and scoring=='sum':
+        score,dscore = score.sum(axis=0),dscore.sum(axis=0)
+
+    return score, dscore
+
+# ==============================================================================
+# Adaptive routines implemented for slsqp optimiser
+def MMSE_Grad(Candidates,model):
+    dvar, var = model.Gradient_variance(Candidates)
+    var, dvar = var.detach().numpy(),dvar.detach().numpy()
+    return var,dvar
+
+def QBC_Var_Grad(Candidates,committee,cvmax,vmax,scoring='sum'):
+    NbOutput = len(committee[0].models) if hasattr(committee[0],'models') else 1
+    if NbOutput==1:
+        var,cv,dvar,dcv = _QBC_Var_Grad(Candidates,committee)
+    else:
+        var,cv,dvar,dcv = [],[],[],[]
+        for i in range(NbOutput):
+            _committee = [model.models[i] for model in committee]
+            _var,_cv,_dvar,_dcv = _QBC_Var_Grad(Candidates,_committee)
+            var.append(_var);cv.append(_cv)
+            dvar.append(_dvar);dcv.append(_dcv)
+    var,cv = np.array(var),np.array(cv)
+    dvar,dcv = np.array(dvar),np.array(dcv)
+
+    _cvmax = cv.max()
+    if _cvmax>cvmax[0]: cvmax[0] = _cvmax
+    _vmax = var.max()
+    if _vmax>vmax[0]: vmax[0] = _vmax
+
+    score = var/vmax + cv/cvmax
+    dscore = dvar/vmax + dcv/cvmax
+
+    if score.ndim>1 and scoring=='sum':
+        score,dscore = score.sum(axis=0),dscore.sum(axis=0)
+
+    return score,dscore
+
+def _QBC_Var_Grad(Candidates,committee,varavg='average'):
+    _Candidates = torch.tensor(Candidates)
+    preds,vars,dpreds,dvars = [],[],[],[]
+    for model in committee:
+        dpred, pred = model.Gradient_mean(_Candidates)
+        dvar, var = model.Gradient_variance(_Candidates)
+        pred,dpred = pred.detach().numpy(),dpred.detach().numpy()
+        var,dvar = var.detach().numpy(),dvar.detach().numpy()
+        preds.append(pred);dpreds.append(dpred)
+        vars.append(var);dvars.append(dvar)
+    preds,dpreds = np.transpose(preds),np.transpose(dpreds)
+    vars,dvars = np.array(vars),np.array(dvars)
+
+    # preds lst is NbCandidate x NbCommittee
+    pred_mean = preds.mean(axis=1)
+    committee_diff = preds - pred_mean[:,None]
+    committee_sq = committee_diff**2
+    committee_var = committee_sq.mean(axis=1)
+
+    dpred_mean = dpreds.mean(axis=2)
+    dcommittee_diff = dpreds - dpred_mean[:,:,None]
+    dcommittee_sq = 2*committee_diff.T[:,:,None]*dcommittee_diff.T
+    dcommittee_var = dcommittee_sq.mean(axis=0)
+
+    if varavg=='single':
+        # Use the first of the committee members
+        vars,dvars = vars[0],dvars[0]
+    elif type(varavg)==int:
+        # Use the best model (varavg is an index)
+        vars,dvars = vars[varavg],dvars[varavg]
+    else:
+        vars,dvars = vars.mean(axis=0),dvars.mean(axis=0)
+
+    return vars, committee_var, dvars, dcommittee_var
+
+# ==============================================================================
+# Constraint for slsqp optimiser
+def ConstrainRad(OrigPoint, rad):
+    con1 = {'type': 'ineq', 'fun': _Constrain_Multi,
+            'jac':_dConstrain_Multi, 'args':[OrigPoint,rad]}
+    return [con1]
+
+def _Constrain_Multi(Candidates,OrigPoint,rad):
+    a = rad**2 - np.linalg.norm(Candidates - OrigPoint,axis=1)**2
+    return a
+
+def _dConstrain_Multi(Candidates,OrigPoint,rad):
+    da = -2*(Candidates - OrigPoint)
+    return da

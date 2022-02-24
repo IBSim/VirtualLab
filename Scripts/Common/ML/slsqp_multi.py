@@ -320,9 +320,7 @@ def _MinMax(X, fn, sign, *args):
     val,grad = fn(X,*args)
     return sign*val,sign*grad
 
-def FuncOpt(fnc, init_points, find='max',order=None, tol=0.01, version='multi', **kwargs):
-
-
+def slsqp_multi(fnc, init_points, find='max',order=None, tol=0.01, version='multi', success_only=True, **kwargs):
     if find.lower()=='max':sign=-1
     elif find.lower()=='min':sign=1
 
@@ -330,8 +328,6 @@ def FuncOpt(fnc, init_points, find='max',order=None, tol=0.01, version='multi', 
 
     if version.lower() in ('m','multi'):
         x,f,success = slsqp_min(_MinMax, init_points, NProc=1,**kwargs)
-        x,f = np.array(x),np.array(f)
-        # x,f = x[success],f[success]
     elif version.lower() in ('i','individual'):
         x,f,success = [],[],[]
         for X0 in init_points:
@@ -339,11 +335,17 @@ def FuncOpt(fnc, init_points, find='max',order=None, tol=0.01, version='multi', 
             x.append(Opt.x)
             f.append(Opt.fun)
             success.append(Opt.success)
-        # print(len(f))
-        x,f = np.array(x),np.array(f)
     else:
         print('Error, option unavailable')
         return
+
+    x,f = np.array(x),np.array(f)
+
+    if success_only:
+        x,f = x[success], f[success]
+
+    # ==========================================================================
+    # Multiply by sign for min/max
     f = sign*f
 
     if order:
@@ -513,5 +515,5 @@ def Test(D1=True,DN=True):
 
 
 if __name__ == '__main__':
-    Test(D1=1,DN=1)
+    Test(D1=1,DN=0)
     # Test_Time(D1=0,DN=1,m=100)

@@ -7,6 +7,8 @@ import h5py
 from natsort import natsorted
 import time
 
+from .slsqp_multi import slsqp_multi
+
 class ExactGPmodel(gpytorch.models.ExactGP):
     '''
     Gaussian process regression model.
@@ -353,3 +355,35 @@ def CompileData(ResDirs,MapFnc,args=[]):
         In.append(_In)
         Out.append(_Out)
     return In, Out
+
+# ==============================================================================
+# ML model Optima
+
+def GetOptima(model, NbInit, bounds, seed=None, find='max', tol=0.01,
+              order='decreasing', success_only=True, constraints=()):
+    if seed!=None: np.random.seed(seed)
+    init_points = np.random.uniform(0,1,size=(NbInit,len(bounds)))
+
+    Optima = slsqp_multi(_GPR_Opt, init_points, bounds=bounds,
+                         constraints=constraints,find=find, tol=tol,
+                         order=order, success_only=success_only,
+                         jac=True, args=[model])
+    Optima_cd, Optima_val = Optima
+    return Optima_cd, Optima_val
+
+def GetExtrema(model,NbInit,bounds,seed=None):
+    # ==========================================================================
+    # Get min and max values for each
+    Extrema_cd, Extrema_val = [], []
+    for tp,order in zip(['min','max'],['increasing','decreasing']):
+        _Extrema_cd, _Extrema_val = GetOptima(model, NbInit, bounds,seed,
+                                              find=tp, order=order)
+        Extrema_cd.append(_Extrema_cd[0])
+        Extrema_val.append(_Extrema_val[0])
+    return np.array(Extrema_val), np.array(Extrema_cd)
+
+def _GPR_Opt(X,model):
+    torch.set_default_dtype(torch.float64)
+    X = torch.tensor(X)
+    dmean, mean = model.Gradient_mean(X)
+    return mean.detach().numpy(), dmean.detach().numpy()

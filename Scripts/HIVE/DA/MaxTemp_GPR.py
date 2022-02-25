@@ -3,14 +3,26 @@ import numpy as np
 import torch
 import gpytorch
 import matplotlib.pyplot as plt
+import time
 
 from VLFunctions import ReadData, ReadParameters
-from Optimise import FuncOpt
-import ML
+from Scripts.Common.ML import ML, Adaptive
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
+torch.set_default_dtype(torch_dtype)
 
+InTag = ['x','y','z','pressure','temperature','velocity','current']
+DispX = DispY = [-0.01,0.01]
+DispZ = [0.01,0.02]
+CoolantP, CoolantT, CoolantV = [0.4,1.6], [30,70], [5,15]
+Current = [600,1000]
+
+bounds = np.transpose([DispX,DispY,DispZ,CoolantP,CoolantT,CoolantV,Current])
+InputScaler = np.array([bounds[0],bounds[1] - bounds[0]])
+
+# ==============================================================================
+# Functions for gathering necessary data and writing to file
 def MLMapping(Dir):
     datapkl = "{}/Data.pkl".format(Dir)
     DataDict = ReadData(datapkl)
@@ -22,33 +34,39 @@ def MLMapping(Dir):
     Out = DataDict['MaxTemp']
     return In, Out
 
-def ModelDefine(TrainIn,TrainOut,Kernel,prev_state=None):
-    likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = ML.ExactGPmodel(TrainIn, TrainOut, likelihood, Kernel)
-    if prev_state:
-        state_dict = torch.load(prev_state)
-        model.load_state_dict(state_dict)
-    return likelihood, model
+def CompileData(VL,DADict):
+    Parameters = DADict["Parameters"]
 
-def Single(VL,DADict):
-    Parameters = DADict['Parameters']
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
-
     InputName = getattr(Parameters,'InputName','Input')
     OutputName = getattr(Parameters,'OutputName','Output')
 
-    if hasattr(Parameters,'CompileData'):
-        CompileData = Parameters.CompileData
-        if type(CompileData)==str:CompileData = [CompileData]
+    CmpData = Parameters.CompileData
+    if type(CmpData)==str:CmpData = [CmpData]
 
-        ResDirs = ["{}/{}".format(VL.PROJECT_DIR,resname) for resname in CompileData]
-        InData, OutData = ML.CompileData(ResDirs,MLMapping)#
-        ML.WriteMLdata(DataFile_path, CompileData, InputName,
-                       OutputName, InData, OutData)
+    ResDirs = ["{}/{}".format(VL.PROJECT_DIR,resname) for resname in CmpData]
+    InData, OutData = ML.CompileData(ResDirs,MLMapping)
+    ML.WriteMLdata(DataFile_path, CmpData, InputName,
+                   OutputName, InData, OutData)
+
+# ==============================================================================
+# default function
+def Single(VL,DADict):
+    Parameters = DADict['Parameters']
+
+    # ==========================================================================
+    # Compile data here if needed
+    if getattr(Parameters,'CompileData',None) !=None:
+        CompileData(VL,DADict)
+
+    # ==========================================================================
+    # Get Train & test data and scale
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
+    InputName = getattr(Parameters,'InputName','Input')
+    OutputName = getattr(Parameters,'OutputName','Output')
 
     TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData, InputName,
                                      OutputName,getattr(Parameters,'TrainNb',-1))
-
     TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData, InputName,
                                    OutputName,getattr(Parameters,'TestNb',-1))
 
@@ -56,16 +74,13 @@ def Single(VL,DADict):
 
     TrainOut, TestOut = TrainOut.flatten(), TestOut.flatten()
 
-    TrainIn,TrainOut = TrainIn.astype(dtype),TrainOut.astype(dtype)
-    TestIn, TestOut = TestIn.astype(dtype), TestOut.astype(dtype)
-
-    # Scale test & train input * output data to [0,1] (based on training data)
-    InputScaler = np.array([TrainIn.min(axis=0),TrainIn.max(axis=0) - TrainIn.min(axis=0)])
-    OutputScaler = np.array([TrainOut.min(axis=0),TrainOut.max(axis=0) - TrainOut.min(axis=0)])
-
+    # Scale input to [0,1] (based on parameter space)
     TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
-    TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
     TestIn_scale = ML.DataScale(TestIn,*InputScaler)
+
+    # Scale output to [0,1]
+    OutputScaler = np.array([TrainOut.min(axis=0),TrainOut.max(axis=0) - TrainOut.min(axis=0)])
+    TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
     TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
 
     TrainIn_scale = torch.from_numpy(TrainIn_scale)
@@ -73,28 +88,68 @@ def Single(VL,DADict):
     TestIn_scale = torch.from_numpy(TestIn_scale)
     TestOut_scale = torch.from_numpy(TestOut_scale)
 
-    ModelFile = '{}/Model.pth'.format(DADict["CALC_DIR"]) # File model will be saved to/loaded from
+    # ==========================================================================
+    # Train a new model or load an old one
+    ModelFile = '{}/Model.pth'.format(DADict["CALC_DIR"]) # Saved model location
     if Parameters.Train:
-        likelihood, model = ModelDefine(TrainIn_scale, TrainOut_scale, Parameters.Kernel)
-        lr = 0.01
-        DADict['Data']['MSE'] = MSEvals = {}
-        print()
-        testdat = [TestIn_scale,TestOut_scale]
-        testdat=[]
-        Conv_P,MSE_P = model.Training(likelihood,Parameters.Epochs,test=testdat,lr=lr,Print=100)
-        print()
-
+        # get model & likelihoods
+        min_noise = getattr(Parameters,'MinNoise',None)
+        likelihood, model = ML.GPRModel_Single(TrainIn_scale, TrainOut_scale,
+                                        Parameters.Kernel, min_noise=min_noise)
+        # Train model
+        testdat = [] #[TestIn_scale,TestOut_scale]
+        Conv_P = model.Training(likelihood,Parameters.Epochs,test=testdat, Print=100)[0]
+        # Save model
         torch.save(model.state_dict(), ModelFile)
-
+        # Plot convergence & save
         plt.figure()
         plt.plot(Conv_P)
         plt.savefig("{}/Convergence.eps".format(DADict["CALC_DIR"]),dpi=600)
         plt.close()
-    else:
-        likelihood, model = ModelDefine(TrainIn_scale, TrainOut_scale,
-                                        Parameters.Kernel, ModelFile)
 
+        # Print model parameters
+        print('Lengthscale:',model.covar_module.base_kernel.lengthscale.detach().numpy()[0])
+        print('Outputscale', model.covar_module.outputscale.detach().numpy())
+        print('Noise',model.likelihood.noise.detach().numpy()[0])
+    else:
+        # Load previously trained model
+        likelihood, model = ML.GPRModel_Single(TrainIn_scale, TrainOut_scale,
+                                        Parameters.Kernel, ModelFile)
     model.eval(); likelihood.eval()
+
+    # =========================================================================
+    # Get error metrics for model
+    TrainMetrics = ML.GetMetrics(model, TrainIn_scale, TrainOut_scale.detach().numpy())
+    TestMetrics = ML.GetMetrics(model, TestIn_scale, TestOut_scale.detach().numpy())
+
+    for tp,data in zip(['Train','Test'],[TrainMetrics,TestMetrics]):
+        outstr = "{} Data\n".format(tp)
+        for i,metric in enumerate(['MSE','MAE','RMSE','R^2']):
+            outstr+="{}: {}\n".format(metric,data[i])
+        print(outstr)
+
+    # ==========================================================================
+    # Get next points to collect data
+    bounds = [[0,1]]*NbInput
+    AdaptDict = getattr(Parameters,'Adaptive',{})
+    if AdaptDict:
+        BestPoints = Adaptive.Adaptive(model, AdaptDict, bounds)
+        print(np.around(BestPoints,3))
+        BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
+        DADict['Data']['BestPoints'] = BestPoints
+
+
+    # ==========================================================================
+    # Get min and max values for each
+    print('Extrema')
+    RangeDict = {}
+    val,cd = ML.GetExtrema(model, 50, bounds)
+    cd = ML.DataRescale(cd,*InputScaler)
+    val = ML.DataRescale(val,*OutputScaler)
+    RangeDict["Min"] = val[0]
+    RangeDict["Max"] = val[1]
+    print("Min:{}, Max:{}\n".format(*np.around(val,2)))
+
 
     with torch.no_grad():
         TrainPred = model(TrainIn_scale)
@@ -114,56 +169,56 @@ def Single(VL,DADict):
         #     for pred,act,uq in zip(TrainPred_R[sortix],TrainOut[sortix],UQ[sortix]):
         #         print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
         #
-        # if 0:
-        #     UQ = TestPred.stddev.numpy()*OutputScaler[1]
-        #     sortix = np.argsort(UQ)[::-1]
-        #     for pred,act,uq in zip(TestPred_R[sortix],TestOut[sortix],UQ[sortix]):
-        #         print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
+        if 1:
+            UQ = TestPred.stddev.numpy()*OutputScaler[1]
+            sortix = np.argsort(UQ)[::-1]
+            sortix = np.argsort(TestMSE)[::-1]
+            for pred,act,uq in zip(TestPred_R[sortix],TestOut[sortix],UQ[sortix]):
+                print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
 
 
-    Adaptive = getattr(Parameters,'Adaptive',{})
-    if Adaptive:
-        Method = Adaptive['Method']
-        NbNext = Adaptive['Nb']
-        NbCand = Adaptive['NbCandidates']
-        Seed = Adaptive.get('Seed',None)
+# ==============================================================================
+# Build a committee of models for query by committee adaptive scheme
+def CommitteeBuild(VL,DADict):
+    Parameters = DADict['Parameters']
 
-        bounds = [[0,1]]*NbInput
-        # Candidates = ML.LHS_Samples(bounds,N,123)
-        # Candidates = np.array(Candidates,dtype=dtype)
-        if Seed!=None: np.random.seed(Seed)
-        Candidates = np.random.uniform(0,1,size=(NbCand,NbInput))
-        # print(Candidates)
-        BestPoints = []
-        for i in range(NbNext):
-            if Method.lower()=='ei':
-                score,srtCandidates = model.EI(Candidates,sort=True)
-            elif Method.lower()=='eigf':
-                # Get value at nearest neighbour
-                NN = []
-                for c in Candidates:
-                    d = np.linalg.norm(TrainIn_scale - c,axis=1)
-                    ix = np.argmin(d)
-                    NN.append(TrainOut_scale[ix])
-                NN = np.array(NN)
-                score,srtCandidates = model.EIGF(Candidates,NN,sort=True)
-            elif Method.lower()=='maximisedei':
-                score,srtCandidates = model.MaximisedEI(Candidates, bounds, sort=True)
+    Likelihoods, Models = [], []
+    for modeldir in Parameters.CommitteeModels:
+        dirfull = "{}/{}".format(VL.PROJECT_DIR,modeldir)
+        paramfile = "{}/Parameters.py".format(dirfull)
+        ModParameters = ReadParameters(paramfile)
+        DataFile_path = "{}/{}".format(VL.PROJECT_DIR,ModParameters.DataFile)
+        InputName = getattr(Parameters,'InputName','Input')
+        OutputName = getattr(Parameters,'OutputName','Output')
+        TrainIn, TrainOut = ML.GetMLdata(DataFile_path, ModParameters.TrainData,
+                                        InputName, OutputName, ModParameters.TrainNb)
 
-            BestPoint = srtCandidates[0:1]
-            BestPoint_pth = torch.from_numpy(BestPoint)
-            with torch.no_grad():
-                BestPoint_mean = model(BestPoint_pth).mean
-            # Update model with new point & predicted value
-            model = model.get_fantasy_model(BestPoint_pth,BestPoint_mean)
+        TrainOut = TrainOut.flatten()
+        TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
+        TrainIn_scale = torch.from_numpy(TrainIn_scale)
 
-            Candidates = srtCandidates[1:]
-            BestPoints.append(BestPoint.flatten())
+        OutputScaler = np.array([TrainOut.min(axis=0),TrainOut.max(axis=0) - TrainOut.min(axis=0)])
+        TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
+        TrainOut_scale = torch.from_numpy(TrainOut_scale)
 
+        ModelFile = "{}/Model.pth".format(dirfull)
+        likelihood, model = ML.GPRModel_Single(TrainIn_scale,TrainOut_scale,
+                                        ModParameters.Kernel,prev_state=ModelFile)
+
+        likelihood.eval();model.eval()
+        Likelihoods.append(likelihood)
+        Models.append(model)
+
+    bounds = [[0,1]]*len(InTag)
+    AdaptDict = getattr(Parameters,'Adaptive',{})
+    if AdaptDict:
+        st = time.time()
+        BestPoints = Adaptive.Adaptive(Models, AdaptDict, bounds,Show=3)
+        end = time.time() - st
+        print('Time',end)
+        print(np.around(BestPoints,3))
         BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
-        print(BestPoints)
         DADict['Data']['BestPoints'] = BestPoints
-        # print(BestPoints.shape)
 
 
 

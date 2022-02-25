@@ -104,7 +104,7 @@ def _ModelUpdate(model, NewPoints, NewValues=None):
 
     return model
 
-def _Committee_pred(committee,NewPoints,combine='average'):
+def _Committee_pred(committee,NewPoints,combine='single'):
     pred = []
     for model in committee:
         with torch.no_grad():

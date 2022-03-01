@@ -92,12 +92,11 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
     fnclist = [fnc]*len(Dicts)
     PoolArgs = [[VL]*len(Dicts),Dicts] + Args
 
-    if not N: N = VL._NbThreads
+    if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
 
     try:
-    # if True:
-        if launcher == 'Sequential':
+        if launcher == 'Sequential' or len(Dicts)==1:
             # Run studies one after the other
             Res = []
             for args in zip(*PoolArgs):

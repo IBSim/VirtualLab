@@ -158,6 +158,10 @@ def _Adaptive(Candidates, model, scheme, scoring='sum'):
         score = MASA(*args)
     elif scheme.lower()=='qbc_var':
         score = QBC_Var(*args)
+    elif scheme.lower()=='qbc':
+        score = QBC(*args)
+    else:
+        sys.exit('Adaptive scheme not available')
 
 
     # ==========================================================================
@@ -309,6 +313,34 @@ def _QBC_Var(Candidates,committee,varavg='average'):
 
     return vars, committee_var
 
+def QBC(Candidates, committee):
+    NbOutput = len(committee[0].models) if hasattr(committee[0],'models') else 1
+    if NbOutput==1:
+        cv = _QBC(Candidates,committee)
+    else:
+        cv = []
+        for i in range(NbOutput):
+            _committee = [model.models[i] for model in committee]
+            _cv = _QBC(Candidates,_committee)
+            cv.append(_cv)
+    return np.array(cv)
+
+def _QBC(Candidates,committee,varavg='average'):
+    preds = []
+    for model in committee:
+        with torch.no_grad():
+            output = model(Candidates)
+            pred = output.mean.numpy()
+        preds.append(pred)
+    preds = np.transpose(preds)
+
+    # preds lst is NbCandidate x NbCommittee
+    pred_mean = preds.mean(axis=1)
+    committee_sq = (preds - pred_mean[:,None])**2
+    committee_var = committee_sq.mean(axis=1)
+
+    return committee_var
+
 # ==============================================================================
 # Optimisation using slsqp
 def Adaptive_SLSQP(Candidates, model, scheme, bounds, constraints=(), scoring='sum',sort=True,**kwargs):
@@ -317,9 +349,11 @@ def Adaptive_SLSQP(Candidates, model, scheme, bounds, constraints=(), scoring='s
     if scheme.lower() == 'mmse':
         fn = _Caller_slsqp
         args.insert(0,MMSE_Grad)
-    if scheme.lower() == 'qbc_var':
+    elif scheme.lower() == 'qbc_var':
         fn = QBC_Var_Grad
         args += [[0],[0]]
+    elif scheme.lower() == 'qbc':
+        fn = QBC_Grad
 
     order = 'decreasing' if sort else None
     Optima = slsqp_multi(fn, Candidates, find='max', tol=None,
@@ -372,7 +406,6 @@ def QBC_Var_Grad(Candidates,committee,cvmax,vmax,scoring='sum'):
     if _cvmax>cvmax[0]: cvmax[0] = _cvmax
     _vmax = var.max()
     if _vmax>vmax[0]: vmax[0] = _vmax
-
     score = var/vmax + cv/cvmax
     dscore = dvar/vmax + dcv/cvmax
 
@@ -416,6 +449,45 @@ def _QBC_Var_Grad(Candidates,committee,varavg='average'):
 
     return vars, committee_var, dvars, dcommittee_var
 
+def QBC_Grad(Candidates,committee,scoring='sum'):
+    NbOutput = len(committee[0].models) if hasattr(committee[0],'models') else 1
+    if NbOutput==1:
+        cv ,dcv = _QBC_Grad(Candidates,committee)
+    else:
+        cv,dcv = [],[]
+        for i in range(NbOutput):
+            _committee = [model.models[i] for model in committee]
+            _cv,_dcv = _QBC_Grad(Candidates,_committee)
+            cv.append(_cv);dcv.append(_dcv)
+
+    score,dscore = np.array(cv),np.array(dcv)
+
+    if score.ndim>1 and scoring=='sum':
+        score,dscore = score.sum(axis=0),dscore.sum(axis=0)
+
+    return score,dscore
+
+def _QBC_Grad(Candidates,committee,varavg='average'):
+    _Candidates = torch.tensor(Candidates)
+    preds,dpreds = [],[]
+    for model in committee:
+        dpred, pred = model.Gradient_mean(_Candidates)
+        pred,dpred = pred.detach().numpy(),dpred.detach().numpy()
+        preds.append(pred);dpreds.append(dpred)
+    preds,dpreds = np.transpose(preds),np.transpose(dpreds)
+
+    # preds lst is NbCandidate x NbCommittee
+    pred_mean = preds.mean(axis=1)
+    committee_diff = preds - pred_mean[:,None]
+    committee_sq = committee_diff**2
+    committee_var = committee_sq.mean(axis=1)
+
+    dpred_mean = dpreds.mean(axis=2)
+    dcommittee_diff = dpreds - dpred_mean[:,:,None]
+    dcommittee_sq = 2*committee_diff.T[:,:,None]*dcommittee_diff.T
+    dcommittee_var = dcommittee_sq.mean(axis=0)
+
+    return committee_var, dcommittee_var
 # ==============================================================================
 # Constraint for slsqp optimiser
 def ConstrainRad(OrigPoint, rad):

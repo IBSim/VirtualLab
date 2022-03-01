@@ -31,7 +31,7 @@ class VLSetup():
 
         # ======================================================================
         # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbThreads=1,
+        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
                       MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
 
@@ -86,22 +86,22 @@ class VLSetup():
         else: self.Exit(ErrorMessage("Launcher must be one of; 'Sequential',\
                                      'Process', 'MPI'"))
 
-    def _SetNbThreads(self,NbThreads=1):
-        NbThreads = self._ParsedArgs.get('NbThreads',NbThreads)
-        if type(NbThreads) == int:
-            _NbThreads = NbThreads
-        elif type(NbThreads) == float:
-            if NbThreads.is_integer():
-                _NbThreads = NbThreads
+    def _SetNbJobs(self,NbJobs=1):
+        NbJobs = self._ParsedArgs.get('NbJobs',NbJobs)
+        if type(NbJobs) == int:
+            _NbJobs = NbJobs
+        elif type(NbJobs) == float:
+            if NbJobs.is_integer():
+                _NbJobs = NbJobs
             else:
-                self.Exit(ErrorMessage("NbThreads must be an integer"))
+                self.Exit(ErrorMessage("NbJobs must be an integer"))
         else:
-            self.Exit(ErrorMessage("NbThreads must be an integer"))
+            self.Exit(ErrorMessage("NbJobs must be an integer"))
 
-        if _NbThreads >= 1:
-            self._NbThreads = _NbThreads
+        if _NbJobs >= 1:
+            self._NbJobs = _NbJobs
         else:
-            self.Exit(ErrorMessage("NbThreads must be positive"))
+            self.Exit(ErrorMessage("NbJobs must be positive"))
 
     def _SetInputDir(self,InputDir):
         InputDir = self._ParsedArgs.get('InputDir',InputDir)
@@ -128,7 +128,7 @@ class VLSetup():
 
     def Settings(self,**kwargs):
 
-        Diff = set(kwargs).difference(['Mode','Launcher','NbThreads','InputDir',
+        Diff = set(kwargs).difference(['Mode','Launcher','NbJobs','InputDir',
                                     'OutputDir','MaterialDir','Cleanup'])
         if Diff:
             self.Exit("Error: {} are not option(s) for settings".format(list(Diff)))
@@ -137,8 +137,8 @@ class VLSetup():
             self._SetMode(kwargs['Mode'])
         if 'Launcher' in kwargs:
             self._SetLauncher(kwargs['Launcher'])
-        if 'NbThreads' in kwargs:
-            self._SetNbThreads(kwargs['NbThreads'])
+        if 'NbJobs' in kwargs:
+            self._SetNbJobs(kwargs['NbJobs'])
         if 'Cleanup' in kwargs:
             self._SetCleanup(kwargs['Cleanup'])
         if 'InputDir' in kwargs:
@@ -373,8 +373,6 @@ class VLSetup():
 
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
-
-
 
     def _GetParsedArgs(self):
         self._ParsedArgs = {}

@@ -23,7 +23,7 @@ VirtualLab=VLSetup(
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbThreads=2)
+           NbJobs=2)
 
 VirtualLab.Parameters(
            Parameters_Master,
@@ -35,5 +35,3 @@ VirtualLab.Mesh()
 VirtualLab.Sim(ShowRes=True)
 
 VirtualLab.DA()
-
-VirtualLab.Cleanup()

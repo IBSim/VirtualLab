@@ -766,5 +766,6 @@ def Single(VL, SimDict):
     HTC(VL, SimDict)
 
     EMLoad = getattr(SimDict['Parameters'],'EMLoad', True)
-    if EMLoad:
-        EMI(VL, SimDict)
+    if EMLoad=='Uniform' or EMLoad==False: return
+
+    EMI(VL, SimDict)

@@ -1,4 +1,11 @@
 #!/bin/bash
+# exit when any command fails
+#set -e
+# keep track of the last executed command
+trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
+# echo an error message before exiting
+trap 'echo "\"${last_command}\" command filed with exit code $?."' ERR
+
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 #########################
@@ -45,6 +52,13 @@ fi
 if hash conda 2>/dev/null; then
   USE_CONDA=True
   CONDAENV="$(basename -- $VL_DIR)"
+
+if conda info --envs | grep -q $CONDAENV; then
+      echo "VirtualLab conda environment not found so creating."
+      conda create -n $CONDAENV      
+else
+  echo "Found existing VirtualLab Conda environment"
+fi
   conda activate $CONDAENV
 fi
 
@@ -71,6 +85,8 @@ mkdir -p ${CAD2VOX_DIR}
 cd ${CAD2VOX_DIR}
 
 git clone https://github.com/bjthorpe/Cad2vox.git
+
+cd Cad2vox
 
 git checkout ${CAD2VOX_TAG} 
 

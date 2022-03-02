@@ -75,7 +75,7 @@ VirtualLab.Settings(Mode='Headless', Launcher='Process', NbThreads=1)
         'Sequential' - Each operation is run sequentially (no parallelism).
         'Process' - Parallelism for a single node only. (Default)
         'MPI' - Parallelism over multiple nodes.
-    NbThreads : '$USER_INTEGER' (int, optional)
+    NbJobs : '$USER_INTEGER' (int, optional)
         Defines how many of the studies that will run concurrently when using
         either the 'process' or 'MPI' launcher. Default is 1.
 
@@ -153,9 +153,6 @@ VirtualLab.DA() :
     out. The results are saved to Output/$SIMULATION/$PROJECT. If
     RunDA is set to False in VirtualLab.Parameters then this routine is skipped.
 
-VirtualLab.Cleanup()
-    This function removes any temporary directories created.
-
 '''
 
 #===============================================================================
@@ -176,7 +173,7 @@ VirtualLab=VLSetup(
 VirtualLab.Settings(
            Mode='Headless',
            Launcher='Process',
-           NbThreads=1)           
+           NbJobs=1)
 
 VirtualLab.Parameters(
            Parameters_Master,
@@ -196,5 +193,3 @@ VirtualLab.Sim(
            ShowRes=False)
 
 VirtualLab.DA()
-
-VirtualLab.Cleanup()

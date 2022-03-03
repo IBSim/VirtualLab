@@ -144,16 +144,25 @@ if TileEmissivity!=0 or BlockEmissivity!=0:
     Loading.append(_F(CHARGE=Radiat))
 
 # ==============================================================================
-# Thermal FEA analysis
+# Thermal analysis
 # Provide default values for certain parameters
+# Solver: Which solver to use
+# NewtonUpdate: After how many iterations the tangent matrix is updated. Calculating
+# the tangent is computationally expsnive, therefore this is defaulted to 3.
+# MaxIter: Max. number of iterations of the newton algorithm
 Solver = getattr(Parameters,'Solver', 'MUMPS')
-MaxIter = getattr(Parameters,'MaxIter',50)
+NewtonUpdate = getattr(Parameters,'NewtonUpdate',3)
+_MaxIter = 50 if NewtonUpdate == 0 else 10*NewtonUpdate
+MaxIter = getattr(Parameters,'MaxIter',_MaxIter)
 
 # Steady state analysis
+# Set initial temperature as the coolant temperature to speed up convergence
 resther = THER_NON_LINE(CHAM_MATER=Thermat,
                         EXCIT=Loading,
                         MODELE=Thermod,
                         SOLVEUR=_F(METHODE=Solver),
+                        ETAT_INIT=_F(STATIONNAIRE='OUI',VALE=Parameters.Coolant['Temperature']),
+                        NEWTON=_F(REAC_ITER=NewtonUpdate),
                         CONVERGENCE=_F(ITER_GLOB_MAXI=MaxIter))
 
 # ==============================================================================

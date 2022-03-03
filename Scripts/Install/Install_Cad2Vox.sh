@@ -24,7 +24,7 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 ### Standard update
 sudo apt update -y
 sudo apt upgrade -y
-sudo apt install -y build-essential
+sudo apt install -y build-essential cmake
 
 source ../../VLconfig.py
 
@@ -91,18 +91,18 @@ if ${USE_CONDA}; then
     conda install cmake numpy pybind11 tifffile pytest
     conda install -c conda-forge xtensor xtl meshio xtensor-python
 else
-    pip install -r requirements.txt
+    pip3 install -r requirements.txt
     # Build xtl, xtensor and xtensor-python
     mkdir -p libs && cd libs
     #xtl
     git clone https://github.com/xtensor-stack/xtl.git
-    cd xtl && cmake && make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
+    cd xtl && cmake . && make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
     #xtensor
     git clone https://github.com/xtensor-stack/xtensor.git
-    cd xtensor && cmake && make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
+    cd xtensor && cmake . && make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
     #xtensor-python
     git clone https://github.com/xtensor-stack/xtensor-python.git
-    cd xtensor-python && cmake cmake && make install && cd ${CAD2VOX_DIR}/Cad2vox
+    cd xtensor-python && cmake . && make install && cd ${CAD2VOX_DIR}/Cad2vox
 fi
 
 cd ${CAD2VOX_DIR}/Cad2vox/CudaVox
@@ -111,4 +111,8 @@ cd ..
 python3 setup_cad2vox.py install
 
 # Run Test Suite
+if ${CAD2VOX_WITH_CUDA}; then
 pytest
+else
+pytest -m "no CUDA"
+fi

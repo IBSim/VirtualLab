@@ -140,7 +140,7 @@ def MaxTemperature(ResFile,ResName='Temperature'):
 
 def MaxStress(ResFile,ResName='Stress'):
     g = h5py.File(ResFile, 'r')
-    gRes = g['/CHA/Stress/']
+    gRes = g['/CHA/{}'.format(ResName)]
     step = list(gRes.keys())[0]
     Stress = gRes['{}/MAI.TE4/MED_NO_PROFILE_INTERNAL/CO'.format(step)][:]
 
@@ -148,6 +148,6 @@ def MaxStress(ResFile,ResName='Stress'):
 
     Stress = Stress.reshape((int(Stress.size/6),6),order='F')
     Stress_mag = np.linalg.norm(Stress, axis=1)
-    MaxStress = Stress_mag.max()
+    _MaxStress = Stress_mag.max()
 
-    return MaxStress
+    return _MaxStress

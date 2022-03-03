@@ -157,10 +157,10 @@ if TileEmissivity!=0 or BlockEmissivity!=0:
                             RAYONNEMENT=Radiation)
     Loading.append(_F(CHARGE=Radiat))
 
-# Mechanical BC using 3-2-1 method to constrain
-Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DY=0.0, GROUP_MA=('PipeIn', )), #Pipe runs along y axis
-                        DDL_IMPO=(_F(DX=0.0, DZ=0.0, GROUP_NO=('PipeInV2', )),
-                                  _F(DX=0.0, GROUP_NO=('PipeInV1', ))),
+# Mechanical BC using 3-2-1 method to constrain. Both pipe ends are constrained
+Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DY=0.0, GROUP_MA=('PipeIn','PipeOut')), #Pipe runs along y axis
+                        DDL_IMPO=(_F(DX=0.0, DZ=0.0, GROUP_NO=('PipeInV2','PipeOutV2')),
+                                  _F(DX=0.0, GROUP_NO=('PipeInV1', 'PipeOutV1'))),
                         LIAISON_MAIL=(_F(GROUP_MA_MAIT='Pipe', GROUP_MA_ESCL='ContactBP_double'),
                                       _F(GROUP_MA_MAIT='Block', GROUP_MA_ESCL='ContactTB_double')),
                         MODELE=Mechmod)
@@ -168,16 +168,23 @@ Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DY=0.0, GROUP_MA=('PipeIn', )), #Pipe runs 
 # ==============================================================================
 # Thermal analysis
 # Provide default values for certain parameters
+# Solver: Which solver to use
+# NewtonUpdate: After how many iterations the tangent matrix is updated. Calculating
+# the tangent is computationally expsnive, therefore this is defaulted to 3.
+# MaxIter: Max. number of iterations of the newton algorithm
 Solver = getattr(Parameters,'Solver', 'MUMPS')
-MaxIter = getattr(Parameters,'MaxIter',50)
+NewtonUpdate = getattr(Parameters,'NewtonUpdate',3)
+_MaxIter = 50 if NewtonUpdate == 0 else 10*NewtonUpdate
+MaxIter = getattr(Parameters,'MaxIter',_MaxIter)
 
 # Steady state analysis
-# Set initial guess as the coolant temperature to speed up convergence
+# Set initial temperature as the coolant temperature to speed up convergence
 resther = THER_NON_LINE(CHAM_MATER=Thermat,
                         EXCIT=Loading,
                         MODELE=Thermod,
                         SOLVEUR=_F(METHODE=Solver),
                         ETAT_INIT=_F(STATIONNAIRE='OUI',VALE=Parameters.Coolant['Temperature']),
+                        NEWTON=_F(REAC_ITER=NewtonUpdate),
                         CONVERGENCE=_F(ITER_GLOB_MAXI=MaxIter))
 
 # ==============================================================================

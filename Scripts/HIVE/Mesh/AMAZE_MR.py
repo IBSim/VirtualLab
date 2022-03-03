@@ -211,6 +211,12 @@ def Create(Parameters):
     Ix = SalomeFunc.ObjIndex(Sample, Pipe, [19])[0]
     GrpPipeInV2 = SalomeFunc.AddGroup(Sample, 'PipeInV2', Ix)
 
+    Ix = SalomeFunc.ObjIndex(Sample, Pipe, [6])[0]
+    GrpPipeOutV1 = SalomeFunc.AddGroup(Sample, 'PipeOutV1', Ix)
+
+    Ix = SalomeFunc.ObjIndex(Sample, Pipe, [14])[0]
+    GrpPipeOutV2 = SalomeFunc.AddGroup(Sample, 'PipeOutV2', Ix)
+
     # Create groups for surfaces of the sample include additional surfaces
     # created when parts join
     # Pipe
@@ -523,6 +529,8 @@ def Create(Parameters):
     # Node
     MPipeInV1 = Mesh_1.GroupOnGeom(GrpPipeInV1,'PipeInV1',SMESH.NODE)
     MPipeInV2 = Mesh_1.GroupOnGeom(GrpPipeInV2,'PipeInV2',SMESH.NODE)
+    MPipeOutV1 = Mesh_1.GroupOnGeom(GrpPipeOutV1,'PipeOutV1',SMESH.NODE)
+    MPipeOutV2 = Mesh_1.GroupOnGeom(GrpPipeOutV2,'PipeOutV2',SMESH.NODE)
     MPipe = Mesh_1.GroupOnGeom(GrpPipe,'PipeNd',SMESH.NODE)
     MSample = Mesh_1.GroupOnGeom(GrpBlock,'BlockNd',SMESH.NODE)
 

@@ -1,10 +1,4 @@
 #!/bin/bash
-# exit when any command fails
-#set -e
-# keep track of the last executed command
-trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
-# echo an error message before exiting
-trap 'echo "\"${last_command}\" command filed with exit code $?."' ERR
 
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
@@ -38,7 +32,7 @@ source ../../VLconfig.py
 search_var=anaconda*
 conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
 if [[ -f $conda_dir/bin/conda ]]; then
-  eval "$($conda_dir/bin/conda shell.bash hook)"
+    eval "$($conda_dir/bin/conda shell.bash hook)"
 else
   search_var=miniconda*
   conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
@@ -50,16 +44,19 @@ fi
 ### If conda found activate environment
 ### If no conda, prerequisites are assumed installed in local python
 if hash conda 2>/dev/null; then
-  USE_CONDA=True
+  USE_CONDA=true
   CONDAENV="$(basename -- $VL_DIR)"
 
-if conda info --envs | grep -q $CONDAENV; then
+  if conda info --envs | grep -q $CONDAENV; then
+      echo "Found existing VirtualLab Conda environment"      
+  else
       echo "VirtualLab conda environment not found so creating."
-      conda create -n $CONDAENV      
-else
-  echo "Found existing VirtualLab Conda environment"
-fi
+      conda create -n $CONDAENV
+  fi
   conda activate $CONDAENV
+
+else
+    USE_CONDA=false
 fi
 
 if ${CAD2VOX_WITH_CUDA}; then
@@ -90,8 +87,8 @@ cd Cad2vox
 
 git checkout ${CAD2VOX_TAG} 
 
-if $USE_CONDA; then
-    conda install cmake numpy pybind11 tifffile
+if ${USE_CONDA}; then
+    conda install cmake numpy pybind11 tifffile pytest
     conda install -c conda-forge xtensor xtl meshio xtensor-python
 else
     pip install -r requirements.txt
@@ -99,18 +96,18 @@ else
     mkdir -p libs && cd libs
     #xtl
     git clone https://github.com/xtensor-stack/xtl.git
-    cd xtl && cmake && make install && cd ..
+    cd xtl && cmake && make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
     #xtensor
     git clone https://github.com/xtensor-stack/xtensor.git
-    cd xtensor && cmake && make install && cd ..
+    cd xtensor && cmake && make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
     #xtensor-python
     git clone https://github.com/xtensor-stack/xtensor-python.git
-    cd xtensor-python && cmake cmake && make install && cd ${CAD2VOX_DIR}
+    cd xtensor-python && cmake cmake && make install && cd ${CAD2VOX_DIR}/Cad2vox
 fi
 
-cd cad2vox
-
-python3 cudavox/setup_cudavox.py install
+cd ${CAD2VOX_DIR}/Cad2vox/CudaVox
+python3 setup_CudaVox.py install
+cd ..
 python3 setup_cad2vox.py install
 
 # Run Test Suite

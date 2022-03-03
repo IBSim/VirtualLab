@@ -17,14 +17,14 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 #########################
 
 ### Config values for VirtualLab installation.
-VL_DIR_DEFAULT="$HOME/VirtualLab"
+VL_DIR_DEFAULT="$HOME/Documents/VirtualLab"
 CONDA_VER_DEFAULT="Anaconda3-2020.02-Linux-x86_64.sh"
 SALOME_DIR_DEFAULT="/opt/SalomeMeca"
 SALOME_VER_DEFAULT="salome_meca-2019.0.3-1-universal"
 SALOME_BIN_DEFAULT="V2019.0.3_universal"
 ERMES_DIR_DEFAULT="/opt/ERMES"
 ERMES_VER_DEFAULT="ERMES-CPlas-v12.5"
-CAD2VOX_DIR_DEFAULT="$HOME/VirtualLab/Cad2Vox"
+CAD2VOX_DIR_DEFAULT="$VL_DIR_DEFAULT/Scripts/Common/VLPackages"
 #########################
 
 ### Config values for VirtualLab operation.
@@ -37,9 +37,9 @@ TEMP_DIR_DEFAULT="/tmp"
 #########################
 
 ### Other default values.
-VL_ANALYTICS_DEFEULT=True
+VL_ANALYTICS_DEFEULT=true
 ### Set if you want to build Cad2Vox to use OpenMP or CUDA (i.e. just CPU or both CPU and GPU).
-CAD2VOX_WITH_CUDA_DEFAULT=True
+CAD2VOX_WITH_CUDA_DEFAULT=true
 ## Git Tag to set specific stable version of Cad2Vox used in VirtualLab.
 CAD2VOX_TAG_DEFAULT='Virtual_Lab-V1.0'
 ### END OF DEFAULTS ###

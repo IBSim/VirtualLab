@@ -225,7 +225,7 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
             # Compute the constraints
 
             if cons['eq']:
-                c_ieq = np.stack([np.array(con['fun'](x, *con['args'])).flatten()
+                c_eq = np.stack([np.array(con['fun'](x, *con['args'])).flatten()
                                      for con in cons['eq']], axis=1)
             else:
                 c_eq = np.zeros((nbPoint,0))

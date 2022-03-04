@@ -116,29 +116,39 @@ class ExactGPmodel(gpytorch.models.ExactGP):
             dvar = torch.autograd.grad(var.sum(), x)[0]
         return dvar, var
 
-def GPRModel_Multi(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
-    NbModel = TrainOut.shape[1]
-    models,likelihoods = [], []
-    for i in range(NbModel):
-        _kernel = Kernel if type(Kernel)==str else Kernel[i]
-        _min_noise = min_noise[i] if type(min_noise) in (list,tuple) else min_noise
+def Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
+    if TrainOut.ndim==1:
+        # single output
+        likelihood, model = _Create_GPR(TrainIn, TrainOut, Kernel, min_noise=min_noise)
+    else:
+        # multiple output
+        NbModel = TrainOut.shape[1]
+        # Change kernel and min_noise to a list
+        if type(Kernel) not in (list,tuple): Kernel = [Kernel]*NbModel
+        if type(min_noise) not in (list,tuple): min_noise = [min_noise]*NbModel
+        models,likelihoods = [], []
+        for i in range(NbModel):
+            likelihood, model = _Create_GPR(TrainIn, TrainOut[:,i], Kernel[i],
+                                            min_noise = min_noise[i])
+            models.append(model)
+            likelihoods.append(likelihood)
 
-        likelihood, model = GPRModel_Single(TrainIn,TrainOut[:,i],_kernel,min_noise=_min_noise)
-        models.append(model)
-        likelihoods.append(likelihood)
+        model = gpytorch.models.IndependentModelList(*models)
+        likelihood = gpytorch.likelihoods.LikelihoodList(*likelihoods)
 
-    model = gpytorch.models.IndependentModelList(*models)
-    likelihood = gpytorch.likelihoods.LikelihoodList(*likelihoods)
     if prev_state:
-        state_dict = torch.load(prev_state)
-        model.load_state_dict(state_dict)
+        # Check that the file exists
+        if os.path.isfile(prev_state):
+            state_dict = torch.load(prev_state)
+            model.load_state_dict(state_dict)
+        else:
+            print('Warning\nPrevious state file doesnt exist\nNo previous model is loaded\n')
+
     return likelihood, model
 
-def GPRModel_Single(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
-
+def _Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
     model = ExactGPmodel(TrainIn, TrainOut, likelihood, Kernel)
-
     if not prev_state:
         if min_noise != None:
             likelihood.noise_covar.register_constraint('raw_noise',gpytorch.constraints.GreaterThan(min_noise))
@@ -146,7 +156,6 @@ def GPRModel_Single(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
         # Start noise at lower level to avoid bad optima, but ensure it isn't zero
         noise_lower = likelihood.noise_covar.raw_noise_constraint.lower_bound
         noise_init = max(5*noise_lower,1e-8)
-        # noise_init = 0
         hypers = {'likelihood.noise_covar.noise': noise_init}
         model.initialize(**hypers)
     else:
@@ -155,47 +164,78 @@ def GPRModel_Single(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
 
     return likelihood, model
 
-def GPR_Train_Multi(model,Iterations, lr=0.1, test=None, Print=50, ConvCheck=50, Verbose=False):
+# ==============================================================================
+# Train the GPR model
+def GPR_Train(model, Epochs=5000, lr=0.01, Print=50, ConvCheck=50, Verbose=False, TestData=None,):
     likelihood = model.likelihood
 
     model.train()
     likelihood.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # Includes GaussianLikelihood parameters
-    mll = gpytorch.mlls.SumMarginalLogLikelihood(likelihood, model)
 
+    MultiOutput = True if hasattr(model,'models') else False
+    SumMLL = 0
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    
+    if MultiOutput and not SumMLL:
+        _mll = gpytorch.mlls.ExactMarginalLogLikelihood
+        mll,Convergence = [],[]
+        for mod in model.models:
+            mll.append(_mll(mod.likelihood,mod))
+            Convergence.append([])
+    else:
+        Convergence = []
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        if MultiOutput:
+            mll = gpytorch.mlls.SumMarginalLogLikelihood(likelihood, model)
+        else:
+            mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood,model)
 
-    Convergence,tol = [],1e-6
-    for i in range(Iterations):
-        optimizer.zero_grad() # Zero gradients from previous iteration
+    tol = 1e-6
+    for i in range(Epochs):
+        optimizer.zero_grad()
 
-        with gpytorch.settings.max_cholesky_size(1500):
+        if MultiOutput and not SumMLL:
+            TotalLoss = 0
+            for j,mod in enumerate(model.models):
+                output = mod(*model.train_inputs[j])
+
+                _loss = -mll[j](output,model.train_targets[j])
+                TotalLoss+=_loss.item()
+                Convergence[j].append(_loss.item())
+
+                _loss.backward()
+
+            TotalLoss /=(j+1)
+        else:
             output = model(*model.train_inputs)
             loss = -mll(output, model.train_targets)
+            TotalLoss = loss.item()
+            Convergence.append(TotalLoss)
+
             loss.backward()
-            optimizer.step()
 
-            if i==0 or (i+1) % Print == 0:
-                message = "Iteration: {}, Loss: {}".format(i+1,loss.item())
-                if Verbose:
-                    for i,mod in enumerate(model.models):
-                        Lscales = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
-                        Outscale = mod.covar_module.outputscale.detach().numpy()
-                        noise = mod.likelihood.noise.detach().numpy()[0]
-                        message += "Model output {}:\nLength scale: {}\nOutput scale: {}\n"\
-                                  "Noise: {}\n".format(i,Lscales,Outscale,noise)
-                print(message)
+        optimizer.step()
 
-            Convergence.append(loss.item())
+        if i>2*ConvCheck and (i+1)%ConvCheck==0:
+            mean_new = np.mean(Convergence[-ConvCheck:])
+            mean_old = np.mean(Convergence[-2*ConvCheck:-ConvCheck])
+            if mean_new>mean_old:
+                print('Terminating due to increasing loss')
+                # break
+            elif np.abs(mean_new-mean_old)<tol:
+                print('Terminating due to convergence')
+                # break
 
-            if i>2*ConvCheck and (i+1)%ConvCheck==0:
-                mean_new = np.mean(Convergence[-ConvCheck:])
-                mean_old = np.mean(Convergence[-2*ConvCheck:-ConvCheck])
-                if mean_new>mean_old:
-                    print('Terminating due to increasing loss')
-                    break
-                elif np.abs(mean_new-mean_old)<tol:
-                    print('Terminating due to convergence')
-                    break
+        if i==0 or (i+1) % Print == 0:
+            message = "Iteration: {}, Loss: {}".format(i+1,TotalLoss)
+            # if Verbose:
+            #     for i,mod in enumerate(model.models):
+            #         Lscales = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
+            #         Outscale = mod.covar_module.outputscale.detach().numpy()
+            #         noise = mod.likelihood.noise.detach().numpy()[0]
+            #         message += "Model output {}:\nLength scale: {}\nOutput scale: {}\n"\
+            #                   "Noise: {}\n".format(i,Lscales,Outscale,noise)
+            print(message)
 
             # if i%100==0:
             #     with torch.no_grad():
@@ -210,8 +250,21 @@ def GPR_Train_Multi(model,Iterations, lr=0.1, test=None, Print=50, ConvCheck=50,
             #         TrainMSE.append(TrainMSEtmp)
             #         model.train();likelihood.train()
 
-    return Convergence
+    print("\nFinal model parameters")
+    Modstr = "Length scales: {}\nOutput scale: {}\n Noise: {}\n"
+    if MultiOutput:
+        for i,mod in enumerate(model.models):
+            LS = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
+            OS = mod.covar_module.outputscale.detach().numpy()
+            N = mod.likelihood.noise.detach().numpy()[0]
+            print(("Output {}\n"+Modstr).format(i,LS,OS,N))
+    else:
+            LS = model.covar_module.base_kernel.lengthscale.detach().numpy()[0]
+            OS = model.covar_module.outputscale.detach().numpy()
+            N = model.likelihood.noise.detach().numpy()[0]
+            print(Modstr.format(LS,OS,N))
 
+    return Convergence
 
 # ==============================================================================
 # Data scaling and rescaling functions

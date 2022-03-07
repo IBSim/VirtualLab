@@ -73,9 +73,9 @@ def Run(VL):
 
     VL.Logger('\n### Starting Voxelisation ###\n', Print=True)
 
-for item in VL.VoxData:
-    Errorfnc = cad2vox.voxelise(**item)
-    if Errorfnc:
-        VL.Exit(VLF.ErrorMessage("The following Cad2Vox routine(s) finished with errors:\n{}".format(Errorfnc)))
+    for item in VL.VoxData:
+        Errorfnc = cad2vox.voxelise(**item)
+        if Errorfnc:
+            VL.Exit(VLF.ErrorMessage("The following Cad2Vox routine(s) finished with errors:\n{}".format(Errorfnc)))
 
     VL.Logger('\n### Voxelisation Complete ###',Print=True)

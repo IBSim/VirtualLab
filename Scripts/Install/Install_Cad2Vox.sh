@@ -24,7 +24,7 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 ### Standard update
 sudo apt update -y
 sudo apt upgrade -y
-sudo apt install -y build-essential cmake
+sudo apt install -y build-essential cmake python3-pybind11
 
 source ../../VLconfig.py
 
@@ -82,7 +82,7 @@ mkdir -p ${CAD2VOX_DIR}
 cd ${CAD2VOX_DIR}
 
 git clone https://github.com/bjthorpe/Cad2vox.git
-
+sudo chown ${SUDO_USER:-$USER} Cad2vox/*
 cd Cad2vox
 
 git checkout ${CAD2VOX_TAG} 
@@ -91,18 +91,21 @@ if ${USE_CONDA}; then
     conda install cmake numpy pybind11 tifffile pytest
     conda install -c conda-forge xtensor xtl meshio xtensor-python
 else
-    pip3 install -r requirements.txt
+    pip3 install --user -r requirements.txt
     # Build xtl, xtensor and xtensor-python
     mkdir -p libs && cd libs
     #xtl
     git clone https://github.com/xtensor-stack/xtl.git
-    cd xtl && cmake . && make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
+    sudo chown ${SUDO_USER:-$USER} xtl/*
+    cd xtl && cmake . && sudo make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
     #xtensor
     git clone https://github.com/xtensor-stack/xtensor.git
-    cd xtensor && cmake . && make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
+     sudo chown ${SUDO_USER:-$USER} xtensor/*
+    cd xtensor && cmake . && sudo make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
     #xtensor-python
     git clone https://github.com/xtensor-stack/xtensor-python.git
-    cd xtensor-python && cmake . && make install && cd ${CAD2VOX_DIR}/Cad2vox
+    sudo chown ${SUDO_USER:-$USER} xtensor-python/*
+    cd xtensor-python && cmake . && sudo make install && cd ${CAD2VOX_DIR}/Cad2vox
 fi
 
 cd ${CAD2VOX_DIR}/Cad2vox/CudaVox

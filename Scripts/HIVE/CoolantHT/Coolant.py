@@ -8,7 +8,7 @@ Created on Tue Feb 16 12:46:12 2016
 @author: dhancock
 """
 from iapws import IAPWS97, IAPWS95
-from HTC.Pipe import PipeGeom as Geometry
+from .Pipe import PipeGeom as Geometry
 class Properties(IAPWS97,IAPWS95):
     """
     Description:
@@ -89,16 +89,19 @@ class Properties(IAPWS97,IAPWS95):
         return self.velocity
 
     def Reynolds(self,geometry):
+        if hasattr(self,'Re'):
+            return self.Re
         if type(geometry) is Geometry:
             try: self.get_velocity(geometry)
             except: print('Cannot calculate velocity for Reynolds number')
             D_h = geometry.D_h
             self.geometryname = geometry.name
-        else: 
+        else:
             try: D_h = float(geometry)
             except: print("could not convert",geometry,"to float"); raise
 
         Reynolds = self.rho * self.velocity * D_h / self.mu
+        self.Re = Reynolds
         self.D_h = D_h
         return Reynolds
 

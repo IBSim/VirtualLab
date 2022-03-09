@@ -88,7 +88,7 @@ This is an optional attribute of VirtualLab where settings can be changed. ::
 
     VirtualLab.Settings(Mode='Headless',
                         Launcher='Process',
-                        NbThreads=1)
+                        NbJobs=1)
 
 Mode
 ~~~~
@@ -112,7 +112,7 @@ This defines the method used to launch the VirtualLab study. Currently available
 *   'MPI' - Parallelism over multiple nodes.
 
 
-NbThreads
+NbJobs
 ~~~~~~~~~
 '$INTEGER' (int, optional)
 
@@ -210,8 +210,3 @@ Visualises the .rmed results file(s) produced by **Code_Aster** through the **Pa
 *****************
 
 This function is the data analysis routine. The analysis, defined using the namespace ``DA`` in *Parameters_Master* and *Parameters_Var*, are carried out. The results are saved to Output/$SIMULATION/$PROJECT. If RunDA is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
-
-``VirtualLab.Cleanup``
-**********************
-
-This function removes all tmp directories created.

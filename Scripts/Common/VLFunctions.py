@@ -7,8 +7,73 @@ from types import SimpleNamespace as Namespace
 from itertools import product
 from scipy import special
 import pickle
+from importlib import import_module, reload
 
 sys.dont_write_bytecode=True
+
+def GetFunc(FilePath, funcname):
+    path,ext = os.path.splitext(FilePath)
+    dirname = os.path.dirname(path)
+    basename = os.path.basename(path)
+
+    sys.path.insert(0,dirname)
+    module = import_module(basename) #reload?
+    sys.path.pop(0)
+    
+    func = getattr(module, funcname, None)
+    return func
+
+def CheckFile(FilePath,Attr=None):
+    FileExist = os.path.isfile(FilePath)
+    FuncExist = True
+    if not FileExist:
+        pass
+    elif Attr:
+        func = GetFunc(FilePath,Attr)
+        if func==None: FuncExist = False
+
+    return FileExist, FuncExist
+
+def FileFunc(DirName, FileName, ext = 'py', FuncName = 'Single'):
+    if type(FileName) in (list,tuple):
+        if len(FileName)==2:
+            FileName,FuncName = FileName
+        else:
+            print('Error: If FileName is a list it must have length 2')
+    FilePath = "{}/{}.{}".format(DirName,FileName,ext)
+
+    return FilePath,FuncName
+
+def ImportUpdate(ParameterFile,ParaDict):
+    Parameters = ReadParameters(ParameterFile)
+    for Var, Value in Parameters.__dict__.items():
+        if Var.startswith('__'): continue
+        if Var in ParaDict: continue
+        ParaDict[Var] = Value
+
+def ReadParameters(paramfile):
+    paramdir = os.path.dirname(paramfile)
+    paramname = os.path.splitext(os.path.basename(paramfile))[0]
+    sys.path.insert(0,paramdir)
+    try:
+        Parameters = reload(import_module(paramname))
+    except ImportError:
+        parampkl = "{}/.{}.pkl".format(paramdir,paramname)
+        with open(parampkl,'rb') as f:
+            Parameters = pickle.load(f)
+    sys.path.pop(0)
+    return Parameters
+
+def ReadData(datapkl):
+    DataDict = {}
+    with open(datapkl, 'rb') as fr:
+        try:
+            while True:
+                pkldict = pickle.load(fr)
+                DataDict = {**pkldict}
+        except EOFError:
+            pass
+    return DataDict
 
 def WriteData(FileName, Data, pkl=True):
     # Check Data type
@@ -251,7 +316,7 @@ class MeshInfo():
 
 
 class Sampling():
-    def __init__(self, method, dim=0, range=[], bounds=True, options={}):
+    def __init__(self, method, dim=0, range=[], bounds=True, seed=None,options={}):
         # Must have either a range or dimension
         if range:
             self.range = range
@@ -268,7 +333,9 @@ class Sampling():
         self._Nb = 0
 
         if method.lower() == 'halton': self.sampler = self.Halton
-        elif method.lower() == 'random': self.sampler = self.Random
+        elif method.lower() == 'random':
+            if seed: np.random.seed(seed)
+            self.sampler = self.Random
         elif method.lower() == 'sobol': self.sampler = self.Sobol
         elif method.lower() == 'grid': self.sampler = self.Grid
         elif method.lower() == 'subspace': self.sampler = self.SubSpace

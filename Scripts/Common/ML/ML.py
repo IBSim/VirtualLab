@@ -31,68 +31,6 @@ class ExactGPmodel(gpytorch.models.ExactGP):
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
-    def Training(self,LH,Iterations=1000, lr=0.01,test=None, Print=50, ConvCheck=50,**kwargs):
-
-        self.train()
-        LH.train()
-        # Use the adam optimizer
-        optimizer = torch.optim.Adam(self.parameters(), lr=lr)  # Includes GaussianLikelihood parameters
-        # "Loss" for GPs - the marginal log likelihood
-        mll = gpytorch.mlls.ExactMarginalLogLikelihood(LH,self)
-
-        ConvAvg = float('inf')
-        Convergence,tol = [],1e-6
-        TrainMSE, TestMSE = [],[]
-
-        for i in range(Iterations):
-            optimizer.zero_grad() # Zero gradients from previous iteration
-            # Output from model
-            with gpytorch.settings.max_cholesky_size(1500):
-                output = self(self.train_inputs[0])
-                # Calc loss and backprop gradients
-            loss = -mll(output, self.train_targets)
-            loss.backward()
-            optimizer.step()
-
-            with torch.no_grad():
-                if (i+1) % Print == 0:
-                    out = "Iteration: {}, Loss: {}".format(i+1,loss.numpy())
-                    if True:
-                        out+="\nLengthscale: {}\nOutput Scale: {}\n"\
-                        "Noise: {}\n".format(self.covar_module.base_kernel.lengthscale.numpy()[0],
-                                             self.covar_module.outputscale.numpy(),
-                                             self.likelihood.noise.numpy()[0])
-
-                    print(out)
-
-            Convergence.append(loss.item())
-            if test and i%50==0:
-                with torch.no_grad(), gpytorch.settings.max_cholesky_size(1500),gpytorch.settings.fast_pred_var():
-                    self.eval(); LH.eval()
-                    x,y = test
-                    pred = LH(self(x))
-                    MSE = np.mean(((pred.mean-y).numpy())**2)
-                    # print("MSE",MSE)
-                    TestMSE.append(MSE)
-                    self.train();LH.train()
-                    # if (i+1) % ConvCheck == 0:
-                    #     print(MSE)
-
-            if i>2*ConvCheck and (i+1)%ConvCheck==0:
-                mean_new = np.mean(Convergence[-ConvCheck:])
-                mean_old = np.mean(Convergence[-2*ConvCheck:-ConvCheck])
-                if mean_new>mean_old:
-                    print('Terminating due to increasing loss')
-                    break
-                elif np.abs(mean_new-mean_old)<tol:
-                    print('Terminating due to convergence')
-                    break
-
-
-        self.eval()
-        LH.eval()
-        return Convergence,TestMSE
-
     def Gradient(self, x):
         x.requires_grad=True
         with gpytorch.settings.fast_pred_var():
@@ -166,105 +104,117 @@ def _Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
 
 # ==============================================================================
 # Train the GPR model
-def GPR_Train(model, Epochs=5000, lr=0.01, Print=50, ConvCheck=50, Verbose=False, TestData=None,):
-    likelihood = model.likelihood
+def GPR_Train(model, Epochs=5000, lr=0.01, Print=50, ConvAvg=10, tol=1e-4,
+              Verbose=False, SumOutput=False):
 
+    likelihood = model.likelihood
     model.train()
     likelihood.train()
 
     MultiOutput = True if hasattr(model,'models') else False
-    SumMLL = 0
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    
-    if MultiOutput and not SumMLL:
+    # Create the necessary loss functions and optimisers
+    if MultiOutput and not SumOutput:
+        # Each output of the model is trained seperately
+        TrackLoss, Completed = 0, []
         _mll = gpytorch.mlls.ExactMarginalLogLikelihood
-        mll,Convergence = [],[]
+        LossFn,Losses, optimizer = [],[],[]
         for mod in model.models:
-            mll.append(_mll(mod.likelihood,mod))
-            Convergence.append([])
-    else:
-        Convergence = []
+            LossFn.append(_mll(mod.likelihood,mod))
+            optimizer.append(torch.optim.Adam(mod.parameters(), lr=lr))
+            Losses.append([])
+    elif MultiOutput:
+        # Each output is trained together
+        Losses = [[]]
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        if MultiOutput:
-            mll = gpytorch.mlls.SumMarginalLogLikelihood(likelihood, model)
-        else:
-            mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood,model)
+        LossFn = gpytorch.mlls.SumMarginalLogLikelihood(likelihood, model)
+    else:
+        # Single output model
+        Losses = [[]]
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        LossFn = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood,model)
 
-    tol = 1e-6
+    # Start looping over training data
     for i in range(Epochs):
-        optimizer.zero_grad()
-
-        if MultiOutput and not SumMLL:
-            TotalLoss = 0
+        if MultiOutput and not SumOutput:
+            TotalLoss = TrackLoss
             for j,mod in enumerate(model.models):
-                output = mod(*model.train_inputs[j])
+                if j in Completed: continue
 
-                _loss = -mll[j](output,model.train_targets[j])
-                TotalLoss+=_loss.item()
-                Convergence[j].append(_loss.item())
+                _Losses = Losses[j]
+                _convergence = _Step(mod,optimizer[j],LossFn[j],_Losses,ConvAvg=ConvAvg,tol=tol)
+                TotalLoss+=_Losses[-1]
 
-                _loss.backward()
+                if _convergence != None:
+                    Completed.append(j)
+                    TrackLoss+=_Losses[-1]
+                    print("Output {}: {}".format(j,_convergence))
 
-            TotalLoss /=(j+1)
+            TotalLoss = TotalLoss/(j+1)
+            if len(Completed)==j+1:
+                break
         else:
-            output = model(*model.train_inputs)
-            loss = -mll(output, model.train_targets)
-            TotalLoss = loss.item()
-            Convergence.append(TotalLoss)
-
-            loss.backward()
-
-        optimizer.step()
-
-        if i>2*ConvCheck and (i+1)%ConvCheck==0:
-            mean_new = np.mean(Convergence[-ConvCheck:])
-            mean_old = np.mean(Convergence[-2*ConvCheck:-ConvCheck])
-            if mean_new>mean_old:
-                print('Terminating due to increasing loss')
-                # break
-            elif np.abs(mean_new-mean_old)<tol:
-                print('Terminating due to convergence')
-                # break
+            _Losses = Losses[0]
+            convergence = _Step(model,optimizer,LossFn,_Losses,ConvAvg=ConvAvg,tol=tol)
+            TotalLoss = _Losses[-1]
+            if convergence != None:
+                print(convergence)
+                break
 
         if i==0 or (i+1) % Print == 0:
-            message = "Iteration: {}, Loss: {}".format(i+1,TotalLoss)
-            # if Verbose:
-            #     for i,mod in enumerate(model.models):
-            #         Lscales = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
-            #         Outscale = mod.covar_module.outputscale.detach().numpy()
-            #         noise = mod.likelihood.noise.detach().numpy()[0]
-            #         message += "Model output {}:\nLength scale: {}\nOutput scale: {}\n"\
-            #                   "Noise: {}\n".format(i,Lscales,Outscale,noise)
-            print(message)
+            print("Iteration: {}, Loss: {}".format(i+1,TotalLoss))
+            if Verbose:
+                PrintParameters(model)
 
-            # if i%100==0:
-            #     with torch.no_grad():
-            #         model.eval();likelihood.eval()
-            #         TrainMSEtmp,TestMSEtmp = [i],[i]
-            #         for i,mod in enumerate(model.models):
-            #             _TrainMSE = ML.MSE(mod(TrainIn_scale).mean.numpy(),TrainOut_scale[:,i].numpy())
-            #             _TestMSE = ML.MSE(mod(TestIn_scale).mean.numpy(),TestOut_scale[:,i].numpy())
-            #             TrainMSEtmp.append(_TrainMSE)
-            #             TestMSEtmp.append(_TestMSE)
-            #         TestMSE.append(TestMSEtmp)
-            #         TrainMSE.append(TrainMSEtmp)
-            #         model.train();likelihood.train()
+    # Print out final information about training & model parameters
+    print('\n################################\n')
+    print("Iterations: {}\nLoss: {}".format(i+1,TotalLoss))
+    print("\nModel parameters:")
+    PrintParameters(model)
+    print('################################\n')
 
-    print("\nFinal model parameters")
-    Modstr = "Length scales: {}\nOutput scale: {}\n Noise: {}\n"
-    if MultiOutput:
+    return Losses
+
+def _Step(model, optimizer, mll, loss_lst, ConvAvg=10, tol=1e-4):
+    optimizer.zero_grad() # set all gradients to zero
+    # Calculate loss & add to list
+    output = model(*model.train_inputs)
+    loss = -mll(output, model.train_targets)
+    loss_lst.append(loss.item())
+    # Check convergence using the loss list. If convergence, return
+    convergence = CheckConvergence(loss_lst,ConvAvg=ConvAvg,tol=tol)
+    if convergence != None:
+        return convergence
+
+    # Calculate gradients & update model parameters using the optimizer
+    loss.backward()
+    optimizer.step()
+
+def CheckConvergence(Loss, ConvAvg=10, tol=1e-4):
+    ''' Checks the list of loss values to decide whether or not convergence has been reached'''
+    if len(Loss) >= 2*ConvAvg:
+        mean_new = np.mean(Loss[-ConvAvg:])
+        mean_old = np.mean(Loss[-2*ConvAvg:-ConvAvg])
+        if mean_new > mean_old:
+            return "Convergence reached. Loss increasing"
+        elif np.abs(mean_new-mean_old)<tol:
+            return "Convergence reached. Loss change smaller than tolerance"
+
+def PrintParameters(model):
+    Modstr = "Length scales: {}\nOutput scale: {}\nNoise: {}\n\n"
+    if hasattr(model,'models'):
+        Rstr = ""
         for i,mod in enumerate(model.models):
             LS = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
             OS = mod.covar_module.outputscale.detach().numpy()
             N = mod.likelihood.noise.detach().numpy()[0]
-            print(("Output {}\n"+Modstr).format(i,LS,OS,N))
+            Rstr += ("Output {}\n"+Modstr).format(i,LS,OS,N)
     else:
             LS = model.covar_module.base_kernel.lengthscale.detach().numpy()[0]
             OS = model.covar_module.outputscale.detach().numpy()
             N = model.likelihood.noise.detach().numpy()[0]
-            print(Modstr.format(LS,OS,N))
+            Rstr = Modstr.format(LS,OS,N)
 
-    return Convergence
+    print(Rstr,end='')
 
 # ==============================================================================
 # Data scaling and rescaling functions

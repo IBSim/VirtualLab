@@ -39,8 +39,20 @@ def Setup(VL, RunVox=True):
 
     for VoxName, VoxParams in VoxDicts.items():
         Parameters = Namespace(**VoxParams)
-        VoxDict = { 'input_file':"{}/{}.med".format(VL.MESH_DIR, VoxName),
-                    'output_file':"{}/{}.Tiff".format(VL.OUT_DIR, VoxName)
+        #check name for file extension and if not present assume salome med
+        root, ext = os.path.splitext(VoxName)
+        if not ext:
+            ext = '.med'
+        VoxName = root + ext
+        # If VoxName is an absolute path use it  
+        if os.path.isabs(VoxName):
+            IN_DIR = VoxName
+        # If not assume the file is in the Mesh directory
+        else:
+            IN_DIR="{}/{}".format(VL.MESH_DIR, VoxName)
+        
+        VoxDict = { 'input_file':IN_DIR,
+                    'output_file':"{}/{}.Tiff".format(VL.OUT_DIR, root)
                 }
 
         # handle optional arguments
@@ -51,7 +63,7 @@ def Setup(VL, RunVox=True):
             VoxDict['gridsize'] = Parameters.Gridsize
 
         if hasattr(Parameters,'greyscale_file'): 
-            VoxDict['greyscale_file'] = Parameters.greyscale_file
+            VoxDict['greyscale_file'] = "{}/{}.csv".format(VL.OUT_DIR, Parameters.greyscale_file)
 
         if hasattr(Parameters,'use_tetra'): 
             VoxDict['use_tetra'] = Parameters.use_tetra
@@ -64,7 +76,7 @@ def Setup(VL, RunVox=True):
         
         if hasattr(Parameters, 'Num_Threads'):
             Check_Threads(Parameters.Num_Threads)
-            os.environ["OMP_NUM_THREADS"]=str('Num_Threads')
+            os.environ["OMP_NUM_THREADS"]=Parameters.Num_Threads
 
         VL.VoxData[VoxName] = VoxDict.copy()
 

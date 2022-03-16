@@ -6,11 +6,9 @@ from matplotlib.colors import LogNorm
 from types import SimpleNamespace as Namespace
 import torch
 import gpytorch
-import time
 
 from VLFunctions import ReadData, ReadParameters
 from Scripts.Common.ML import ML, Adaptive
-from Scripts.Common.ML.slsqp_multi import slsqp_multi
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
@@ -68,7 +66,7 @@ def Single(VL, DADict):
 
     # ==========================================================================
     # Get Train & test data and scale
-    TrainNb,TestNb = getattr(Parameters,'TrainNb',-1),getattr(Parameters,'TestNb',-1)
+    TrainNb, TestNb = getattr(Parameters,'TrainNb',-1),getattr(Parameters,'TestNb',-1)
     TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
                                     InputName, OutputName, TrainNb)
     TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData,
@@ -98,38 +96,42 @@ def Single(VL, DADict):
     if Parameters.Train:
         # get model & likelihoods
         min_noise = getattr(Parameters,'MinNoise',None)
-        likelihood, model = ML.GPRModel_Multi(TrainIn_scale, TrainOut_scale,
+        prev_state = getattr(Parameters,'PrevState',None)
+        if prev_state==True: prev_state = ModelFile
+
+        likelihood, model = ML.Create_GPR(TrainIn_scale, TrainOut_scale,
                                         Parameters.Kernel,min_noise=min_noise)
+
         # Train model
-        ML.GPR_Train_Multi(model, Parameters.Epochs)
+        TrainDict = getattr(Parameters,'TrainDict',{})
+        Conv = ML.GPR_Train(model, **TrainDict)
+
         # Save model
         torch.save(model.state_dict(), ModelFile)
-        # Print model parameters for each output
-        for mod in model.models:
-            print('Lengthscale:',mod.covar_module.base_kernel.lengthscale.detach().numpy()[0])
-            print('Outputscale', mod.covar_module.outputscale.detach().numpy())
-            print('Noise',mod.likelihood.noise.detach().numpy()[0])
-            print()
+
+        # Plot convergence & save
+        plt.figure()
+        for j, _Conv in enumerate(Conv):
+            plt.plot(_Conv,label='Output_{}'.format(j))
+        plt.legend()
+        plt.savefig("{}/Convergence.eps".format(DADict["CALC_DIR"]),dpi=600)
+        plt.close()
+
     else:
         # Load previously trained model
-        likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
+        likelihood, model = ML.Create_GPR(TrainIn_scale,TrainOut_scale,
                                         Parameters.Kernel,prev_state=ModelFile)
     model.eval();likelihood.eval()
 
     # =========================================================================
     # Get error metrics for model
-    TestMetrics, TrainMetrics = [], []
-    for i, mod in enumerate(model.models):
-        train = ML.GetMetrics(mod, TrainIn_scale, TrainOut_scale.detach().numpy()[:,i])
-        test = ML.GetMetrics(mod, TestIn_scale, TestOut_scale.detach().numpy()[:,i])
-        TrainMetrics.append(train); TestMetrics.append(test)
-    TestMetrics, TrainMetrics = np.array(TestMetrics).T, np.array(TrainMetrics).T
-
-    for tp,data in zip(['Train','Test'],[TrainMetrics,TestMetrics]):
-        outstr = "{} Data\n    {}   {}\n".format(tp,*OutTag)
-        for i,metric in enumerate(['MSE','MAE','RMSE','R^2']):
-            outstr+="{}: {}\n".format(metric,data[i])
-        print(outstr)
+    df_train = ML.GetMetrics(model,TrainIn_scale,TrainOut_scale.detach().numpy())
+    df_test = ML.GetMetrics(model,TestIn_scale,TestOut_scale.detach().numpy())
+    print('\nTrain metrics')
+    print(df_train)
+    print('\nTest metrics')
+    print(df_test)
+    print()
 
     # ==========================================================================
     # Get next points to collect data
@@ -155,30 +157,28 @@ def Single(VL, DADict):
 
     # ==========================================================================
     # Get minimum variation for different powers & plot
+    if True:
+        space = 100
+        rdlow = int(np.ceil(RangeDict['Min_Power'] / space)) * space
+        rdhigh = int(np.ceil(RangeDict['Max_Power'] / space)) * space
+        P,V = [],[]
+        for i in range(rdlow,rdhigh,space):
+            iscale = ML.DataScale(i,*OutputScaler[:,0])
+            con = ML.LowerBound(model.models[0], iscale)
+            Opt_cd, Opt_val = ML.GetOptima(model.models[1], 100, bounds,
+                                           find='min', constraints=con, maxiter=30)
 
-    space = 100
-    rdlow = int(np.ceil(RangeDict['Min_Power'] / space)) * space
-    rdhigh = int(np.ceil(RangeDict['Max_Power'] / space)) * space
-    con = {'type': 'ineq', 'fun': MinPower, 'jac':dMinPower}
-    P,V = [],[]
-    for i in range(rdlow,rdhigh,space):
-        iscale = ML.DataScale(i,*OutputScaler[:,0])
-        con['args'] = (model.models[0], iscale)
-        Opt_cd, Opt_val = ML.GetOptima(model.models[1], 50, bounds,
-                                       find='min', order='increasing',
-                                       constraints=con)
+            Opt_cd = ML.DataRescale(Opt_cd,*InputScaler)
+            Opt_val = ML.DataRescale(Opt_val,*OutputScaler[:,1])
+            mess = 'Minimised variaition for power above {} W:\n{}, {}\n'.format(i,Opt_cd[0],Opt_val[0])
+            print(mess)
+            P.append(i);V.append(Opt_val[0])
 
-        Opt_cd = ML.DataRescale(Opt_cd,*InputScaler)
-        Opt_val = ML.DataRescale(Opt_val,*OutputScaler[:,1])
-        mess = 'Minimised variaition for power above {} W:\n{}, {}\n'.format(i,Opt_cd[0],Opt_val[0])
-        print(mess)
-        P.append(i);V.append(Opt_val[0])
-
-    plt.figure()
-    plt.xlabel('Power')
-    plt.ylabel('Variation')
-    plt.plot(P,V)
-    plt.show()
+        plt.figure()
+        plt.xlabel('Power')
+        plt.ylabel('Variation')
+        plt.plot(P,V)
+        plt.show()
 
 
     '''
@@ -226,7 +226,7 @@ def CommitteeBuild(VL,DADict):
         TrainOut_scale = torch.from_numpy(TrainOut_scale)
 
         ModelFile = "{}/Model.pth".format(dirfull)
-        likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
+        likelihood, model = ML.Create_GPR(TrainIn_scale,TrainOut_scale,
                                         ModParameters.Kernel,prev_state=ModelFile)
 
         likelihood.eval();model.eval()
@@ -236,31 +236,10 @@ def CommitteeBuild(VL,DADict):
     bounds = [[0,1]]*len(InTag)
     AdaptDict = getattr(Parameters,'Adaptive',{})
     if AdaptDict:
-        st = time.time()
         BestPoints = Adaptive.Adaptive(Models, AdaptDict, bounds,Show=3)
-        end = time.time() - st
-        print('Time',end)
         print(np.around(BestPoints,3))
         BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
         DADict['Data']['BestPoints'] = BestPoints
-
-# ==============================================================================
-'''
-Constraint . This specifies
-that the power must be greater than or equal to 'DesPower'
-'''
-def MinPower(X, model, DesPower):
-    X = torch.tensor(np.atleast_2d(X),dtype=torch_dtype)
-    # Function value
-    Pred = model(X).mean.detach().numpy()
-    constr = Pred - DesPower
-    return constr
-
-def dMinPower(X, model, DesPower):
-    X = torch.tensor(np.atleast_2d(X),dtype=torch_dtype)
-    # Gradient
-    Grad = model.Gradient(X)
-    return Grad
 
 # ==============================================================================
 def Gridmaker(AxMaj,ResAx,MajorN=7,MinorN=20):
@@ -294,7 +273,7 @@ def GetModel(resdir,DataFile_path):
     TrainNb = len(TrainIn)
 
     ModelFile = "{}/Model.pth".format(resdir)
-    likelihood, model = ML.GPRModel_Multi(TrainIn_scale,TrainOut_scale,
+    likelihood, model = ML.Create_GPR(TrainIn_scale,TrainOut_scale,
                                     Parameters.Kernel,prev_state=ModelFile)
     return model, likelihood, OutputScaler
 

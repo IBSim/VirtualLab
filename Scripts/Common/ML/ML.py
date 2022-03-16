@@ -6,6 +6,7 @@ import gpytorch
 import h5py
 from natsort import natsorted
 import time
+import pandas as pd
 
 from .slsqp_multi import slsqp_multi
 
@@ -260,7 +261,7 @@ def Rsq(Predicted,Target):
     MSE_val = ((Predicted - Target)**2).sum()
     return 1-(MSE_val/divisor)
 
-def GetMetrics(model,x,target):
+def _GetMetrics(model,x,target):
     with torch.no_grad():
         pred = model(x).mean.numpy()
     mse = MSE(pred,target)
@@ -268,6 +269,22 @@ def GetMetrics(model,x,target):
     rmse = RMSE(pred,target)
     rsq = Rsq(pred,target)
     return mse,mae,rmse,rsq
+
+def GetMetrics(model,x,target):
+    if hasattr(model,'models'):
+        mse,mae,rmse,rsq=[],[],[],[]
+        for i,mod in enumerate(model.models):
+            _mse,_mae,_rmse,_rsq = _GetMetrics(mod,x,target[:,i])
+            mse.append(_mse);mae.append(_mae);
+            rmse.append(_rmse);rsq.append(_rsq);
+    else:
+        mse,mae,rmse,rsq = _GetMetrics(model,x,target)
+
+    df=pd.DataFrame({"MSE":mse,"MAE":mae,"RMSE":rmse,"R^2":rsq},
+                    index=["Output_{}".format(i) for i in range(len(mse))])
+    pd.options.display.float_format = '{:.3e}'.format
+    return df
+
 
 # ==============================================================================
 # Functions used for reading & writing data
@@ -362,15 +379,14 @@ def CompileData(ResDirs,MapFnc,args=[]):
 # ==============================================================================
 # ML model Optima
 
-def GetOptima(model, NbInit, bounds, seed=None, find='max', tol=0.01,
-              order='decreasing', success_only=True, constraints=()):
+def GetOptima(model, NbInit, bounds,find='max',tol=0.01,order='decreasing',seed=None,
+             jac=True,**kwargs):
     if seed!=None: np.random.seed(seed)
     init_points = np.random.uniform(0,1,size=(NbInit,len(bounds)))
 
     Optima = slsqp_multi(_GPR_Opt, init_points, bounds=bounds,
-                         constraints=constraints,find=find, tol=tol,
-                         order=order, success_only=success_only,
-                         jac=True, args=[model])
+                         find=find, tol=tol, order=order,
+                         jac=jac, args=[model],**kwargs)
     Optima_cd, Optima_val = Optima
     return Optima_cd, Optima_val
 
@@ -378,9 +394,9 @@ def GetExtrema(model,NbInit,bounds,seed=None):
     # ==========================================================================
     # Get min and max values for each
     Extrema_cd, Extrema_val = [], []
-    for tp,order in zip(['min','max'],['increasing','decreasing']):
-        _Extrema_cd, _Extrema_val = GetOptima(model, NbInit, bounds,seed,
-                                              find=tp, order=order)
+    for tp in ['min','max']:
+        _Extrema_cd, _Extrema_val = GetOptima(model, NbInit, bounds,
+                                              find=tp, seed=seed)
         Extrema_cd.append(_Extrema_cd[0])
         Extrema_val.append(_Extrema_val[0])
     return np.array(Extrema_val), np.array(Extrema_cd)
@@ -390,3 +406,32 @@ def _GPR_Opt(X,model):
     X = torch.tensor(X)
     dmean, mean = model.Gradient_mean(X)
     return mean.detach().numpy(), dmean.detach().numpy()
+
+# ==============================================================================
+# Constraint for ML model
+def LowerBound(model,bound):
+    constraint_dict = {'fun': _bound, 'jac':_dbound,
+                       'type': 'ineq', 'args':(model,bound)}
+    return constraint_dict
+
+def UpperBound(model,bound):
+    constraint_dict = {'fun': _bound, 'jac':_dbound,
+                       'type': 'ineq', 'args':(model,bound,-1)}
+    return constraint_dict
+
+def FixedBound(model,bound):
+    constraint_dict = {'fun': _bound, 'jac':_dbound,
+                       'type': 'eq', 'args':(model,bound)}
+    return constraint_dict
+
+def _bound(X, model, bound, sign=1):
+    X = torch.tensor(np.atleast_2d(X))
+    # Function value
+    Pred = model(X).mean.detach().numpy()
+    return sign*(Pred - bound)
+
+def _dbound(X, model, bound, sign=1):
+    X = torch.tensor(np.atleast_2d(X))
+    # Gradient
+    Grad = model.Gradient(X)
+    return sign*Grad

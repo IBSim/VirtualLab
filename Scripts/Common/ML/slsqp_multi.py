@@ -320,9 +320,8 @@ def _MinMax(X, fn, sign, *args):
     val,grad = fn(X,*args)
     return sign*val,sign*grad
 
-def slsqp_multi(fnc, init_points, find='max',order=None, tol=0.01, version='multi', success_only=True, **kwargs):
-    if find.lower()=='max':sign=-1
-    elif find.lower()=='min':sign=1
+def slsqp_multi(fnc, init_points, find='max',order=True, tol=0.01, version='multi', success_only=True, **kwargs):
+    sign = -1 if find.lower() in ('max','maximum') else 1
 
     kwargs['args'] = (fnc,sign,*kwargs.get('args',[]))
 
@@ -348,9 +347,10 @@ def slsqp_multi(fnc, init_points, find='max',order=None, tol=0.01, version='mult
     # Multiply by sign for min/max
     f = sign*f
 
+    # ==========================================================================
+    # order the results in decreasing order for max. and increasing for min.
     if order:
-        #Sort Optimas in increasing/decreasing order
-        ord = -1 if order.lower()=='decreasing' else 1
+        ord = 1 if sign==1 else -1
         sortIx = np.argsort(f,None)[::ord]
         f,x = f[sortIx],x[sortIx]
 

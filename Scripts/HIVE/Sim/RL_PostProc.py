@@ -1,5 +1,10 @@
+import h5py
+import pickle
+import numpy as np
+
 import AsterPostProc as AsterPP
 import ERMESPostProc as ERMESPP
+from VLFunctions import MeshInfo
 
 def Single(VL,SimDict):
     Parameters = SimDict["Parameters"]
@@ -17,6 +22,46 @@ def Single(VL,SimDict):
         MaxStress = AsterPP.MaxStress(ResFile)
         MaxStress = MaxStress/10**6 # MPa
         SimDict['Data']['MaxStress'] = MaxStress
+
+def Surface_Temperatures(VL,SimDict):
+    Parameters = SimDict["Parameters"]
+    ResFile = '{}/Thermal.rmed'.format(SimDict['ASTER'])
+
+    g = h5py.File(ResFile, 'r')
+    gRes = g['/CHA/{}'.format('Temperature')]
+    step = list(gRes.keys())[0]
+    Temps = gRes['{}/NOE/MED_NO_PROFILE_INTERNAL/CO'.format(step)][:]
+    g.close()
+
+    SurfaceNormals = np.array([['TileFront', 'NX'], ['TileBack', 'NX'], ['TileSideA', 'NY'],
+                              ['TileSideB', 'NY'], ['TileTop', 'NZ'],
+                              ['BlockFront', 'NX'], ['BlockBack', 'NX'], ['BlockSideA', 'NY'],
+                              ['BlockSideB', 'NY'],['BlockBottom', 'NZ'], ['BlockTop', 'NZ']])
+
+    meshdata = MeshInfo(ResFile)
+    mesh_surface = meshdata.GroupNames()
+    Data = {}
+    for surface,normal in SurfaceNormals:
+        if surface not in mesh_surface: continue
+        GroupInfo = meshdata.GroupInfo(surface)
+        NodeIDs = GroupInfo.Nodes
+        temperatures = Temps[NodeIDs-1]
+        Data[surface] = temperatures
+        
+        # Coords = meshdata.GetNodeXYZ(NodeIDs)
+        # if normal == 'NX': Coords = Coords[:,[1,2]]
+        # elif normal == 'NY': Coords = Coords[:,[0,2]]
+        # elif normal == 'NZ': Coords = Coords[:,[0,1]]
+        #
+        # dat = np.concatenate((Coords,temperatures[:,None]),axis=1)
+
+
+
+    meshdata.Close()
+
+    with open("{}/SurfaceTemps.pkl".format(SimDict['CALC_DIR']),'wb') as f:
+        pickle.dump(Data,f)
+
 
 
 def ERMES_PV(VL,SimDict):

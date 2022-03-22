@@ -36,31 +36,23 @@ def Setup(VL, RunVox=True):
 
     # if RunVox is False or VoxDicts is empty dont perform voxelisation and return instead.
     if not (RunVox and VoxDicts): return
-    #for VoxName, VoxParams in VoxDicts.items():
-    for I,VoxName in enumerate(VoxDicts.keys()):
-        if I>0:
-        #This logic allows us to append a sting to the end of output files if using more than one mesh
-        # This way we dont write to the same output file if using multiple inputs.
-            J="_"+I
-        else:
-            J=""
-        VoxParams = VoxDicts[VoxName]
+    for VoxName, VoxParams in VoxDicts.items():
         Parameters = Namespace(**VoxParams)
-        #check name for file extension and if not present assume salome med
-        root, ext = os.path.splitext(VoxName)
+        #check mesh for file extension and if not present assume salome med
+        root, ext = os.path.splitext(Parameters.mesh)
         if not ext:
             ext = '.med'
-        VoxName = root + ext
-        # If VoxName is an absolute path use it  
-        if os.path.isabs(VoxName):
-            IN_FILE = VoxName
-            OUT_FILE = "{}{}".format(root,J)
+        mesh = root + ext
+        # If mesh is an absolute path use it  
+        if os.path.isabs(mesh):
+            IN_FILE = mesh
         # If not assume the file is in the Mesh directory
         else:
-            IN_FILE="{}/{}".format(VL.MESH_DIR, VoxName)
-            OUT_FILE="{}/{}{}".format(VL.OUT_DIR, root,J)
+            IN_FILE="{}/{}".format(VL.MESH_DIR, mesh)
+
+
         VoxDict = { 'input_file':IN_FILE,
-                    'output_file':OUT_FILE
+                    'output_file':VoxName
                 }
         # handle optional arguments
         if hasattr(Parameters,'unit_length'): 
@@ -68,7 +60,7 @@ def Setup(VL, RunVox=True):
 
         if hasattr(Parameters,'gridsize'): 
             VoxDict['gridsize'] = Parameters.Gridsize
-# Logic to handle placing greyscale file in the correct place that is ion the output dir not the run directory.
+# Logic to handle placing greyscale file in the correct place. i.e. in the output dir not the run directory.
         if hasattr(Parameters,'greyscale_file') and os.path.isabs(Parameters.greyscale_file):
         # Abs. paths go where they say
             VoxDict['greyscale_file'] = Parameters.greyscale_file
@@ -77,7 +69,7 @@ def Setup(VL, RunVox=True):
             VoxDict['greyscale_file'] = "{}/{}".format(VL.OUT_DIR,Parameters.greyscale_file)
         else:
         # greyscale not given so generate a file in the output directory 
-            VoxDict['greyscale_file'] = "{}/greyscale.csv".format(VL.OUT_DIR) 
+            VoxDict['greyscale_file'] = "{}/greyscale_{}.csv".format(VL.OUT_DIR,VoxName) 
 
         if hasattr(Parameters,'use_tetra'): 
             VoxDict['use_tetra'] = Parameters.use_tetra
@@ -99,11 +91,10 @@ def Setup(VL, RunVox=True):
 
 def Run(VL):
     if not VL.VoxData: return
-    print(VL.VoxData)
     VL.Logger('\n### Starting Voxelisation ###\n', Print=True)
 
-    for item in VL.VoxData:
-        Errorfnc = cad2vox.voxelise(**item)
+    for key in VL.VoxData.keys():
+        Errorfnc = cad2vox.voxelise(**VL.VoxData[key])
         if Errorfnc:
             VL.Exit(VLF.ErrorMessage("The following Cad2Vox routine(s) finished with errors:\n{}".format(Errorfnc)))
 

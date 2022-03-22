@@ -59,7 +59,7 @@ def Setup(VL, RunVox=True):
             VoxDict['unit_length'] = Parameters.unit_length
 
         if hasattr(Parameters,'gridsize'): 
-            VoxDict['gridsize'] = Parameters.Gridsize
+            VoxDict['gridsize'] = Parameters.gridsize
 # Logic to handle placing greyscale file in the correct place. i.e. in the output dir not the run directory.
         if hasattr(Parameters,'greyscale_file') and os.path.isabs(Parameters.greyscale_file):
         # Abs. paths go where they say

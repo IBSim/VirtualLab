@@ -36,8 +36,15 @@ def Setup(VL, RunVox=True):
 
     # if RunVox is False or VoxDicts is empty dont perform voxelisation and return instead.
     if not (RunVox and VoxDicts): return
-
-    for VoxName, VoxParams in VoxDicts.items():
+    #for VoxName, VoxParams in VoxDicts.items():
+    for I,VoxName in enumerate(VoxDicts.keys()):
+        if I>0:
+        #This logic allows us to append a sting to the end of output files if using more than one mesh
+        # This way we dont write to the same output file if using multiple inputs.
+            J="_"+I
+        else:
+            J=""
+        VoxParams = VoxDicts[VoxName]
         Parameters = Namespace(**VoxParams)
         #check name for file extension and if not present assume salome med
         root, ext = os.path.splitext(VoxName)
@@ -46,24 +53,31 @@ def Setup(VL, RunVox=True):
         VoxName = root + ext
         # If VoxName is an absolute path use it  
         if os.path.isabs(VoxName):
-            IN_DIR = VoxName
+            IN_FILE = VoxName
+            OUT_FILE = "{}{}".format(root,J)
         # If not assume the file is in the Mesh directory
         else:
-            IN_DIR="{}/{}".format(VL.MESH_DIR, VoxName)
-        
-        VoxDict = { 'input_file':IN_DIR,
-                    'output_file':"{}/{}.Tiff".format(VL.OUT_DIR, root)
+            IN_FILE="{}/{}".format(VL.MESH_DIR, VoxName)
+            OUT_FILE="{}/{}{}".format(VL.OUT_DIR, root,J)
+        VoxDict = { 'input_file':IN_FILE,
+                    'output_file':OUT_FILE
                 }
-
         # handle optional arguments
         if hasattr(Parameters,'unit_length'): 
             VoxDict['unit_length'] = Parameters.unit_length
 
         if hasattr(Parameters,'gridsize'): 
             VoxDict['gridsize'] = Parameters.Gridsize
-
-        if hasattr(Parameters,'greyscale_file'): 
-            VoxDict['greyscale_file'] = "{}/{}.csv".format(VL.OUT_DIR, Parameters.greyscale_file)
+# Logic to handle placing greyscale file in the correct place that is ion the output dir not the run directory.
+        if hasattr(Parameters,'greyscale_file') and os.path.isabs(Parameters.greyscale_file):
+        # Abs. paths go where they say
+            VoxDict['greyscale_file'] = Parameters.greyscale_file
+        elif hasattr(Parameters,'greyscale_file') and not os.path.isabs(Parameters.greyscale_file):
+        # This makes a non abs. path relative to the output directory not the run directory (for consistency)
+            VoxDict['greyscale_file'] = "{}/{}".format(VL.OUT_DIR,Parameters.greyscale_file)
+        else:
+        # greyscale not given so generate a file in the output directory 
+            VoxDict['greyscale_file'] = "{}/greyscale.csv".format(VL.OUT_DIR) 
 
         if hasattr(Parameters,'use_tetra'): 
             VoxDict['use_tetra'] = Parameters.use_tetra
@@ -78,11 +92,14 @@ def Setup(VL, RunVox=True):
             Check_Threads(Parameters.Num_Threads)
             os.environ["OMP_NUM_THREADS"]=Parameters.Num_Threads
 
+        if hasattr(Parameters,'image_format'): 
+            VoxDict['im_format'] = Parameters.image_format
+            
         VL.VoxData[VoxName] = VoxDict.copy()
 
 def Run(VL):
     if not VL.VoxData: return
-
+    print(VL.VoxData)
     VL.Logger('\n### Starting Voxelisation ###\n', Print=True)
 
     for item in VL.VoxData:

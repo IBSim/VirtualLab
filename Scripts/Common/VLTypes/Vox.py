@@ -52,7 +52,7 @@ def Setup(VL, RunVox=True):
 
 
         VoxDict = { 'input_file':IN_FILE,
-                    'output_file':VoxName
+                    'output_file':"{}/{}".format(VL.OUT_DIR,VoxName)
                 }
         # handle optional arguments
         if hasattr(Parameters,'unit_length'): 

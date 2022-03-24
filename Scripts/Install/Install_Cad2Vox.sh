@@ -88,7 +88,7 @@ cd Cad2vox
 git checkout ${CAD2VOX_TAG} 
 
 if ${USE_CONDA}; then
-    conda install cmake numpy pybind11 tifffile pytest
+    conda install cmake numpy pybind11 tifffile pytest pilliow
     conda install -c conda-forge xtensor xtl meshio xtensor-python
 else
     pip3 install --user -r requirements.txt
@@ -117,5 +117,5 @@ python3 setup_cad2vox.py install
 if ${CAD2VOX_WITH_CUDA}; then
 pytest
 else
-pytest -m "no CUDA"
+pytest -K "not CUDA"
 fi

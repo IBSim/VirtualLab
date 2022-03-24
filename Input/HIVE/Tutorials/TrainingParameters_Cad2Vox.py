@@ -80,8 +80,11 @@ Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
 ###### Voxelisation #####
 ##########################
 Vox = Namespace()
-# names of the mesh(es) you wish to voxelise
-Vox.Name = 'AMAZE_Sample'
+# name for the cad2vox run.
+# Note: this doubles up as the output file name
+Vox.Name = 'AMAZE'
+# name of the mesh(es) you wish to voxelise
+Vox.mesh = 'AMAZE_Sample'
 # Number of voxels in each dimension
 Vox.gridsize = 250
 

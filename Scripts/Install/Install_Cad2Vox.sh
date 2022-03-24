@@ -87,8 +87,8 @@ cd Cad2vox
 #git checkout ${CAD2VOX_TAG} 
 
 if ${USE_CONDA}; then
-    conda install cmake numpy pybind11 tifffile pytest pillow pandas
-    conda install -c conda-forge xtensor xtl meshio xtensor-python
+    conda install -y cmake numpy pybind11 tifffile pytest pillow pandas
+    conda install -y -c conda-forge xtensor xtl meshio xtensor-python
 else
     pip3 install --user -r requirements.txt
     # Build xtl, xtensor and xtensor-python

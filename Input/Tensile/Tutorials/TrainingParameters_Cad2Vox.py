@@ -55,8 +55,11 @@ Sim.Materials = 'Copper'
 ###### Voxelisation #####
 ##########################
 Vox = Namespace()
-# names of the mesh(es) you wish to voxelise
+# name for the cad2vox run.
+# Note: this doubles up as the output file name
 Vox.Name = 'Notch1'
+# name of the mesh(es) you wish to voxelise
+Vox.mesh = 'Notch1'
 # Number of voxels in each dimension
 Vox.gridsize = 250
 

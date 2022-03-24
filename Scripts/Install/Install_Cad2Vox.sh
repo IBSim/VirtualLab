@@ -84,7 +84,7 @@ git clone https://github.com/bjthorpe/Cad2vox.git
 sudo chown ${USER}:${USER} Cad2vox/*
 cd Cad2vox
 
-git checkout ${CAD2VOX_TAG} 
+#git checkout ${CAD2VOX_TAG} 
 
 if ${USE_CONDA}; then
     conda install cmake numpy pybind11 tifffile pytest pillow pandas

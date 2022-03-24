@@ -82,13 +82,13 @@ mkdir -p ${CAD2VOX_DIR}
 cd ${CAD2VOX_DIR}
 
 git clone https://github.com/bjthorpe/Cad2vox.git
-sudo chown ${SUDO_USER:-$USER} Cad2vox/*
+sudo chown ${$USER} Cad2vox/*
 cd Cad2vox
 
 #git checkout ${CAD2VOX_TAG} 
 
 if ${USE_CONDA}; then
-    conda install cmake numpy pybind11 tifffile pytest pilliow
+    conda install cmake numpy pybind11 tifffile pytest pillow
     conda install -c conda-forge xtensor xtl meshio xtensor-python
 else
     pip3 install --user -r requirements.txt

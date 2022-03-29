@@ -19,7 +19,7 @@ def GetFunc(FilePath, funcname):
     sys.path.insert(0,dirname)
     module = import_module(basename) #reload?
     sys.path.pop(0)
-    
+
     func = getattr(module, funcname, None)
     return func
 
@@ -509,3 +509,43 @@ class Sampling():
             return np.vstack((Bnds,Points))
         else :
             return Points
+
+def Interp_2D(Coordinates,Connectivity,Query):
+    Nodes = np.unique(Connectivity.flatten())
+    _Ix = np.searchsorted(Nodes,Connectivity)
+    a = Coordinates[_Ix]
+
+    a1,a2 = a[:,:,0],a[:,:,1]
+    biareas = []
+    for ls in [[1,2],[2,0],[0,1]]:
+        _a1,_a2 = a1[:,ls], a2[:,ls]
+        _d = np.ones((len(_a1),1))
+        _a1 = np.concatenate((_a1,_d*Query[0]),axis=1)
+        _a2 = np.concatenate((_a2,_d*Query[1]),axis=1)
+        _c = np.stack((_a1,_a2,np.ones(_a1.shape)),axis=1)
+        _c = np.array(_c,dtype=np.float)
+        # print(_c.sum())
+        _area = 0.5*np.linalg.det(_c)
+        biareas.append(_area)
+    biareas = np.array(biareas).T
+
+    sign_area = np.sign(biareas)
+    sum_sign = np.abs(sign_area.sum(axis=1))
+    elemix = (sum_sign==3).nonzero()[0]
+    if len(elemix)==0:
+        _sum = (sign_area==0).sum(axis=1)
+        for i in range(1,3):
+            elemix = ((_sum==i) * (sum_sign==3-i)).nonzero()[0]
+            if len(elemix)>0: break
+
+        if len(elemix)==0:
+            print('Outside of domain')
+            return None
+    elemix = elemix[0]
+
+    # get weighting for each contribution
+    biarea = biareas[elemix]
+    weighting = biarea/biarea.sum()
+    nds = Connectivity[elemix,:]
+
+    return nds, weighting

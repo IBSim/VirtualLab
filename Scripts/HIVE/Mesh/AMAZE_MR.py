@@ -5,6 +5,12 @@ sys.dont_write_bytecode=True
 from types import SimpleNamespace
 from Scripts.Common.VLFunctions import VerifyParameters
 
+# States the normal direction for each surface
+SurfaceNormals = np.array([['TileFront', 'NX'], ['TileBack', 'NX'], ['TileSideA', 'NY'],
+                          ['TileSideB', 'NY'], ['TileTop', 'NZ'],
+                          ['BlockFront', 'NX'], ['BlockBack', 'NX'], ['BlockSideA', 'NY'],
+                          ['BlockSideB', 'NY'],['BlockBottom', 'NZ'], ['BlockTop', 'NZ']])
+
 def Example():
     '''
     Example parameter values.

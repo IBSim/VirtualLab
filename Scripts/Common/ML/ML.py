@@ -219,6 +219,13 @@ def PrintParameters(model):
 
 # ==============================================================================
 # Data scaling and rescaling functions
+def ScaleValues(data,scaling='unit'):
+    ''' '''
+    if scaling.lower()=='unit':
+        datamin,datamax = data.min(axis=0),data.max(axis=0)
+        scaler = np.array([datamin,datamax-datamin])
+    return scaler
+
 def DataScale(data,const,scale):
     '''
     This function scales n-dim data to a specific range.
@@ -247,18 +254,18 @@ def DataRescale(data,const,scale):
 def MSE(Predicted,Target):
     # this is not normnalised
     sqdiff = (Predicted - Target)**2
-    return np.mean(sqdiff)
+    return np.mean(sqdiff,axis=0)
 
 def MAE(Predicted,Target):
-    return np.abs(Predicted - Target).mean()/(Target.max() - Target.min())
+    return np.abs(Predicted - Target).mean(axis=0)/(Target.max(axis=0) - Target.min(axis=0))
 
 def RMSE(Predicted,Target):
-    return ((Predicted - Target)**2).mean()**0.5/(Target.max() - Target.min())
+    return ((Predicted - Target)**2).mean(axis=0)**0.5/(Target.max(axis=0) - Target.min(axis=0))
 
 def Rsq(Predicted,Target):
-    mean_pred = Predicted.mean()
-    divisor = ((Predicted - mean_pred)**2).sum()
-    MSE_val = ((Predicted - Target)**2).sum()
+    mean_pred = Predicted.mean(axis=0)
+    divisor = ((Predicted - mean_pred)**2).sum(axis=0)
+    MSE_val = ((Predicted - Target)**2).sum(axis=0)
     return 1-(MSE_val/divisor)
 
 def _GetMetrics(model,x,target):
@@ -279,6 +286,17 @@ def GetMetrics(model,x,target):
             rmse.append(_rmse);rsq.append(_rsq);
     else:
         mse,mae,rmse,rsq = _GetMetrics(model,x,target)
+
+    df=pd.DataFrame({"MSE":mse,"MAE":mae,"RMSE":rmse,"R^2":rsq},
+                    index=["Output_{}".format(i) for i in range(len(mse))])
+    pd.options.display.float_format = '{:.3e}'.format
+    return df
+
+def GetMetrics2(pred,target):
+    mse = MSE(pred,target)
+    mae = MAE(pred,target)
+    rmse = RMSE(pred,target)
+    rsq = Rsq(pred,target)
 
     df=pd.DataFrame({"MSE":mse,"MAE":mae,"RMSE":rmse,"R^2":rsq},
                     index=["Output_{}".format(i) for i in range(len(mse))])

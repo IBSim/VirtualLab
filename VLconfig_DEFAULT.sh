@@ -17,14 +17,14 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 #########################
 
 ### Config values for VirtualLab installation.
-VL_DIR_DEFAULT="$HOME/VirtualLab"
+VL_DIR_DEFAULT="$HOME/Documents/VirtualLab"
 CONDA_VER_DEFAULT="Anaconda3-2020.02-Linux-x86_64.sh"
 SALOME_DIR_DEFAULT="/opt/SalomeMeca"
 SALOME_VER_DEFAULT="salome_meca-2019.0.3-1-universal"
 SALOME_BIN_DEFAULT="V2019.0.3_universal"
 ERMES_DIR_DEFAULT="/opt/ERMES"
 ERMES_VER_DEFAULT="ERMES-CPlas-v12.5"
-
+CAD2VOX_DIR_DEFAULT="$VL_DIR_DEFAULT/Cad2vox"
 #########################
 
 ### Config values for VirtualLab operation.
@@ -34,12 +34,14 @@ MaterialsDir_DEFAULT="$VL_DIR_DEFAULT/Materials"
 RunFilesDir_DEFAULT="$VL_DIR_DEFAULT/RunFiles"
 OutputDir_DEFAULT="$VL_DIR_DEFAULT/Output"
 TEMP_DIR_DEFAULT="/tmp"
-
 #########################
 
 ### Other default values.
-VL_ANALYTICS_DEFEULT=True
-
+VL_ANALYTICS_DEFEULT=true
+### Set if you want to build Cad2Vox to use OpenMP or CUDA (i.e. just CPU or both CPU and GPU).
+CAD2VOX_WITH_CUDA_DEFAULT=true
+## Git Tag to set specific stable version of Cad2Vox used in VirtualLab.
+CAD2VOX_TAG_DEFAULT='VirtualLab_V1.55'
 ### END OF DEFAULTS ###
 #######################
 
@@ -62,6 +64,9 @@ var=(
   OutputDir
   TEMP_DIR
   VL_ANALYTICS
+  CAD2VOX_DIR
+  CAD2VOX_WITH_CUDA
+  CAD2VOX_TAG
 )
 
 ### Verbose {ON/OFF}
@@ -170,6 +175,11 @@ fi
 ### Currently, no checks whether it is already installed
 ERMES_DIR=$ERMES_DIR_DEFAULT
 ERMES_VER=$ERMES_VER_DEFAULT
+
+### Stuff for Cad2Vox
+CAD2VOX_DIR=$CAD2VOX_DIR_DEFAULT
+CAD2VOX_WITH_CUDA=$CAD2VOX_WITH_CUDA_DEFAULT
+CAD2VOX_TAG=$CAD2VOX_TAG_DEFAULT
 
 ### PATH to various directories required as in/out for VirtualLab.
 ### Default behaviour is to locate in $VL_DIR.

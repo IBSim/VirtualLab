@@ -14,7 +14,7 @@ import atexit
 import VLconfig
 from . import Analytics
 from .VLFunctions import ErrorMessage, WarningMessage
-from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn
+from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, Vox as VoxFn
 
 class VLSetup():
     def __init__(self, Simulation, Project):
@@ -149,7 +149,7 @@ class VLSetup():
             self._SetMaterialDir(kwargs['MaterialDir'])
 
     def Parameters(self, Parameters_Master, Parameters_Var=None,
-                    RunMesh=True, RunSim=True, RunDA=True, Import=False):
+                    RunMesh=True, RunSim=True, RunDA=True, RunVox=True, Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -157,15 +157,17 @@ class VLSetup():
         RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
         RunSim = self._ParsedArgs.get('RunSim',RunSim)
         RunDA = self._ParsedArgs.get('RunDA',RunDA)
+        RunVox = self._ParsedArgs.get('RunVox',RunVox)
         Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh','Sim','DA']
+        VLNamespaces = ['Mesh','Sim','DA','Vox']
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
         MeshFn.Setup(self,RunMesh, Import)
         SimFn.Setup(self,RunSim, Import)
         DAFn.Setup(self,RunDA, Import)
+        VoxFn.Setup(self,RunVox)
 
     def ImportParameters(self, Rel_Parameters):
         '''
@@ -289,7 +291,6 @@ class VLSetup():
 
         return ParaDict
 
-
     def Mesh(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return MeshFn.Run(self,**kwargs)
@@ -309,6 +310,11 @@ class VLSetup():
     def DA(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return DAFn.Run(self,**kwargs)
+
+#hook in for cad2vox
+    def Voxelise(self,**kwargs):
+        kwargs = self._UpdateArgs(kwargs)
+        return VoxFn.Run(self,**kwargs)
 
     def devDA(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)

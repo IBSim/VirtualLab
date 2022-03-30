@@ -11,7 +11,7 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 ### CAD2VOX_DIR='$HOME/VirtualLab/Cad2Vox'
 ###  - Git tag, used to identify where to pull from within
 ###    the Cad2Vox git Repo. 
-### CAD2VOX_TAG='Virtual_Lab-V1.0'
+### CAD2VOX_TAG='VirtualLab_V1.55'
 ### - Decide if you want to build Cad2Vox to use CUDA or just OpenMP
 ###   Note: the CUDA version is the default and includes both OpenMP and CUDA.
 ###   Thus you probably only want to change this if you have no intention
@@ -62,7 +62,7 @@ fi
 if ${CAD2VOX_WITH_CUDA}; then
     echo "Installing CUDA"
     if ${USE_CONDA}; then
-	conda install cudatoolkit
+	conda install -y cudatoolkit
     else
     wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
     sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -78,17 +78,16 @@ fi
 # Install GLM, OpenMP and other libraries
 sudo apt install -y libglm-dev libgomp1 git mesa-common-dev libglu1-mesa-dev libxi-dev
 
-mkdir -p ${CAD2VOX_DIR}
-cd ${CAD2VOX_DIR}
+cd ${VL_DIR}
 
 git clone https://github.com/bjthorpe/Cad2vox.git
-sudo chown ${SUDO_USER:-$USER} Cad2vox/*
+sudo chown ${USER}:${USER} Cad2vox/*
 cd Cad2vox
 
 git checkout ${CAD2VOX_TAG} 
 
 if ${USE_CONDA}; then
-    conda install cmake numpy pybind11 tifffile pytest pilliow
+    conda install cmake numpy pybind11 tifffile pytest pillow pandas
     conda install -c conda-forge xtensor xtl meshio xtensor-python
 else
     pip3 install --user -r requirements.txt
@@ -97,20 +96,20 @@ else
     #xtl
     git clone https://github.com/xtensor-stack/xtl.git
     sudo chown ${SUDO_USER:-$USER} xtl/*
-    cd xtl && cmake . && sudo make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
+    cd xtl && cmake . && sudo make install && cd ${CAD2VOX_DIR}/libs
     #xtensor
     git clone https://github.com/xtensor-stack/xtensor.git
      sudo chown ${SUDO_USER:-$USER} xtensor/*
-    cd xtensor && cmake . && sudo make install && cd ${CAD2VOX_DIR}/Cad2vox/libs
+    cd xtensor && cmake . && sudo make install && cd ${CAD2VOX_DIR}/libs
     #xtensor-python
     git clone https://github.com/xtensor-stack/xtensor-python.git
     sudo chown ${SUDO_USER:-$USER} xtensor-python/*
-    cd xtensor-python && cmake . && sudo make install && cd ${CAD2VOX_DIR}/Cad2vox
+    cd xtensor-python && cmake . && sudo make install && cd ${CAD2VOX_DIR}
 fi
 
-cd ${CAD2VOX_DIR}/Cad2vox/CudaVox
+cd ${CAD2VOX_DIR}/CudaVox
 python3 setup_CudaVox.py install
-cd ..
+cd ${CAD2VOX_DIR}
 python3 setup_cad2vox.py install
 
 # Run Test Suite

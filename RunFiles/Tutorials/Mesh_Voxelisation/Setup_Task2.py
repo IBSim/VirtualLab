@@ -28,7 +28,7 @@ VirtualLab.Parameters(
            Parameters_Var,
            RunMesh=True,
            RunSim=True,
-           RunDA=True)
+           RunDA=False)
 
 VirtualLab.Mesh(
            ShowMesh=False,

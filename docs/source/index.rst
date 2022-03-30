@@ -20,7 +20,8 @@ The pre and post processing is carried out using the various software:
 * `SALOME <https://www.salome-platform.org/>`_: Mesh generation
 * `ERMES <https://ruben-otin.blogspot.com/2015/04/ruben-otin-software-ruben-otin-april-19.html>`_: Induction heating
 * `ParaVis <https://docs.salome-platform.org/latest/dev/PARAVIS/>`_: Data visualisation
-
+* `Cad2Vox <https://github.com/bjthorpe/Cad2vox>`_: Mesh Voxelisation
+  
 While this package has been written for use from the command line, some capabilities have been included to use the GUI for debugging and training.
 
 .. toctree::

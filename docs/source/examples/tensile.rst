@@ -22,7 +22,7 @@ In this experiment a 'dog-bone' shaped sample is loaded either through constant 
         VirtualLab.Settings(
                    Mode='Interactive',
                    Launcher='Process',
-                   NbThreads=1)
+                   NbJobs=1)
 
         VirtualLab.Parameters(
                    Parameters_Master,
@@ -242,22 +242,22 @@ Task 3: Running Multiple Simulations Concurrently
 
 The last task introduced you to running multiple simulations, however both the meshing and simulations were run sequentially. For more complex meshes and simulations this would be very time consuming. **VirtualLab** has the capability of running meshes and simulations concurrently, enabling a substantial speed up when running multiple simulations.
 
-In `VirtualLab.Settings <../runsim/runfile.html#virtuallab-settings>`_ you will see the ``kwarg`` *NbThreads* which specify how many tasks VirtualLab is to run concurrently.
+In `VirtualLab.Settings <../runsim/runfile.html#virtuallab-settings>`_ you will see the ``kwarg`` *NbJobs* which specify how many tasks VirtualLab is to run concurrently.
 
 .. note::
-    The number you specify for *NbThreads* will depend on a number of factors, including the number of CPUs available and the RAM.
+    The number you specify for *NbJobs* will depend on a number of factors, including the number of CPUs available and the RAM.
 
     For example, the fineness of the mesh is an important consideration since this can require a substantial amount of RAM.
 
 .. admonition:: Action
    :class: Action
 
-   In the *RunFile* change *NbThreads* to 2::
+   In the *RunFile* change *NbJobs* to 2::
 
         VirtualLab.Settings(
                    Mode='Interactive',
                    Launcher='Process',
-                   NbThreads=2)
+                   NbJobs=2)
 
    Launch **VirtualLab**.
 

@@ -22,7 +22,7 @@ In this example a CT scan of a `dog-bone <tensile.html#sample>`_ component is us
         VirtualLab.Settings(
                    Mode='Interactive',
                    Launcher='Process',
-                   NbThreads=1)
+                   NbJobs=1)
 
         VirtualLab.Parameters(
                    Parameters_Master,

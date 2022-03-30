@@ -88,7 +88,7 @@ This is an optional attribute of VirtualLab where settings can be changed. ::
 
     VirtualLab.Settings(Mode='Headless',
                         Launcher='Process',
-                        NbThreads=1)
+                        NbJobs=1)
 
 Mode
 ~~~~
@@ -112,7 +112,7 @@ This defines the method used to launch the VirtualLab study. Currently available
 *   'MPI' - Parallelism over multiple nodes.
 
 
-NbThreads
+NbJobs
 ~~~~~~~~~
 '$INTEGER' (int, optional)
 
@@ -216,7 +216,3 @@ This function is the data analysis routine. The analysis, defined using the name
 
 This function is the routine to call Cad2Vox. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images saved to Output/$SIMULATION/$PROJECT/Voxel-Images. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
 
-``VirtualLab.Cleanup``
-**********************
-
-This function removes all tmp directories created.

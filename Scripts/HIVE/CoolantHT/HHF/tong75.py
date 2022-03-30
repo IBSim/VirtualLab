@@ -33,7 +33,7 @@ def get_wchf(water,
     h_fg = water.ifg
     D_0 = 12.7e-3
     P_0 = 22.09
-    
+
     checks = (('bulk temp',P_b, 2, 4),
               ('T_sat-T_b',T_sat-T_b,40,140),
               ('coolant velocity',V,1, 15))
@@ -54,7 +54,7 @@ def get_wchf(water,
             {'hypervapotron':0.2584*geometry.channelwidth**(-0.5249)})
 
     C_f = C_factors[geometry.shape]
-
+    
     return C_f*tong75_chf
 '''
 def get_T_chf(water,geometry):

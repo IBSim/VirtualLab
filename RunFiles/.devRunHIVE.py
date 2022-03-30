@@ -28,7 +28,7 @@ VirtualLab=VLSetup(
 VirtualLab.Settings(
            Mode='T',
            Launcher='Process',
-           NbThreads=1)
+           NbJobs=1)
 
 # Create directories and Parameter files for simulation
 VirtualLab.Parameters(
@@ -51,6 +51,3 @@ VirtualLab.Sim(
            ShowRes=False)
 
 VirtualLab.DA()
-
-# Remove tmp folders
-VirtualLab.Cleanup()

@@ -29,8 +29,8 @@ def Example():
 
     Parameters.Fillet = 0.00025
 
-    Parameters.VoidCentre = [[0.25, 0.25],[0.75, 0.75]] # in terms of tile corner
-    Parameters.Void = [[0.001, 0.002, 0.004, 10.0],[0.002, 0.001, 0.004, 0.0]]
+    # Parameters.VoidCentre = [[0.25, 0.25],[0.75, 0.75]] # in terms of tile corner
+    # Parameters.Void = [[0.001, 0.002, 0.004, 10.0],[0.002, 0.001, 0.004, 0.0]]
 
     # === Main mesh ===
     Parameters.Length1D = 0.005
@@ -203,6 +203,19 @@ def Create(Parameters):
     # Edges
     Ix = SalomeFunc.ObjIndex(Sample, Tile_orig, [5,12,15,34])[0]
     GrpTileEdge = SalomeFunc.AddGroup(Sample, 'TileEdge', Ix)
+
+    # Vertices
+    Ix = SalomeFunc.ObjIndex(Sample, Pipe, [8])[0]
+    GrpPipeInV1 = SalomeFunc.AddGroup(Sample, 'PipeInV1', Ix)
+
+    Ix = SalomeFunc.ObjIndex(Sample, Pipe, [19])[0]
+    GrpPipeInV2 = SalomeFunc.AddGroup(Sample, 'PipeInV2', Ix)
+
+    Ix = SalomeFunc.ObjIndex(Sample, Pipe, [6])[0]
+    GrpPipeOutV1 = SalomeFunc.AddGroup(Sample, 'PipeOutV1', Ix)
+
+    Ix = SalomeFunc.ObjIndex(Sample, Pipe, [14])[0]
+    GrpPipeOutV2 = SalomeFunc.AddGroup(Sample, 'PipeOutV2', Ix)
 
     # Create groups for surfaces of the sample include additional surfaces
     # created when parts join
@@ -413,8 +426,17 @@ def Create(Parameters):
     #==========================================================================
     # Tile Edge
     # Going from small to large top to bottom
+    # Orientation od edges can change so need to find the ones which require 'reversing'
+    Reverse = []
+    for e in GrpTileEdge.GetSubShapeIndices():
+        b1,b2 = geompy.SubShapeAll(geompy.GetSubShape(Sample,[e]),geompy.ShapeType["VERTEX"])
+        cb1,cb2 = geompy.PointCoordinates(b1),geompy.PointCoordinates(b2)
+        # if point 1 is less than point 2 in z direction then it needs reversing.
+        # this is because edge goes point1 to point2, and we need higher point first.
+        if cb1[2]<cb2[2]:Reverse.append(e)
+
     TileEdgeSM_1D = Mesh_1.Segment(geom=GrpTileEdge)
-    TileEdgeSM_1D_Parameters = TileEdgeSM_1D.StartEndLength(minl,Parameters.SubTile[0],GrpTileEdge.GetSubShapeIndices())
+    TileEdgeSM_1D_Parameters = TileEdgeSM_1D.StartEndLength(minl,Parameters.SubTile[0],Reverse)
     TileEdgeSM = TileEdgeSM_1D.GetSubMesh()
 
     smesh.SetName(TileEdgeSM, 'TileEdge')
@@ -505,6 +527,10 @@ def Create(Parameters):
         Mesh_1.GroupOnGeom(TCgeom, TCgeom.GetName(), SMESH.FACE)
 
     # Node
+    MPipeInV1 = Mesh_1.GroupOnGeom(GrpPipeInV1,'PipeInV1',SMESH.NODE)
+    MPipeInV2 = Mesh_1.GroupOnGeom(GrpPipeInV2,'PipeInV2',SMESH.NODE)
+    MPipeOutV1 = Mesh_1.GroupOnGeom(GrpPipeOutV1,'PipeOutV1',SMESH.NODE)
+    MPipeOutV2 = Mesh_1.GroupOnGeom(GrpPipeOutV2,'PipeOutV2',SMESH.NODE)
     MPipe = Mesh_1.GroupOnGeom(GrpPipe,'PipeNd',SMESH.NODE)
     MSample = Mesh_1.GroupOnGeom(GrpBlock,'BlockNd',SMESH.NODE)
 

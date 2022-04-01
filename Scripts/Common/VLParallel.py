@@ -1,25 +1,20 @@
 import sys
-sys.dont_write_bytecode=True
-import numpy as np
 import os
 import traceback
 import copy
 from types import SimpleNamespace as Namespace
 import pickle
-from importlib import reload
 import inspect
 from contextlib import redirect_stderr, redirect_stdout
-import pathos.multiprocessing as pathosmp
-from pyina.launchers import MpiPool
+
+import numpy as np
 
 from Scripts.Common import Analytics
+from Scripts.Common.tools import Paralleliser
 import VLconfig
 
 def PoolWrap(fn,VL,Dict,*args):
-    # This function assumes that the first argument of args is the VL instance and
-    # the second is a dictionary of relevant information created in Setup
     # Try and get name & log file if standard convention has been followed
-    # the relevant dictionary will be the second argument
     if type(Dict)==dict:
         Name = Dict.get('Name',None)
         LogFile = Dict.get('LogFile',None)
@@ -73,75 +68,48 @@ def PoolWrap(fn,VL,Dict,*args):
         print(mess)
 
 def PoolReturn(Dicts,Returners):
+    '''
+    Check what's been returned by 'PoolWrap' to see if it has been successful.
+    '''
     cpDicts = copy.deepcopy(Dicts)
     PlError = []
     for i, (Dict,Returner) in enumerate(zip(cpDicts,Returners)):
         Name = Dict['Name']
         if isinstance(Returner,Exception) or isinstance(Returner,SystemExit):
+            # Exception thrown
             PlError.append(Name)
             continue
         if Returner.Error:
+            # Error message returned by the function 'fnc' used by PoolWrap.
             PlError.append(Name)
         if hasattr(Returner,'Dict'):
+            # If a dictionary is attached to Returner it means new
+            # information has been added, so we update the original dictionary.
             Dicts[i].update(Returner.Dict)
 
     return PlError
 
-def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
-
-    fnclist = [fnc]*len(Dicts)
-    PoolArgs = [[VL]*len(Dicts),Dicts] + Args
-
+def VLPool(VL, fnc, Dicts,Args=[], launcher=None, N=None):
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
+    PoolArgs = [[fnc]*len(Dicts), [VL]*len(Dicts), Dicts] + Args
 
     try:
-        if launcher == 'Sequential' or len(Dicts)==1:
-            # Run studies one after the other
-            Res = []
-            for args in zip(*PoolArgs):
-                ret = PoolWrap(fnc,*args)
-                Res.append(ret)
-        elif launcher == 'Process':
-            # Run studies in parallel of N using pathos. Only works on single nodes.
-            # Reloading pathos ensures any new paths added to sys.path are included
-            pmp = reload(pathosmp)
-            pool = pmp.ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-            Res = pool.map(PoolWrap,fnclist, *PoolArgs)
-            Res=list(Res)
-            pool.terminate()
-        elif launcher in ('MPI','MPI_Worker'):
-            # Run studies in parallel of N using pyina. Works for multi-node clusters.
-            # onall specifies if there is a worker. True = no worker
-            if launcher == 'MPI' or N==1: onall = True # Cant have worker if N is 1
-            else: onall = False
+        if launcher.lower()=='process':
+            kwargs = {'workdir':VL.TEMP_DIR}
+        elif launcher.lower() in ('mpi','mpi_worker'):
+            kwargs = {'workdir':VL.TEMP_DIR,
+                      'addpath':set(sys.path)-set(VL._pypath)}
+        else: kwargs = {}
 
-            # Ensure that sys.path is the same for pyinas MPI subprocess
-            PyPath_orig = os.environ.get('PYTHONPATH',"")
-            addpath = set(sys.path) - set(VL._pypath) # group subtraction
-            addpath = ":".join(addpath) # write in unix style
-            # Update PYTHONPATH is os
-            os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
-
-            # Run functions in parallel of N using pyina
-            pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
-            Res = pool.map(PoolWrap,fnclist, *PoolArgs, onall=onall)
-            Res=list(Res)
-
-            # Reset environment back to original
-            os.environ["PYTHONPATH"] = PyPath_orig
-
+        Res = Paralleliser(PoolWrap,PoolArgs, method=launcher, nb_parallel=N, **kwargs)
     except KeyboardInterrupt as e:
         VL.Cleanup()
 
-        if launcher=='Process': pool.terminate()
-
         exc = e
         trb = traceback.format_exception(etype=type(exc), value=exc, tb = exc.__traceback__)
-        err = "".join(trb)
 
-        sys.exit(err)
-
+        sys.exit("".join(trb))
 
 	# Function to analyse usage of VirtualLab to evidence impact for
 	# use in future research grant applications. Can be turned off via
@@ -163,6 +131,4 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
 
     # Check if errors have been returned & update dictionaries
     Errorfnc = PoolReturn(Dicts,Res)
-
-
     return Errorfnc

@@ -1,13 +1,16 @@
-import h5py
-import numpy as np
 import os
 import sys
-from VLFunctions import MeshInfo, MaterialProperty
+from importlib import import_module
+
+import h5py
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.gridspec as gridspec
 import scipy.ndimage
-from importlib import import_module
+
+from Scripts.Common.VLFunctions import MaterialProperty
+from Scripts.Common.tools import MeshInfo
 
 def KCalc(halfT, l, rho, Cp):
     alpha=(0.1388*(l**2))/halfT

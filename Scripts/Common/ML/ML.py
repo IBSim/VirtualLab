@@ -1,14 +1,15 @@
 import os
 import sys
+import time
+import pandas as pd
+
 import numpy as np
 import torch
 import gpytorch
 import h5py
 from natsort import natsorted
-import time
-import pandas as pd
 
-from .slsqp_multi import slsqp_multi
+from Scripts.Common.Optimisation import slsqp_multi
 
 class ExactGPmodel(gpytorch.models.ExactGP):
     '''
@@ -393,6 +394,17 @@ def CompileData(ResDirs,MapFnc,args=[]):
         In.append(_In)
         Out.append(_Out)
     return In, Out
+
+def GetInputs(Parameters,commands):
+    ''' Using exec allows us to get individual values from dictionaries or lists.
+    i.e. a command of 'DataList[1]' will get the value from index 1 of the lists
+    'DataList'
+    '''
+
+    inputs = []
+    for i,command in enumerate(commands):
+        exec("inputs.append(Parameters.{})".format(command))
+    return inputs
 
 # ==============================================================================
 # ML model Optima

@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from scipy.stats import norm
 
-from .slsqp_multi import slsqp_multi
+from Scripts.Common.Optimisation import slsqp_multi
 from .GeneticAlgorithm import ga
 
 # ==============================================================================

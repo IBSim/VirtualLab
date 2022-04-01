@@ -1,14 +1,16 @@
+import time
+
 import numpy as np
 from scipy.optimize.optimize import wrap_function, OptimizeResult, _check_unknown_options, MemoizeJac
 from scipy.optimize._slsqp import slsqp
 from scipy.optimize import minimize
 _epsilon = np.sqrt(np.finfo(float).eps)
 
-import time
 
-def _call_slsqp(*args):
-    r = slsqp(*args)
-    return args # return args for multiprocessing part
+
+'''
+Multi-start implementation of scipy's slsqp optimiser.
+'''
 
 def slsqp_min(func, x0, args=(), jac=None, bounds=None,
                     constraints=(),
@@ -16,10 +18,6 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
                     maxiter=100, ftol=1.0E-6, iprint=1, disp=False,
                     eps=_epsilon, callback=None,
                     **unknown_options):
-
-    '''
-    Implementation of scipy slsqp minimiser for multiple initial options.
-    '''
 
     if not callable(jac) and bool(jac):
         func = MemoizeJac(func)
@@ -315,6 +313,10 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
     success = np.array(EC) == 0
 
     return Resx,Resf,success
+
+def _call_slsqp(*args):
+    r = slsqp(*args)
+    return args # return args for multiprocessing part
 
 def _MinMax(X, fn, sign, *args):
     val,grad = fn(X,*args)

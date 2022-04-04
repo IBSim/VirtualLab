@@ -4,8 +4,6 @@ sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
 from importlib import import_module
 import copy
-import cad2vox
-
 import Scripts.Common.VLFunctions as VLF
 
 
@@ -90,6 +88,7 @@ def Setup(VL, RunVox=True):
         VL.VoxData[VoxName] = VoxDict.copy()
 
 def Run(VL):
+    import cad2vox
     if not VL.VoxData: return
     VL.Logger('\n### Starting Voxelisation ###\n', Print=True)
 

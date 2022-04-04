@@ -4,7 +4,7 @@ import sys
 import h5py
 import numpy as np
 
-from Scipts.Common.tools import MeshInfo
+from Scripts.Common.tools import MeshInfo
 
 def TC_Temperature(ResFile,TCLocations,ResName='Temperature',Collect='nearest'):
 

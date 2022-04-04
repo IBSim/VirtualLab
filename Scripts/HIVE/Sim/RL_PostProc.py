@@ -5,7 +5,7 @@ import numpy as np
 
 import AsterPostProc as AsterPP
 import ERMESPostProc as ERMESPP
-from Scipts.Common.tools import MeshInfo
+from Scripts.Common.tools import MeshInfo
 
 def Single(VL,SimDict):
     Parameters = SimDict["Parameters"]

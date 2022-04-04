@@ -50,7 +50,8 @@ def Adaptive(model,AdaptDict,bounds,Show=0):
                 print()
 
         elif maximise.lower()=='ga':
-            score,BestPoint = Adaptive_GA(model,Method,bounds,Candidates)
+            NbGen = AdaptDict.get('NbGen',50) #Number of generations
+            score,BestPoint = Adaptive_GA(Candidates,model,Method,bounds,n_gen=NbGen)
             BestPoint = np.atleast_2d(BestPoint)
 
         # Add best point to list
@@ -143,13 +144,12 @@ def fitness_function_arg(model,scheme):
         return score[0] # single value instead of array
     return fitness_function
 
-def Adaptive_GA(model, scheme, bounds, Candidates=None, n_pop=100,n_gen=100, scoring='sum',sort=True):
+def Adaptive_GA(Candidates, model, scheme, bounds, n_gen=100, scoring='sum',sort=True):
     gene_space = [{'low':a[0],'high':a[1]} for a in bounds]
     ga_instance =  GA(num_generations=n_gen,
                    num_parents_mating=2,
                    gene_space=gene_space,
                    initial_population=Candidates,
-                   sol_per_pop=n_pop,num_genes=len(bounds), # redundant if initial_population provided
                    mutation_percent_genes=10,
                    fitness_func = fitness_function_arg(model,scheme),
                    )

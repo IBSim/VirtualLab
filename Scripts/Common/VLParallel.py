@@ -117,17 +117,25 @@ def VLPool(VL, fnc, Dicts,Args=[], launcher=None, N=None):
     if VLconfig.VL_ANALYTICS=="True":
         frame = inspect.stack()[1]
         module = inspect.getmodule(frame[0])
-        name = os.path.splitext(os.path.basename(module.__file__))[0]
+        vltype = os.path.splitext(os.path.basename(module.__file__))[0]
 
-        Category = "{}_{}".format(VL.Simulation,name)
-        Action = "{}_{}_1".format(len(Dicts),N)
+        Category = "{}_{}".format(VL.Simulation,vltype)
+        Action = "NJob={}_NCore={}_NNode=1".format(len(Dicts),N)
 
+        # ======================================================================
+        # Send information abotu current job
         Analytics.Run(Category,Action,VL._ID)
 
-        if not hasattr(VL,'_Analytics'):
-            VL._Analytics = {'Mesh':0,'Sim':0,'DA':0}
-        if name in VL._Analytics:
-            VL._Analytics[name]+=len(Dicts)
+        # ======================================================================
+        # Update Analytics dictionary with new information
+        # Create dictionary, if one isn't defined already
+        if not hasattr(VL,'_Analytics'): VL._Analytics = {}
+        # Add information to dictionary
+        if vltype not in VL._Analytics:
+            VL._Analytics[vltype] = len(Dicts)
+        else:
+            VL._Analytics[vltype] += len(Dicts)
+
 
     # Check if errors have been returned & update dictionaries
     Errorfnc = PoolReturn(Dicts,Res)

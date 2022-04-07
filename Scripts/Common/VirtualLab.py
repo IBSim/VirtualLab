@@ -4,13 +4,14 @@ import sys
 sys.dont_write_bytecode=True
 import datetime
 import os
-import numpy as np
 import shutil
 import copy
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
 import atexit
 import uuid
+
+import numpy as np
 
 import VLconfig
 from . import Analytics
@@ -355,11 +356,9 @@ class VLSetup():
     def _Cleanup(self,Cleanup=True):
         # Report overview of VirtualLab usage
         if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
-            MeshNb = self._Analytics.get('Mesh',0)
-            SimNb = self._Analytics.get('Sim',0)
-            DANb = self._Analytics.get('DANb',0)
             Category = "{}_Overview".format(self.Simulation)
-            Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
+            list_AL = ["{}={}".format(key,value) for key,value in self._Analytics.items()]
+            Action = "_".join(list_AL)
             Analytics.Run(Category,Action,self._ID)
 
         exitstr = '\n#############################\n'\

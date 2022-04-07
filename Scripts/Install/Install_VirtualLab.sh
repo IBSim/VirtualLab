@@ -14,6 +14,8 @@ SKIP=n
 PYTHON_INST="n"
 SALOME_INST="n"
 ERMES_INST="n"
+CAD2VOX_INST="n"
+
 ASTER_SUBDIR="/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
 
 usage() {
@@ -33,6 +35,8 @@ usage() {
   echo "   '-S n' Do not install Salome-Meca"
   echo "   '-E y' Install ERMES at default location /opt/ERMES"
   echo "   '-E n' Do not install ERMES"
+  echo "   '-C y' Install Cad2Vox"
+  echo "   '-C n' Do not install Cad2Vox"
   echo "   '-y' Skip install confirmation dialogue."
   echo
   echo "Default behaviour is to not install python, salome or ERMES."
@@ -49,7 +53,7 @@ if [[ $EUID -ne 0 ]]; then
    echo 'Re-run with "sudo ./Install_VirtualLab.sh {options}".'
    exit_abnormal
 fi
-while getopts ":d:P:S:E:yh" options; do
+while getopts ":d:P:S:E:C:yh" options; do
   case "${options}" in
     d)
       VL_DIR=$(readlink -m ${OPTARG})
@@ -108,6 +112,18 @@ while getopts ":d:P:S:E:yh" options; do
         exit_abnormal
       fi
       ;;
+    C)
+	Cad2Vox_INST=${OPTARG}
+      if [ "$Cad2Vox_INST" == "y" ]; then
+        echo " - Cad2Vox will be installed in the default directory and configured as part of VirtualLab install."
+      elif [ "$Cad2Vox_INST" == "n" ]; then
+        echo " - Cad2Vox will not be installed or configured during setup,"
+        echo "   please do this manually or by sourcing Install_Cad2Vox.sh."
+      else
+        echo "Error: Invalid option argument $Cad2Vox_INST" >&2
+        exit_abnormal
+      fi
+      ;;	
     y)  ### Skip install confirmation dialogue.
       SKIP=y
       ;;
@@ -224,7 +240,7 @@ else
 fi
 #END
 ### NOTE: Remove this when merging dev to master
-# sudo -u ${SUDO_USER:-$USER} git checkout dev
+ sudo -u ${SUDO_USER:-$USER} git checkout BT-Cad2vox
 ###
 
 ### Run initial VirtualLab setup
@@ -289,6 +305,13 @@ else
   echo "Skipping ERMES installation"
 fi
 
+### Install Cad2Vox if flagged
+if [ "$Cad2Vox_INST" == "y" ]; then
+  echo "Installing Cad2Vox"
+  source $VL_DIR/Scripts/Install/Install_Cad2Vox.sh
+else
+  echo "Skipping Cad2Vox installation"
+fi
 
 
 : <<'END'

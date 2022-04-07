@@ -1,9 +1,10 @@
 import os
 import sys
+
 import h5py
 import numpy as np
 
-from VLFunctions import MeshInfo
+from Scripts.Common.tools import MeshInfo
 
 def Variation(ResFile,ResName='Joule_heating',Type='grad'):
     g = h5py.File(ResFile, 'r')

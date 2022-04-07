@@ -3,8 +3,7 @@ import numpy as np
 import torch
 from scipy.stats import norm
 
-from .slsqp_multi import slsqp_multi
-from .GeneticAlgorithm import ga
+from Scripts.Common.Optimisation import slsqp_multi, GA
 
 # ==============================================================================
 def Adaptive(model,AdaptDict,bounds,Show=0):
@@ -51,7 +50,8 @@ def Adaptive(model,AdaptDict,bounds,Show=0):
                 print()
 
         elif maximise.lower()=='ga':
-            score,BestPoint = Adaptive_GA(model,Method,bounds)
+            NbGen = AdaptDict.get('NbGen',50) #Number of generations
+            score,BestPoint = Adaptive_GA(Candidates,model,Method,bounds,n_gen=NbGen)
             BestPoint = np.atleast_2d(BestPoint)
 
         # Add best point to list
@@ -137,11 +137,24 @@ def Adaptive_Stat(Candidates, model, scheme, scoring='sum',sort=True):
 
 # ==============================================================================
 # Optimisaion using genetic algorithm
-def Adaptive_GA(model, scheme, bounds, n_pop=100,n_gen=100, scoring='sum',sort=True):
-    find='max'
-    args = (model,scheme)
-    coord,score = ga(_Adaptive,bounds,n_gen,n_pop,find=find,args=args)
-    return score,coord
+def fitness_function_arg(model,scheme):
+    def fitness_function(solution, solution_idx):
+        solution = np.atleast_2d(solution)
+        score = _Adaptive(solution,model,scheme)
+        return score[0] # single value instead of array
+    return fitness_function
+
+def Adaptive_GA(Candidates, model, scheme, bounds, n_gen=100, scoring='sum',sort=True):
+    gene_space = [{'low':a[0],'high':a[1]} for a in bounds]
+    ga_instance =  GA(num_generations=n_gen,
+                   num_parents_mating=2,
+                   gene_space=gene_space,
+                   initial_population=Candidates,
+                   mutation_percent_genes=10,
+                   fitness_func = fitness_function_arg(model,scheme),
+                   )
+    solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
+    return solution_fitness, solution
 
 def _Adaptive(Candidates, model, scheme, scoring='sum'):
     _Candidates = torch.tensor(Candidates)
@@ -162,7 +175,6 @@ def _Adaptive(Candidates, model, scheme, scoring='sum'):
         score = QBC(*args)
     else:
         sys.exit('Adaptive scheme not available')
-
 
     # ==========================================================================
     # Combine scores

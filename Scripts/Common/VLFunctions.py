@@ -8,6 +8,24 @@ import numpy as np
 
 sys.dont_write_bytecode=True
 
+def WriteArgs(path,Args):
+    with open(path,'wb') as f:
+        pickle.dump(Args,f)
+
+def GetArgs(path):
+    with open(path,'rb') as f:
+        Args = pickle.load(f)
+    return Args
+
+def GetParameterArgs(name='ParameterArgs'):
+    ArgDict = {}
+    for parsed in sys.argv:
+        if parsed.startswith(name):
+            path = parsed.split('=')[1]
+            Args = GetArgs(path)
+    return Args
+
+
 def GetFunc(FilePath, funcname):
     path,ext = os.path.splitext(FilePath)
     dirname = os.path.dirname(path)

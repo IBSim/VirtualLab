@@ -14,13 +14,9 @@ from Scripts.Common.ML.slsqp_multi import slsqp_multi
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
+torch.set_default_dtype(torch_dtype)
 
-InTag, OutTag = ['x','y','z','rotation'],['Power','Variation']
-
-DispX = DispY = [-0.01,0.01]
-DispZ,Rotation = [0.01,0.03],[-15,15]
-bounds = np.transpose([DispX,DispY,DispZ,Rotation]) # could import this for consistency
-InputScaler = np.array([bounds[0],bounds[1] - bounds[0]])
+OutTag = ['Power','Variation']
 
 # ==============================================================================
 # Functions for gathering necessary data and writing to file
@@ -38,23 +34,22 @@ def CompileData(VL,DADict):
     Parameters = DADict["Parameters"]
 
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
-    InputName = getattr(Parameters,'InputName','Input')
-    OutputName = getattr(Parameters,'OutputName','Output')
 
     CmpData = Parameters.CompileData
     if type(CmpData)==str:CmpData = [CmpData]
 
     ResDirs = ["{}/{}".format(VL.PROJECT_DIR,resname) for resname in CmpData]
+
     InData, OutData = ML.CompileData(ResDirs,MLMapping)
-    ML.WriteMLdata(DataFile_path, CmpData, InputName,
-                   OutputName, InData, OutData)
+
+    ML.WriteMLdata(DataFile_path, CmpData, Parameters.InputName,InData)
+    ML.WriteMLdata(DataFile_path, CmpData, Parameters.OutputName, OutData)
 
 # ==============================================================================
 # default function
 def Single(VL, DADict):
     Parameters = DADict["Parameters"]
 
-    torch.set_default_dtype(torch_dtype)
     # torch.random.manual_seed(200)
     # NbTorchThread = getattr(Parameters,'NbTorchThread',1)
     # torch.set_num_threads(NbTorchThread)
@@ -76,12 +71,14 @@ def Single(VL, DADict):
 
     NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
 
+    PS_bounds = np.array(Parameters.ParameterSpace).T
+    InputScaler = ML.ScaleValues(PS_bounds)
+
     # Scale input to [0,1] (based on parameter space)
     TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
     TestIn_scale = ML.DataScale(TestIn,*InputScaler)
-
-    # Scale output to [0,1]
-    OutputScaler = np.array([TrainOut.min(axis=0),TrainOut.max(axis=0) - TrainOut.min(axis=0)])
+    # Scale output to [0,1] (based on training data)
+    OutputScaler = ML.ScaleValues(TrainOut)
     TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
     TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
 
@@ -136,11 +133,12 @@ def Single(VL, DADict):
     bounds = [[0,1]]*NbInput
     AdaptDict = getattr(Parameters,'Adaptive',{})
     if AdaptDict:
-        BestPoints = Adaptive.Adaptive(model, AdaptDict, bounds)
+        BestPoints = Adaptive.Adaptive(model, AdaptDict, bounds,Show=5)
         print(np.around(BestPoints,3))
         BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
         DADict['Data']['BestPoints'] = BestPoints
 
+    return
     # ==========================================================================
     # Get min and max values for each
     print('Extrema')
@@ -233,7 +231,7 @@ def CommitteeBuild(VL,DADict):
         Likelihoods.append(likelihood)
         Models.append(model)
 
-    bounds = [[0,1]]*len(InTag)
+    bounds = [[0,1]]*len(TrainIn.shape[1])
     AdaptDict = getattr(Parameters,'Adaptive',{})
     if AdaptDict:
         st = time.time()

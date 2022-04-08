@@ -7,7 +7,6 @@ import torch
 import gpytorch
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-# import pygad
 from importlib import import_module
 import pathos.multiprocessing as pathosmp
 
@@ -48,8 +47,10 @@ def CompileData(VL,DADict):
     # Write the input and output data to DataFile_path
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
 
-    ML.WriteMLdata(DataFile_path, CmpData, Parameters.InputName,
-                   Parameters.OutputName, InData, OutData)
+    ML.WriteMLdata(DataFile_path, CmpData, Parameters.InputArray, InData,
+                    attrs=getattr(Parameters,'InputAttributes',{}))
+    ML.WriteMLdata(DataFile_path, CmpData, Parameters.OutputArray, OutData,
+                    attrs=getattr(Parameters,'OutputAttributes',{}))
 
 # ==============================================================================
 # Create model mapping inputs to thermocouple temperatures at fixed points
@@ -63,27 +64,49 @@ def Fixed_TC(VL,DADict):
     # ==========================================================================
     # Get Train & test data from file DataFile_path
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
-    InputArray = getattr(Parameters,'InputArray','Input')
-    OutputArray = getattr(Parameters,'OutputArray','Output')
 
-    TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
-                                     Parameters.InputArray, Parameters.OutputArray,
-                                     getattr(Parameters,'TrainNb',-1))
-    TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData,
-                                   Parameters.InputArray, Parameters.OutputArray,
-                                   getattr(Parameters,'TestNb',-1))
+    TrainIn = ML.GetMLdata2(DataFile_path, Parameters.TrainData,
+                           Parameters.InputArray, getattr(Parameters,'TrainNb',-1))
+    TestIn = ML.GetMLdata2(DataFile_path, Parameters.TestData,
+                          Parameters.InputArray, getattr(Parameters,'TestNb',-1))
 
+    InputAttrs = ML.GetMLattrs(DataFile_path, Parameters.TrainData,Parameters.InputArray)
+    FeatureNames = InputAttrs.get('Parameters',None)
+
+    if hasattr(Parameters,'TCLocations'):
+        # Get temperature at points using surface temps
+        meshfile = "{}/SampleHIVE.med".format(VL.MESH_DIR)
+        NbTC = len(Parameters.TCLocations)
+        NbTrain,NbTest = TrainIn.shape[0],TestIn.shape[0]
+        TrainOut,TestOut = np.zeros((NbTrain,NbTC)), np.zeros((NbTest,NbTC))
+        for i,(SurfaceName,x1,x2) in enumerate(Parameters.TCLocations):
+            _datatrain = ML.GetMLdata2(DataFile_path, Parameters.TrainData,
+                                       SurfaceName, getattr(Parameters,'TrainNb',-1))
+            _datatest = ML.GetMLdata2(DataFile_path, Parameters.TestData,
+                                       SurfaceName, getattr(Parameters,'TestNb',-1))
+            _data = np.vstack((_datatrain,_datatest))
+
+            interp = Get_Interp(meshfile,SurfaceName,x1,x2,_data)
+            TrainOut[:,i] = interp[:NbTrain]
+            TestOut[:,i] = interp[NbTrain:]
+
+        LabelNames = "Thermocouples placed at the following locations:\n{}".format(Parameters.TCLocations)
+
+    else:
+        # This data may have been created previously
+        TrainOut = ML.GetMLdata2(DataFile_path, Parameters.TrainData,
+                                 Parameters.OutputArray, getattr(Parameters,'TrainNb',-1))
+        TestOut = ML.GetMLdata2(DataFile_path, Parameters.TestData,
+                                Parameters.OutputArray, getattr(Parameters,'TestNb',-1))
+
+        OutputAttrs = ML.GetMLattrs(DataFile_path, Parameters.TrainData,Parameters.OutputArray)
+        LabelNames = OutputAttrs.get('Parameters',None)
     # ==========================================================================
     # Model summary
     TrainNb,TestNb = TrainIn.shape[0],TestIn.shape[0]
     NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
 
-    ModelDesc = "Nb.Inputs: {}\nNb.Outputs: {}\n"\
-                "Nb.Train data: {}\nNb.Test data: {}\nInputs: {}\n"\
-                "Outputs: {}\n".format(NbInput,NbOutput,TrainNb,TestNb,
-                ", ".join(Parameters.InputParameters),
-                ", ".join(Parameters.OutputParameters))
-    print(ModelDesc)
+    ML.ModelSummary(NbInput,NbOutput,TrainNb,TestNb,FeatureNames,LabelNames)
 
     # ==========================================================================
     # Scale data
@@ -154,24 +177,30 @@ def Fixed_TC(VL,DADict):
 
     NbCases = 5 # number of tescases to investigate
     NbInit = 100 #number of initial points for inverse solution
-    confidence = [0.2,0.2,0.2,0.05,0.05,0.05,0.1]
-    fix_input_ix = None # index of inputs to not optimise for
+    confidence = [0.2,0.2,0.2,0.05,0.05,0.05,0.1,None,None]
+    confidence = [[0.1]]*6+[0,None,None]
+    fix_input_ix = [7]
+
+    # fix_input_ix = list(range(7))
 
     true_inputs = TestIn_scale.detach().numpy()[:NbCases,:]
     target_outputs = TestOut_scale.detach().numpy()[:NbCases,:]
 
     # Test which shows the inverse results
-    if False:
+    if True:
         ix=0
         args = [target_outputs[ix],model.models,fix_input_ix]
 
         bounds = confidence_bound(true_inputs[ix],confidence)
         init_points = init_slsqp(NbInit,bounds)
 
+
         inv_sol = InverseSolution(obj_fixed,init_points,bounds,args=args)
         with torch.no_grad():
             _inv_sol = torch.from_numpy(inv_sol[:5])
+            _true_Input = torch.from_numpy(true_inputs[ix:ix+1])
             out = np.array([mod(_inv_sol).mean.numpy() for mod in model.models]).T
+            out_true = np.array([mod(_true_Input).mean.numpy() for mod in model.models]).T
 
         print('##############################################')
         mess = "True Inputs:\n{}\nTarget Outputs:\n{}\n".format(true_inputs[ix],target_outputs[ix])
@@ -179,11 +208,14 @@ def Fixed_TC(VL,DADict):
         mess = "Inverse Inputs:\n{}\nPredicted Outputs:\n{}\n".format(inv_sol[:5],out)
         print(mess)
 
+        print(out_true)
+        print(((out_true - target_outputs[ix])**2).mean())
+
 
         for i in range(NbInput):
             fig, ax = plt.subplots(figsize=(8, 8))
             ax.set_title(Parameters.InputParameters[i])
-            ax.scatter(init_points[:,i],[0]*len(inv_sol),marker='x',label='Initial points')
+            ax.scatter(init_points[:,i],[0]*len(init_points),marker='x',label='Initial points')
             ax.scatter(inv_sol[:,i],[1]*len(inv_sol),marker='x',label='Inverse solution')
             ax.plot([true_inputs[ix,i]]*2, [0,1], linestyle='--',label='True solution')
             ax.set_xlim([0,1]);ax.set_ylim([-0.5,1.5])
@@ -191,6 +223,7 @@ def Fixed_TC(VL,DADict):
             ax.legend()
             plt.show()
 
+    return
 
     err_sq_all = []
     for true_input,target_output in zip(true_inputs,target_outputs):
@@ -336,17 +369,6 @@ def Optimise_TC(VL,DADict):
     meshfile = "{}/{}".format(VL.MESH_DIR,Parameters.MeshFile) # mesh used in simulations
 
     # ==========================================================================
-    # GA parameters
-    num_generations = 3 # Number of generations.
-    num_parents_mating = 2 # Number of solutions to be selected as parents in the mating pool.
-    sol_per_pop = 10 # Number of solutions in the population.
-
-    # ==========================================================================
-    # inverse parameters
-    NbCases = 5
-    N_inverse_init = 100
-
-    # ==========================================================================
     # Get models
     mod_dict = {}
     for surface, dir in zip(Parameters.CandidateSurfaces,Parameters.ModelDirs):
@@ -362,7 +384,7 @@ def Optimise_TC(VL,DADict):
                                          getattr(mod_parameters,'TrainNb',-1))
         TestIn, TestOut = ML.GetMLdata(DataFile_path, 'Test',
                                        mod_parameters.InputArray, mod_parameters.OutputArray,
-                                       NbCases)
+                                       Parameters.NbTestCases)
 
         PS_bounds = np.array(mod_parameters.ParameterSpace).T
         InputScaler = ML.ScaleValues(PS_bounds)
@@ -395,25 +417,30 @@ def Optimise_TC(VL,DADict):
 
         mod_dict[surface] = model
 
-
-
     models = [mod_dict[surf] for surf in Parameters.CandidateSurfaces]
-    GA_func = fitness_function_arg(models, meshfile, NbCases, [None]*7)
+    # confidence places a bound near the true answer depending on how confident we are
+    NbInverseInit = getattr(Parameters,'NbInverseInit',100)
+    GA_func = fitness_function_arg(models, meshfile, NbInverseInit, Parameters.Confidence)
 
     TC_space = [range(len(Parameters.CandidateSurfaces)), # discrete number for surface numbering
                 {'low':0,'high':1}, # surface x1. Coordinate is scaled to [0,1] range
                 {'low':0,'high':1}] # surface x2
 
-    GA = GA_Parallel('process',5)
-    ga_instance = GA(num_generations=num_generations,
-                           num_parents_mating=num_parents_mating,
-                           gene_space=TC_space*Parameters.NbTC,
-                           sol_per_pop=sol_per_pop,
-                           num_genes=Parameters.NbTC*3,
-                           mutation_percent_genes=100,
-                           fitness_func=GA_func,
-                           on_fitness=update
-                           )
+    # Get parallelised implementation of genetic algorithm
+    NbCore = getattr(Parameters,'NbCore',1)
+    GA = GA_Parallel('process',NbCore)
+
+    NbMating = getattr(Parameters,'NbMating',2)
+    ga_instance = GA(num_generations=Parameters.NbGeneration,
+                     num_parents_mating=NbMating,
+                     gene_space=TC_space*Parameters.NbTC,
+                     sol_per_pop=Parameters.NbPopulation,
+                     num_genes=Parameters.NbTC*3,
+                     mutation_percent_genes=100,
+                     fitness_func=GA_func,
+                     on_fitness=update
+
+                     )
     ga_instance.run()
     ga_instance.plot_fitness()
 
@@ -473,37 +500,16 @@ def fitness_function_arg(surface_models, meshfile, NbInit, confidence):
 
         # ======================================================================
         N_cases = len(TC_targets)
-        if True:
-            torch.set_num_threads(1)
-            err_sq_all = []
-            for i in range(N_cases):
-                true_input = model.test_input[i]
-                bounds = confidence_bound(true_input,confidence)
-                init_points = init_slsqp(NbInit,bounds)
-                inverse_sol = InverseSolution(obj_variable, init_points, bounds,
-                                              args=[TC_targets[i],TC_interp])
-                err_sq = np.mean((inverse_sol - true_input)**2,axis=0)
-                err_sq_all.append(err_sq)
-        else:
-            # parallelised
-            torch.set_num_threads(1)
-            bounds,init_points,args = [],[],[]
-            for i in range(N_cases):
-                true_input = model.test_input[i]
-                _bounds = confidence_bound(true_input,confidence)
-                _init_points = init_slsqp(NbInit,_bounds)
-                bounds.append(_bounds);init_points.append(_init_points)
-                args.append([TC_targets[i],TC_interp])
-
-            pool = pathosmp.ProcessPool(nodes=5)
-            inverse_sols = pool.map(InverseSolution,[obj_variable]*N_cases,
-                                    init_points, bounds, args)
-
-            err_sq_all = []
-            for inverse_sol,true_sol in zip(inverse_sols,model.test_input):
-                # squared error between the true solution and inverse solution(s)
-                err_sq = np.mean((inverse_sol - true_sol)**2,axis=0)
-                err_sq_all.append(err_sq)
+        torch.set_num_threads(1)
+        err_sq_all = []
+        for i in range(N_cases):
+            true_input = model.test_input[i]
+            bounds = confidence_bound(true_input,confidence)
+            init_points = init_slsqp(NbInit,bounds)
+            inverse_sol = InverseSolution(obj_variable, init_points, bounds,
+                                          args=[TC_targets[i],TC_interp])
+            err_sq = np.mean((inverse_sol - true_input)**2,axis=0)
+            err_sq_all.append(err_sq)
 
         # average err_sq for each component & sum for single score
         err_sq_avg = np.array(err_sq_all).mean(axis=0)
@@ -548,7 +554,9 @@ def InverseSolution(objfn, init_points, bounds, args=[]):
     Opt_cd, Opt_val = slsqp_multi(objfn, init_points, bounds=bounds,
                                   args=args,
                                   maxiter=30, find='min', tol=0, jac=True)
-    return Opt_cd
+    success_bl = Opt_val<=0.01**2 # squared as the score is squared
+    print(Opt_val[success_bl])
+    return Opt_cd[success_bl]
 
 def obj_fixed(X, Target, models, fix=None):
     X = torch.tensor(np.atleast_2d(X),dtype=torch_dtype)
@@ -563,8 +571,8 @@ def obj_fixed(X, Target, models, fix=None):
     if fix !=None: Grads[:,:,fix] = 0
 
     d = np.transpose(Preds - Target[:,None])
-    Score = (d**2).sum(axis=1)
-    dScore = 2*(Grads*d[:,:,None]).sum(axis=1)
+    Score = (d**2).mean(axis=1)
+    dScore = 2*(Grads*d[:,:,None]).mean(axis=1)
 
     return Score, dScore
 
@@ -613,3 +621,31 @@ def _SurfaceTemperatures(ResDir, SurfaceName, InputVariables,
     ResFilePath = "{}/{}".format(ResDir,ResFileName)
     Out = MEDtools.GroupData(ResFilePath,SurfaceName,ResName=ResName)
     return In, Out
+
+def Get_Interp(MeshFile,SurfaceName,x1,x2,Results):
+    MeshParameters = VLF.ReadParameters("{}.py".format(os.path.splitext(MeshFile)[0]))
+    Mesh_File = import_module("Mesh.{}".format(MeshParameters.File))
+    SurfaceNormals = Mesh_File.SurfaceNormals
+
+    norm = SurfaceNormals[SurfaceNormals[:,0]==SurfaceName,1]
+    if norm == 'NX': get = [1,2]
+    elif norm == 'NY': get = [0,2]
+    elif norm == 'NZ': get = [0,1]
+
+    meshdata = MEDtools.MeshInfo(MeshFile)
+    group = meshdata.GroupInfo(SurfaceName)
+    Coords = meshdata.GetNodeXYZ(group.Nodes)
+    Coords = Coords[:,get]
+    # scale coordinates to [0,1] range
+    cd_min, cd_max = Coords.min(axis=0),Coords.max(axis=0)
+    Coords = (Coords - cd_min)/(cd_max - cd_min)
+
+    # Find nodes & weights to interpolate value at x1,x2
+    nodes,weights = VLF.Interp_2D(Coords,group.Connect,(x1,x2))
+    Interp_Ix = np.searchsorted(group.Nodes,nodes)
+
+    meshdata.Close()
+
+    Interpolation = (Results[:,Interp_Ix]*weights).sum(axis=1)
+
+    return Interpolation

@@ -294,11 +294,13 @@ def Openhdf(File,style,timer=5):
             if time.time() - st > timer:
                 sys.exit('Timeout on opening hdf file')
 
-def Writehdf(File, array, data_path):
+def Writehdf(File, data_path, array, attrs={}):
     Database = Openhdf(File,'a')
     if data_path in Database:
         del Database[data_path]
-    Database.create_dataset(data_path,data=array)
+    dset = Database.create_dataset(data_path,data=array)
+    if attrs:
+        dset.attrs.update(**attrs)
     Database.close()
 
 def Readhdf(File, data_paths):
@@ -336,15 +338,40 @@ def GetMLdata(DataFile_path,DataNames,InputName,OutputName,Nb=-1):
             In[i] = In[i][l:u]
             Out[i] = Out[i][l:u]
     In,Out = np.vstack(In),np.vstack(Out)
-
     return In, Out
 
-def WriteMLdata(DataFile_path,DataNames,InputName,OutputName,InList,OutList):
-    for resname, _in, _out in zip(DataNames, InList, OutList):
-        InPath = "{}/{}".format(resname,InputName)
-        OutPath = "{}/{}".format(resname,OutputName)
-        Writehdf(DataFile_path,_in,InPath)
-        Writehdf(DataFile_path,_out,OutPath)
+def GetMLdata2(DataFile_path,DataNames,ArrayName,Nb=-1):
+    if type(DataNames)==str:DataNames = [DataNames]
+    data = ["{}/{}".format(dataname,ArrayName) for dataname in DataNames]
+    Data = Readhdf(DataFile_path,data)
+
+    for i in range(len(DataNames)):
+        _Nb = Nb[i] if type(Nb)==list else Nb
+        if _Nb==-1:continue
+
+        if type(_Nb)==int:
+            Data[i] = Data[i][:_Nb]
+        if type(_Nb) in (list,tuple):
+            l,u = _Nb
+            Data[i] = Data[i][l:u]
+
+    return np.vstack(Data)
+
+def GetMLattrs(DataFile_path,DataNames,ArrayName):
+    if type(DataNames)==str:DataNames = [DataNames]
+    Database = Openhdf(DataFile_path,'r')
+    attrs = {}
+    for dataname in DataNames:
+        data_path = "{}/{}".format(dataname,ArrayName)
+        data_attrs = Database[data_path].attrs
+        attrs.update(**data_attrs)
+    Database.close()
+    return attrs
+
+def WriteMLdata(DataFile_path,DataNames,ArrayName,DataList, attrs={}):
+    for resname, data in zip(DataNames, DataList):
+        DataPath = "{}/{}".format(resname,ArrayName) # path to data in file
+        Writehdf(DataFile_path, DataPath, data, attrs=attrs)
 
 def CompileData(ResDirs,MapFnc,args=[]):
     In,Out = [],[]
@@ -359,6 +386,29 @@ def CompileData(ResDirs,MapFnc,args=[]):
         Out.append(_Out)
     return In, Out
 
+def GetInputs(Parameters,commands):
+    ''' Using exec allows us to get individual values from dictionaries or lists.
+    i.e. a command of 'DataList[1]' will get the value from index 1 of the lists
+    'DataList'
+    '''
+
+    inputs = []
+    for i,command in enumerate(commands):
+        exec("inputs.append(Parameters.{})".format(command))
+    return inputs
+
+def ModelSummary(NbInput,NbOutput,TrainNb,TestNb,Features=None,Labels=None):
+    ModelDesc = "Model Summary\n\n"\
+                "Nb.Inputs: {}\nNb.Outputs: {}\n\n"\
+                "Nb.Train data: {}\nNb.Test data: {}\n\n".format(NbInput,NbOutput,TrainNb,TestNb)
+    if Features is not None:
+        if type(Features) != str: Features = ", ".join(Features)
+        ModelDesc += "Input features:\n{}\n\n".format(Features)
+    if Labels is not None:
+        if type(Labels) != str: Labels = ", ".join(Labels)
+        ModelDesc += "Output labels:\n{}\n".format(Labels)
+
+    print(ModelDesc)
 # ==============================================================================
 # ML model Optima
 

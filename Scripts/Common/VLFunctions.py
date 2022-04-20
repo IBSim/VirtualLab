@@ -43,10 +43,13 @@ def FileFunc(DirName, FileName, ext = 'py', FuncName = 'Single'):
 
 def ImportUpdate(ParameterFile,ParaDict):
     Parameters = ReadParameters(ParameterFile)
+    NewDict = {}
     for Var, Value in Parameters.__dict__.items():
         if Var.startswith('__'): continue
-        if Var in ParaDict: continue
-        ParaDict[Var] = Value
+        NewDict[Var] = Value
+    for Var, Value in ParaDict.items():
+        NewDict[Var] = Value
+    return NewDict
 
 def ReadParameters(paramfile):
     paramdir = os.path.dirname(paramfile)

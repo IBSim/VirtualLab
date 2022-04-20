@@ -24,7 +24,7 @@ def Setup(VL,RunSim=True,Import=False):
     for SimName, ParaDict in SimDicts.items():
         CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, SimName)
         if Import:
-            VLF.ImportUpdate("{}/Parameters.py".format(CALC_DIR), ParaDict)
+            ParaDict = VLF.ImportUpdate("{}/Parameters.py".format(CALC_DIR), ParaDict)
 
         # ======================================================================
         # Collect information to check after

@@ -26,7 +26,7 @@ def Setup(VL, RunDA=True, Import=False):
     for DAName, ParaDict in DADicts.items():
         CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, DAName)
         if Import:
-            VLF.ImportUpdate("{}/Parameters.py".format(CALC_DIR), ParaDict)
+            ParaDict = VLF.ImportUpdate("{}/Parameters.py".format(CALC_DIR), ParaDict)
 
         # ======================================================================
         # Perform check to see if file exists

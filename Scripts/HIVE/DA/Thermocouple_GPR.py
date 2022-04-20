@@ -38,6 +38,9 @@ def CompileData(VL,DADict):
         OutputFn = _SurfaceTemperatures
         args = [Parameters.Surface,Parameters.InputVariables,
                 Parameters.ResFileName]
+    elif Parameters.OutputFn.lower()=="fieldtemperatures":
+        OutputFn = _FieldTemperatures
+        args = [Parameters.InputVariables, Parameters.ResFileName]
 
     # ==========================================================================
     # Apply OutputFn to all sub dirs in ResDirs
@@ -612,6 +615,18 @@ def obj_variable(X, Target, TC_interp, fix=None):
 # ==============================================================================
 # Data collection functions
 
+def _FieldTemperatures(ResDir, InputVariables, ResFileName, ResName='Temperature'):
+
+    # Get temperature values from results
+    paramfile = "{}/Parameters.py".format(ResDir)
+    Parameters = VLF.ReadParameters(paramfile)
+    In = ML.GetInputs(Parameters,InputVariables)
+
+    ResFilePath = "{}/{}".format(ResDir,ResFileName)
+    Out = MEDtools.FieldResult(ResFilePath,ResName)
+
+    return In, Out
+
 def _SurfaceTemperatures(ResDir, SurfaceName, InputVariables,
                          ResFileName, ResName='Temperature'):
     # Get temperature values on surface 'SurfaceName'
@@ -619,7 +634,7 @@ def _SurfaceTemperatures(ResDir, SurfaceName, InputVariables,
     Parameters = VLF.ReadParameters(paramfile)
     In = ML.GetInputs(Parameters,InputVariables)
     ResFilePath = "{}/{}".format(ResDir,ResFileName)
-    Out = MEDtools.GroupData(ResFilePath,SurfaceName,ResName=ResName)
+    Out = MEDtools.FieldResult(ResFilePath, ResName, GroupName=SurfaceName)
     return In, Out
 
 def Get_Interp(MeshFile,SurfaceName,x1,x2,Results):

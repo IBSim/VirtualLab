@@ -54,10 +54,11 @@ class ExactGPmodel(gpytorch.models.ExactGP):
             dvar = torch.autograd.grad(var.sum(), x)[0]
         return dvar, var
 
-def Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
+def Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
     if TrainOut.ndim==1:
         # single output
-        likelihood, model = _Create_GPR(TrainIn, TrainOut, Kernel, min_noise=min_noise)
+        likelihood, model = _Create_GPR(TrainIn, TrainOut, Kernel, min_noise=min_noise,
+                                        input_scale=input_scale,output_scale=output_scale)
     else:
         # multiple output
         NbModel = TrainOut.shape[1]
@@ -66,8 +67,9 @@ def Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
         if type(min_noise) not in (list,tuple): min_noise = [min_noise]*NbModel
         models,likelihoods = [], []
         for i in range(NbModel):
-            likelihood, model = _Create_GPR(TrainIn, TrainOut[:,i], Kernel[i],
-                                            min_noise = min_noise[i])
+            _output_scale = output_scale[:,i] if output_scale is not None else None
+            likelihood, model = _Create_GPR(TrainIn, TrainOut[:,i], Kernel[i], min_noise = min_noise[i],
+                                            input_scale=input_scale, output_scale=_output_scale)
             models.append(model)
             likelihoods.append(likelihood)
 
@@ -84,7 +86,7 @@ def Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
 
     return likelihood, model
 
-def _Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
+def _Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
     model = ExactGPmodel(TrainIn, TrainOut, likelihood, Kernel)
     if not prev_state:
@@ -99,6 +101,9 @@ def _Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
     else:
         state_dict = torch.load(prev_state)
         model.load_state_dict(state_dict)
+
+    if input_scale is not None: model.input_scale = input_scale
+    if output_scale is not None: model.output_scale = output_scale
 
     return likelihood, model
 
@@ -440,3 +445,48 @@ def _GPR_Opt(X,model):
     X = torch.tensor(X)
     dmean, mean = model.Gradient_mean(X)
     return mean.detach().numpy(), dmean.detach().numpy()
+
+# ==============================================================================
+# Constraint for ML model
+def LowerBound(model,bound):
+    constraint_dict = {'fun': _bound, 'jac':_dbound,
+                       'type': 'ineq', 'args':(model,bound)}
+    return constraint_dict
+
+def UpperBound(model,bound):
+    constraint_dict = {'fun': _bound, 'jac':_dbound,
+                       'type': 'ineq', 'args':(model,bound,-1)}
+    return constraint_dict
+
+def FixedBound(model,bound):
+    constraint_dict = {'fun': _bound, 'jac':_dbound,
+                       'type': 'eq', 'args':(model,bound)}
+    return constraint_dict
+
+def _bound(X, model, bound, sign=1):
+    X = torch.tensor(np.atleast_2d(X))
+    # Function value
+    Pred = model(X).mean.detach().numpy()
+    return sign*(Pred - bound)
+
+def _dbound(X, model, bound, sign=1):
+    X = torch.tensor(np.atleast_2d(X))
+    # Gradient
+    Grad = model.Gradient(X)
+    return sign*Grad
+
+def InputQuery(model, NbInput, base=0.5, Ndisc=50):
+
+    split = np.linspace(0,1,Ndisc+1)
+    a = np.ones((Ndisc+1,NbInput))*base
+    pred_mean,pred_std = [],[]
+    for i in range(NbInput):
+        _a = a.copy()
+        _a[:,i] = split
+        _a = torch.from_numpy(_a)
+        with torch.no_grad():
+            out = model.likelihood(model(_a))
+            mean = out.mean.numpy()
+            stdev = out.stddev.numpy()
+        pred_mean.append(mean);pred_std.append(stdev)
+    return pred_mean,pred_std

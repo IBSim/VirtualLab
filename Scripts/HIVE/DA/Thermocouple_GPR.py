@@ -604,6 +604,7 @@ def field_inverse(TCData, model, meshfile, InvDict):
     for nodes,weights in TC_interp:
         TC_target = (InvDict['Target_Temp'][:,nodes]*weights).sum(axis=1)
         TC_targets.append(TC_target)
+    TC_targets = np.array(TC_targets).T
 
     # ======================================================================
     N_cases = len(TC_targets)

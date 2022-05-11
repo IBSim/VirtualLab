@@ -407,10 +407,7 @@ def Optimise_Field(VL,DADict):
     model.VT = VT
     meshfile = "{}/{}".format(VL.MESH_DIR,Parameters.MeshFile)
 
-    if hasattr(Parameters,'TCLocations'):
-        # Use the pre-set thermocouple locations
-        TCLocations = Parameters.TCLocations
-    elif hasattr(Parameters,'Optimise'):
+    if hasattr(Parameters,'Optimise'):
         # optimise the locations for the thermocouples
         Optimise = Parameters.Optimise
         CandidateSurfaces = Optimise['CandidateSurfaces']
@@ -443,7 +440,17 @@ def Optimise_Field(VL,DADict):
                          on_fitness=update)
 
         ga_instance.run()
-        ga_instance.plot_fitness()
+
+        # ======================================================================
+        # plot ga performance
+        plt.figure()
+        plt.plot(ga_instance.best_solutions_fitness, linewidth=2, color='b')
+        plt.xlabel('Generation',fontsize=14)
+        plt.ylabel('Fitness',fontsize=14)
+        plt.savefig("{}/GA_history.png".format(DADict['CALC_DIR']))
+        plt.close()
+
+        # ======================================================================
         # Returning the details of the best solution.
         solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
 
@@ -457,6 +464,10 @@ def Optimise_Field(VL,DADict):
                 "Surface: {}\nLocation: ({:.4f}, {:.4f})\n".format(i+1,surf_name,x1,x2)
             print(s)
             TCLocations.append([surf_name,x1,x2])
+
+    elif hasattr(Parameters,'TCLocations'):
+        # Use the pre-set thermocouple locations
+        TCLocations = Parameters.TCLocations
     else:
         print('No Thermocouple locations specified')
         return

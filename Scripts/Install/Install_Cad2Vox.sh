@@ -108,9 +108,9 @@ else
 fi
 
 cd ${CAD2VOX_DIR}/CudaVox
-python3 setup_CudaVox.py install
+python3 -m pip install .
 cd ${CAD2VOX_DIR}
-python3 setup_cad2vox.py install
+python3 -m pip install .
 
 # Run Test Suite
 if ${CAD2VOX_WITH_CUDA}; then

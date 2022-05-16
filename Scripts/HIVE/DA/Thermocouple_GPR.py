@@ -422,22 +422,42 @@ def Optimise_Field(VL,DADict):
         TC_space = [range(len(CandidateSurfaces)), # discrete number for surface numbering
                     {'low':0,'high':1},{'low':0,'high':1}] # x1,x2 coordinate is scaled to [0,1] range
 
+        NbTC = Optimise['NbTC']
+
         # Get parallelised implementation of genetic algorithm
         NbCore = Optimise.get('NbCore',1)
-        GA = GA_Parallel('process',NbCore)
-        NbMating = Optimise.get('NbMating',2)
+        Parallel = Optimise.get('Parallel','process')
+        kwargs = {'workdir':VL.TEMP_DIR}
+        if Parallel.lower() in ('mpi','mpi_worker'):
+            kwargs['addpath'] = set(sys.path)-set(VL._pypath)
+            kwargs['source'] = False
+        GA = GA_Parallel(Parallel,NbCore,**kwargs)
+
+        # ======================================================================
+
         NbGen = Optimise['NbGeneration']
-        NbTC = Optimise['NbTC']
         NbPop = Optimise['NbPopulation']
+        MatingProb = Optimise.get('MatingProb',0.5)
+        # NbMating is how many solutions we want to keep & breed from
+        NbMating = max(2,int(NbPop*MatingProb))
+        MutationProb = Optimise.get('MutationProb',0.1)
+
+        # ======================================================================
+        # Stopping criterion
+        StopCriteria = ['reach_1']
 
         ga_instance = GA(num_generations=NbGen,
                          num_parents_mating=NbMating,
                          gene_space=TC_space*NbTC,
                          sol_per_pop=NbPop,
                          num_genes=NbTC*3,
-                         mutation_percent_genes=50,
                          fitness_func=GA_func,
-                         on_fitness=update)
+                         on_fitness=update,
+                         parent_selection_type='rank',
+                         crossover_probability=1,
+                         mutation_probability=MutationProb,
+                         save_best_solutions=True,
+                         stop_criteria=StopCriteria)
 
         ga_instance.run()
 
@@ -448,20 +468,23 @@ def Optimise_Field(VL,DADict):
         plt.xlabel('Generation',fontsize=14)
         plt.ylabel('Fitness',fontsize=14)
         plt.savefig("{}/GA_history.png".format(DADict['CALC_DIR']))
+        plt.ylim(0,1)
         plt.close()
 
         # ======================================================================
         # Returning the details of the best solution.
-        solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
+        # solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
+        bestsol_ix = np.argmax(ga_instance.best_solutions_fitness)
+        solution = ga_instance.best_solutions[bestsol_ix]
+        solution_fitness = ga_instance.best_solutions_fitness[bestsol_ix]
 
-        print("\nOptimal thermocouple configuration\n")
+        print("\nOptimal thermocouple configuration")
         TCLocations = []
         for i in range(NbTC):
             surf_ix = int(solution[i*3])
             surf_name = CandidateSurfaces[surf_ix]
             x1,x2 = solution[i*3+1], solution[i*3+2]
-            s = "Thermocouple #{}:\n"\
-                "Surface: {}\nLocation: ({:.4f}, {:.4f})\n".format(i+1,surf_name,x1,x2)
+            s = "TC {}: {}, {:.4f}, {:.4f}".format(i+1,surf_name,x1,x2)
             print(s)
             TCLocations.append([surf_name,x1,x2])
 
@@ -514,57 +537,24 @@ def Optimise_Field(VL,DADict):
 
         inverse_sol,error = InverseSolution(obj_field, init_points, bounds,tol=0.05,
                                       args=[TC_targets,TC_interp,model,fix])
-
-        # Make prediction of field using inverse solution as input
-        with torch.no_grad():
-            _inverse_sol = torch.from_numpy(inverse_sol)
-            preds = []
-            for mod in model.models:
-                pred = mod(_inverse_sol).mean.numpy()
-                pred = ML.DataRescale(pred,*mod.output_scale)
-                preds.append(pred)
-            preds = np.transpose(preds)
-
-        preds = preds.dot(model.VT) # Full temperature field
-
-        UniquePred,Ix = preds[:1],[0]
-        for i, pred in enumerate(preds[1:]):
-            diff = UniquePred - pred
-            diff_sc = np.abs(diff)/pred
-            diff_mean = diff_sc.mean(axis=1)
-            diff_max = diff_sc.max(axis=1)
-            if False:
-                print(i+1)
-                print("Mean difference",diff.mean(axis=1))
-                print("St.Dev",np.std(diff,axis=1))
-                print("Scaled mean",diff_mean)
-                print("Scaled_max",diff_max)
-                print()
-
-            #only keep ones which are different to the others
-            if (diff_mean>0.025).all():
-                UniquePred = np.vstack((UniquePred,pred))
-                Ix.append(i+1)
-
-        UniqueIS = inverse_sol[Ix]
+        # Filter out similar results
+        UniqueIS,UniquePred = UniqueSol(model,inverse_sol)
         UniqueIS = ML.DataRescale(UniqueIS,*InputScaler)
-        print(UniqueIS)
+        print("\nUnique inverse solutions")
+        for IS in UniqueIS:
+            islst = ["{:.5f}".format(v) for v in IS]
+            print(", ".join(islst))
 
         # Make rmed results file containing inverse field & true field
         ML_resfile = "{}/ML_res.rmed".format(DADict['CALC_DIR'])
-        shutil.copy2(meshfile,ML_resfile)
+        shutil.copy2(meshfile,ML_resfile) # copy mesh file
+        AddResult(ML_resfile,TestOut[ix],'TrueSol') # add true results
         ndigit = len(str(len(UniquePred)))
+        # Add all potential inversely calculated results field
         for i,sol in enumerate(UniquePred):
             AddResult(ML_resfile,sol,'InverseSol_{}'.format(str(i).zfill(ndigit)))
-        AddResult(ML_resfile,TestOut[ix],'TrueSol')
 
-    # InverseDict = Parameters.InverseDict
-    # NbCases = InverseDict.get('NbCases',len(TestOut))
-    # InverseDict['Target_Temp'] = TestOut[:NbCases]
-    # InverseDict['Target_Soln'] = TestIn_scale.detach().numpy()[:NbCases]
-    #
-    # score = field_inverse(TCLocations, model, meshfile,InverseDict)
-    # print(score)
+
 
 
 # ==============================================================================
@@ -584,12 +574,22 @@ def ff_field(model, meshfile, CandidateSurfaces, InverseDict):
 
     return fitness_function
 
-def update(ga_instance,population_fitness):
-    ''' Used by pygad for updates.'''
+def update(ga_instance,junk):
+    ''' Used by pygad to print update at each generation.'''
     num_gen = ga_instance.generations_completed
-    gen_best = max(population_fitness)
-    best = ga_instance.best_solution(pop_fitness=ga_instance.last_generation_fitness)[1]
-    print("Generation: {}, Gen. Best: {:.4f}, Best: {:.4f}".format(num_gen,gen_best,best))
+
+    gen_sol, best_gen = ga_instance.best_solution(ga_instance.last_generation_fitness)[:2]
+
+    best_prev = max(ga_instance.best_solutions_fitness) if num_gen>0 else 0
+
+    print('\n==================================================')
+    print("Generation: {}, Best gen.: {:.4f}, Best prev: {:.4f}".format(num_gen, best_gen, best_prev))
+
+    if num_gen==0 or (num_gen>0 and best_gen>best_prev):
+        BPstr = "Best Placements:\n"
+        for i in range(0,len(gen_sol),3):
+            BPstr+="{}, ({:.4f},{:.4f})\n".format(*gen_sol[i:i+3])
+        print(BPstr)
 
 def field_inverse(TCData, model, meshfile, InvDict):
     ''' Function which analyses how successfull a set of thermocouples are at
@@ -615,6 +615,7 @@ def field_inverse(TCData, model, meshfile, InvDict):
     confidence = InvDict.get('Confidence',None)
     fix = np.where(np.array(confidence)==1)[0]
 
+    NbSol = []
     for i in range(N_cases):
         true_input = InvDict['Target_Soln'][i]
         init_points, bounds = ranger(NbInit,true_input,confidence)
@@ -622,16 +623,38 @@ def field_inverse(TCData, model, meshfile, InvDict):
 
         inverse_sol,error = InverseSolution(obj_field, init_points, bounds,tol=0.05,
                                       args=[TC_targets[i],TC_interp,model,fix])
-        inverse_sol = inverse_sol[0]
+        UniqueIS = UniqueSol(model,inverse_sol)[0]
+        NbSol.append(len(UniqueIS)) # Get number of unqiue solutions & add to list
 
-        err_sq = np.mean((inverse_sol - true_input)**2,axis=0)
-        err_sq_all.append(err_sq)
-
-    # average err_sq for each component & sum for single score
-    err_sq_avg = np.array(err_sq_all).mean(axis=0)
-    score = err_sq_avg.sum()
-
+    score = np.mean(NbSol)
     return score
+
+def UniqueSol(model,inverse_sol,diff_frac=0.025):
+
+    # Make prediction of field using inverse solution as input
+    with torch.no_grad():
+        _inverse_sol = torch.from_numpy(inverse_sol)
+        preds = []
+        for mod in model.models:
+            pred = mod(_inverse_sol).mean.numpy()
+            pred = ML.DataRescale(pred,*mod.output_scale)
+            preds.append(pred)
+
+    preds = np.transpose(preds).dot(model.VT) # Full temperature field
+
+    UniquePred,UniqueIS = preds[:1],inverse_sol[:1]
+    for pred,sol in zip(preds[1:],inverse_sol[1:]):
+        diff = UniquePred - pred
+        diff_sc = np.abs(diff)/pred
+        diff_mean = diff_sc.mean(axis=1)# mean absolute percentage difference
+        # diff_max = diff_sc.max(axis=1)
+
+        if (diff_mean > diff_frac).all():
+            #only keep ones which are different to the others
+            UniquePred = np.vstack((UniquePred,pred))
+            UniqueIS = np.vstack((UniqueIS,sol))
+
+    return UniqueIS, UniquePred
 
 # ==============================================================================
 # Function used to calculate inverse solutions & the objective functions used

@@ -162,7 +162,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda update -n base -c defaults conda -y
   if test ! -d "$USER_HOME/anaconda3/envs/$CONDAENV"; then
     echo "Creating Conda env $CONDAENV"
-    conda create -n $CONDAENV python=3.6.9 -y
+    conda create -n $CONDAENV python=3.9 -y
   fi
 
   OS_v=$(eval lsb_release -r -s)

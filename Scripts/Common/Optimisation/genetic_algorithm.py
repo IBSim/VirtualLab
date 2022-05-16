@@ -3,13 +3,12 @@ import numpy as np
 
 from Scripts.Common.tools import Paralleliser
 
-def GA_Parallel(method,nb_parallel):
-    if nb_parallel==1:return GA
+def GA_Parallel(method='process',nb_parallel=1,**kwargs):
+    if nb_parallel==1:return GA # No parallelism
 
     GA.cal_pop_fitness = cal_pop_fitness
-    GA._parallel_method = method
-    GA._nb_parallel = nb_parallel
-
+    GA._ParallelKwargs = {'method':method,'nb_parallel':nb_parallel,
+                           **kwargs}
     return GA
 
 def cal_pop_fitness(self):
@@ -43,8 +42,7 @@ def cal_pop_fitness(self):
 
     # Calculating the fitness value of each solution in the current population.
     args = [self.population[new_idx],new_idx]
-    res = Paralleliser(self.fitness_func, args, method=self._parallel_method,
-                        nb_parallel=self._nb_parallel)
+    res = Paralleliser(self.fitness_func, args, **self._ParallelKwargs)
     for sol_idx, f in zip(new_idx,res):
         pop_fitness[sol_idx] = f
 

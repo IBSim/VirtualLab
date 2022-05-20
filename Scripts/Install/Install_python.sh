@@ -71,7 +71,7 @@ source "$VL_DIR/VLconfig.py" # Enables this script to be run seperately
 
 if [ "$PYTHON_INST" == "y" ]; then
   ### Install python and required packages
-  sudo apt install -y python3.6
+  sudo apt install -y python3.8
   sudo apt install -y python3-pip
   #sudo apt install -y python3-sphinx
   sudo pip3 install -U sphinx
@@ -162,7 +162,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda update -n base -c defaults conda -y
   if test ! -d "$USER_HOME/anaconda3/envs/$CONDAENV"; then
     echo "Creating Conda env $CONDAENV"
-    conda create -n $CONDAENV python=3.9 -y
+    conda create -n $CONDAENV python=3.8 -y
   fi
 
   OS_v=$(eval lsb_release -r -s)

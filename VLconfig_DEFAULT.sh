@@ -42,7 +42,7 @@ VL_ANALYTICS_DEFEULT=true
 CAD2VOX_WITH_CUDA_DEFAULT=true
 ## Git Tag to set specific stable version of Cad2Vox used in VirtualLab.
 #CAD2VOX_TAG_DEFAULT='VirtualLab_V1.56'
-CAD2VOX_TAG_DEFAULT='master'
+CAD2VOX_TAG_DEFAULT='VirtualLab-18.04'
 ### END OF DEFAULTS ###
 #######################
 

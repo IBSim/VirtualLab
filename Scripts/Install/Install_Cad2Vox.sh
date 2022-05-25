@@ -22,6 +22,7 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
 
 ### Standard update
+export DEBIAN_FRONTEND=noninteractive
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential cmake python3-pybind11
@@ -103,9 +104,9 @@ else
 fi
 
 cd ${CAD2VOX_DIR}/CudaVox
-python3 -m pip install .
+python3 -m pip install --user .
 cd ${CAD2VOX_DIR}
-python3 -m pip install .
+python3 -m pip install --user .
 
 # Run Test Suite
 if ${CAD2VOX_WITH_CUDA}; then

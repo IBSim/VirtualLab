@@ -3,7 +3,7 @@ def main(min,max,avoid=[]):
     Function to find factors of random number between two intergers min and max.
     can also be given an optional list of numbers to avoid.
     '''
-    import random
+    from numpy.random import randint
     
     if max>100000:
         print("Max is to big I'm not a supercompter you know!!!")
@@ -15,9 +15,9 @@ def main(min,max,avoid=[]):
         print("you are avoiding every number between min and max you twit")
         return
 
-    Lucky = random.randint(min,max)
+    Lucky = randint(min,max)
     while Lucky in avoid:
-        Lucky = random.randint(min,max)
+        Lucky = randint(min,max)
     factors = factorization(Lucky)
     nfactors=len(factors) 
     

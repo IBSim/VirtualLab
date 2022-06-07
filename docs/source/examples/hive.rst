@@ -26,7 +26,8 @@ The effect of the coolant is modelled as a 1D problem using its temperature, pre
         VirtualLab.Settings(
                    Mode='Interactive',
                    Launcher='Process',
-                   NbThreads=1)
+                   NbJobs=1)
+
 
         VirtualLab.Parameters(
                    Parameters_Master,

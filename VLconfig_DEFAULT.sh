@@ -41,7 +41,7 @@ VL_ANALYTICS_DEFEULT=true
 ### Set if you want to build Cad2Vox to use OpenMP or CUDA (i.e. just CPU or both CPU and GPU).
 CAD2VOX_WITH_CUDA_DEFAULT=true
 ## Git Tag to set specific stable version of Cad2Vox used in VirtualLab.
-CAD2VOX_TAG_DEFAULT='VirtualLab_V1.55'
+CAD2VOX_TAG_DEFAULT='VirtualLab-18.04'
 ### END OF DEFAULTS ###
 #######################
 

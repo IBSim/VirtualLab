@@ -1,16 +1,13 @@
-
 import os
 import sys
 sys.dont_write_bytecode=True
 from types import SimpleNamespace as Namespace
-from importlib import import_module
-import shutil
-from Scripts.Common.VLPackages.Salome import Salome
 
+from Scripts.Common.VLPackages.Salome import Salome
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 
-def Setup(VL, RunMesh=True):
+def Setup(VL, RunMesh=True, Import=False):
     VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
     VL.SIM_MESH = "{}/Mesh".format(VL.SIM_SCRIPTS)
 
@@ -19,36 +16,42 @@ def Setup(VL, RunMesh=True):
 
     # if either MeshDicts is empty or RunMesh is False we will return
     if not (RunMesh and MeshDicts): return
-
     sys.path.insert(0, VL.SIM_MESH)
+
+    Files = [] # Something we want to keep track of
     for MeshName, ParaDict in MeshDicts.items():
+        MeshPath = "{}/{}".format(VL.MESH_DIR, MeshName)
+        if Import:
+            VLF.ImportUpdate("{}.py".format(MeshPath), ParaDict)
+
         Parameters = Namespace(**ParaDict)
-        # ====================================================================
+
+        # ======================================================================
         # Perform checks
         # Check that mesh file exists
-        filepath = '{}/{}.py'.format(VL.SIM_MESH,Parameters.File)
-        if not os.path.exists(filepath):
-            VL.Exit(VLF.ErrorMessage('Mesh file\n{}\n does not exist'.format(filepath)))
+        FilePath = VLF.FileFunc(VL.SIM_MESH, Parameters.File)[0]
+        if Parameters.File not in Files:
+            FileExist = VLF.CheckFile(FilePath)[0]
+            if not FileExist:
+                VL.Exit(VLF.ErrorMessage("The file {} does not "\
+                                        "exist".format(FilePath)))
+            Files.append(Parameters.File)
 
-        # Check Verify function, if it exists
-        MeshFile = import_module(Parameters.File)
-        if hasattr(MeshFile,'Verify'):
-            error,warning = MeshFile.Verify(Parameters)
+
+        Verify = VLF.GetFunc(FilePath,'Verify')
+        if Verify != None:
+            error, warning = Verify(Parameters)
             if warning:
-                mess = "Warning issed for mesh '{}':\n\n".format(MeshName)
-                mess+= "\n\n".join(warning)
-                print(VLF.WarningMessage(mess))
-
+                print(VLF.WarningMessage('Issue with mesh {}.'\
+                        '\n\n{}'.format(MeshName, warning)))
             if error:
-                mess = "Error issued for mesh '{}':\n\n".format(MeshName)
-                mess+= "\n\n".join(error)
-                print(VLF.ErrorMessage(mess))
-                VL.Exit()
+                VL.Exit(VLF.ErrorMessage('Issue with mesh {}.'\
+                        '\n\n{}'.format(MeshName, error)))
 
-        ## Checks complete ##
-
+        # ======================================================================
+        # Create dictionary for each analysis
         MeshDict = {'Name':MeshName,
-                    'MESH_FILE':"{}/{}.med".format(VL.MESH_DIR, MeshName),
+                    'MESH_FILE':"{}.med".format(MeshPath),
                     'TMP_CALC_DIR':"{}/Mesh/{}".format(VL.TEMP_DIR, MeshName),
                     'Parameters':Parameters
                     }
@@ -108,18 +111,21 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
     # ==========================================================================
     # Run Mesh routine
 
-    VL.Logger('\n### Starting Meshing ###\n',Print=True)
+    VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+              '~~~ Starting Meshing ~~~\n'\
+              '~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
     NbMeshes = len(VL.MeshData)
     MeshDicts = list(VL.MeshData.values())
 
-    N = min(VL._NbThreads,NbMeshes)
-
-    Errorfnc = VLPool(VL,PoolRun,MeshDicts,launcher=VL._Launcher,N=N,onall=True)
+    Errorfnc = VLPool(VL,PoolRun,MeshDicts)
     if Errorfnc:
-        VL.Exit(VLF.ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)))
+        VL.Exit(VLF.ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)),
+                Cleanup=False)
 
-    VL.Logger('\n### Meshing Complete ###',Print=True)
+    VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+              '~~~ Meshing Complete ~~~\n'\
+              '~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
     # ==========================================================================
     # Open meshes in GUI to view

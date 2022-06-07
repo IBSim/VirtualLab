@@ -23,8 +23,8 @@ This example introduces some of the post-processing capabilities available in **
 
        VirtualLab.Settings(
                   Mode='Interactive',
-                  Launcher='Process',
-                  NbThreads=2)
+                  Launcher='Process',=
+                  NbJobs=2)
 
        VirtualLab.Parameters(
                   Parameters_Master,
@@ -179,7 +179,7 @@ Suppose you are interested in seeing the meshes prior to running the simulation.
 
         VirtualLab.Mesh(ShowMesh=True,MeshCheck=None)
 
-   *NbThreads* should still be set to 2 from the Tensile tutorial.
+   *NbJobs* should still be set to 2 from the Tensile tutorial.
 
    Launch **VirtualLab**::
 
@@ -205,12 +205,13 @@ You will notice in the *Parameters_Var* file :file:`Input/LFA/Tutorials/Parametr
 
    In the *RunFile* change *ShowMesh* back to its default value :code:`False` and set *RunMesh* to :code:`False` to ensure that the simulations are run without re-meshing. Also set *RunDA* to :code:`False` for the time being.
 
-   Since 3 simulations are to be run you can set *NbThreads* to 3 (if you have the resources available)::
+   Since 3 simulations are to be run you can set *NbJobs* to 3 (if you have the resources available)::
+
 
        VirtualLab.Settings(
                   Mode='Interactive',
                   Launcher='Process',
-                  NbThreads=3)
+                  NbJobs=3)
 
        VirtualLab.Parameters(
                   Parameters_Master,
@@ -259,8 +260,9 @@ Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` th
 
       Sim.Run = [True,False,False]
       Sim.LaserS = ['Uniform','Gauss','Uniform']
+      
+   There is no need to change the value for *NbJobs*.
 
-   There is no need to change the value for *NbThreads*.
 
    Launch **VirtualLab**.
 

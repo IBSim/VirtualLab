@@ -9,6 +9,7 @@ import shutil
 import copy
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
+import atexit
 
 import VLconfig
 from . import Analytics
@@ -30,9 +31,9 @@ class VLSetup():
 
         # ======================================================================
         # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbThreads=1,
+        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir)
+                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
 
         # ======================================================================
         # Define path to scripts
@@ -60,7 +61,9 @@ class VLSetup():
             self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
             os.makedirs(self.TEMP_DIR)
 
-        self.Logger('### Launching VirtualLab ###',Print=True)
+        self.Logger('\n############################\n'\
+                      '### Launching VirtualLab ###\n'\
+                      '############################\n',Print=True)
 
 
     def _SetMode(self,Mode='H'):
@@ -79,25 +82,26 @@ class VLSetup():
         if Launcher.lower() == 'sequential': self._Launcher = 'Sequential'
         elif Launcher.lower() == 'process': self._Launcher = 'Process'
         elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
+        elif Launcher.lower() == 'mpi_worker': self._Launcher = 'MPI_Worker'
         else: self.Exit(ErrorMessage("Launcher must be one of; 'Sequential',\
                                      'Process', 'MPI'"))
 
-    def _SetNbThreads(self,NbThreads=1):
-        NbThreads = self._ParsedArgs.get('NbThreads',NbThreads)
-        if type(NbThreads) == int:
-            _NbThreads = NbThreads
-        elif type(NbThreads) == float:
-            if NbThreads.is_integer():
-                _NbThreads = NbThreads
+    def _SetNbJobs(self,NbJobs=1):
+        NbJobs = self._ParsedArgs.get('NbJobs',NbJobs)
+        if type(NbJobs) == int:
+            _NbJobs = NbJobs
+        elif type(NbJobs) == float:
+            if NbJobs.is_integer():
+                _NbJobs = NbJobs
             else:
-                self.Exit(ErrorMessage("NbThreads must be an integer"))
+                self.Exit(ErrorMessage("NbJobs must be an integer"))
         else:
-            self.Exit(ErrorMessage("NbThreads must be an integer"))
+            self.Exit(ErrorMessage("NbJobs must be an integer"))
 
-        if _NbThreads >= 1:
-            self._NbThreads = _NbThreads
+        if _NbJobs >= 1:
+            self._NbJobs = _NbJobs
         else:
-            self.Exit(ErrorMessage("NbThreads must be positive"))
+            self.Exit(ErrorMessage("NbJobs must be positive"))
 
     def _SetInputDir(self,InputDir):
         InputDir = self._ParsedArgs.get('InputDir',InputDir)
@@ -117,10 +121,15 @@ class VLSetup():
         MaterialDir = self._ParsedArgs.get('MaterialDir',MaterialDir)
         self.MATERIAL_DIR = MaterialDir
 
+    def _SetCleanup(self,Cleanup=True):
+        if not hasattr(self,'_CleanupFlag'): self._CleanupFlag=Cleanup
+        else: atexit.unregister(self._Cleanup)
+        atexit.register(self._Cleanup,Cleanup)
+
     def Settings(self,**kwargs):
 
-        Diff = set(kwargs).difference(['Mode','Launcher','NbThreads','InputDir',
-                                    'OutputDir','MaterialDir'])
+        Diff = set(kwargs).difference(['Mode','Launcher','NbJobs','InputDir',
+                                    'OutputDir','MaterialDir','Cleanup'])
         if Diff:
             self.Exit("Error: {} are not option(s) for settings".format(list(Diff)))
 
@@ -128,8 +137,10 @@ class VLSetup():
             self._SetMode(kwargs['Mode'])
         if 'Launcher' in kwargs:
             self._SetLauncher(kwargs['Launcher'])
-        if 'NbThreads' in kwargs:
-            self._SetNbThreads(kwargs['NbThreads'])
+        if 'NbJobs' in kwargs:
+            self._SetNbJobs(kwargs['NbJobs'])
+        if 'Cleanup' in kwargs:
+            self._SetCleanup(kwargs['Cleanup'])
         if 'InputDir' in kwargs:
             self._SetInputDir(kwargs['InputDir'])
         if 'OutputDir' in kwargs:
@@ -138,7 +149,8 @@ class VLSetup():
             self._SetMaterialDir(kwargs['MaterialDir'])
 
     def Parameters(self, Parameters_Master, Parameters_Var=None,
-                    RunMesh=True, RunSim=True, RunDA=True, RunVox=True):
+                    RunMesh=True, RunSim=True, RunDA=True, 
+                    RunVox=True, Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -147,15 +159,141 @@ class VLSetup():
         RunSim = self._ParsedArgs.get('RunSim',RunSim)
         RunDA = self._ParsedArgs.get('RunDA',RunDA)
         RunVox = self._ParsedArgs.get('RunVox',RunVox)
+        Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
         VLNamespaces = ['Mesh','Sim','DA','Vox']
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
-        MeshFn.Setup(self,RunMesh)
-        SimFn.Setup(self,RunSim)
-        DAFn.Setup(self,RunDA)
+
+        
+        MeshFn.Setup(self,RunMesh, Import)
+        SimFn.Setup(self,RunSim, Import)
+        DAFn.Setup(self,RunDA, Import)
         VoxFn.Setup(self,RunVox)
+
+    def ImportParameters(self, Rel_Parameters):
+        '''
+        Rel_Parameters is a file name relative to the Input directory
+        '''
+        # Strip .py off the end if it's in the name
+        if os.path.splitext(Rel_Parameters)[1]=='.py':
+            Rel_Parameters = os.path.splitext(Rel_Parameters)[0]
+
+        Abs_Parameters = "{}/{}.py".format(self.PARAMETERS_DIR,Rel_Parameters)
+        # Check File exists
+        if not os.path.exists(Abs_Parameters):
+            message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
+            self.Exit(ErrorMessage(message))
+
+        sys.path.insert(0, os.path.dirname(Abs_Parameters))
+        Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
+        sys.path.pop(0)
+
+        return Parameters
+
+    def GetParams(self, Master, Var, VLTypes):
+        '''Master & Var can be a module, namespace, string or None.
+        A string references a file to import from within the input directory.
+        '''
+
+        if Master == None and Var == None:
+            message = "Both Parameters_Master or Parameters_Var can't be None"
+            self.Exit(ErrorMessage(message))
+
+        # ======================================================================
+        # If string, import files
+        if type(Master)==str:
+            Master = self.ImportParameters(Master)
+        if type(Var)==str:
+            Var = self.ImportParameters(Var)
+
+        # ======================================================================
+        # Check any of the attributes of NS are included
+        if Master != None and not set(Master.__dict__).intersection(VLTypes):
+            message = "Parameters_Master contains none of the attrbutes {}".format(VLTypes)
+            self.Exit(ErrorMessage(message))
+        if Var != None and not set(Var.__dict__).intersection(VLTypes):
+            message = "Parameters_Var contains none of the attrbutes {}".format(VLTypes)
+            self.Exit(ErrorMessage(message))
+
+        # ======================================================================
+        self.Parameters_Master = Namespace()
+        self.Parameters_Var = Namespace()
+        for nm in VLTypes:
+            master_nm = getattr(Master, nm, None)
+            var_nm = getattr(Var, nm, None)
+            # ==================================================================
+            # Check all in NS have the attribute 'Name'
+            if master_nm != None and not hasattr(master_nm,'Name'):
+                message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(nm)
+                self.Exit(ErrorMessage(message))
+            if master_nm != None and not hasattr(master_nm,'Name'):
+                message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(nm)
+                self.Exit(ErrorMessage(message))
+
+            # ==================================================================
+            setattr(self.Parameters_Master, nm, master_nm)
+            setattr(self.Parameters_Var, nm, var_nm)
+
+    def CreateParameters(self, junk1, junk2, VLType):
+        '''
+        Create parameter dictionary of attribute VLType using Parameters_Master and Var.
+        '''
+        # ======================================================================
+        # Get VLType from Parameters_Master and _Parameters_Var (if they are defined)
+        Master = getattr(self.Parameters_Master, VLType, None)
+        Var = getattr(self.Parameters_Var, VLType, None)
+
+        # ======================================================================
+        # VLType isn't in Master of Var
+        if Master==None and Var==None: return {}
+
+        # ======================================================================
+        # VLType is in Master but not in Var
+        elif Var==None: return {Master.Name : Master.__dict__}
+
+        # ======================================================================
+        # VLType is in Var
+
+        # Check all entires in Parameters_Var have the same length
+        NbNames = len(Var.Name)
+        VarNames, NewVals, errVar = [],[],[]
+        for VariableName, NewValues in Var.__dict__.items():
+            VarNames.append(VariableName)
+            NewVals.append(NewValues)
+            if len(NewValues) != NbNames:
+                errVar.append(VariableName)
+
+        if errVar:
+            attrstr = "\n".join(["{}.{}".format(VLType,i) for i in errVar])
+            message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
+                "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(VLType,attrstr)
+            self.Exit(ErrorMessage(message))
+
+        # VLType is in Master and Var
+        if Master!=None and Var !=None:
+            # Check if there are attributes defined in Var which are not in Master
+            dfattrs = set(Var.__dict__.keys()) - set(list(Master.__dict__.keys())+['Run'])
+            if dfattrs:
+                attstr = "\n".join(["{}.{}".format(VLType,i) for i in dfattrs])
+                message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
+                    "{}\n\nThis may lead to unexpected results.".format(attstr)
+                print(WarningMessage(message))
+
+        # ======================================================================
+        # Create dictionary for each entry in Parameters_Var
+        VarRun = getattr(Var,'Run',[True]*NbNames) # create True list if Run not an attribute of VLType
+        ParaDict = {}
+        for Name, NewValues, Run in zip(Var.Name,zip(*NewVals),VarRun):
+            if not Run: continue
+            base = {} if Master==None else copy.deepcopy(Master.__dict__)
+            for VariableName, NewValue in zip(VarNames,NewValues):
+                base[VariableName]=NewValue
+            ParaDict[Name] = base
+
+        return ParaDict
+
 
     def Mesh(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
@@ -208,12 +346,11 @@ class VLSetup():
             with open(self.LogFile,'a') as f:
                 f.write(Text+"\n")
 
-    def Exit(self,mess='',KeepDirs=[]):
-        # self.Logger(mess, Print=True)
-        self.Cleanup(KeepDirs)
+    def Exit(self, mess='', Cleanup=True):
+        self._SetCleanup(Cleanup=Cleanup)
         sys.exit(mess)
 
-    def Cleanup(self,KeepDirs=[]):
+    def _Cleanup(self,Cleanup=True):
         # Report overview of VirtualLab usage
         if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
             MeshNb = self._Analytics.get('Mesh',0)
@@ -223,130 +360,19 @@ class VLSetup():
             Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
             Analytics.Run(Category,Action,self._ID)
 
-        if os.path.isdir(self.TEMP_DIR):
-            if KeepDirs:
-                kept = []
-                for ct in os.listdir(self.TEMP_DIR):
-                    SubDir = '{}/{}'.format(self.TEMP_DIR,ct)
-                    if os.path.isdir(SubDir):
-                        if ct in KeepDirs: kept.append(SubDir)
-                        else : shutil.rmtree(SubDir)
-                self.Logger("The following tmp directories have not been deleted:\n{}".format(kept),Print=True)
-            else:
-                shutil.rmtree(self.TEMP_DIR)
+        exitstr = '\n#############################\n'\
+                    '### VirtualLab Terminated ###\n'\
+                    '#############################\n'\
 
-        # self.Logger('### VirtualLab Finished###\n',Print=True)
+        if not Cleanup:
+            exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
+        elif os.path.isdir(self.TEMP_DIR):
+            shutil.rmtree(self.TEMP_DIR)
 
-    def ImportParameters(self, Rel_Parameters):
-        '''
-        Rel_Parameters is a file name relative to the Input directory
-        '''
-        # Strip .py off the end if it's in the name
-        if os.path.splitext(Rel_Parameters)[1]=='.py':
-            Rel_Parameters = os.path.splitext(Rel_Parameters)[0]
+        print(exitstr)
 
-        Abs_Parameters = "{}/{}.py".format(self.PARAMETERS_DIR,Rel_Parameters)
-        # Check File exists
-        if not os.path.exists(Abs_Parameters):
-            message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
-            self.Exit(ErrorMessage(message))
-
-        sys.path.insert(0, os.path.dirname(Abs_Parameters))
-        Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
-        sys.path.pop(0)
-
-        return Parameters
-
-    def GetParams(self, Parameters_Master, Parameters_Var, NS):
-        # Parameters_Master &/or Var can be module, a namespace or string.
-        # A string references a file in the input directory
-
-        # ======================================================================
-        # Parameters Master
-        if type(Parameters_Master)==str:
-            Main = self.ImportParameters(Parameters_Master)
-        elif any(hasattr(Parameters_Master,nm) for nm in NS):
-            Main = Parameters_Master
-        else: sys.exit()
-
-        self.Parameters_Master = Namespace()
-        for nm in NS:
-            setattr(self.Parameters_Master, nm, getattr(Main, nm, None))
-
-        # ======================================================================
-        # Parameters Var
-        if type(Parameters_Var)==str:
-            Var = self.ImportParameters(Parameters_Var)
-        elif any(hasattr(Parameters_Var,nm) for nm in NS):
-            Var = Parameters_Var
-        elif Parameters_Var==None:
-            Var = None
-        else: sys.exit()
-
-        self.Parameters_Var = Namespace()
-        for nm in NS:
-            setattr(self.Parameters_Var, nm, getattr(Var, nm, None))
-
-        # ======================================================================
-
-    def CreateParameters(self, Parameters_Master, Parameters_Var, InstName):
-        '''
-        Create parameter dictionary for instance 'InstName' using Parameters_Master and Var.
-        '''
-        # ======================================================================
-        # Performs Checks & return warnings or errors
-
-        # Get instance 'InstName' from Parameters_Master and _Parameters_Var (if they are defined)
-        # and check they have the attribute 'Name'
-        Master=getattr(Parameters_Master,InstName, None)
-        if not Master: return {}
-        if not hasattr(Master,'Name'):
-            message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(InstName)
-            self.Exit(ErrorMessage(message))
-
-        Var=getattr(Parameters_Var,InstName, None)
-        if not Var: return {Master.Name : Master.__dict__}
-        if not hasattr(Var,'Name'):
-            message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(InstName)
-            self.Exit(ErrorMessage(message))
-
-        # Check if there are attributes defined in Var which are not in Master
-        dfattrs = set(Var.__dict__.keys()) - set(list(Master.__dict__.keys())+['Run'])
-        if dfattrs:
-            attstr = "\n".join(["{}.{}".format(InstName,i) for i in dfattrs])
-            message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
-                "{}\n\nThis may lead to unexpected results.".format(attstr)
-            print(WarningMessage(message))
-
-        # Check all entires in Parameters_Var have the same length
-        NbNames = len(Var.Name)
-        VarNames, NewVals, errVar = [],[], []
-        for VariableName, NewValues in Var.__dict__.items():
-            VarNames.append(VariableName)
-            NewVals.append(NewValues)
-            if len(NewValues) != NbNames:
-                errVar.append(VariableName)
-
-        if errVar:
-            attrstr = "\n".join(["{}.{}".format(InstName,i) for i in errVar])
-            message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
-                "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(InstName,attrstr)
-            self.Exit(ErrorMesage(message))
-
-        # ======================================================================
-        # Create dictionary for each entry in Parameters_Var
-        VarRun = getattr(Var,'Run',[True]*NbNames) # create True list if Run not an attribute of InstName
-        ParaDict = {}
-        for Name, NewValues, Run in zip(Var.Name,zip(*NewVals),VarRun):
-            if not Run: continue
-
-            cpMaster = copy.deepcopy(Master.__dict__)
-            for VariableName, NewValue in zip(VarNames,NewValues):
-                # if type(NewValue)==dict:
-                cpMaster[VariableName]=NewValue
-            ParaDict[Name] = cpMaster
-
-        return ParaDict
+    def Cleanup(self,KeepDirs=[]):
+        print('Cleanup() is depreciated. You can remove this from your script')
 
     def _GetParsedArgs(self):
         self._ParsedArgs = {}

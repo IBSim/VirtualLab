@@ -1,7 +1,15 @@
 #!/bin/bash
-USER_HOME=$(eval echo ~${SUDO_USER})
+set -e
+################################################################################
+##########    Main /install Script for VirtualLab ##############################
+################################################################################
+
+################################################################################
+#                        Define Default Variables     
+################################################################################
+USER_HOME=$(eval echo ~"${SUDO_USER}")
 #sudo -s eval 'echo ${SUDO_USER}'
-if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
+if [ -f "$USER_HOME"/.VLprofile ]; then source "$USER_HOME"/.VLprofile; fi
 
 echo
 echo "Starting installation of VirtualLab."
@@ -15,18 +23,23 @@ PYTHON_INST="n"
 SALOME_INST="n"
 ERMES_INST="n"
 CAD2VOX_INST="n"
-
 ASTER_SUBDIR="/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
+
+################################################################################
+#                    Useful Functions
+################################################################################
 
 usage() {
   echo
   echo "Usage:"
-  echo " $0 [-d <path>] [-P {y/c/n}] [-S \"{y/n} <path>\"] [-E {y/n}]"
+  echo " $0 [-d <path>] [--all] [-P {y/c/n}] [-S \"{y/n} <path>\"] [-E {y/n}]"
   echo
   echo "A script to install VirtualLab and its dependencies."
   echo
   echo "Options:"
   echo "   '-d <path>' Specify the installation path for VirtualLab"
+  echo "   '--all ' Install all default packages. Note: you can explicitly opt 
+            out of packages you don't want by setting the appropriate options."
   echo "   '-P y' Install python using local installation"
   echo "   '-P c' Install python using conda environment"
   echo "   '-P n' Do not install python"
@@ -44,10 +57,43 @@ usage() {
   echo "salome in '/opt/SalomeMeca', ERMES in '/opt/ERMES', python/conda in the"
   echo "recommended locations."
 }
+
 exit_abnormal() {
   usage
   exit 1
 }
+
+check_for_conda() {
+    # Check if Conda is installed and if so define a flag to use use conda and
+    # activate the vitrual env. If conda is not found, prerequisites are
+    # assumed installed in local python
+    search_var="anaconda*"
+    search_var2="miniconda*"
+    conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+    mini_conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var2")
+    if [[ -f $conda_dir/bin/conda ]]; then
+	eval "$($conda_dir/bin/conda shell.bash hook)"
+	USE_CONDA=True
+    elif [[ -f $mini_conda_dir/bin/conda ]]; then
+	eval "$($conda_dir/bin/conda shell.bash hook)"
+	USE_CONDA=True
+    else
+	USE_CONDA=False	
+    fi
+
+  # If conda found activate environment
+  
+  if hash conda 2>/dev/null; then
+    CONDAENV="$(basename -- $VL_DIR)"
+    conda activate $CONDAENV
+  fi
+  
+  }
+    
+
+################################################################################
+#                    Parse CMD Arguments
+################################################################################
 if [[ $EUID -ne 0 ]]; then
    echo "This installation script must be run as root"
    echo 'Re-run with "sudo ./Install_VirtualLab.sh {options}".'
@@ -113,14 +159,14 @@ while getopts ":d:P:S:E:C:yh" options; do
       fi
       ;;
     C)
-	Cad2Vox_INST=${OPTARG}
-      if [ "$Cad2Vox_INST" == "y" ]; then
+	CAD2VOX_INST=${OPTARG}
+      if [ "$CAD2VOX_INST" == "y" ]; then
         echo " - Cad2Vox will be installed in the default directory and configured as part of VirtualLab install."
-      elif [ "$Cad2Vox_INST" == "n" ]; then
+      elif [ "$CAD2VOX_INST" == "n" ]; then
         echo " - Cad2Vox will not be installed or configured during setup,"
         echo "   please do this manually or by sourcing Install_Cad2Vox.sh."
       else
-        echo "Error: Invalid option argument $Cad2Vox_INST" >&2
+        echo "Error: Invalid option argument $CAD2VOX_INST" >&2
         exit_abnormal
       fi
       ;;	
@@ -141,7 +187,6 @@ while getopts ":d:P:S:E:C:yh" options; do
   esac
 done
 
-echo
 ### Check that no additional args were given that weren't caught.
 shift $(($OPTIND - 1))
 if [[ $@ ]]; then
@@ -163,7 +208,10 @@ if [[ ! "$SKIP" =~ "y" ]]; then
   fi
 fi
 
-#: <<'END'
+################################################################################
+#                   Actual Install
+################################################################################
+
 ### Standard update
 sudo apt update -y
 sudo apt upgrade -y
@@ -171,17 +219,9 @@ sudo apt upgrade -y
 ### Install requirements
 sudo apt install -y git
 
-### Temp solution to avoid prompt while sourcecode is closed-source during alpha phase
-#sudo cp -r /media/Shared/ssh/.ssh .
-#sudo chown -R $USER ~/.ssh
-#chmod -R 0700 ~/.ssh
-#echo 'Host gitlab.com' >> ~/.ssh/config
-#echo '    StrictHostKeyChecking no' >> ~/.ssh/config
-#git config --global user.email "you@example.com"
-#git config --global user.name "Your Name"
-
 ### Check if VirtualLab directory exists in $HOME
 cd $USER_HOME
+
 if [ -d "$VL_DIR" ]; then
   #### If $VL_DIR exists don't do anything.
   echo
@@ -225,14 +265,6 @@ fi
 
 ### Download latest VirtualLab code
 cd $VL_DIR
-### Only download src with no history
-#sudo -u ${SUDO_USER:-$USER} git pull --depth 1 git@gitlab.com:ibsim/virtuallab.git
-### Must use git clone if planning to commit changes.
-#if test -d ".git"; then
-#  sudo -u ${SUDO_USER:-$USER} git pull git@gitlab.com:ibsim/virtuallab.git
-#else
-#  sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git .
-#fi
 if test -d ".git"; then
   sudo -u ${SUDO_USER:-$USER} git pull https://gitlab.com/ibsim/virtuallab.git
 else
@@ -260,31 +292,12 @@ if [ "$PYTHON_INST" == "y" ]; then
 elif [ "$PYTHON_INST" == "c" ]; then
   echo "Installing/configuring conda"
   source $VL_DIR/Scripts/Install/Install_python.sh
-
-  ### Check if Conda is installed
-  search_var=anaconda*
-  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
-  if [[ -f $conda_dir/bin/conda ]]; then
-    eval "$($conda_dir/bin/conda shell.bash hook)"
-  else
-    search_var=miniconda*
-    conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
-    if [[ -f $conda_dir/bin/conda ]]; then
-      eval "$($conda_dir/bin/conda shell.bash hook)"
-    fi
-  fi
-
-  ### If conda found activate environment
-  ### If no conda, prerequisites are assumed installed in local python
-  if hash conda 2>/dev/null; then
-    CONDAENV="$(basename -- $VL_DIR)"
-    conda activate $CONDAENV
-  fi
 else
   echo "Skipping python installation"
 fi
 
-echo
+check_for_conda
+
 ### Install salome if flagged
 if [ "$SALOME_INST" == "y" ]; then
   echo "Installing salome"
@@ -347,4 +360,5 @@ echo "   '-h Display this help menu."
 echo
 echo "Default behaviour is to exit if no "'$FPATH'" is given"
 echo
+set +e
 #END

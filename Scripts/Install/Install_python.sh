@@ -133,6 +133,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
     echo "Skipping conda installation."
   else
     ### Otherwise download and install conda
+    conda_dir=$USER_HOME/anaconda3
     echo
     cd $USER_HOME
     if test ! -f "$CONDA_VER"; then
@@ -140,12 +141,12 @@ elif [ "$PYTHON_INST" == "c" ]; then
       echo "Downloading https://repo.anaconda.com/archive/"$CONDA_VER""
       sudo -u ${SUDO_USER:-$USER} wget https://repo.anaconda.com/archive/"$CONDA_VER"
     fi
-    echo "Proceeding to install conda in $USER_HOME/anaconda3"
-    sudo -u ${SUDO_USER:-$USER} bash $CONDA_VER -b -p $USER_HOME/anaconda3
-    eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"
+    echo "Proceeding to install conda in ${conda_dir}"
+    sudo -u ${SUDO_USER:-$USER} bash $CONDA_VER -b -p ${conda_dir}
+    eval "$(${conda_dir}/bin/conda shell.bash hook)"
     conda init
     sudo -s -u ${SUDO_USER} source $VL_DIR/Scripts/Install/conda_init.sh
-    export PATH=$USER_HOME/anaconda3/bin:$PATH
+    export PATH=${conda_dir}/bin:$PATH
     source $USER_HOME/.VLprofile
     ### Test conda
     if hash conda 2>/dev/null; then
@@ -160,14 +161,14 @@ elif [ "$PYTHON_INST" == "c" ]; then
     #conda --version
   fi
   conda update -n base -c defaults conda -y
-  if test ! -d "$USER_HOME/anaconda3/envs/$CONDAENV"; then
+  if test ! -d "${conda_dir}/envs/$CONDAENV"; then
     echo "Creating Conda env $CONDAENV"
     conda create -n $CONDAENV python=3.8 -y
   fi
 
   OS_v=$(eval lsb_release -r -s)
   if [[ $OS_v == "20.04" ]]; then
-    if test ! -d "$USER_HOME/anaconda3/envs/python2"; then
+    if test ! -d "${conda_dir}/envs/python2"; then
       echo "OS is Ubuntu $OS_v, which doesn't have python2 installed as default."
       echo "A python2 environment is also being created to install Salome_Meca."
       echo "Creating Conda end python2."
@@ -184,9 +185,9 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda install -y --file $VL_DIR/requirements.txt
   conda install -y scikit-learn=0.24.1 iapws=1.4
 
-  sudo chown $SUDO_USER:$SUDO_USER -R $USER_HOME/anaconda3/envs/$CONDAENV
-  sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
-  sudo chown -R 1000:1000 $USER_HOME/anaconda3/pkgs/cache
+  sudo chown $SUDO_USER:$SUDO_USER -R ${conda_dir}/envs/$CONDAENV
+  sudo chmod -R 0755 ${conda_dir}/envs/$CONDAENV
+  sudo chown -R 1000:1000 ${conda_dir}/pkgs/cache
   sudo chown -R 1000:1000 $USER_HOME/.cache/pip
 
   ### Install python and required packages
@@ -205,7 +206,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   PYV=`python -V`
   PYV2=${PYV#* }
   PYV=${PYV2%.*}
-  PATH_FILE=$USER_HOME/anaconda3/envs/$CONDAENV/lib/python$PYV/site-packages/$CONDAENV.pth
+  PATH_FILE=${conda_dir}/envs/$CONDAENV/lib/python$PYV/site-packages/$CONDAENV.pth
   if test -f "$PATH_FILE"; then
     echo "VirtualLab PYTHONPATH found in Conda env."
     echo
@@ -217,7 +218,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   fi
   echo "If conda was not previously installed you will need to open a new"
   echo "terminal to activate it or run the following command in this terminal:"
-  echo 'eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"'
+  echo 'eval "$(${conda_dir}/bin/conda shell.bash hook)"'
   echo
 else
   echo "Skipping python installation"

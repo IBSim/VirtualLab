@@ -23,7 +23,7 @@ sudo apt install -y build-essential
 source "$VL_DIR/VLconfig.py" # Enables this script to be run seperately
 
 ### Install salome related libs
-sudo ubuntu-drivers autoinstall
+#sudo ubuntu-drivers autoinstall
 sudo apt install -y libcanberra-gtk-module libcanberra-gtk3-module net-tools xterm libopenblas-dev tcl8.5 tk8.5 gfortran libgfortran3 python-tk
 
 OS_v=$(eval lsb_release -r -s)

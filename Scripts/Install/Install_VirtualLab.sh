@@ -271,6 +271,7 @@ else
   sudo -u ${SUDO_USER:-$USER} git clone https://gitlab.com/ibsim/virtuallab.git .
 fi
 #END
+git config --global --add safe.directory /home/ibsim/VirtualLab
 git checkout BT-Cad2vox
 ### Run initial VirtualLab setup
 echo

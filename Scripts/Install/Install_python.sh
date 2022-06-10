@@ -188,8 +188,9 @@ elif [ "$PYTHON_INST" == "c" ]; then
   sudo chown $SUDO_USER:$SUDO_USER -R ${conda_dir}/envs/$CONDAENV
   sudo chmod -R 0755 ${conda_dir}/envs/$CONDAENV
   sudo chown -R 1000:1000 ${conda_dir}/pkgs/cache
-  sudo chown -R 1000:1000 $USER_HOME/.cache/pip
-
+  if test -e $USER_HOME/.cache/pip; then
+    sudo chown -R 1000:1000 $USER_HOME/.cache/pip
+  fi
   ### Install python and required packages
   sudo apt install -y python3-pip
 

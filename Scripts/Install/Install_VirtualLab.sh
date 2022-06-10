@@ -75,7 +75,7 @@ check_for_conda() {
 	eval "$($conda_dir/bin/conda shell.bash hook)"
 	USE_CONDA=True
     elif [[ -f $mini_conda_dir/bin/conda ]]; then
-	eval "$($conda_dir/bin/conda shell.bash hook)"
+	eval "$($mini_conda_dir/bin/conda shell.bash hook)"
 	USE_CONDA=True
     else
 	USE_CONDA=False	

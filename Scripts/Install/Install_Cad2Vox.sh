@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 #########################

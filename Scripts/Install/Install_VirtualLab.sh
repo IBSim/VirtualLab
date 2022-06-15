@@ -89,8 +89,40 @@ check_for_conda() {
   fi
   
   }
-    
-
+# Create a simple pretty banner for announcing build stages
+# Usage: banner "title" "colour" "symbol"
+# Title: single line sting to print as a message.
+# Colour: can be White, red, green or blue. Anything else defaults to white.
+# Symbol: any Single character to repeat for the border.
+# eg. banner 'Hello' 'red' '*'
+function banner() {
+    case ${2} in
+    white)
+        colour=7
+        ;;
+    red)
+        colour=1
+        ;;
+    green)
+        colour=2
+        ;;
+    blue)
+        colour=4
+        ;;
+    *)
+        colour=7
+        ;;
+    esac
+    local msg="${3} ${1} ${3}"
+    local edge=$(echo "${msg}" | sed "s/./${3}/g")
+    tput setaf ${colour}
+    tput bold
+    echo "${edge}"
+    echo "${msg}"
+    echo "${edge}"
+    tput sgr 0
+    echo
+  }
 ################################################################################
 #                    Parse CMD Arguments
 ################################################################################
@@ -131,9 +163,9 @@ while getopts ":d:P:S:E:C:yh" options; do
 	IFS=' ' # split on space characters
         array=($OPTARG) # use the split+glob operator
         if [[ ! ${#array[@]} == 2 ]]; then
-          echo "The number of arguments entered for option -S is ${#array[@]}."
-          echo "The number expected is 2, i.e. [-S \"y <path>\"]"
-          echo "or [-S {y/n}] if no path is specified."
+          echo "The number of arguments entered for option -S is ${#array[@]}." >&2
+          echo "The number expected is 2, i.e. [-S \"y <path>\"]" >&2
+          echo "or [-S {y/n}] if no path is specified." >&2
           exit_abnormal
         fi
         SALOME_INST=${array[0]}

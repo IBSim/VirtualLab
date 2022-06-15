@@ -14,7 +14,7 @@ import atexit
 import VLconfig
 from . import Analytics
 from .VLFunctions import ErrorMessage, WarningMessage
-from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, Vox as VoxFn
+from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, Vox as VoxFn, GVXR as GVXRFn
 
 class VLSetup():
     def __init__(self, Simulation, Project):
@@ -159,10 +159,11 @@ class VLSetup():
         RunSim = self._ParsedArgs.get('RunSim',RunSim)
         RunDA = self._ParsedArgs.get('RunDA',RunDA)
         RunVox = self._ParsedArgs.get('RunVox',RunVox)
+        RunGVXR = self._ParsedArgs.get('RunVox',RunGVXR)
         Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh','Sim','DA','Vox']
+        VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR']
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
 
@@ -171,6 +172,7 @@ class VLSetup():
         SimFn.Setup(self,RunSim, Import)
         DAFn.Setup(self,RunDA, Import)
         VoxFn.Setup(self,RunVox)
+        GVXRFn.Setup(self,RunGVXR)
 
     def ImportParameters(self, Rel_Parameters):
         '''
@@ -319,7 +321,10 @@ class VLSetup():
     def Voxelise(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return VoxFn.Run(self,**kwargs)
-
+# Hook for GVXR
+    def CT_Scan(self,**kwargs):
+        kwargs = self._UpdateArgs(kwargs)
+        return GVXRFn.Run(self,**kwargs)
     def devDA(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return DAFn.Run(self,**kwargs)

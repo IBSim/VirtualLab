@@ -233,7 +233,7 @@ fi
 if [[ ! "$SKIP" =~ "y" ]]; then
   read -r -p "Are you sure? [y/n] " response
   if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-    echo "Make it so!"
+    banner "Make it so!" "green" '*'
   else
     echo "Exiting VirtualLab installation/configuration."
     exit
@@ -301,10 +301,11 @@ if test -d ".git"; then
   sudo -u ${SUDO_USER:-$USER} git pull https://gitlab.com/ibsim/virtuallab.git
 else
   sudo -u ${SUDO_USER:-$USER} git clone https://gitlab.com/ibsim/virtuallab.git .
+  sudo chown -R ${SUDO_USER:-$USER} $VL_DIR
 fi
 #END
-git config --global --add safe.directory /home/ibsim/VirtualLab
-git checkout BT-Cad2vox
+
+sudo -u ${SUDO_USER:-$USER} git checkout BT-Cad2vox
 ### Run initial VirtualLab setup
 echo
 
@@ -320,40 +321,40 @@ source "$VL_DIR/VLconfig.py"
 #: <<'END'
 ### Install/configure python/conda if flagged
 if [ "$PYTHON_INST" == "y" ]; then
-  echo "Installing python"
+  banner "Installing python" "green" "*"
   source $VL_DIR/Scripts/Install/Install_python.sh
 elif [ "$PYTHON_INST" == "c" ]; then
-  echo "Installing/configuring conda"
+  banner "Installing/configuring conda" "green" "*"
   source $VL_DIR/Scripts/Install/Install_python.sh
 else
-  echo "Skipping python installation"
+  banner "Skipping python installation" "blue" "*"
 fi
 
 check_for_conda
 
 ### Install salome if flagged
 if [ "$SALOME_INST" == "y" ]; then
-  echo "Installing salome"
+  banner "Installing salome" "green" "*"
   source $VL_DIR/Scripts/Install/Install_Salome.sh
 else
-  echo "Skipping salome installation"
+  banner "Skipping salome installation" "blue" "*"
 fi
 
 echo
 ### Install ERMES if flagged
 if [ "$ERMES_INST" == "y" ]; then
-  echo "Installing ERMES"
+  banner "Installing ERMES" "green" "*"
   source $VL_DIR/Scripts/Install/Install_ERMES.sh
 else
-  echo "Skipping ERMES installation"
+  banner "Skipping ERMES installation" "blue" "*"
 fi
 
 ### Install Cad2Vox if flagged
-if [ "$Cad2Vox_INST" == "y" ]; then
-  echo "Installing Cad2Vox"
+if [ "$CAD2VOX_INST" == "y" ]; then
+  banner "Installing Cad2Vox" "green" "*"
   source $VL_DIR/Scripts/Install/Install_Cad2Vox.sh
 else
-  echo "Skipping Cad2Vox installation"
+  banner "Skipping Cad2Vox installation" "blue" "*"
 fi
 
 
@@ -382,7 +383,7 @@ END
 #rm -r ~/VirtualLab/Training/
 #END
 echo
-echo "Finished installing and configutng VirtualLab."
+banner "Finished installing and configuring VirtualLab." "green" "*"
 echo
 echo "Usage:"
 echo " VirtualLab [ -f "'$FPATH'" ]"

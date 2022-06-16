@@ -150,7 +150,7 @@ class VLSetup():
 
     def Parameters(self, Parameters_Master, Parameters_Var=None,
                     RunMesh=True, RunSim=True, RunDA=True, 
-                    RunVox=True, Import=False):
+                    RunVox=True, RunGVXR=True, Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -159,7 +159,7 @@ class VLSetup():
         RunSim = self._ParsedArgs.get('RunSim',RunSim)
         RunDA = self._ParsedArgs.get('RunDA',RunDA)
         RunVox = self._ParsedArgs.get('RunVox',RunVox)
-        RunGVXR = self._ParsedArgs.get('RunVox',RunGVXR)
+        RunGVXR = self._ParsedArgs.get('RunGVXR',RunGVXR)
         Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided

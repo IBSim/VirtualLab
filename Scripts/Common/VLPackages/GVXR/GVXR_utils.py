@@ -96,12 +96,7 @@ def check_Materials(Mat_value):
         This already has error handling functions so if the name is valid it will return
         the atomic number (which we are not actually using) and if not it will 
         throw an exception and print. "ERROR: Element (name:string) not found."
-
-        Whilst this is not technally the correct way to handle such errors, and 
-        I agree this is not ideal. This was the easiest solution as there 
-        is no way I know to get a list of valid elements from GVXR and maintaining 
-        my own list of valid elements is bound to casue headaches with newer 
-        versions of GVXR. In any case this also saves re-inveniting the wheel. """
+ """
     import gvxrPython3 as gvxr
     atomic_number = gvxr.getElementAtomicNumber(Mat_value)
     return

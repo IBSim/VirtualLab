@@ -3,13 +3,12 @@ from pickletools import uint8
 import gvxrPython3 as gvxr
 import numpy as np
 import math
-#import SimpleITK as sitk
 import meshio
 import os
-from GVXR_utils import *
+from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
 import numexpr as ne
 
-def CT_scan(input_file,output_file,Beam,Detector,Materail_file=None,Headless=False,num_angles = 180,max_angles=180,im_format=None):
+def CT_scan(input_file,output_file,Beam,Detector,Material_file=None,Headless=False,num_angles = 180,max_angles=180,im_format=None):
     ''' Main run function for GVXR'''
     # Print the libraries' version
     print (gvxr.getVersionOfSimpleGVXR())
@@ -60,17 +59,17 @@ def CT_scan(input_file,output_file,Beam,Detector,Materail_file=None,Headless=Fal
         mat_tag_dict = find_the_key(all_mat_tags, np.unique(mat_ids))
             
 
-    if Materail_file is None:
-        Materail_file = 'Materials.csv'
+    if Material_file is None:
+        Material_file = 'Materials.csv'
 
-    Materail_file = os.path.abspath(Materail_file)
+    Material_file = os.path.abspath(Material_file)
             
-    if os.path.exists(Materail_file):
-        Material_list = Read_Material_File(Materail_file,mat_tag_dict)
+    if os.path.exists(Material_file):
+        Material_list = Read_Material_File(Material_file,mat_tag_dict)
         if len(tags) != len(Material_list):
-            raise ValueError( f"Error: The number of Materials read in from {Materail_file} does not match the number of materials in {inputfile}.")
+            raise ValueError( f"Error: The number of Materials read in from {Material_file} does not match the number of materials in {inputfile}.")
     else:
-        Material_list = Generate_Material_File(Materail_file,mat_tag_dict)
+        Material_list = Generate_Material_File(Material_file,mat_tag_dict)
 
     meshes=[]
     for N in tags:
@@ -187,8 +186,22 @@ def CT_scan(input_file,output_file,Beam,Detector,Materail_file=None,Headless=Fal
     # W: display the polygon meshes in solid or wireframe
     # N: display the X-ray image in negative or positive
     # H: display/hide the X-ray detector
-    gvxr.renderLoop();
-
+    if (not Headless):
+        controls_msg = ('### GVXR Window Controls ###\n'
+        'You are Running an interactive loop \n'
+        'You can rotate the 3D scene and zoom-in with the mouse\n'
+        'buttons and scroll wheel.\n'
+        ' \n'
+        'To continue either close the window or press Q/Esc \n'
+        ' \n'
+        'Useful Keys are:\n'
+        'Q/Escape: to quit the event loop\n'
+        'B: display/hide the X-ray beam\n'
+        'W: display the polygon meshes in solid or wireframe\n'
+        'N: display the X-ray image in negative or positive\n'
+        'H: display/hide the X-ray detector\n')
+        print(controls_msg)
+        gvxr.renderLoop();
     return 
 
 def minus_log(arr):
@@ -207,7 +220,7 @@ def minus_log(arr):
         Minus-log of the input data.
     """
 
-    out = ne.evaluate('-log(arr)', out=out)
+    out = ne.evaluate('-log(arr)')
 
     return out
 
@@ -242,10 +255,10 @@ def flat_field_normalize(arr, flat, dark, cutoff=None):
     denom = ne.evaluate('flat-dark')
     #remove values less than threshold l to avoid divide by zero
     ne.evaluate('where(denom<l,l,denom)', out=denom)
-    out = ne.evaluate('arr-dark', out=out)
-    ne.evaluate('out/denom', out=out, truediv=True)
+    out = ne.evaluate('arr-dark')
+    out = ne.evaluate('out/denom', truediv=True)
 
     if cutoff is not None:
         cutoff = np.float32(cutoff)
-        ne.evaluate('where(out>cutoff,cutoff,out)', out=out)
+        out = ne.evaluate('where(out>cutoff,cutoff,out)')
     return out

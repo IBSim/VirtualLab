@@ -8,7 +8,7 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 ### For VirtualLab, the default config values are as below.
 ### These can be changed in $VL_DIR/VLconfig_DEFAULT.sh if needed.
 ###  - Installation location
-### CAD2VOX_DIR='$HOME/VirtualLab/Cad2Vox'
+### CAD2VOX_DIR='$HOME/VirtualLab/third_party/Cad2Vox'
 ###  - Git tag, used to identify where to pull from within
 ###    the Cad2Vox git Repo. 
 ### CAD2VOX_TAG='VirtualLab_V1.55'
@@ -28,7 +28,7 @@ sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential cmake python3-pybind11
 
-source ../../VLconfig.py
+source ${VL_DIR}/VLconfig.py
 
 ### Check if Conda is installed
 search_var=anaconda*
@@ -69,7 +69,7 @@ if ${CAD2VOX_WITH_CUDA}; then
     sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
     sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
     sudo apt-get update
-    sudo apt-get -y install cuda=11.4.0-1
+    sudo apt-get -y --allow-downgrades install cuda=11.4.0-1
 
 else
     echo "Skiping CUDA install"
@@ -78,10 +78,17 @@ fi
 sudo apt install -y libglm-dev libgomp1 git mesa-common-dev libglu1-mesa-dev libxi-dev
 
 cd ${VL_DIR}
-
-git clone https://github.com/bjthorpe/Cad2vox.git
-sudo chown ${USER}:${USER} Cad2vox/*
-cd Cad2vox
+if [ -d "${CAD2VOX_DIR}" ]; then
+	cd ${CAD2VOX_DIR}
+	git pull
+else 
+	mkdir -p ${VL_DIR}/third_party
+        sudo chown ${USER}:${USER} ${VL_DIR}/third_party
+	cd ${VL_DIR}/third_party
+        git clone https://github.com/bjthorpe/Cad2vox.git
+	sudo chown ${USER}:${USER} Cad2vox/*
+	cd ${CAD2VOX_DIR}
+fi
 
 
 git checkout ${CAD2VOX_TAG} 

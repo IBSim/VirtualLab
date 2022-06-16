@@ -24,7 +24,7 @@ SALOME_VER_DEFAULT="salome_meca-2019.0.3-1-universal"
 SALOME_BIN_DEFAULT="V2019.0.3_universal"
 ERMES_DIR_DEFAULT="/opt/ERMES"
 ERMES_VER_DEFAULT="ERMES-CPlas-v12.5"
-CAD2VOX_DIR_DEFAULT="$VL_DIR_DEFAULT/Cad2vox"
+CAD2VOX_DIR_DEFAULT="$VL_DIR_DEFAULT/third_party/Cad2vox"
 #########################
 
 ### Config values for VirtualLab operation.

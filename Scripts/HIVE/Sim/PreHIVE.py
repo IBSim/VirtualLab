@@ -599,34 +599,20 @@ def EMI(VL, SimDict):
     ERMESdir = "{}/ERMES".format(SimDict['TMP_CALC_DIR'])
     os.makedirs(ERMESdir)
     RunERMES = getattr(Parameters,'RunERMES',True)
-<<<<<<< HEAD
-    JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,SimDict['MeshFile'],
-                                        ERMESresfile,Parameters,
-                                        ERMESdir,RunERMES, GUI=0)
-=======
     EM_GUI = getattr(Parameters,'EM_GUI',False)
     JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,SimDict['MeshFile'],
                                         ERMESresfile,Parameters,
                                         ERMESdir,RunERMES, GUI=EM_GUI)
->>>>>>> master
+
     shutil.rmtree(ERMESdir) #rm ERMES dir here as this can be quite large
 
     Watts = JH_Vol*Volumes
 
     CoilPower = Watts.sum()
     print("Power delivered by coil: {:.4f}W".format(CoilPower))
-<<<<<<< HEAD
-    SimDict['CoilPower'] = CoilPower
-
-    Uniformity = UniformityScore(JH_Node,ERMESresfile)
-    SimDict['Uniformity'] = Uniformity
-=======
-
-
     GroupCreate = getattr(Parameters,'GroupCreate',True)
     if not GroupCreate: return
 
->>>>>>> master
 
     Threshold = getattr(Parameters,'Threshold', 0)
     if not Threshold:
@@ -682,18 +668,12 @@ def EMI(VL, SimDict):
         The Goodness of Fit Value (GFV) describes how well the clustering
         represents the data, ranging from 0 (worst) to 1 (best).
         '''
-<<<<<<< HEAD
-        from sklearn.cluster import KMeans
-        X = JH_Vol.reshape(-1,1)
-        X_sc = (X - X.min())/(X.max()-X.min())
-        kmeans = KMeans(n_clusters=NbClusters).fit(X_sc)
-=======
         np.random.seed(123)
         from sklearn.cluster import KMeans
         X = JH_Vol.reshape(-1,1)
         X_sc = (X - X.min())/(X.max()-X.min())
         kmeans = KMeans(n_clusters=NbClusters,n_init=3,n_jobs=1).fit(X_sc)
->>>>>>> master
+
 
         # Goodness of Fit Value is a metric of how good the clustering is
         SDAM = ((X_sc - X_sc.mean())**2).sum() # Squared deviation for mean array
@@ -784,14 +764,7 @@ def EMI(VL, SimDict):
 
 def Single(VL, SimDict):
     HTC(VL, SimDict)
-<<<<<<< HEAD
-
-    if SimDict['Parameters'].EMLoad == 'ERMES':
-        EMI(VL, SimDict)
-=======
-
     EMLoad = getattr(SimDict['Parameters'],'EMLoad', True)
     if EMLoad=='Uniform' or EMLoad==False: return
 
     EMI(VL, SimDict)
->>>>>>> master

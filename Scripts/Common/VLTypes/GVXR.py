@@ -5,7 +5,6 @@ from types import SimpleNamespace as Namespace
 from importlib import import_module
 import copy
 import Scripts.Common.VLFunctions as VLF
-from Scripts.Common.VLPackages.GVXR.CT_Scan import CT_scan
 from dataclasses import dataclass, field
 
 # A class for holding x-ray beam data
@@ -41,7 +40,6 @@ def Setup(VL, RunGVXR=True):
 
     if not os.path.exists(VL.OUT_DIR):
         os.makedirs(VL.OUT_DIR)
-    print(VL.Mode)
     VL.GVXRData = {}
     GVXRDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
     # if RunGVXR is False or GVXRDicts is empty dont perform Simulation and return instead.
@@ -88,7 +86,7 @@ def Setup(VL, RunGVXR=True):
         GVXRDict['Beam'] = Beam
 ################################
 ######### create a Xray_Detector object to pass in
-        Detector = Xray_Detector(Posx=Parameters.Detect_PosX,
+        Detector = Xray_Detector(PosX=Parameters.Detect_PosX,
             PosY=Parameters.Detect_PosY,PosZ=Parameters.Detect_PosZ,
             Pix_X=Parameters.Pix_X,Pix_Y=Parameters.Pix_Y)
 
@@ -107,13 +105,15 @@ def Setup(VL, RunGVXR=True):
 
         if hasattr(Parameters,'image_format'): 
             GVXRDict['im_format'] = Parameters.image_format
-            
+        if (VL.mode=='Headless'):
+            GVXRDict['Headless'] = True
         VL.GVXRData[GVXRName] = GVXRDict.copy()
 
 def Run(VL):
+    from Scripts.Common.VLPackages.GVXR.CT_Scan import CT_scan
     if not VL.GVXRData: return
     VL.Logger('\n### Starting GVXR ###\n', Print=True)
-
+    
     for key in VL.GVXRData.keys():
         Errorfnc = CT_scan(**VL.GVXRData[key])
         if Errorfnc:

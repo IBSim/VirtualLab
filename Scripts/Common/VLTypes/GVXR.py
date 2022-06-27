@@ -15,6 +15,7 @@ class Xray_Beam:
     PosZ: float
     beam_type: str
     energy: float
+    Pos_units: str = field(default='mm')
     energy_units: str = field(default='MeV')
     Intensity: int = field(default=1000)
         
@@ -29,8 +30,10 @@ class Xray_Detector:
     Pix_X: int
     Pix_Y: int
 #pixel spacing
-    Spacing_in_mm: float =field(default=0.5)
-
+    Spacing: float =field(default=0.5)
+#units
+    Pos_units: str = field(default='mm')
+    Spacing_units: : str = field(default='mm')
 def Setup(VL, RunGVXR=True):
     '''
     GVXR - Simulation of X-ray CT scans 
@@ -59,10 +62,10 @@ def Setup(VL, RunGVXR=True):
             IN_FILE="{}/{}".format(VL.MESH_DIR, mesh)
 
 
-        GVXRDict = { 'input_file':IN_FILE,
+        GVXRDict = { 'mesh_file':IN_FILE,
                     'output_file':"{}/{}".format(VL.OUT_DIR,GVXRName)
                 }
-# Logic to handle placing greyscale file in the correct place. i.e. in the output dir not the run directory.
+# Logic to handle placing Materail file in the correct place. i.e. in the output dir not the run directory.
         if hasattr(Parameters,'Material_file') and os.path.isabs(Parameters.Material_file):
         # Abs. paths go where they say
             GVXRDict['Material_file'] = Parameters.Material_file
@@ -72,6 +75,10 @@ def Setup(VL, RunGVXR=True):
         else:
         # greyscale not given so generate a file in the output directory 
             GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.OUT_DIR,GVXRName) 
+
+# create dummy beams and detector to get filled in with values if using nikon file.
+    dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,beam_type='parallel',energy=0)
+    dummy_Detector = Xray_Detector(PosX=0,PosY=0,PosZ=0,Pix_X=0,Pix_Y=0)
 ##########
 ######### create a Xray_Beam object to pass in
         Beam = Xray_Beam(PosX=Parameters.Beam_PosX,PosY=Parameters.Beam_PosY,
@@ -91,8 +98,8 @@ def Setup(VL, RunGVXR=True):
             Pix_X=Parameters.Pix_X,Pix_Y=Parameters.Pix_Y)
 
         #if hasattr(Parameters,'Headless'):
-        if hasattr(Parameters,'Spacing_in_mm'): 
-            Detector.Spacing_in_mm = Parameters.Spacing_in_mm
+        if hasattr(Parameters,'Spacing'): 
+            Detector.Spacing = Parameters.Spacing
   
         GVXRDict['Detector'] = Detector
 ################################

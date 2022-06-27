@@ -8,7 +8,7 @@ import os
 from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
 import numexpr as ne
 
-def CT_scan(input_file,output_file,Beam,Detector,Material_file=None,Headless=False,num_angles = 180,max_angles=180,im_format=None):
+def CT_scan(mesh_file,output_file,Beam,Detector,Material_file=None,Headless=False,num_angles = 180,max_angles=180,im_format=None):
     ''' Main run function for GVXR'''
     # Print the libraries' version
     print (gvxr.getVersionOfSimpleGVXR())
@@ -28,7 +28,7 @@ def CT_scan(input_file,output_file,Beam,Detector,Material_file=None,Headless=Fal
     # Load the data
     print("Load the data");
     
-    mesh = meshio.read(input_file)
+    mesh = meshio.read(mesh_file)
 
     #extract np arrays of mesh data from meshio
     points = mesh.points
@@ -113,7 +113,7 @@ def CT_scan(input_file,output_file,Beam,Detector,Material_file=None,Headless=Fal
     gvxr.setDetectorPosition(Detector.PosX,Detector.PosY, Detector.PosZ,"mm");
     gvxr.setDetectorUpVector(-1, 0, 0);
     gvxr.setDetectorNumberOfPixels(Detector.Pix_X, Detector.Pix_Y);
-    gvxr.setDetectorPixelSize(Detector.Spacing_in_mm, Detector.Spacing_in_mm, "mm");
+    gvxr.setDetectorPixelSize(Detector.spacing, Detector.spacing, "mm");
 
     for i,mesh in enumerate(meshes):
         mesh = tets2tri(mesh,points)

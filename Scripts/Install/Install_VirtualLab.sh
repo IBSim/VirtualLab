@@ -357,6 +357,7 @@ else
   banner "Skipping Cad2Vox installation" "blue" "*"
 fi
 
+sudo chown -R ${SUDO_USER:-$USER} $VL_DIR
 
 : <<'END'
 #commented out script

@@ -1,7 +1,15 @@
 #!/bin/bash
-USER_HOME=$(eval echo ~${SUDO_USER})
+set -e
+################################################################################
+##########    Main /install Script for VirtualLab ##############################
+################################################################################
+
+################################################################################
+#                        Define Default Variables     
+################################################################################
+USER_HOME=$(eval echo ~"${SUDO_USER}")
 #sudo -s eval 'echo ${SUDO_USER}'
-if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
+if [ -f "$USER_HOME"/.VLprofile ]; then source "$USER_HOME"/.VLprofile; fi
 
 echo
 echo "Starting installation of VirtualLab."
@@ -15,8 +23,11 @@ PYTHON_INST="n"
 SALOME_INST="n"
 ERMES_INST="n"
 CAD2VOX_INST="n"
-
 ASTER_SUBDIR="/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
+
+################################################################################
+#                    Useful Functions
+################################################################################
 
 usage() {
   echo
@@ -44,10 +55,75 @@ usage() {
   echo "salome in '/opt/SalomeMeca', ERMES in '/opt/ERMES', python/conda in the"
   echo "recommended locations."
 }
+
 exit_abnormal() {
   usage
   exit 1
 }
+
+check_for_conda() {
+    # Check if Conda is installed and if so define a flag to use use conda and
+    # activate the vitrual env. If conda is not found, prerequisites are
+    # assumed installed in local python
+    search_var="anaconda*"
+    search_var2="miniconda*"
+    conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+    mini_conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var2")
+    if [[ -f $conda_dir/bin/conda ]]; then
+	eval "$($conda_dir/bin/conda shell.bash hook)"
+	USE_CONDA=True
+    elif [[ -f $mini_conda_dir/bin/conda ]]; then
+	eval "$($mini_conda_dir/bin/conda shell.bash hook)"
+	USE_CONDA=True
+    else
+	USE_CONDA=False	
+    fi
+
+  # If conda found activate environment
+  
+  if hash conda 2>/dev/null; then
+    CONDAENV="$(basename -- $VL_DIR)"
+    conda activate $CONDAENV
+  fi
+  
+  }
+# Create a simple pretty banner for announcing build stages
+# Usage: banner "title" "colour" "symbol"
+# Title: single line sting to print as a message.
+# Colour: can be White, red, green or blue. Anything else defaults to white.
+# Symbol: any Single character to repeat for the border.
+# eg. banner 'Hello' 'red' '*'
+function banner() {
+    case ${2} in
+    white)
+        colour=7
+        ;;
+    red)
+        colour=1
+        ;;
+    green)
+        colour=2
+        ;;
+    blue)
+        colour=4
+        ;;
+    *)
+        colour=7
+        ;;
+    esac
+    local msg="${3} ${1} ${3}"
+    local edge=$(echo "${msg}" | sed "s/./${3}/g")
+    tput setaf ${colour}
+    tput bold
+    echo "${edge}"
+    echo "${msg}"
+    echo "${edge}"
+    tput sgr 0
+    echo
+  }
+################################################################################
+#                    Parse CMD Arguments
+################################################################################
 if [[ $EUID -ne 0 ]]; then
    echo "This installation script must be run as root"
    echo 'Re-run with "sudo ./Install_VirtualLab.sh {options}".'
@@ -85,9 +161,9 @@ while getopts ":d:P:S:E:C:yh" options; do
 	IFS=' ' # split on space characters
         array=($OPTARG) # use the split+glob operator
         if [[ ! ${#array[@]} == 2 ]]; then
-          echo "The number of arguments entered for option -S is ${#array[@]}."
-          echo "The number expected is 2, i.e. [-S \"y <path>\"]"
-          echo "or [-S {y/n}] if no path is specified."
+          echo "The number of arguments entered for option -S is ${#array[@]}." >&2
+          echo "The number expected is 2, i.e. [-S \"y <path>\"]" >&2
+          echo "or [-S {y/n}] if no path is specified." >&2
           exit_abnormal
         fi
         SALOME_INST=${array[0]}
@@ -113,14 +189,14 @@ while getopts ":d:P:S:E:C:yh" options; do
       fi
       ;;
     C)
-	Cad2Vox_INST=${OPTARG}
-      if [ "$Cad2Vox_INST" == "y" ]; then
+	CAD2VOX_INST=${OPTARG}
+      if [ "$CAD2VOX_INST" == "y" ]; then
         echo " - Cad2Vox will be installed in the default directory and configured as part of VirtualLab install."
-      elif [ "$Cad2Vox_INST" == "n" ]; then
+      elif [ "$CAD2VOX_INST" == "n" ]; then
         echo " - Cad2Vox will not be installed or configured during setup,"
         echo "   please do this manually or by sourcing Install_Cad2Vox.sh."
       else
-        echo "Error: Invalid option argument $Cad2Vox_INST" >&2
+        echo "Error: Invalid option argument $CAD2VOX_INST" >&2
         exit_abnormal
       fi
       ;;	
@@ -141,7 +217,6 @@ while getopts ":d:P:S:E:C:yh" options; do
   esac
 done
 
-echo
 ### Check that no additional args were given that weren't caught.
 shift $(($OPTIND - 1))
 if [[ $@ ]]; then
@@ -156,14 +231,17 @@ fi
 if [[ ! "$SKIP" =~ "y" ]]; then
   read -r -p "Are you sure? [y/n] " response
   if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-    echo "Make it so!"
+    banner "Make it so!" "green" '*'
   else
     echo "Exiting VirtualLab installation/configuration."
     exit
   fi
 fi
 
-#: <<'END'
+################################################################################
+#                   Actual Install
+################################################################################
+
 ### Standard update
 sudo apt update -y
 sudo apt upgrade -y
@@ -171,17 +249,9 @@ sudo apt upgrade -y
 ### Install requirements
 sudo apt install -y git
 
-### Temp solution to avoid prompt while sourcecode is closed-source during alpha phase
-#sudo cp -r /media/Shared/ssh/.ssh .
-#sudo chown -R $USER ~/.ssh
-#chmod -R 0700 ~/.ssh
-#echo 'Host gitlab.com' >> ~/.ssh/config
-#echo '    StrictHostKeyChecking no' >> ~/.ssh/config
-#git config --global user.email "you@example.com"
-#git config --global user.name "Your Name"
-
 ### Check if VirtualLab directory exists in $HOME
 cd $USER_HOME
+
 if [ -d "$VL_DIR" ]; then
   #### If $VL_DIR exists don't do anything.
   echo
@@ -225,21 +295,15 @@ fi
 
 ### Download latest VirtualLab code
 cd $VL_DIR
-### Only download src with no history
-#sudo -u ${SUDO_USER:-$USER} git pull --depth 1 git@gitlab.com:ibsim/virtuallab.git
-### Must use git clone if planning to commit changes.
-#if test -d ".git"; then
-#  sudo -u ${SUDO_USER:-$USER} git pull git@gitlab.com:ibsim/virtuallab.git
-#else
-#  sudo -u ${SUDO_USER:-$USER} git clone git@gitlab.com:ibsim/virtuallab.git .
-#fi
 if test -d ".git"; then
   sudo -u ${SUDO_USER:-$USER} git pull https://gitlab.com/ibsim/virtuallab.git
 else
   sudo -u ${SUDO_USER:-$USER} git clone https://gitlab.com/ibsim/virtuallab.git .
+  sudo chown -R ${SUDO_USER:-$USER} $VL_DIR
 fi
 #END
 
+sudo -u ${SUDO_USER:-$USER} git checkout BT-Cad2vox
 ### Run initial VirtualLab setup
 echo
 
@@ -255,61 +319,43 @@ source "$VL_DIR/VLconfig.py"
 #: <<'END'
 ### Install/configure python/conda if flagged
 if [ "$PYTHON_INST" == "y" ]; then
-  echo "Installing python"
+  banner "Installing python" "green" "*"
   source $VL_DIR/Scripts/Install/Install_python.sh
 elif [ "$PYTHON_INST" == "c" ]; then
-  echo "Installing/configuring conda"
+  banner "Installing/configuring conda" "green" "*"
   source $VL_DIR/Scripts/Install/Install_python.sh
-
-  ### Check if Conda is installed
-  search_var=anaconda*
-  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
-  if [[ -f $conda_dir/bin/conda ]]; then
-    eval "$($conda_dir/bin/conda shell.bash hook)"
-  else
-    search_var=miniconda*
-    conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
-    if [[ -f $conda_dir/bin/conda ]]; then
-      eval "$($conda_dir/bin/conda shell.bash hook)"
-    fi
-  fi
-
-  ### If conda found activate environment
-  ### If no conda, prerequisites are assumed installed in local python
-  if hash conda 2>/dev/null; then
-    CONDAENV="$(basename -- $VL_DIR)"
-    conda activate $CONDAENV
-  fi
 else
-  echo "Skipping python installation"
+  banner "Skipping python installation" "blue" "*"
 fi
 
-echo
+check_for_conda
+
 ### Install salome if flagged
 if [ "$SALOME_INST" == "y" ]; then
-  echo "Installing salome"
+  banner "Installing salome" "green" "*"
   source $VL_DIR/Scripts/Install/Install_Salome.sh
 else
-  echo "Skipping salome installation"
+  banner "Skipping salome installation" "blue" "*"
 fi
 
 echo
 ### Install ERMES if flagged
 if [ "$ERMES_INST" == "y" ]; then
-  echo "Installing ERMES"
+  banner "Installing ERMES" "green" "*"
   source $VL_DIR/Scripts/Install/Install_ERMES.sh
 else
-  echo "Skipping ERMES installation"
+  banner "Skipping ERMES installation" "blue" "*"
 fi
 
 ### Install Cad2Vox if flagged
-if [ "$Cad2Vox_INST" == "y" ]; then
-  echo "Installing Cad2Vox"
+if [ "$CAD2VOX_INST" == "y" ]; then
+  banner "Installing Cad2Vox" "green" "*"
   source $VL_DIR/Scripts/Install/Install_Cad2Vox.sh
 else
-  echo "Skipping Cad2Vox installation"
+  banner "Skipping Cad2Vox installation" "blue" "*"
 fi
 
+sudo chown -R ${SUDO_USER:-$USER} $VL_DIR
 
 : <<'END'
 #commented out script
@@ -336,7 +382,7 @@ END
 #rm -r ~/VirtualLab/Training/
 #END
 echo
-echo "Finished installing and configutng VirtualLab."
+banner "Finished installing and configuring VirtualLab." "green" "*"
 echo
 echo "Usage:"
 echo " VirtualLab [ -f "'$FPATH'" ]"
@@ -347,4 +393,5 @@ echo "   '-h Display this help menu."
 echo
 echo "Default behaviour is to exit if no "'$FPATH'" is given"
 echo
+set +e
 #END

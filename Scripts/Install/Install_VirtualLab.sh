@@ -303,7 +303,6 @@ else
 fi
 #END
 
-sudo -u ${SUDO_USER:-$USER} git checkout BT-Cad2vox
 ### Run initial VirtualLab setup
 echo
 

@@ -75,23 +75,23 @@ if [ "$PYTHON_INST" == "y" ]; then
   sudo apt install -y python3.8
   sudo apt install -y python3-pip
   #sudo apt install -y python3-sphinx
-  sudo pip3 install -U sphinx
-  sudo -u ${SUDO_USER:-$USER} pip3 install furo sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
-  sudo -u ${SUDO_USER:-$USER} pip3 install -r $VL_DIR/requirements.txt
-  sudo -u ${SUDO_USER:-$USER} pip3 install scikit-learn==0.24.1
-  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps iapws==1.4
+  sudo pip3 install --user -U sphinx
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user furo sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user -r $VL_DIR/requirements.txt
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user scikit-learn==0.24.1
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user -U --no-deps iapws==1.4
 
   # install pyina (uses MPI)
   sudo apt install -y mpich
-  sudo -u ${SUDO_USER:-$USER} pip3 install mpi4py==3.0.3 dill==0.3.3 pox==0.2.9
-  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina==0.2.4
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user mpi4py==3.0.3 dill==0.3.3 pox==0.2.9
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user -U --no-deps pyina==0.2.4
   # sourcing profile adds $HOME/.local/bin to $PATH for this terminal.
   # TODO: This is a temporary solution for this terminal, it is only permanent by
   # logging out and back in. Or could add this in to VLprofile?
   source ~/.profile
 
-#  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib h5py sphinx-rtd-theme sphinxcontrib-bibtex
-#  sudo -u ${SUDO_USER:-$USER} pip3 install iapws pathos==0.2.7
+#  sudo -u ${SUDO_USER:-$USER} pip3 install --user numpy scipy matplotlib h5py sphinx-rtd-theme sphinxcontrib-bibtex
+#  sudo -u ${SUDO_USER:-$USER} pip3 install --user iapws pathos==0.2.7
 
   ### Add $VL_DIR to $PYTHONPATH in python env and current shell
   if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR $USER_HOME/.VLprofile; then

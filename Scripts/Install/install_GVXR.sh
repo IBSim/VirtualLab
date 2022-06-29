@@ -57,7 +57,7 @@ cd ${GVXR_DIR}
 #conda activate VirtualLab
 # install python packages
 #conda install matplotlib
-pip install numexpr
+#pip install numexpr
 #conda install scikit-image
 #grab the GVXR Source
 svn checkout svn://zedbluffer@svn.code.sf.net/p/gvirtualxray/code/branches/use-xraylib gvirtualxray-code -r 2182
@@ -84,3 +84,6 @@ ${GVXR_DIR}/cmake-3.23.1/bin/cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 # now one final make build GVXR.
 make -j6
 make install
+echo "Adding GVXR to PYTHONPATH"
+sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}:${PYTHONPATH}" >> $USER_HOME/.VLprofile
+source $USER_HOME/.VLprofile

@@ -27,7 +27,7 @@ sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential cmake python3-pybind11
 
-source ../../VLconfig.py
+source ${VL_DIR}/VLconfig.py
 
 ### Check if Conda is installed
 search_var=anaconda*
@@ -62,12 +62,9 @@ fi
 
 if ${CAD2VOX_WITH_CUDA}; then
     echo "Installing CUDA"
-    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
-    sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
-    sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
-    sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
-    sudo apt-get update
-    sudo apt-get -y install cuda=11.4.0-1
+wget https://developer.download.nvidia.com/compute/cuda/11.4.4/local_installers/cuda_11.4.4_470.82.01_linux.run
+sudo sh cuda_11.4.4_470.82.01_linux.run --silent
+sudo rm cuda_11.4.4_470.82.01_linux.run
 else
     echo "Skiping CUDA install"
 fi

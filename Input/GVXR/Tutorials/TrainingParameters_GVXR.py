@@ -20,17 +20,34 @@ GVXR = Namespace()
 GVXR.Name = 'AMAZE'
 # name of the mesh(es) you wish to vitually CT scan
 GVXR.mesh = 'AMAZE_Sample'
-# Name of materail file
-#GVXR.Material_file
+# Flag to use specpy to gentrate a beam spectrum
+GVXR.use_specpy = False
+# Beam energy (default units are MeV)
+GVXR.energy = 0.08
+# xray beam intensity (no. of x-ray photons) default = 1000
+GVXR.Intensity = 1000
+############################################
+# Nikon parameter input file
+# Use paramters read from .xtekct file
+#GVXR.Nikon_file = ''
+############################################
+############################################
+# Optional parmeters when using Nikon file #
+############################################
+# Anything you define from this block will 
+# override the values read in if using a 
+# .xtekct file. 
+# Note: thease are required prameters when 
+# NOT USING a .xtekct file.
+############################################
 # Position of x-ray beam
 GVXR.Beam_PosX = 0
 GVXR.Beam_PosY = -100
 GVXR.Beam_PosZ = 0
 GVXR.Beam_Pos_units = 'mm'
-# Bean type must be one of point or parallel
+# Beam type must be one of point or parallel
 GVXR.beam_type = 'point'
-# Beam energy (default units are MeV)
-GVXR.energy = 0.08
+
 # postion of the bottom right had corner of the detector in x,y and z
 GVXR.Detect_PosX = 0
 GVXR.Detect_PosY = 80
@@ -40,10 +57,16 @@ GVXR.Detect_Pos_units = 'mm'
 # final images and physical size of te detector plane when combined with spacing_in_mm.
 GVXR.Pix_X = 200
 GVXR.Pix_Y = 250
-
-#######################
-# Optional Parameters #
-#######################
+# Postion of center of cad model in x,y and z
+GVXR.Model_PosX = 0
+GVXR.Model_PosY = 80
+GVXR.Model_PosZ = 0
+##############################################
+#############################
+# Fully Optional Parameters #
+#############################
+# Name of materail file
+#GVXR.Material_file = 'materials.csv'
 # spacing between detector pixels, determines the physical size of the detector.
 # default = 0.5 
 GVXR.SpacingX = 0.5
@@ -51,13 +74,13 @@ GVXR.SpacingY = 0.5
 GVXR.Spacing_units='mm'
 # Units for beam energy default is 'MeV' can be any of 'eV' 'KeV', 'MeV'
 GVXR.energy_units = 'MeV'
-# xray beam intensity (no. of x-ray photons) default = 1000
-GVXR.Intensity = 1000
-# The number if angles you want images from
+
+# The number of angles you want projections
 # (i.e the number of output images) default=180
-#GVXR.num_angles = 180
-# Determines the rotation agle between each image default=180
-# rotation_angle = max_angle / num_angles;
-#GVXR.max_angle=180
+#GVXR.num_projections = 180
+# The rotation angle between each image in degrees default=1
+#GVXR.angular_step = 1 
 # String for output image format defualt of None leads to tiff stack
-GVXR.image_format='png'
+#GVXR.image_format = 'png'
+# Inital rotation of cad model about the x,y and z axis
+#GVXR.model_rotation = [0,0,0]

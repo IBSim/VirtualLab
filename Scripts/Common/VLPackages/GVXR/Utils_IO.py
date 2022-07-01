@@ -1,4 +1,4 @@
-def ReadNikonData(GVXRDict,Beam,Det):
+def ReadNikonData(GVXRDict,Beam,Det,Model):
     '''
     Function to read in Nikon xtekct files and update the parameter dict accordingly.
 
@@ -20,10 +20,24 @@ def ReadNikonData(GVXRDict,Beam,Det):
     detector_offset_h = 0
     detector_offset_v = 0
     object_offset_x = 0
+    object_offset_y = 0
+    pixel_size_h_0
+    pixel_size_v_0
+    pixel_num_h_0
+    pixel_num_h_0
+    # cad model initial rotation angles
     object_roll_deg = 0
-    Det_pos_units = 'mm'
-    Beam_pos_units = 'mm'
-    Pix_spacing_units = 'mm'
+    object_tilt_deg = 0
+    inital_angle = 0
+    angular_step = 1
+    Obj_Rot = [0,0,0]
+    # Positions in [x,y,z]
+    SRC_POS = [0,0,0]
+    Det_Pos = [0,0,0]
+    Obj_Pos = [0,0,0]
+    source_to_det = 0
+    source_to_origin = 0
+    units = 'mm'
     num_projections = 180
     white_level = 1
 
@@ -32,32 +46,39 @@ def ReadNikonData(GVXRDict,Beam,Det):
             # filename of TIFF files
             case line.startswith("Name"):
                 experiment_name = line.split('=')[1]
+        #units
             case line.startswith("Units"):
-                Det_pos_units = line.split('=')[1]
-                Beam_pos_units = line.split('=')[1]
-                Pix_spacing_units= line.split('=')[1]
+                units = line.split('=')[1]
+                Beam.Pos_units = units
+                Det.Pos_units = units
+                Det.Spacing_units = units
         # number of projections
             case line.startswith("Projections"):
                 num_projections = int(line.split('=')[1])
+                GVXRDict['num_projections'] = num_projections
         # white level - used for normalization
             case line.startswith("WhiteLevel"):
                 white_level = float(line.split('=')[1])
             # number of pixels along X axis
             case line.startswith("DetectorPixelsX"):
                 pixel_num_v_0 = int(line.split('=')[1])
+                Det.Pix_X = pixel_num_v_0
             # number of pixels along Y axis
             case line.startswith("DetectorPixelsY"):
                     pixel_num_h_0 = int(line.split('=')[1])
+                    Det.Pix_Y = pixel_num_v_0
                 # pixel size along X axis
             case line.startswith("DetectorPixelSizeX"):
                     pixel_size_h_0 = float(line.split('=')[1])
+                    Det.Spacing_X = pixel_size_h_0
                 # pixel size along Y axis
             case line.startswith("DetectorPixelSizeY"):
                     pixel_size_v_0 = float(line.split('=')[1])
-                # source to center of rotation distance
+                    Det.Spacing_Y = pixel_size_v_0
+                # distance in z from source to center of rotation (origin)
             case line.startswith("SrcToObject"):
                     source_to_origin = float(line.split('=')[1])
-                # source to detector distance
+                # distance in z from source to center of detector 
             case line.startswith("SrcToDetector"):
                     source_to_det = float(line.split('=')[1])
                 # initial angular position of a rotation stage
@@ -66,6 +87,7 @@ def ReadNikonData(GVXRDict,Beam,Det):
                 # angular increment (in degrees)
             case line.startswith("AngularStep"):
                     angular_step = float(line.split('=')[1])
+                    GVXRDict['angular_step'] = angular_step
                 # detector offset x in units                
             case line.startswith("DetectorOffsetX"):
                     detector_offset_h = float(line.split('=')[1])
@@ -75,13 +97,45 @@ def ReadNikonData(GVXRDict,Beam,Det):
                 # object offset x in units  
             case line.startswith("ObjectOffsetX"):
                     object_offset_x = float(line.split('=')[1])
-                # object roll in degrees  
-            #case line.startswith("ObjectRoll"):
-            #        object_roll_deg = float(line.split('=')[1])
-                # directory where data is stored
-            #case line.startswith("InputFolderName"):
-            #        input_folder_name = line.split('=')[1]
-            #        if input_folder_name == '':
-            #            self.tiff_directory_path = os.path.dirname(self.file_name)
-            #        else:
-            #            self.tiff_directory_path = os.path.join(os.path.dirname(self.file_name), input_folder_name)
+            case line.startswith("ObjectOffsetY"):
+                    object_offset_y = float(line.split('=')[1])
+                # object roll in degrees
+                # Roll is rotation about the z-axis.  
+            case line.startswith("ObjectRoll"):
+                    object_roll_deg = float(line.split('=')[1])
+             # object tilt in degrees in our co-ordinates
+            # Tilt is rotation about the x-axis 
+            case line.startswith("ObjectTilt"):
+                    object_tilt_deg = float(line.split('=')[1])
+                    
+    #caculate the position of center of the detector
+    det_center_h = (0.5 * pixel_num_h_0 * pixel_size_h_0) + detector_offset_h
+    det_center_v = (0.5 * pixel_num_v_0 * pixel_size_v_0) + detector_offset_v
+            
+    SRC_POS = [0,0,-source_to_origin]
+    Det_Pos = [detector_center_h,detector_center_v,source_to_det-source_to_origin]
+    Obj_Pos = [object_offset_x,object_offset_y,0]
+    # for Nikon files in our co-ordinates:
+    # Tilt is rotation about the x-axis
+    # Projetions are rotated around the y axis (hence intal_angle is y rotration)
+    # Roll is rotation around the z axis
+    Obj_Rot[0] = object_tilt_deg
+    Obj_Rot[1] = inital_angle
+    Obj_Rot[2] = object_roll_deg
+
+    Beam.PosX = SRC_POS[0]
+    Beam.PosY = SRC_POS[1]
+    Beam.PosY = SRC_POS[2]
+
+    Det.PosX = Det_Pos[0]
+    Det.PosY = Det_Pos[1]
+    Det.PosY = Det_Pos[2]
+
+    Model.PosX = Obj_Pos[0]
+    Model.PosY = Obj_Pos[1]
+    Model.PosZ = Obj_Pos[2]
+    Model.rotation = Obj_Rot
+    GVXRDict['Beam'] = Beam
+    GVXRDict['Model'] = Model
+    GVXRDict['Detector'] = Det
+return GVXRDict

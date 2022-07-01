@@ -18,7 +18,16 @@ class Xray_Beam:
     Pos_units: str = field(default='mm')
     energy_units: str = field(default='MeV')
     Intensity: int = field(default=1000)
-        
+#########################################
+# For reference in all cases or co-ordiantes 
+# are defined as:
+#
+# x -> horizontal on the detector/output image
+# y -> Vertical on the detector/output image
+# z -> axis between the src. and the detector.
+# Also projections are rotations counter 
+# clockwise around the y axis.
+##############################################        
 # A class for holding x-ray detector data
 @dataclass
 class Xray_Detector:
@@ -30,10 +39,22 @@ class Xray_Detector:
     Pix_X: int
     Pix_Y: int
 #pixel spacing
-    Spacing: float =field(default=0.5)
+    Spacing_X: float =field(default=0.5)
+    Spacing_Y: float =field(default=0.5)
 #units
     Pos_units: str = field(default='mm')
-    Spacing_units: : str = field(default='mm')
+    Spacing_units: str = field(default='mm')
+
+@dataclass
+class Cad_Model:
+    # position of cad model in space 
+    PosX: float
+    PosY: float
+    PosZ: float
+    # inital rotation of model around each axis [x,y,z]
+    # To keep things simple this defaults to [0,0,0]
+    # Nikon files define these as Tilt, InitalAngle, and Roll repectivley. 
+    rotation: float  = field(default_factory=lambda:[0,0,0])
 def Setup(VL, RunGVXR=True):
     '''
     GVXR - Simulation of X-ray CT scans 
@@ -76,9 +97,14 @@ def Setup(VL, RunGVXR=True):
         # greyscale not given so generate a file in the output directory 
             GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.OUT_DIR,GVXRName) 
 
+        if hasattr(Parameters,'Nikon_file')
 # create dummy beams and detector to get filled in with values if using nikon file.
-    dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,beam_type='parallel',energy=0)
-    dummy_Detector = Xray_Detector(PosX=0,PosY=0,PosZ=0,Pix_X=0,Pix_Y=0)
+            dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,beam_type='point',energy=0)
+            dummy_Det = Xray_Detector(PosX=0,PosY=0,PosZ=0,Pix_X=0,Pix_Y=0)
+            dummy_Model = Cad_Model(PosX=0,PosY=0,PosZ=0)
+            GVXRDict = ReadNikonData(GVXRDict,dummy_Beam,dummy_Det,dummy_Model)
+        
+        
 ##########
 ######### create a Xray_Beam object to pass in
         Beam = Xray_Beam(PosX=Parameters.Beam_PosX,PosY=Parameters.Beam_PosY,
@@ -98,16 +124,28 @@ def Setup(VL, RunGVXR=True):
             Pix_X=Parameters.Pix_X,Pix_Y=Parameters.Pix_Y)
 
         #if hasattr(Parameters,'Headless'):
-        if hasattr(Parameters,'Spacing'): 
-            Detector.Spacing = Parameters.Spacing
+        if hasattr(Parameters,'Spacing_X'): 
+            Detector.Spacing_X = Parameters.Spacing_X
+
+        if hasattr(Parameters,'Spacing_Y'): 
+            Detector.Spacing_Y = Parameters.Spacing_Y   
   
         GVXRDict['Detector'] = Detector
 ################################
-        if hasattr(Parameters,'num_angles'): 
-            GVXRDict['num_angles'] = Parameters.num_angles
+################################
+########### Create Cad model to pass in
+        Model = Cad_Model(PosX=Parameters.Model_PosX,
+            PosY=Parameters.Model_PosY,PosZ=Parameters.Model_PosZ)
+        if hasattr(Parameters,'model_rotation'):
+            Model.rotation = Parameters.model_rotation
+        GVXRDict['Model'] = Model
+#############################################
 
-        if hasattr(Parameters,'max_angles'): 
-            GVXRDict['max_angles'] = Parameters.max_angles
+        if hasattr(Parameters,'num_projections'): 
+            GVXRDict['num_projections'] = Parameters.num_projections
+
+        if hasattr(Parameters,'angular_step'): 
+            GVXRDict['angular_step'] = Parameters.angular_step
         
 
         if hasattr(Parameters,'image_format'): 

@@ -8,7 +8,7 @@ import os
 from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
 import numexpr as ne
 
-def CT_scan(mesh_file,output_file,Beam,Detector,Material_file=None,Headless=False,num_angles = 180,max_angles=180,im_format=None):
+def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headless=False,num_projections = 180,angular_step=1,im_format=None):
     ''' Main run function for GVXR'''
     # Print the libraries' version
     print (gvxr.getVersionOfSimpleGVXR())
@@ -97,7 +97,7 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Material_file=None,Headless=Fals
     # Set up the beam
     print("Set up the beam")
     #gvxr.setSourcePosition(15,-40.0, 12.5, "mm");
-    gvxr.setSourcePosition(Beam.PosX,Beam.PosY, Beam.PosZ, "mm");
+    gvxr.setSourcePosition(Beam.PosX,Beam.PosY, Beam.PosZ, Beam.Pos_units);
     if (Beam.beam_type == 'point'):
         gvxr.usePointSource();
     elif (Beam.beam_type == 'parallel'):
@@ -110,37 +110,43 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Material_file=None,Headless=Fals
     # Set up the detector
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
-    gvxr.setDetectorPosition(Detector.PosX,Detector.PosY, Detector.PosZ,"mm");
+    gvxr.setDetectorPosition(Detector.PosX,Detector.PosY, Detector.PosZ, Detector.Pos_units);
     gvxr.setDetectorUpVector(-1, 0, 0);
     gvxr.setDetectorNumberOfPixels(Detector.Pix_X, Detector.Pix_Y);
-    gvxr.setDetectorPixelSize(Detector.spacing, Detector.spacing, "mm");
+    gvxr.setDetectorPixelSize(Detector.Spacing_X, Detector.Spacing_Y, Detector.Spacing_units);
 
     for i,mesh in enumerate(meshes):
         mesh = tets2tri(mesh,points)
         label = str(tags[i]);
+        Mesh_Name = Material_list[i][0]
     ### BLOCK #####
-        gvxr.makeTriangularMesh(Material_list[i][0],
+        gvxr.makeTriangularMesh(Mesh_Name,
         points.flatten(),
         mesh.flatten(),
         "m");
-        gvxr.moveToCentre(Material_list[i][0]);
-        gvxr.setElement(Material_list[i][0], Material_list[i][1]);
+        gvxr.moveToCentre(Mesh_Name);
+        gvxr.setElement(Mesh_Name, Material_list[i][1]);
         if i==0:
-            gvxr.addPolygonMeshAsOuterSurface(Material_list[i][0])
-            print(Material_list[i][0])
+            gvxr.addPolygonMeshAsOuterSurface(Mesh_Name)
         else:
-            gvxr.addPolygonMeshAsInnerSurface(Material_list[i][0])
-
+            gvxr.addPolygonMeshAsInnerSurface(Mesh_Name)
+    # set initial rotation
+    # note GVXR for whatever reason has wierd rotation axes'
+    # I have checked these and they are correct for us.
+    for N in Material_list:
+            gvxr.rotateNode(N[0], Model.rotation[0], 0, 0, 1); # x rotation axis
+            gvxr.rotateNode(N[0], Model.rotation[1], 1, 0, 0); # y rotation axis
+            gvxr.rotateNode(N[0], Model.rotation[2], 0, 1, 0); # z rotation axis
+    
+    # Update the 3D visualisation
+    gvxr.displayScene();       
     # Compute an X-ray image
     print("Compute CT aquisition");
 
     projections = [];
     theta = [];
 
-    
-    rotation_angle = max_angles / num_angles;
-
-    for i in range(num_angles):
+    for i in range(num_projections):
         # Compute an X-ray image and add it to the list of projections
         projections.append(gvxr.computeXRayImage());
 
@@ -149,9 +155,9 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Material_file=None,Headless=Fals
 
         # Rotate the model by 1 degree
         for N in Material_list:
-            gvxr.rotateNode(N[0], rotation_angle, -1, 0, 0);
+            gvxr.rotateNode(N[0], angular_step, 1, 0, 0);
 
-        theta.append(i * rotation_angle * math.pi / 180);
+        theta.append(i * angular_step * math.pi / 180);
 
     # Convert the projections as a Numpy array
     projections = np.array(projections);
@@ -173,7 +179,7 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Material_file=None,Headless=Fals
     projections = flat_field_normalize(projections,flat,dark)
     
     # Calculate  -log(projections)  to linearize transmission tomography data
-    projections = minus_log(projections)
+    projections = minus_log(projections).astype('uint8')
     
     write_image(output_file,projections,im_format=im_format);
 

@@ -1,4 +1,4 @@
-def ReadNikonData(Nikon_file,GVXRDict,Beam,Det,Model):
+def ReadNikonData(GVXRDict:dict,Beam:Xray_Beam,Det:Xray_Detector,Model:Cad_Model):
     '''
     Function to read in Nikon xtekct files and update the parameter dict accordingly.
 

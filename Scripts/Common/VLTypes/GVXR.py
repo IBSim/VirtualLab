@@ -7,17 +7,20 @@ import copy
 import Scripts.Common.VLFunctions as VLF
 from dataclasses import dataclass, field
 from Scripts.Common.VLPackages.GVXR.Utils_IO import ReadNikonData
-
+from Scripts.Common.VLPackages.GVXR.GVXR_utils import InitSpectrum
 # A class for holding x-ray beam data
 @dataclass
 class Xray_Beam:
     PosX: float
     PosY: float
     PosZ: float
-    beam_type: str
-    energy: float
+    Beam_Type: str
+    Energy: float = field(default=None)
+    Tube_Voltage: float = field(default=None)
+    Tube_Angle: float = field(default=None)
+    Filters: str = field(default=None)
     Pos_units: str = field(default='mm')
-    energy_units: str = field(default='MeV')
+    Energy_units: str = field(default='MeV')
     Intensity: int = field(default=1000)
 #########################################
 # For reference in all cases or co-ordiantes 
@@ -72,7 +75,8 @@ def Setup(VL, RunGVXR=True):
     if not (RunGVXR and GVXRDicts): return
     for GVXRName, GVXRParams in GVXRDicts.items():
         Parameters = Namespace(**GVXRParams)
-        #check mesh for file extension and if not present assume salome med
+        #check mesh for file extension and if not present assume 
+        # salome med
         root, ext = os.path.splitext(Parameters.mesh)
         if not ext:
             ext = '.med'
@@ -88,6 +92,11 @@ def Setup(VL, RunGVXR=True):
         GVXRDict = { 'mesh_file':IN_FILE,
                     'output_file':"{}/{}".format(VL.OUT_DIR,GVXRName)
                 }
+# Define flag to display visualisations
+        if (VL.mode=='Headless'):
+            GVXRDict['Headless'] = True
+        else:
+            GVXRDict['Headless'] = False
 # Logic to handle placing Materail file in the correct place. i.e. in the output dir not the run directory.
         if hasattr(Parameters,'Material_file') and os.path.isabs(Parameters.Material_file):
         # Abs. paths go where they say
@@ -98,65 +107,68 @@ def Setup(VL, RunGVXR=True):
         else:
         # greyscale not given so generate a file in the output directory 
             GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.OUT_DIR,GVXRName) 
+########### Setup x-ray beam ##########
+# create dummy beam and to get filled in with values either from Parameters OR Nikon file.
+        dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,beam_type='point')
+        
+        if hasattr(Parameters,'Energy_units'): 
+            dummy_Beam.Energy_units = Parameters.Energy_units
 
+        if hasattr(Parameters,'Intensity'): 
+            dummy_Beam.Intensity = Parameters.Intensity
+
+        if hasattr(Parameters,'Tube_Angle'): 
+            dummy_Beam.Tube_Angle = Parameters.Tube_Angle
+        if hasattr(Parameters,'Tube_Voltage'): 
+            dummy_Beam.Tube_Voltage = Parameters.Tube_Voltage 
+        if Parameters.use_spekpy:
+            dummy_Beam = InitSpectrum(Beam=dummy_Beam,Show_plot=GVXRDict['Headless'])
+#################################################
         if hasattr(Parameters,'Nikon_file'):
-# create dummy beams and detector to get filled in with values if using nikon file.
-            dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,beam_type='point',energy=0.08)
+# create dummy detector and cad model to get filled in with values 
+# from nikon file.
+# Note: the function adds the 3 data classes to the GVXRdict itself.
             dummy_Det = Xray_Detector(PosX=0,PosY=0,PosZ=0,Pix_X=0,Pix_Y=0)
             dummy_Model = Cad_Model(PosX=0,PosY=0,PosZ=0)
-            GVXRDict = ReadNikonData(Parameters.Nikon_file,GVXRDict,dummy_Beam,dummy_Det,dummy_Model)
+            GVXRDict = ReadNikonData(GVXRDict,dummy_Beam,dummy_Det,dummy_Model)
         else:
-        
-    ##########
-    ######### create a Xray_Beam object to pass in
-            Beam = Xray_Beam(PosX=Parameters.Beam_PosX,PosY=Parameters.Beam_PosY,
-                PosZ=Parameters.Beam_PosZ,beam_type=Parameters.beam_type,
-                energy=Parameters.energy)
+#############################################################
+# fill in values for x-ray detector, beam and cad model 
+# from Parameters.
+            dummy_Beam.PosX=Parameters.Beam_PosX
+            dummy_Beam.PosY=Parameters.Beam_PosY
+            dummy_Beam.PosZ=Parameters.Beam_PosZ
+            dummy_Beam.beam_type=Parameters.beam_type
+            GVXRDict['Beam'] = dummy_Beam
 
-            if hasattr(Parameters,'energy_units'): 
-                Beam.energy_units = Parameters.energy_units
-
-            if hasattr(Parameters,'Intensity'): 
-                Beam.Intensity = Parameters.Intensity   
-            GVXRDict['Beam'] = Beam
-    ################################
-    ######### create a Xray_Detector object to pass in
             Detector = Xray_Detector(PosX=Parameters.Detect_PosX,
                 PosY=Parameters.Detect_PosY,PosZ=Parameters.Detect_PosZ,
                 Pix_X=Parameters.Pix_X,Pix_Y=Parameters.Pix_Y)
 
-            #if hasattr(Parameters,'Headless'):
             if hasattr(Parameters,'Spacing_X'): 
                 Detector.Spacing_X = Parameters.Spacing_X
 
             if hasattr(Parameters,'Spacing_Y'): 
                 Detector.Spacing_Y = Parameters.Spacing_Y   
-    
+  
             GVXRDict['Detector'] = Detector
-    ################################
-    ################################
-    ########### Create Cad model to pass in
+
             Model = Cad_Model(PosX=Parameters.Model_PosX,
                 PosY=Parameters.Model_PosY,PosZ=Parameters.Model_PosZ)
             if hasattr(Parameters,'model_rotation'):
                 Model.rotation = Parameters.model_rotation
-            
-            if hasattr(Parameters,'Model_Pos_units'):
-                Model.Model_Pos_units = Parameters.Model_Pos_units 
             GVXRDict['Model'] = Model
-    #############################################
 
-        if hasattr(Parameters,'num_projections'): 
-            GVXRDict['num_projections'] = Parameters.num_projections
+            if hasattr(Parameters,'num_projections'): 
+                GVXRDict['num_projections'] = Parameters.num_projections
 
-        if hasattr(Parameters,'angular_step'): 
-            GVXRDict['angular_step'] = Parameters.angular_step
+            if hasattr(Parameters,'angular_step'): 
+                GVXRDict['angular_step'] = Parameters.angular_step
         
-
+################################################################
         if hasattr(Parameters,'image_format'): 
             GVXRDict['im_format'] = Parameters.image_format
-        if (VL.mode=='Headless'):
-            GVXRDict['Headless'] = True
+
         VL.GVXRData[GVXRName] = GVXRDict.copy()
 
 def Run(VL):

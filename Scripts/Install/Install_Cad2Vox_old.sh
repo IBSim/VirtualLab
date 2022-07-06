@@ -61,8 +61,21 @@ else
     USE_CONDA=false
 fi
 
+if ${CAD2VOX_WITH_CUDA}; then
+    echo "Installing CUDA"
+
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+    sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+    sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
+    sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
+    sudo apt-get update
+    sudo apt-get -y --allow-downgrades install cuda=11.4.0-1
+
+else
+    echo "Skiping CUDA install"
+fi
 # Install GLM, OpenMP and other libraries
-#sudo apt install -y libglm-dev libgomp1 git mesa-common-dev libglu1-mesa-dev libxi-dev
+sudo apt install -y libglm-dev libgomp1 git mesa-common-dev libglu1-mesa-dev libxi-dev
 
 cd ${VL_DIR}
 if [ -d "${CAD2VOX_DIR}" ]; then
@@ -85,9 +98,27 @@ if ${USE_CONDA}; then
     conda install -y -c conda-forge xtensor xtl meshio xtensor-python
 else
     pip3 install --user -r requirements.txt
+    # Build xtl, xtensor and xtensor-python
+    mkdir -p libs && cd libs
+    #xtl
+    git clone https://github.com/xtensor-stack/xtl.git
+    sudo chown ${SUDO_USER:-$USER} xtl/*
+    cd xtl && cmake . && sudo make install && cd ${CAD2VOX_DIR}/libs
+    #xtensor
+    git clone https://github.com/xtensor-stack/xtensor.git
+     sudo chown ${SUDO_USER:-$USER} xtensor/*
+    cd xtensor && cmake . && sudo make install && cd ${CAD2VOX_DIR}/libs
+    #xtensor-python
+    git clone https://github.com/xtensor-stack/xtensor-python.git
+    sudo chown ${SUDO_USER:-$USER} xtensor-python/*
+    cd xtensor-python && cmake . && sudo make install && cd ${CAD2VOX_DIR}
 fi
 
-pip install cad2vox
+cd ${CAD2VOX_DIR}/CudaVox
+
+python3 -m pip install --user .
+cd ${CAD2VOX_DIR}
+python3 -m pip install --user .
 
 # Run Test Suite
 if ${CAD2VOX_WITH_CUDA}; then

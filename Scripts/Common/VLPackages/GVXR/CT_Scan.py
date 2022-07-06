@@ -124,7 +124,9 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
         points.flatten(),
         mesh.flatten(),
         "m");
-        gvxr.moveToCentre(Mesh_Name);
+        # place mesh at the orgin then traslate it according to the defined ofset
+        #gvxr.moveToCentre(Mesh_Name);
+        gvxr.translateNode(Mesh_Name,Model.PosX,Model.PosY,Model.PosZ,Model.Pos_units)
         gvxr.setElement(Mesh_Name, Material_list[i][1]);
         if i==0:
             gvxr.addPolygonMeshAsOuterSurface(Mesh_Name)

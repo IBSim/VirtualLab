@@ -19,7 +19,7 @@ echo
 ### Default location to install VirtualLab if no flag.
 VL_DIR="$USER_HOME/VirtualLab"
 SKIP=n
-PYTHON_INST="n"
+PYTHON_INST="n
 SALOME_INST="n"
 ERMES_INST="n"
 CAD2VOX_INST="n"

@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-set -u
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 #########################
@@ -11,6 +10,15 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 ###  - Installation location
 ### GVXR_DIR='$VL_DIR/third_party/GVXR'
 #########################
+# function to fix ownership issues caused by running everything with Sudo
+cleanup() {
+# Vlprofile should be owned by the user not root
+sudo chown ${SUDO_USER} $USER_HOME/.VLprofile
+# everything in VirtualLab directory should be owned by the user not root
+sudo chown ${SUDO_USER} -R ${VL_DIR}
+# to add: make sure pip and conda ownership issues are fixed if needed.
+}
+########################
 export CC=/usr/bin/gcc
 export CXX=/usr/bin/g++
 source ${VL_DIR}/VLconfig.py 
@@ -85,5 +93,6 @@ ${GVXR_DIR}/cmake-3.23.1/bin/cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 make -j6
 make install
 echo "Adding GVXR to PYTHONPATH"
-sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}:${PYTHONPATH}" >> $USER_HOME/.VLprofile
+sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}/gvxrWrapper-1.0.6/python3:\${PYTHONPATH}" >> $USER_HOME/.VLprofile
 source $USER_HOME/.VLprofile
+cleanup()

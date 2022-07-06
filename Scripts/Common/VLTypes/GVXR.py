@@ -6,6 +6,7 @@ from importlib import import_module
 import copy
 import Scripts.Common.VLFunctions as VLF
 from dataclasses import dataclass, field
+from Scripts.Common.VLPackages.GVXR.Utils_IO import ReadNikonData
 
 # A class for holding x-ray beam data
 @dataclass
@@ -55,6 +56,7 @@ class Cad_Model:
     # To keep things simple this defaults to [0,0,0]
     # Nikon files define these as Tilt, InitalAngle, and Roll repectivley. 
     rotation: float  = field(default_factory=lambda:[0,0,0])
+    Pos_units: str = field(default='mm')
 def Setup(VL, RunGVXR=True):
     '''
     GVXR - Simulation of X-ray CT scans 
@@ -97,49 +99,52 @@ def Setup(VL, RunGVXR=True):
         # greyscale not given so generate a file in the output directory 
             GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.OUT_DIR,GVXRName) 
 
-        if hasattr(Parameters,'Nikon_file')
+        if hasattr(Parameters,'Nikon_file'):
 # create dummy beams and detector to get filled in with values if using nikon file.
-            dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,beam_type='point',energy=0)
+            dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,beam_type='point',energy=0.08)
             dummy_Det = Xray_Detector(PosX=0,PosY=0,PosZ=0,Pix_X=0,Pix_Y=0)
             dummy_Model = Cad_Model(PosX=0,PosY=0,PosZ=0)
-            GVXRDict = ReadNikonData(GVXRDict,dummy_Beam,dummy_Det,dummy_Model)
+            GVXRDict = ReadNikonData(Parameters.Nikon_file,GVXRDict,dummy_Beam,dummy_Det,dummy_Model)
+        else:
         
-        
-##########
-######### create a Xray_Beam object to pass in
-        Beam = Xray_Beam(PosX=Parameters.Beam_PosX,PosY=Parameters.Beam_PosY,
-            PosZ=Parameters.Beam_PosZ,beam_type=Parameters.beam_type,
-            energy=Parameters.energy)
+    ##########
+    ######### create a Xray_Beam object to pass in
+            Beam = Xray_Beam(PosX=Parameters.Beam_PosX,PosY=Parameters.Beam_PosY,
+                PosZ=Parameters.Beam_PosZ,beam_type=Parameters.beam_type,
+                energy=Parameters.energy)
 
-        if hasattr(Parameters,'energy_units'): 
-            Beam.energy_units = Parameters.energy_units
+            if hasattr(Parameters,'energy_units'): 
+                Beam.energy_units = Parameters.energy_units
 
-        if hasattr(Parameters,'Intensity'): 
-            Beam.Intensity = Parameters.Intensity   
-        GVXRDict['Beam'] = Beam
-################################
-######### create a Xray_Detector object to pass in
-        Detector = Xray_Detector(PosX=Parameters.Detect_PosX,
-            PosY=Parameters.Detect_PosY,PosZ=Parameters.Detect_PosZ,
-            Pix_X=Parameters.Pix_X,Pix_Y=Parameters.Pix_Y)
+            if hasattr(Parameters,'Intensity'): 
+                Beam.Intensity = Parameters.Intensity   
+            GVXRDict['Beam'] = Beam
+    ################################
+    ######### create a Xray_Detector object to pass in
+            Detector = Xray_Detector(PosX=Parameters.Detect_PosX,
+                PosY=Parameters.Detect_PosY,PosZ=Parameters.Detect_PosZ,
+                Pix_X=Parameters.Pix_X,Pix_Y=Parameters.Pix_Y)
 
-        #if hasattr(Parameters,'Headless'):
-        if hasattr(Parameters,'Spacing_X'): 
-            Detector.Spacing_X = Parameters.Spacing_X
+            #if hasattr(Parameters,'Headless'):
+            if hasattr(Parameters,'Spacing_X'): 
+                Detector.Spacing_X = Parameters.Spacing_X
 
-        if hasattr(Parameters,'Spacing_Y'): 
-            Detector.Spacing_Y = Parameters.Spacing_Y   
-  
-        GVXRDict['Detector'] = Detector
-################################
-################################
-########### Create Cad model to pass in
-        Model = Cad_Model(PosX=Parameters.Model_PosX,
-            PosY=Parameters.Model_PosY,PosZ=Parameters.Model_PosZ)
-        if hasattr(Parameters,'model_rotation'):
-            Model.rotation = Parameters.model_rotation
-        GVXRDict['Model'] = Model
-#############################################
+            if hasattr(Parameters,'Spacing_Y'): 
+                Detector.Spacing_Y = Parameters.Spacing_Y   
+    
+            GVXRDict['Detector'] = Detector
+    ################################
+    ################################
+    ########### Create Cad model to pass in
+            Model = Cad_Model(PosX=Parameters.Model_PosX,
+                PosY=Parameters.Model_PosY,PosZ=Parameters.Model_PosZ)
+            if hasattr(Parameters,'model_rotation'):
+                Model.rotation = Parameters.model_rotation
+            
+            if hasattr(Parameters,'Model_Pos_units'):
+                Model.Model_Pos_units = Parameters.Model_Pos_units 
+            GVXRDict['Model'] = Model
+    #############################################
 
         if hasattr(Parameters,'num_projections'): 
             GVXRDict['num_projections'] = Parameters.num_projections

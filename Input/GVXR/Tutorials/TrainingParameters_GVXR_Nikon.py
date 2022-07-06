@@ -29,7 +29,7 @@ GVXR.Intensity = 1000
 ############################################
 # Nikon parameter input file
 # Use paramters read from .xtekct file
-#GVXR.Nikon_file = ''
+GVXR.Nikon_file = '/home/ben/test.xtek'
 ############################################
 ############################################
 # Optional parmeters when using Nikon file #
@@ -41,27 +41,27 @@ GVXR.Intensity = 1000
 # NOT USING a .xtekct file.
 ############################################
 # Position of x-ray beam
-GVXR.Beam_PosX = 0
-GVXR.Beam_PosY = -100
-GVXR.Beam_PosZ = 0
-GVXR.Beam_Pos_units = 'mm'
+#GVXR.Beam_PosX = 0
+#GVXR.Beam_PosY = -100
+#GVXR.Beam_PosZ = 0
+#GVXR.Beam_Pos_units = 'mm'
 # Beam type must be one of point or parallel
-GVXR.beam_type = 'point'
+#GVXR.beam_type = 'point'
 
 # postion of the bottom right had corner of the detector in x,y and z
-GVXR.Detect_PosX = 0
-GVXR.Detect_PosY = 80
-GVXR.Detect_PosZ = 0
-GVXR.Detect_Pos_units = 'mm'
+#GVXR.Detect_PosX = 0
+#GVXR.Detect_PosY = 80
+#GVXR.Detect_PosZ = 0
+#GVXR.Detect_Pos_units = 'mm'
 # number of pixels in x and y, this defines both the resolution of the 
 # final images and physical size of te detector plane when combined with spacing_in_mm.
-GVXR.Pix_X = 200
-GVXR.Pix_Y = 250
+#GVXR.Pix_X = 200
+#GVXR.Pix_Y = 250
 # Postion of center of cad model in x,y and z
-GVXR.Model_PosX = 0
-GVXR.Model_PosY = 0
-GVXR.Model_PosZ = 0
-GVXR.Model_Pos_units = 'mm'
+#GVXR.Model_PosX = 0
+#GVXR.Model_PosY = 0
+#GVXR.Model_PosZ = 0
+#GVXR.Model_Pos_units = 'mm'
 ##############################################
 #############################
 # Fully Optional Parameters #
@@ -70,11 +70,11 @@ GVXR.Model_Pos_units = 'mm'
 #GVXR.Material_file = 'materials.csv'
 # spacing between detector pixels, determines the physical size of the detector.
 # default = 0.5 
-GVXR.SpacingX = 0.5
-GVXR.SpacingY = 0.5
-GVXR.Spacing_units='mm'
+#VXR.SpacingX = 0.5
+#GVXR.SpacingY = 0.5
+#GVXR.Spacing_units='mm'
 # Units for beam energy default is 'MeV' can be any of 'eV' 'KeV', 'MeV'
-GVXR.energy_units = 'MeV'
+#GVXR.energy_units = 'MeV'
 
 # The number of angles you want projections
 # (i.e the number of output images) default=180

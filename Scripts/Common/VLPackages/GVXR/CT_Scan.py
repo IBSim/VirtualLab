@@ -105,8 +105,10 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     else:
         raise ValueError(f"Invalid beam type {Beam.beam_type}, must be either point or parallel")
 
-    gvxr.setMonoChromatic(Beam.energy, Beam.energy_units, Beam.Intensity);
-
+    gvxr.resetBeamSpectrum()
+    for energy, count in zip(Beam.energy,Beam.Intesity):
+        gvxr.addEnergyBinToSpectrum(energy, Beam.Energy_units, count);
+    
     # Set up the detector
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
@@ -168,7 +170,7 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     dark = np.zeros(projections.shape);
 
     # Retrieve the total energy
-    energy_bins = gvxr.getEnergyBins(Beam.energy_units);
+    energy_bins = gvxr.getEnergyBins(Beam.Energy_units);
     photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
 
     total_energy = 0.0;

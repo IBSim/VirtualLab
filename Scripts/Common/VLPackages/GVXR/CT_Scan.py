@@ -98,15 +98,16 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     print("Set up the beam")
     #gvxr.setSourcePosition(15,-40.0, 12.5, "mm");
     gvxr.setSourcePosition(Beam.PosX,Beam.PosY, Beam.PosZ, Beam.Pos_units);
-    if (Beam.beam_type == 'point'):
+    if (Beam.Beam_Type == 'point'):
         gvxr.usePointSource();
-    elif (Beam.beam_type == 'parallel'):
+    elif (Beam.Beam_Type == 'parallel'):
         gvxr.useParallelBeam();
     else:
-        raise ValueError(f"Invalid beam type {Beam.beam_type}, must be either point or parallel")
+        raise ValueError(f"Invalid beam type {Beam.Beam_Type}, must be either point or parallel")
 
     gvxr.resetBeamSpectrum()
-    for energy, count in zip(Beam.energy,Beam.Intesity):
+    for energy, count in zip(Beam.Energy,Beam.Intensity):
+        print(energy)
         gvxr.addEnergyBinToSpectrum(energy, Beam.Energy_units, count);
     
     # Set up the detector

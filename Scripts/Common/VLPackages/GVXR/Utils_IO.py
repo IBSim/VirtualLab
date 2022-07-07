@@ -1,16 +1,17 @@
-def ReadNikonData(GVXRDict:dict,Beam:Xray_Beam,Det:Xray_Detector,Model:Cad_Model):
+def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     '''
     Function to read in Nikon xtekct files and update the parameter dict accordingly.
 
     Paramters
     ---------------
     GVXRDict: Dictionary to hold parmeters that are read in from file.
-    Beam: Beam object to hold data related to xray beam
-    Det: Detector object to hold data reltated to the X-ray Detector.
+    Nikon_file: str - path to .xect input file.
+    Beam: Xray_Beam dataclass to hold data related to xray beam.
+    Det: Xray_Detector dataclass to hold data reltated to the X-ray Detector.
+    Model: Detector dataclass to hold data reltated to the cad model.
 
     '''
 # parse xtek file
-    file_name = Nikon_file
     with open(file_name, 'r') as f:
         content = f.readlines()    
                 

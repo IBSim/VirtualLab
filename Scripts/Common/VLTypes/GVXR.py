@@ -21,7 +21,7 @@ class Xray_Beam:
     Filters: str = field(default=None)
     Pos_units: str = field(default='mm')
     Energy_units: str = field(default='MeV')
-    Intensity: int = field(default=1000)
+    Intensity: int = field(default=None)
 #########################################
 # For reference in all cases or co-ordiantes 
 # are defined as:
@@ -109,28 +109,33 @@ def Setup(VL, RunGVXR=True):
             GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.OUT_DIR,GVXRName) 
 ########### Setup x-ray beam ##########
 # create dummy beam and to get filled in with values either from Parameters OR Nikon file.
-        dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,beam_type='point')
+        dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,Beam_Type='point')
         
         if hasattr(Parameters,'Energy_units'): 
             dummy_Beam.Energy_units = Parameters.Energy_units
-
-        if hasattr(Parameters,'Intensity'): 
-            dummy_Beam.Intensity = Parameters.Intensity
 
         if hasattr(Parameters,'Tube_Angle'): 
             dummy_Beam.Tube_Angle = Parameters.Tube_Angle
         if hasattr(Parameters,'Tube_Voltage'): 
             dummy_Beam.Tube_Voltage = Parameters.Tube_Voltage 
+
         if Parameters.use_spekpy:
-            dummy_Beam = InitSpectrum(Beam=dummy_Beam,Show_plot=GVXRDict['Headless'])
+            dummy_Beam = InitSpectrum(Beam=dummy_Beam,Headless=GVXRDict['Headless'])
+        else:
+            if (Parameters.Energy is None) or (Parameters.Intensity is None):
+                raise ValueError('you must Specify a beam Energy and Beam Intensity when not using Spekpy.')
+            else:
+                dummy_Beam.Energy = Parameters.Energy
+                dummy_Beam.Intensity = Parameters.Intensity
 #################################################
         if hasattr(Parameters,'Nikon_file'):
+            Nikon_file = Parameters.Nikon_file
 # create dummy detector and cad model to get filled in with values 
 # from nikon file.
 # Note: the function adds the 3 data classes to the GVXRdict itself.
             dummy_Det = Xray_Detector(PosX=0,PosY=0,PosZ=0,Pix_X=0,Pix_Y=0)
             dummy_Model = Cad_Model(PosX=0,PosY=0,PosZ=0)
-            GVXRDict = ReadNikonData(GVXRDict,dummy_Beam,dummy_Det,dummy_Model)
+            GVXRDict = ReadNikonData(GVXRDict,Nikon_file,dummy_Beam,dummy_Det,dummy_Model)
         else:
 #############################################################
 # fill in values for x-ray detector, beam and cad model 
@@ -138,7 +143,7 @@ def Setup(VL, RunGVXR=True):
             dummy_Beam.PosX=Parameters.Beam_PosX
             dummy_Beam.PosY=Parameters.Beam_PosY
             dummy_Beam.PosZ=Parameters.Beam_PosZ
-            dummy_Beam.beam_type=Parameters.beam_type
+            dummy_Beam.Beam_Type=Parameters.Beam_Type
             GVXRDict['Beam'] = dummy_Beam
 
             Detector = Xray_Detector(PosX=Parameters.Detect_PosX,

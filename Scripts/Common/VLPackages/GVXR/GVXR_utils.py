@@ -3,6 +3,7 @@ import csv
 import errno
 import pandas as pd
 import numpy as np
+from Scripts.Common.VLTypes.GVXR import Xray_Beam
 
 def FlipNormal(triangle_index_set):
     ''' Function to swap index order of triangles to flip the surface normal.'''

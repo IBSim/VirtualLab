@@ -166,7 +166,7 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
 
     #return projections
 
-    # Perform the flat-field correction of raw data
+    # Perform the flat-Field correction of raw data
     dark = np.zeros(projections.shape);
 
     # Retrieve the total energy

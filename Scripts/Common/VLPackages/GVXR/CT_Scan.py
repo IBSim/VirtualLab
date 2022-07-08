@@ -98,15 +98,16 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     print("Set up the beam")
     #gvxr.setSourcePosition(15,-40.0, 12.5, "mm");
     gvxr.setSourcePosition(Beam.PosX,Beam.PosY, Beam.PosZ, Beam.Pos_units);
-    if (Beam.beam_type == 'point'):
+    if (Beam.Beam_Type == 'point'):
         gvxr.usePointSource();
-    elif (Beam.beam_type == 'parallel'):
+    elif (Beam.Beam_Type == 'parallel'):
         gvxr.useParallelBeam();
     else:
-        raise ValueError(f"Invalid beam type {Beam.beam_type}, must be either point or parallel")
+        raise ValueError(f"Invalid beam type {Beam.Beam_Type}, must be either point or parallel")
 
     gvxr.resetBeamSpectrum()
-    for energy, count in zip(Beam.energy,Beam.Intesity):
+    for energy, count in zip(Beam.Energy,Beam.Intensity):
+        print(energy)
         gvxr.addEnergyBinToSpectrum(energy, Beam.Energy_units, count);
     
     # Set up the detector
@@ -126,7 +127,9 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
         points.flatten(),
         mesh.flatten(),
         "m");
-        gvxr.moveToCentre(Mesh_Name);
+        # place mesh at the orgin then traslate it according to the defined ofset
+        #gvxr.moveToCentre(Mesh_Name);
+        gvxr.translateNode(Mesh_Name,Model.PosX,Model.PosY,Model.PosZ,Model.Pos_units)
         gvxr.setElement(Mesh_Name, Material_list[i][1]);
         if i==0:
             gvxr.addPolygonMeshAsOuterSurface(Mesh_Name)

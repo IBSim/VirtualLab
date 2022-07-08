@@ -1,16 +1,17 @@
-def ReadNikonData(GVXRDict:dict,Beam:Xray_Beam,Det:Xray_Detector,Model:Cad_Model):
+def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     '''
     Function to read in Nikon xtekct files and update the parameter dict accordingly.
 
     Paramters
     ---------------
     GVXRDict: Dictionary to hold parmeters that are read in from file.
-    Beam: Beam object to hold data related to xray beam
-    Det: Detector object to hold data reltated to the X-ray Detector.
+    Nikon_file: str - path to .xect input file.
+    Beam: Xray_Beam dataclass to hold data related to xray beam.
+    Det: Xray_Detector dataclass to hold data reltated to the X-ray Detector.
+    Model: Detector dataclass to hold data reltated to the cad model.
 
     '''
 # parse xtek file
-    file_name = GVXRDict['Nikon_file']
     with open(file_name, 'r') as f:
         content = f.readlines()    
                 
@@ -21,10 +22,10 @@ def ReadNikonData(GVXRDict:dict,Beam:Xray_Beam,Det:Xray_Detector,Model:Cad_Model
     detector_offset_v = 0
     object_offset_x = 0
     object_offset_y = 0
-    pixel_size_h_0
-    pixel_size_v_0
-    pixel_num_h_0
-    pixel_num_h_0
+    pixel_size_h_0 = 0
+    pixel_size_v_0 = 0
+    pixel_num_h_0 = 0
+    pixel_num_h_0 = 0
     # cad model initial rotation angles
     object_roll_deg = 0
     object_tilt_deg = 0
@@ -42,78 +43,80 @@ def ReadNikonData(GVXRDict:dict,Beam:Xray_Beam,Det:Xray_Detector,Model:Cad_Model
     white_level = 1
 
     for line in content:
-        match line:
             # filename of TIFF files
-            case line.startswith("Name"):
+            if line.startswith("Name"):
                 experiment_name = line.split('=')[1]
         #units
-            case line.startswith("Units"):
+            elif line.startswith("Units"):
                 units = line.split('=')[1]
                 Beam.Pos_units = units
                 Det.Pos_units = units
+                Model.Pos_units = units
                 Det.Spacing_units = units
         # number of projections
-            case line.startswith("Projections"):
+            elif line.startswith("Projections"):
                 num_projections = int(line.split('=')[1])
                 GVXRDict['num_projections'] = num_projections
         # white level - used for normalization
-            case line.startswith("WhiteLevel"):
+            elif line.startswith("WhiteLevel"):
                 white_level = float(line.split('=')[1])
             # number of pixels along X axis
-            case line.startswith("DetectorPixelsX"):
+            elif line.startswith("DetectorPixelsX"):
                 pixel_num_v_0 = int(line.split('=')[1])
                 Det.Pix_X = pixel_num_v_0
             # number of pixels along Y axis
-            case line.startswith("DetectorPixelsY"):
+            elif line.startswith("DetectorPixelsY"):
                     pixel_num_h_0 = int(line.split('=')[1])
                     Det.Pix_Y = pixel_num_v_0
                 # pixel size along X axis
-            case line.startswith("DetectorPixelSizeX"):
+            elif line.startswith("DetectorPixelSizeX"):
                     pixel_size_h_0 = float(line.split('=')[1])
                     Det.Spacing_X = pixel_size_h_0
                 # pixel size along Y axis
-            case line.startswith("DetectorPixelSizeY"):
+            elif line.startswith("DetectorPixelSizeY"):
                     pixel_size_v_0 = float(line.split('=')[1])
                     Det.Spacing_Y = pixel_size_v_0
                 # distance in z from source to center of rotation (origin)
-            case line.startswith("SrcToObject"):
+            elif line.startswith("SrcToObject"):
                     source_to_origin = float(line.split('=')[1])
                 # distance in z from source to center of detector 
-            case line.startswith("SrcToDetector"):
+            elif line.startswith("SrcToDetector"):
                     source_to_det = float(line.split('=')[1])
                 # initial angular position of a rotation stage
-            case line.startswith("InitialAngle"):
+            elif line.startswith("InitialAngle"):
                     initial_angle = float(line.split('=')[1])
                 # angular increment (in degrees)
-            case line.startswith("AngularStep"):
+            elif line.startswith("AngularStep"):
                     angular_step = float(line.split('=')[1])
                     GVXRDict['angular_step'] = angular_step
                 # detector offset x in units                
-            case line.startswith("DetectorOffsetX"):
+            elif line.startswith("DetectorOffsetX"):
                     detector_offset_h = float(line.split('=')[1])
                 # detector offset y in units  
-            case line.startswith("DetectorOffsetY"):
+            elif line.startswith("DetectorOffsetY"):
                     detector_offset_v = float(line.split('=')[1])
                 # object offset x in units  
-            case line.startswith("ObjectOffsetX"):
+            elif line.startswith("ObjectOffsetX"):
                     object_offset_x = float(line.split('=')[1])
-            case line.startswith("ObjectOffsetY"):
+            elif line.startswith("ObjectOffsetY"):
                     object_offset_y = float(line.split('=')[1])
                 # object roll in degrees
                 # Roll is rotation about the z-axis.  
-            case line.startswith("ObjectRoll"):
+            elif line.startswith("ObjectRoll"):
                     object_roll_deg = float(line.split('=')[1])
              # object tilt in degrees in our co-ordinates
             # Tilt is rotation about the x-axis 
-            case line.startswith("ObjectTilt"):
+            elif line.startswith("ObjectTilt"):
                     object_tilt_deg = float(line.split('=')[1])
                     
     #caculate the position of center of the detector
-    det_center_h = (0.5 * pixel_num_h_0 * pixel_size_h_0) + detector_offset_h
-    det_center_v = (0.5 * pixel_num_v_0 * pixel_size_v_0) + detector_offset_v
+    #det_center_h = (0.5 * pixel_num_h_0 * pixel_size_h_0) + detector_offset_h
+    #det_center_v = (0.5 * pixel_num_v_0 * pixel_size_v_0) + detector_offset_v
+    det_center_h =  detector_offset_h
+    det_center_v = detector_offset_v
             
     SRC_POS = [0,0,-source_to_origin]
-    Det_Pos = [detector_center_h,detector_center_v,source_to_det-source_to_origin]
+    Det_Pos = [det_center_h,det_center_v,source_to_det-source_to_origin]
     Obj_Pos = [object_offset_x,object_offset_y,0]
     # for Nikon files in our co-ordinates:
     # Tilt is rotation about the x-axis
@@ -125,17 +128,18 @@ def ReadNikonData(GVXRDict:dict,Beam:Xray_Beam,Det:Xray_Detector,Model:Cad_Model
 
     Beam.PosX = SRC_POS[0]
     Beam.PosY = SRC_POS[1]
-    Beam.PosY = SRC_POS[2]
+    Beam.PosZ = SRC_POS[2]
 
     Det.PosX = Det_Pos[0]
     Det.PosY = Det_Pos[1]
-    Det.PosY = Det_Pos[2]
+    Det.PosZ = Det_Pos[2]
 
     Model.PosX = Obj_Pos[0]
     Model.PosY = Obj_Pos[1]
     Model.PosZ = Obj_Pos[2]
+
     Model.rotation = Obj_Rot
     GVXRDict['Beam'] = Beam
     GVXRDict['Model'] = Model
     GVXRDict['Detector'] = Det
-return GVXRDict
+    return GVXRDict

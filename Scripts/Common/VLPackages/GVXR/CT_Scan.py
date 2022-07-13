@@ -107,7 +107,6 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
 
     gvxr.resetBeamSpectrum()
     for energy, count in zip(Beam.Energy,Beam.Intensity):
-        print(energy)
         gvxr.addEnergyBinToSpectrum(energy, Beam.Energy_units, count);
     
     # Set up the detector

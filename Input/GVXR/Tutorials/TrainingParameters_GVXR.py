@@ -21,11 +21,13 @@ GVXR.Name = 'AMAZE'
 # name of the mesh(es) you wish to vitually CT scan
 GVXR.mesh = 'AMAZE_Sample'
 # Flag to use specpy to gentrate a beam spectrum
-GVXR.use_specpy = False
+GVXR.use_spekpy = True
+GVXR.Tube_Voltage = 80
+GVXR.Tube_Angle = 12
 # Beam energy (default units are MeV)
-GVXR.energy = 0.08
+GVXR.Energy = [0.08]
 # xray beam intensity (no. of x-ray photons) default = 1000
-GVXR.Intensity = 1000
+GVXR.Intensity = [1000]
 ############################################
 # Nikon parameter input file
 # Use paramters read from .xtekct file
@@ -46,7 +48,7 @@ GVXR.Beam_PosY = -100
 GVXR.Beam_PosZ = 0
 GVXR.Beam_Pos_units = 'mm'
 # Beam type must be one of point or parallel
-GVXR.beam_type = 'point'
+GVXR.Beam_Type = 'point'
 
 # postion of the bottom right had corner of the detector in x,y and z
 GVXR.Detect_PosX = 0
@@ -59,7 +61,7 @@ GVXR.Pix_X = 200
 GVXR.Pix_Y = 250
 # Postion of center of cad model in x,y and z
 GVXR.Model_PosX = 0
-GVXR.Model_PosY = 80
+GVXR.Model_PosY = 0
 GVXR.Model_PosZ = 0
 ##############################################
 #############################

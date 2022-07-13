@@ -10,7 +10,7 @@ import pydantic
 from pydantic.dataclasses import dataclass, Field
 from typing import Optional, List
 from Scripts.Common.VLPackages.GVXR.Utils_IO import ReadNikonData
-from Scripts.Common.VLPackages.GVXR.GVXR_utils import InitSpectrum
+from Scripts.Common.VLPackages.GVXR.GVXR_utils import InitSpectrum, dump_to_json
 
 class MyConfig:
     validate_assignment = True
@@ -92,15 +92,16 @@ class Cad_Model:
     # Nikon files define these as Tilt, InitalAngle, and Roll repectivley. 
     rotation: float  = Field(default_factory=lambda:[0,0,0])
     Pos_units: str = Field(default='mm')
+
 def Setup(VL, RunGVXR=True):
     '''
     GVXR - Simulation of X-ray CT scans 
     '''
-    #VL.OUT_DIR = "{}/GVXR-Images".format(VL.PROJECT_DIR)
-    VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
+    OUT_DIR = "{}/GVXR-Images".format(VL.PROJECT_DIR)
+    MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
-    if not os.path.exists(VL.OUT_DIR):
-        os.makedirs(VL.OUT_DIR)
+    if not os.path.exists(OUT_DIR):
+        os.makedirs(OUT_DIR)
     VL.GVXRData = {}
     GVXRDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
     # if RunGVXR is False or GVXRDicts is empty dont perform Simulation and return instead.
@@ -118,11 +119,11 @@ def Setup(VL, RunGVXR=True):
             IN_FILE = mesh
         # If not assume the file is in the Mesh directory
         else:
-            IN_FILE="{}/{}".format(VL.MESH_DIR, mesh)
+            IN_FILE="{}/{}".format(MESH_DIR, mesh)
 
 
         GVXRDict = { 'mesh_file':IN_FILE,
-                    'output_file':"{}/{}".format(VL.OUT_DIR,GVXRName)
+                    'output_file':"{}/{}".format(OUT_DIR,GVXRName)
                 }
 # Define flag to display visualisations
         if (VL.mode=='Headless'):
@@ -135,10 +136,10 @@ def Setup(VL, RunGVXR=True):
             GVXRDict['Material_file'] = Parameters.Material_file
         elif hasattr(Parameters,'Material_file') and not os.path.isabs(Parameters.Material_file):
         # This makes a non abs. path relative to the output directory not the run directory (for consistency)
-            GVXRDict['Material_file'] = "{}/{}".format(VL.OUT_DIR,Parameters.Material_file)
+            GVXRDict['Material_file'] = "{}/{}".format(VL.PROJECT_DIR,Parameters.Material_file)
         else:
         # greyscale not given so generate a file in the output directory 
-            GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.OUT_DIR,GVXRName) 
+            GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.PROJECT_DIR,GVXRName) 
 ########### Setup x-ray beam ##########
 # create dummy beam and to get filled in with values either from Parameters OR Nikon file.
         dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,Beam_Type='point')
@@ -207,6 +208,8 @@ def Setup(VL, RunGVXR=True):
             GVXRDict['im_format'] = Parameters.image_format
 
         VL.GVXRData[GVXRName] = GVXRDict.copy()
+        Json_file = "{}/{}_params.json".format(VL.PROJECT_DIR,GVXRName)
+        dump_to_json(VL.GVXRData[GVXRName],Json_file)
 
 def Run(VL):
     from Scripts.Common.VLPackages.GVXR.CT_Scan import CT_scan

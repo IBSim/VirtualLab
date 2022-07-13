@@ -187,3 +187,26 @@ def InitSpectrum(Beam,Verbose:bool=True,Headless:bool=False):
     Beam.Intensity = list(spectrum.values())
     Beam.Energy_units = 'keV'
     return Beam;
+
+def without_keys(d, keys):
+    return {x: d[x] for x in d if x not in keys}
+
+def dump_to_json(Python_dict:dict,file_name:str):
+    import json
+    import dataclasses as dc
+    # Remove all parmas that are Dataclasses as we will deal with them seperatly
+    params = without_keys(Python_dict,["Beam","Detector","Model"])
+    #extract datclasses as seperate dicts
+    Beam = Python_dict["Beam"].__dict__
+    Cad = Python_dict["Model"].__dict__
+    Det = Python_dict["Detector"].__dict__
+    with open(file_name, 'w') as fp:
+        fp.write("IO Params:\n")
+        json.dump(params, fp)
+        fp.write("\nBeam Params:\n")
+        json.dump(Beam, fp)
+        fp.write("\nCad Model Params:\n")
+        json.dump(Cad, fp)
+        fp.write("\nDetector Params:\n")
+        json.dump(Det, fp)
+        fp.close()

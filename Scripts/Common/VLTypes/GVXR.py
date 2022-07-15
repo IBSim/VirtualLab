@@ -22,7 +22,7 @@ class Xray_Beam:
     PosZ: float
     Beam_Type: str
     Energy: List[float] = Field(default=None)
-    Intensity: List[int] = Field(default=None)
+    Intensity: List[float] = Field(default=None)
     Tube_Voltage: float = Field(default=None)
     Tube_Angle: float = Field(default=None)
     Filters: str = Field(default=None)
@@ -193,8 +193,8 @@ def Setup(VL, RunGVXR=True):
 
             Model = Cad_Model(PosX=Parameters.Model_PosX,
                 PosY=Parameters.Model_PosY,PosZ=Parameters.Model_PosZ)
-            if hasattr(Parameters,'model_rotation'):
-                Model.rotation = Parameters.model_rotation
+            if hasattr(Parameters,'rotation'):
+                Model.rotation = Parameters.rotation
             GVXRDict['Model'] = Model
 
             if hasattr(Parameters,'num_projections'): 

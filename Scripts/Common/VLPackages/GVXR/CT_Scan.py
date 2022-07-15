@@ -113,7 +113,7 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
     gvxr.setDetectorPosition(Detector.PosX,Detector.PosY, Detector.PosZ, Detector.Pos_units);
-    gvxr.setDetectorUpVector(-1, 0, 0);
+    gvxr.setDetectorUpVector(0, 0, -1);
     gvxr.setDetectorNumberOfPixels(Detector.Pix_X, Detector.Pix_Y);
     gvxr.setDetectorPixelSize(Detector.Spacing_X, Detector.Spacing_Y, Detector.Spacing_units);
 
@@ -135,12 +135,25 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
         else:
             gvxr.addPolygonMeshAsInnerSurface(Mesh_Name)
     # set initial rotation
-    # note GVXR for whatever reason has wierd rotation axes'
-    # I have checked these and they are correct for us.
-    for N in Material_list:
-            gvxr.rotateNode(N[0], Model.rotation[0], 0, 0, 1); # x rotation axis
-            gvxr.rotateNode(N[0], Model.rotation[1], 1, 0, 0); # y rotation axis
-            gvxr.rotateNode(N[0], Model.rotation[2], 0, 1, 0); # z rotation axis
+    # note GVXR uses OpenGL which perfoms rotations with object axes not global.
+    # This makes rotaions around the gloabal axes very tricky.
+    M = len(Material_list)
+    total_rotation = np.zeros((3,M))
+    for i,N in enumerate(Material_list):
+            
+            # Gloabal X-axis rotation:
+            global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[1,0,0]) # caculate vector along global x-axis in object co-odinates
+            gvxr.rotateNode(N[0], Model.rotation[0], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom x rotation axis
+            total_rotation[0,i] += Model.rotation[0]# track total rotation
+            # Gloabal Y-axis rotation:
+            global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[0,1,0]) # caculate vector along global Y-axis in object co-odinates
+            gvxr.rotateNode(N[0], Model.rotation[1], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Y rotation axis
+            total_rotation[1,i] += Model.rotation[1]# track total rotation
+            # Global Z-axis Rotaion:
+            global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
+            gvxr.rotateNode(N[0], Model.rotation[2], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Z rotation axis
+            total_rotation[2,i] += Model.rotation[2]# track total rotation 
+    
     
     # Update the 3D visualisation
     gvxr.displayScene();       
@@ -150,24 +163,26 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     projections = [];
     theta = [];
 
+    # calculate the rotation vector in model co-ordiantes that points
+    # along the global axis
+    # this is needed to alow us to rotate around the global axis rather than the cad model axis.
+    global_axis_vec = world_to_model_axis(total_rotation[:,1],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
     for i in range(num_projections):
         # Compute an X-ray image and add it to the list of projections
         projections.append(gvxr.computeXRayImage());
 
         # Update the 3D visualisation
         gvxr.displayScene();
-
-        # Rotate the model by 1 degree
-        for N in Material_list:
-            gvxr.rotateNode(N[0], angular_step, 1, 0, 0);
-
+        # Rotate the model by angular_step degrees
+        for i,N in enumerate(Material_list):
+            gvxr.rotateNode(N[0], angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
+            total_rotation[2,i]+=angular_step
         theta.append(i * angular_step * math.pi / 180);
 
     # Convert the projections as a Numpy array
-    projections = np.array(projections);
-
+    projections = np.array(projections,'uint32');
     #return projections
-
+    write_image(output_file,projections,im_format=im_format);
     # Perform the flat-Field correction of raw data
     dark = np.zeros(projections.shape);
 
@@ -180,12 +195,13 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
         total_energy += energy * count;
     flat = np.ones(projections.shape) * total_energy;
 
-    projections = flat_field_normalize(projections,flat,dark)
+    #projections = flat_field_normalize(projections,flat,dark).astype('uint32')
     
     # Calculate  -log(projections)  to linearize transmission tomography data
-    projections = minus_log(projections).astype('uint8')
-    
+    projections = minus_log(projections).astype('uint32')
+    output_file = output_file + '_inv'
     write_image(output_file,projections,im_format=im_format);
+    
 
     # Display the 3D scene (no event loop)
     # Run an interactive loop
@@ -231,7 +247,7 @@ def minus_log(arr):
     """
 
     out = ne.evaluate('-log(arr)')
-
+    print(out)
     return out
 
 
@@ -260,7 +276,6 @@ def flat_field_normalize(arr, flat, dark, cutoff=None):
     l = np.float32(1e-6)
     flat = np.mean(flat, axis=0, dtype=np.float32)
     dark = np.mean(dark, axis=0, dtype=np.float32)
-
     #get range for normalization
     denom = ne.evaluate('flat-dark')
     #remove values less than threshold l to avoid divide by zero
@@ -271,4 +286,5 @@ def flat_field_normalize(arr, flat, dark, cutoff=None):
     if cutoff is not None:
         cutoff = np.float32(cutoff)
         out = ne.evaluate('where(out>cutoff,cutoff,out)')
+    
     return out

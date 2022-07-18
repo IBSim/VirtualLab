@@ -89,18 +89,41 @@ def PoolReturn(Dicts,Returners):
 
     return PlError
 
-def VLPool(VL, fnc, Dicts,Args=[], launcher=None, N=None):
+def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
+
+    fnclist = [fnc]*len(Dicts)
+    PoolArgs = [[VL]*len(Dicts),Dicts] + Args
+
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
-    PoolArgs = [[fnc]*len(Dicts), [VL]*len(Dicts), Dicts] + Args
 
     try:
-        if launcher.lower()=='process':
-            kwargs = {'workdir':VL.TEMP_DIR}
-        elif launcher.lower() in ('mpi','mpi_worker'):
-            kwargs = {'workdir':VL.TEMP_DIR,
-                      'addpath':set(sys.path)-set(VL._pypath)}
-        else: kwargs = {}
+        if launcher == 'Sequential' or len(Dicts)==1:
+            # Run studies one after the other
+            Res = []
+            for args in zip(*PoolArgs):
+                ret = PoolWrap(fnc,*args)
+                Res.append(ret)
+        elif launcher == 'Process':
+            # Run studies in parallel of N using pathos. Only works on single nodes.
+            # Reloading pathos ensures any new paths added to sys.path are included
+            pmp = reload(pathosmp)
+            pool = pmp.ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
+            Res = pool.map(PoolWrap,fnclist, *PoolArgs)
+            Res=list(Res)
+            pool.terminate()
+        elif launcher in ('MPI','MPI_Worker'):
+            # Run studies in parallel of N using pyina. Works for multi-node clusters.
+            # onall specifies if there is a worker. True = no worker
+            if launcher == 'MPI' or N==1: onall = True # Cant have worker if N is 1
+            else: onall = False
+
+            # Ensure that sys.path is the same for pyinas MPI subprocess
+            PyPath_orig = os.environ.get('PYTHONPATH',"")
+            addpath = set(sys.path) - set(VL._pypath) # group subtraction
+            addpath = ":".join(addpath) # write in unix style
+            # Update PYTHONPATH is os
+            os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
 
         Res = Paralleliser(PoolWrap,PoolArgs, method=launcher, nb_parallel=N, **kwargs)
     except KeyboardInterrupt as e:

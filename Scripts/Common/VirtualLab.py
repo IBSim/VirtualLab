@@ -9,13 +9,12 @@ import copy
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
 import atexit
-import uuid
 
 import numpy as np
 
 import VLconfig
 from . import Analytics
-from .VLFunctions import ErrorMessage, WarningMessage, WriteArgs
+from .VLFunctions import ErrorMessage, WarningMessage
 from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, Vox as VoxFn
 
 class VLSetup():
@@ -150,8 +149,9 @@ class VLSetup():
         if 'MaterialDir' in kwargs:
             self._SetMaterialDir(kwargs['MaterialDir'])
 
-    def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
-                    RunMesh=True, RunSim=True, RunDA=True, RunVox=True, Import=False):
+    def Parameters(self, Parameters_Master, Parameters_Var=None,
+                    RunMesh=True, RunSim=True, RunDA=True, 
+                    RunVox=True, Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -164,18 +164,18 @@ class VLSetup():
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
         VLNamespaces = ['Mesh','Sim','DA','Vox']
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces,
-                        ParameterArgs=ParameterArgs)
+        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
+
+        
         MeshFn.Setup(self,RunMesh, Import)
         SimFn.Setup(self,RunSim, Import)
         DAFn.Setup(self,RunDA, Import)
         VoxFn.Setup(self,RunVox)
 
-    def ImportParameters(self, Rel_Parameters, ParameterArgs=None):
+    def ImportParameters(self, Rel_Parameters):
         '''
-        Rel_Parameters is a file name relative to the Input directory.
-        ArgDict is a dictionary passed to the imported file
+        Rel_Parameters is a file name relative to the Input directory
         '''
         # Strip .py off the end if it's in the name
         if os.path.splitext(Rel_Parameters)[1]=='.py':
@@ -187,22 +187,13 @@ class VLSetup():
             message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
             self.Exit(ErrorMessage(message))
 
-        if ParameterArgs !=None:
-            # If arguments are provided then it's pickled to a file
-            arg_path = "{}/{}.pkl".format(self.TEMP_DIR,uuid.uuid4())
-            WriteArgs(arg_path,ParameterArgs)
-            sys.argv.append("ParameterArgs={}".format(arg_path))
-
         sys.path.insert(0, os.path.dirname(Abs_Parameters))
         Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
         sys.path.pop(0)
 
-        if ParameterArgs != None:
-            sys.argv.pop(-1)
-
         return Parameters
 
-    def GetParams(self, Master, Var, VLTypes, ParameterArgs=None):
+    def GetParams(self, Master, Var, VLTypes):
         '''Master & Var can be a module, namespace, string or None.
         A string references a file to import from within the input directory.
         '''
@@ -214,9 +205,9 @@ class VLSetup():
         # ======================================================================
         # If string, import files
         if type(Master)==str:
-            Master = self.ImportParameters(Master,ParameterArgs)
+            Master = self.ImportParameters(Master)
         if type(Var)==str:
-            Var = self.ImportParameters(Var,ParameterArgs)
+            Var = self.ImportParameters(Var)
 
         # ======================================================================
         # Check any of the attributes of NS are included
@@ -304,6 +295,7 @@ class VLSetup():
 
         return ParaDict
 
+
     def Mesh(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return MeshFn.Run(self,**kwargs)
@@ -362,9 +354,11 @@ class VLSetup():
     def _Cleanup(self,Cleanup=True):
         # Report overview of VirtualLab usage
         if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
+            MeshNb = self._Analytics.get('Mesh',0)
+            SimNb = self._Analytics.get('Sim',0)
+            DANb = self._Analytics.get('DANb',0)
             Category = "{}_Overview".format(self.Simulation)
-            list_AL = ["{}={}".format(key,value) for key,value in self._Analytics.items()]
-            Action = "_".join(list_AL)
+            Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
             Analytics.Run(Category,Action,self._ID)
 
         exitstr = '\n#############################\n'\

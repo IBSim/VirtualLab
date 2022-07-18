@@ -12,14 +12,11 @@ dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
 torch.set_default_dtype(torch_dtype)
 
+InTag = ['x','y','z','pressure','temperature','velocity','current']
 DispX = DispY = [-0.01,0.01]
 DispZ = [0.01,0.02]
 CoolantP, CoolantT, CoolantV = [0.4,1.6], [30,70], [5,15]
 Current = [600,1000]
-
-InTag = ['Coil X','Coil Y','Coil Z', 'Coolant Pressure',
-         'Coolant Temperature', 'Coolant Velocity','Coil Current']
-OutTag = ['MaxTemperature','MaxStress']
 
 bounds = np.transpose([DispX,DispY,DispZ,CoolantP,CoolantT,CoolantV,Current])
 InputScaler = np.array([bounds[0],bounds[1] - bounds[0]])
@@ -34,7 +31,7 @@ def MLMapping(Dir):
 
     Coolant = [Parameters.Coolant[n] for n in ['Pressure','Temperature','Velocity']]
     In = [*Parameters.CoilDisplacement,*Coolant,Parameters.Current]
-    Out = [DataDict['MaxTemp'], DataDict['MaxStress']]
+    Out = DataDict['MaxTemp']
     return In, Out
 
 def CompileData(VL,DADict):
@@ -73,8 +70,9 @@ def Single(VL,DADict):
     TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData, InputName,
                                    OutputName,getattr(Parameters,'TestNb',-1))
 
-    # TrainOut, TestOut = TrainOut[:,0:1], TestOut[:,0:1]
     NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
+
+    TrainOut, TestOut = TrainOut.flatten(), TestOut.flatten()
 
     # Scale input to [0,1] (based on parameter space)
     TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
@@ -96,40 +94,39 @@ def Single(VL,DADict):
     if Parameters.Train:
         # get model & likelihoods
         min_noise = getattr(Parameters,'MinNoise',None)
-        prev_state = getattr(Parameters,'PrevState',None)
-        if prev_state==True: prev_state = ModelFile
-        likelihood, model = ML.Create_GPR(TrainIn_scale, TrainOut_scale, Parameters.Kernel,
-                                          prev_state=prev_state, min_noise=min_noise)
-
+        likelihood, model = ML.GPRModel_Single(TrainIn_scale, TrainOut_scale,
+                                        Parameters.Kernel, min_noise=min_noise)
         # Train model
-        TrainDict = getattr(Parameters,'TrainDict',{})
-        Conv = ML.GPR_Train(model, **TrainDict)
-
+        testdat = [] #[TestIn_scale,TestOut_scale]
+        Conv_P = model.Training(likelihood,Parameters.Epochs,test=testdat, Print=100)[0]
         # Save model
         torch.save(model.state_dict(), ModelFile)
-
         # Plot convergence & save
         plt.figure()
-        for j, _Conv in enumerate(Conv):
-            plt.plot(_Conv,label='Output_{}'.format(j))
-        plt.legend()
+        plt.plot(Conv_P)
         plt.savefig("{}/Convergence.eps".format(DADict["CALC_DIR"]),dpi=600)
         plt.close()
+
+        # Print model parameters
+        print('Lengthscale:',model.covar_module.base_kernel.lengthscale.detach().numpy()[0])
+        print('Outputscale', model.covar_module.outputscale.detach().numpy())
+        print('Noise',model.likelihood.noise.detach().numpy()[0])
     else:
         # Load previously trained model
-        likelihood, model = ML.Create_GPR(TrainIn_scale, TrainOut_scale,
-                                        Parameters.Kernel, prev_state=ModelFile)
+        likelihood, model = ML.GPRModel_Single(TrainIn_scale, TrainOut_scale,
+                                        Parameters.Kernel, ModelFile)
     model.eval(); likelihood.eval()
-    
+
     # =========================================================================
     # Get error metrics for model
-    df_train = ML.GetMetrics(model,TrainIn_scale,TrainOut_scale.detach().numpy())
-    df_test = ML.GetMetrics(model,TestIn_scale,TestOut_scale.detach().numpy())
-    print('\nTrain metrics')
-    print(df_train)
-    print('\nTest metrics')
-    print(df_test)
-    print()
+    TrainMetrics = ML.GetMetrics(model, TrainIn_scale, TrainOut_scale.detach().numpy())
+    TestMetrics = ML.GetMetrics(model, TestIn_scale, TestOut_scale.detach().numpy())
+
+    for tp,data in zip(['Train','Test'],[TrainMetrics,TestMetrics]):
+        outstr = "{} Data\n".format(tp)
+        for i,metric in enumerate(['MSE','MAE','RMSE','R^2']):
+            outstr+="{}: {}\n".format(metric,data[i])
+        print(outstr)
 
     # ==========================================================================
     # Get next points to collect data
@@ -146,122 +143,39 @@ def Single(VL,DADict):
     # Get min and max values for each
     print('Extrema')
     RangeDict = {}
-    for i, mod in enumerate(model.models):
-        val,cd = ML.GetExtrema(mod, 100, bounds)
-        cd = ML.DataRescale(cd,*InputScaler)
-        val = ML.DataRescale(val,*OutputScaler[:,i])
-        RangeDict["Min_{}".format(OutTag[i])] = val[0]
-        RangeDict["Max_{}".format(OutTag[i])] = val[1]
-        print("{}\nMin:{}, Max:{}\n".format(OutTag[i],*np.around(val,2)))
+    val,cd = ML.GetExtrema(model, 50, bounds)
+    cd = ML.DataRescale(cd,*InputScaler)
+    val = ML.DataRescale(val,*OutputScaler)
+    RangeDict["Min"] = val[0]
+    RangeDict["Max"] = val[1]
+    print("Min:{}, Max:{}\n".format(*np.around(val,2)))
 
-    # ==========================================================================
-    # See impact of varying inputs
-    if False:
-        n=10
-        split = np.linspace(0,1,n+1)
-        a = [0.5]*NbInput
-        Res = []
-        for i, var in enumerate(InTag):
-            n = []
-            for p in split:
-                _a = a.copy()
-                _a[i] = p
-                n.append(_a)
 
-            out = []
-            for mod in model.models:
-                with torch.no_grad():
-                    n = torch.tensor(n)
-                    _out = mod(n).mean.numpy()
-                out.append(_out)
-            out = np.array(out).T
-            out = ML.DataRescale(out,*OutputScaler)
-            Res.append(out)
+    with torch.no_grad():
+        TrainPred = model(TrainIn_scale)
+        TestPred = model(TestIn_scale)
 
-        # Plot individually
-        for i, (tag,res) in enumerate(zip(InTag,Res)):
-            fig,(ax1,ax2) = plt.subplots(2,figsize=(10,10),sharex=True)
-            fig.suptitle(tag.capitalize())
-            _split = InputScaler[0,i] + split*InputScaler[1,i]
-            ax1.plot(_split,res[:,0])
-            ax1.set_ylabel('Temperature')
-            ax2.plot(_split,res[:,1])
-            ax2.set_ylabel('Stress')
-            plt.show()
+        TrainPred_R = ML.DataRescale(TrainPred.mean.numpy(),*OutputScaler)
+        TestPred_R = ML.DataRescale(TestPred.mean.numpy(),*OutputScaler)
+        TrainMSE = ((TrainPred_R - TrainOut)**2)
+        TestMSE = ((TestPred_R - TestOut)**2)
 
-        # Plot together to compare impact
-        fig,(ax1,ax2) = plt.subplots(2,figsize=(10,10))
-        for tag,res in zip(InTag,Res):
-            ax1.plot(split,res[:,0],label=tag.capitalize())
-            ax2.plot(split,res[:,1],label=tag.capitalize())
-        ax1.set_ylabel('Temperature')
-        ax2.set_ylabel('Stress')
-        ax1.legend()
-        ax2.legend()
-        plt.show()
+        print(TrainMSE.mean())
+        print(TestMSE.mean())
 
-    # ==========================================================================
-    # See range for stressing a component for a required temperature.
-    if False:
-        space=200
-        rdlow = int(np.ceil(RangeDict['Min_MaxTemperature'] / space)) * space
-        rdhigh = int(np.ceil(RangeDict['Max_MaxTemperature'] / space)) * space
-        ExactTemps = list(range(rdlow,rdhigh,space))
-        MinStresses, MaxStresses = [], []
-        for ExactTemp in ExactTemps:
-            ExactTempScale = ML.DataScale(ExactTemp,*OutputScaler[:,0])
-            con = ML.FixedBound(model.models[0],ExactTempScale)
+        # if 0:
+        #     UQ = TrainPred.stddev.numpy()*OutputScaler[1]
+        #     sortix = np.argsort(UQ)[::-1]
+        #     for pred,act,uq in zip(TrainPred_R[sortix],TrainOut[sortix],UQ[sortix]):
+        #         print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
+        #
+        if 1:
+            UQ = TestPred.stddev.numpy()*OutputScaler[1]
+            sortix = np.argsort(UQ)[::-1]
+            sortix = np.argsort(TestMSE)[::-1]
+            for pred,act,uq in zip(TestPred_R[sortix],TestOut[sortix],UQ[sortix]):
+                print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
 
-            Opt_cd_min, Opt_val_min = ML.GetOptima(model.models[1], 100, bounds,
-                                           find='min',constraints=con,maxiter=30)
-            Opt_cd_max, Opt_val_max = ML.GetOptima(model.models[1], 100, bounds,
-                                           find='max',constraints=con,maxiter=30)
-
-            MinStress = ML.DataRescale(Opt_val_min[0],*OutputScaler[:,1])
-            MaxStress = ML.DataRescale(Opt_val_max[0],*OutputScaler[:,1])
-
-            MinStresses.append(MinStress)
-            MaxStresses.append(MaxStress)
-
-            print("Max. Component Temperature: {}".format(ExactTemp))
-            print("Stress Min.: {:.2f}, Stress Max.: {:.2f}\n".format(MinStress,MaxStress))
-
-            # _Opt_cd_min = ML.DataRescale(Opt_cd_min,*InputScaler)
-            # Opt_cd_min = torch.from_numpy(Opt_cd_min)
-            # with torch.no_grad():
-            #     for i,mod in enumerate(model.models):
-            #         pred = mod(Opt_cd_min).mean.numpy()
-            #         preds = ML.DataRescale(pred,*OutputScaler[:,i])
-            #         print(preds)
-            # print()
-
-        plt.figure()
-        plt.plot(ExactTemps,MinStresses,label='Min')
-        plt.plot(ExactTemps,MaxStresses,label='Max')
-        plt.xlabel('Component Max. Temperature (C)')
-        plt.ylabel('Component Max. Stress (MPa)')
-        plt.legend()
-        plt.show()
-
-    if False:
-        for j,mod in enumerate(model.models):
-            with torch.no_grad():
-                TrainPred = mod(TrainIn_scale)
-                TestPred = mod(TestIn_scale)
-
-            TrainPred_R = ML.DataRescale(TrainPred.mean.numpy(),*OutputScaler[:,j])
-            TestPred_R = ML.DataRescale(TestPred.mean.numpy(),*OutputScaler[:,j])
-            if 0:
-                UQ = TrainPred.stddev.numpy()*OutputScaler[1,j]
-                sortix = np.argsort(UQ)[::-1]
-                for pred,act,uq in zip(TrainPred_R[sortix],TrainOut[sortix],UQ[sortix]):
-                    print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
-            if 1:
-                UQ = TestPred.stddev.numpy()*OutputScaler[1,j]
-                sortix = np.argsort(UQ)[::-1]
-                for pred,act,uq in zip(TestPred_R[sortix],TestOut[sortix,j],UQ[sortix]):
-                    print('Pred: {}, Act: {}, UQ: {}'.format(pred,act,uq))
-                print()
 
 # ==============================================================================
 # Build a committee of models for query by committee adaptive scheme
@@ -288,7 +202,7 @@ def CommitteeBuild(VL,DADict):
         TrainOut_scale = torch.from_numpy(TrainOut_scale)
 
         ModelFile = "{}/Model.pth".format(dirfull)
-        likelihood, model = ML.Create_GPR(TrainIn_scale,TrainOut_scale,
+        likelihood, model = ML.GPRModel_Single(TrainIn_scale,TrainOut_scale,
                                         ModParameters.Kernel,prev_state=ModelFile)
 
         likelihood.eval();model.eval()
@@ -305,3 +219,15 @@ def CommitteeBuild(VL,DADict):
         print(np.around(BestPoints,3))
         BestPoints = ML.DataRescale(np.array(BestPoints),*InputScaler)
         DADict['Data']['BestPoints'] = BestPoints
+
+
+
+
+
+
+
+
+
+
+
+#

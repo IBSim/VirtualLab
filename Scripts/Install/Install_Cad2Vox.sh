@@ -22,11 +22,12 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
 
 ### Standard update
+export DEBIAN_FRONTEND=noninteractive
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential cmake python3-pybind11
 
-source ../../VLconfig.py
+source ${VL_DIR}/VLconfig.py
 
 ### Check if Conda is installed
 search_var=anaconda*
@@ -61,17 +62,9 @@ fi
 
 if ${CAD2VOX_WITH_CUDA}; then
     echo "Installing CUDA"
-    if ${USE_CONDA}; then
-	conda install -y cudatoolkit
-    else
-    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
-    sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
-    wget https://developer.download.nvidia.com/compute/cuda/11.6.0/local_installers/cuda-repo-ubuntu1804-11-6-local_11.6.0-510.39.01-1_amd64.deb
-    sudo dpkg -i cuda-repo-ubuntu1804-11-6-local_11.6.0-510.39.01-1_amd64.deb
-    sudo apt-key add /var/cuda-repo-ubuntu1804-11-6-local/7fa2af80.pub
-    sudo apt-get update
-    sudo apt-get -y install cuda
-    fi
+wget https://developer.download.nvidia.com/compute/cuda/11.4.4/local_installers/cuda_11.4.4_470.82.01_linux.run
+sudo sh cuda_11.4.4_470.82.01_linux.run --silent
+sudo rm cuda_11.4.4_470.82.01_linux.run
 else
     echo "Skiping CUDA install"
 fi
@@ -84,7 +77,7 @@ git clone https://github.com/bjthorpe/Cad2vox.git
 sudo chown ${USER}:${USER} Cad2vox/*
 cd Cad2vox
 
-#git checkout ${CAD2VOX_TAG} 
+git checkout ${CAD2VOX_TAG} 
 
 if ${USE_CONDA}; then
     conda install -y cmake numpy pybind11 tifffile pytest pillow pandas
@@ -108,9 +101,9 @@ else
 fi
 
 cd ${CAD2VOX_DIR}/CudaVox
-python3 setup_CudaVox.py install
+python3 -m pip install --user .
 cd ${CAD2VOX_DIR}
-python3 setup_cad2vox.py install
+python3 -m pip install --user .
 
 # Run Test Suite
 if ${CAD2VOX_WITH_CUDA}; then

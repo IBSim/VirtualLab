@@ -1,10 +1,8 @@
-import os
-import sys
-
 import h5py
 import numpy as np
-
-from Scripts.Common.tools import MeshInfo
+import os
+import sys
+from VLFunctions import MeshInfo
 
 def TC_Temperature(ResFile,TCLocations,ResName='Temperature',Collect='nearest'):
 

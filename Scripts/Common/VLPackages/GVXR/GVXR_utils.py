@@ -34,22 +34,30 @@ def correct_normal(tri_ind,extra,points):
         tri_ind = FlipNormal(tri_ind)
     return tri_ind
 
+def extract_unique_triangles(t):
+    sort_tri = np.sort(t,axis=1)
+    _,index,counts = np.unique(sort_tri,axis=0,return_index=True, return_counts=True)
+    tri = t[index[counts==1]]
+    return tri
+
 def tets2tri(tetra,points):
     import itertools
     import time
     start = time.time()
-    tri = np.empty((0,3),'int32')
-    for i,tets in enumerate(tetra):
-        nodes = itertools.combinations(tets,3)
-        for tri_ind in nodes:
-            tri_ind = list(tri_ind)
-            extra = list(set(tetra[i]).difference(tri_ind))
-            tri_ind = correct_normal(tri_ind,extra,points)
-            tri=np.append(tri,np.array(tri_ind,ndmin=2),axis=0)
+    surface = set()
+
+    for i,tet in enumerate(tetra):
+        Nodes = tuple(itertools.combinations(tet,3))
+        for face in Nodes:
+            extra = list(set(tetra[i]).difference(face))
+            face = correct_normal(face,extra,points)
+            surface.add((face[0], face[1], face[2]))
+    tri = np.array(list(surface),'int32')
+    tri_surf = extract_unique_triangles(tri)
     stop = time.time()
     print(f"Conversion took: {stop-start} seconds")
 
-    return tri
+    return tri_surf
 
 def Generate_Material_File(material_file,mat_tags):
     """ Function to generate a new Materail file if none are defined.

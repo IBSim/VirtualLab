@@ -8,7 +8,8 @@ import os
 from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
 import numexpr as ne
 
-def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headless=False,num_projections = 180,angular_step=1,im_format=None):
+def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headless=False,
+num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
     ''' Main run function for GVXR'''
     # Print the libraries' version
     print (gvxr.getVersionOfSimpleGVXR())
@@ -32,27 +33,47 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
 
     #extract np arrays of mesh data from meshio
     points = mesh.points
-    #triangles = mesh.get_cells_type('triangle')
+    triangles = mesh.get_cells_type('triangle')
     tetra = mesh.get_cells_type('tetra')
 
-    if (not np.any(tetra)):
-            raise ValueError("Input file must contain Tetrahedron data")
+    if (not np.any(triangles) and not np.any(tetra)):
+        raise ValueError("Input file must contain one of either Tets or Triangles")
 
+    if not np.any(triangles) and not use_tetra:
+        #no triangle data but trying to use triangles
+        raise ValueError("User asked to use triangles but input file does "
+        "not contain Triangle data")
+
+    if not np.any(tetra) and use_tetra:
+        #no tetra data but trying to use tets
+        raise ValueError("User asked to use tets but file does not contain Tetrahedron data")
+        
         # extract dict of material names and integer tags
     try:
         all_mat_tags=mesh.cell_tags
     except AttributeError:
         all_mat_tags = {}
+# switch element type based on flag, this prevents us having to keep checking
+#  if using tets or tri.
+    if use_tetra:
+        #extract surface triangles from volume tetrahedron mesh
+        elements = tets2tri(tetra,points)
+    else:
+        elements = triangles
 
     if not all_mat_tags:
         print ("[WARN] No materials defined in input file so we assume the whole mesh is made of a single material.")
         mat_tag_dict={0:['Un-Defined']}
-        mat_ids = np.zeros(np.shape(tetra),dtype = int) 
+        mat_ids = np.zeros(np.shape(elements),dtype = int) 
         tags = np.unique(mat_ids)
     else:
-    # pull the dictionary containing material id's for each tetrahderon
+    # pull the dictionary containing material id's for each element
     # and the np array of ints that label the materials.
-        mat_ids = mesh.get_cell_data('cell_tags','tetra')
+        if use_tetra:
+            mat_ids = mesh.get_cell_data('cell_tags','tetra')
+        else:
+            mat_ids = mesh.get_cell_data('cell_tags','triangle')
+        
         tags = np.unique(mat_ids)
         if(np.any(mat_ids==0)):
             all_mat_tags[0]=['Un-Defined']
@@ -67,7 +88,7 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     if os.path.exists(Material_file):
         Material_list = Read_Material_File(Material_file,mat_tag_dict)
         if len(tags) != len(Material_list):
-            raise ValueError( f"Error: The number of Materials read in from {Material_file} does not match the number of materials in {inputfile}.")
+            raise ValueError( f"Error: The number of Materials read in from {Material_file} does not match the number of materials in {mesh_file}.")
     else:
         Material_list = Generate_Material_File(Material_file,mat_tag_dict)
 
@@ -76,9 +97,9 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
         nodes = np.where(mat_ids==N)
         nodes=nodes[0]
         #set first value outside loop
-        mat_nodes=tetra[nodes[0],np.newaxis]
+        mat_nodes=elements[nodes[0],np.newaxis]
         for M in nodes[1:]:
-            mat_nodes=np.vstack([mat_nodes,tetra[M]])
+            mat_nodes=np.vstack([mat_nodes,elements[M]])
         meshes.append(mat_nodes)
 
 
@@ -118,7 +139,6 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     gvxr.setDetectorPixelSize(Detector.Spacing_X, Detector.Spacing_Y, Detector.Spacing_units);
 
     for i,mesh in enumerate(meshes):
-        mesh = tets2tri(mesh,points)
         label = str(tags[i]);
         Mesh_Name = Material_list[i][0]
     ### BLOCK #####

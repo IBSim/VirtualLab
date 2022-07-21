@@ -20,12 +20,14 @@ GVXR = Namespace()
 GVXR.Name = 'AMAZE'
 # name of the mesh(es) you wish to vitually CT scan
 GVXR.mesh = 'AMAZE_Sample'
-# Flag to use spekpy to gentrate a beam spectrum
-GVXR.use_spekpy = False
+# Flag to use specpy to gentrate a beam spectrum
+GVXR.use_spekpy = True
+GVXR.Tube_Voltage = 300
+GVXR.Tube_Angle = 12
 # Beam energy (default units are MeV)
-GVXR.Energy = 0.08
+#GVXR.Energy = [0.08]
 # xray beam intensity (no. of x-ray photons) default = 1000
-GVXR.Intensity = 1000
+#GVXR.Intensity = [1000]
 ############################################
 # Nikon parameter input file
 # Use paramters read from .xtekct file
@@ -42,11 +44,11 @@ GVXR.Intensity = 1000
 ############################################
 # Position of x-ray beam
 GVXR.Beam_PosX = 0
-GVXR.Beam_PosY = -100
+GVXR.Beam_PosY = -150
 GVXR.Beam_PosZ = 0
 GVXR.Beam_Pos_units = 'mm'
 # Beam type must be one of point or parallel
-GVXR.beam_type = 'point'
+GVXR.Beam_Type = 'point'
 
 # postion of the bottom right had corner of the detector in x,y and z
 GVXR.Detect_PosX = 0
@@ -78,10 +80,10 @@ GVXR.energy_units = 'MeV'
 
 # The number of angles you want projections
 # (i.e the number of output images) default=180
-#GVXR.num_projections = 180
+GVXR.num_projections = 361
 # The rotation angle between each image in degrees default=1
-#GVXR.angular_step = 1 
+GVXR.angular_step = 1 
 # String for output image format defualt of None leads to tiff stack
-#GVXR.image_format = 'png'
-# Inital rotation of cad model about the x,y and z axis
-#GVXR.model_rotation = [0,0,0]
+GVXR.image_format = 'tiff'
+# Inital rotation of cad model in degrees about the x,y and z axis
+GVXR.rotation = [90,0,0]

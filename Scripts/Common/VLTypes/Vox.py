@@ -23,11 +23,11 @@ def Setup(VL, RunVox=True):
     '''
     Vox - Mesh Voxelisation using Cuda or OpenMP
     '''
-    VL.OUT_DIR = "{}/Voxel-Images".format(VL.PROJECT_DIR)
-    VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
+    OUT_DIR = "{}/Voxel-Images".format(VL.PROJECT_DIR)
+    MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
-    if not os.path.exists(VL.OUT_DIR):
-        os.makedirs(VL.OUT_DIR)
+    if not os.path.exists(OUT_DIR):
+        os.makedirs(OUT_DIR)
 
     VL.VoxData = {}
     VoxDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Vox')
@@ -46,11 +46,11 @@ def Setup(VL, RunVox=True):
             IN_FILE = mesh
         # If not assume the file is in the Mesh directory
         else:
-            IN_FILE="{}/{}".format(VL.MESH_DIR, mesh)
+            IN_FILE="{}/{}".format(MESH_DIR, mesh)
 
 
         VoxDict = { 'input_file':IN_FILE,
-                    'output_file':"{}/{}".format(VL.OUT_DIR,VoxName)
+                    'output_file':"{}/{}".format(OUT_DIR,VoxName)
                 }
         # handle optional arguments
         if hasattr(Parameters,'unit_length'): 
@@ -64,10 +64,10 @@ def Setup(VL, RunVox=True):
             VoxDict['greyscale_file'] = Parameters.greyscale_file
         elif hasattr(Parameters,'greyscale_file') and not os.path.isabs(Parameters.greyscale_file):
         # This makes a non abs. path relative to the output directory not the run directory (for consistency)
-            VoxDict['greyscale_file'] = "{}/{}".format(VL.OUT_DIR,Parameters.greyscale_file)
+            VoxDict['greyscale_file'] = "{}/{}".format(OUT_DIR,Parameters.greyscale_file)
         else:
         # greyscale not given so generate a file in the output directory 
-            VoxDict['greyscale_file'] = "{}/greyscale_{}.csv".format(VL.OUT_DIR,VoxName) 
+            VoxDict['greyscale_file'] = "{}/greyscale_{}.csv".format(OUT_DIR,VoxName) 
 
         if hasattr(Parameters,'use_tetra'): 
             VoxDict['use_tetra'] = Parameters.use_tetra

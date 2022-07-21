@@ -5,26 +5,30 @@ from types import SimpleNamespace as Namespace
 from importlib import import_module
 import copy
 import Scripts.Common.VLFunctions as VLF
-from pydantic import ValidationError
-from pydantic import root_validator
+import pydantic
+#from pydantic import ValidationError
 from pydantic.dataclasses import dataclass, Field
-from typing import Optional
+from typing import Optional, List
 from Scripts.Common.VLPackages.GVXR.Utils_IO import ReadNikonData
-from Scripts.Common.VLPackages.GVXR.GVXR_utils import InitSpectrum
+from Scripts.Common.VLPackages.GVXR.GVXR_utils import InitSpectrum, dump_to_json
+
+class MyConfig:
+    validate_assignment = True
 # A class for holding x-ray beam data
-@dataclass
+@dataclass(config=MyConfig)
 class Xray_Beam:
     PosX: float
     PosY: float
     PosZ: float
     Beam_Type: str
-    Energy: Optional[float]
-    Tube_Voltage: Optional[float]
-    Tube_Angle: Optional[float]
-    Filters: Optional[str]
+    Energy: List[float] = Field(default=None)
+    Intensity: List[float] = Field(default=None)
+    Tube_Voltage: float = Field(default=None)
+    Tube_Angle: float = Field(default=None)
+    Filters: str = Field(default=None)
     Pos_units: str = Field(default='mm')
     Energy_units: str = Field(default='MeV')
-    Intensity: Optional[int]
+
 
 @classmethod
 def xor(x: bool, y: bool) -> bool:
@@ -86,17 +90,18 @@ class Cad_Model:
     # inital rotation of model around each axis [x,y,z]
     # To keep things simple this defaults to [0,0,0]
     # Nikon files define these as Tilt, InitalAngle, and Roll repectivley. 
-    rotation: float  = field(default_factory=lambda:[0,0,0])
-    Pos_units: str = field(default='mm')
+    rotation: float  = Field(default_factory=lambda:[0,0,0])
+    Pos_units: str = Field(default='mm')
+
 def Setup(VL, RunGVXR=True):
     '''
     GVXR - Simulation of X-ray CT scans 
     '''
-    #VL.OUT_DIR = "{}/GVXR-Images".format(VL.PROJECT_DIR)
-    VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
+    OUT_DIR = "{}/GVXR-Images".format(VL.PROJECT_DIR)
+    MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
-    if not os.path.exists(VL.OUT_DIR):
-        os.makedirs(VL.OUT_DIR)
+    if not os.path.exists(OUT_DIR):
+        os.makedirs(OUT_DIR)
     VL.GVXRData = {}
     GVXRDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
     # if RunGVXR is False or GVXRDicts is empty dont perform Simulation and return instead.
@@ -114,11 +119,11 @@ def Setup(VL, RunGVXR=True):
             IN_FILE = mesh
         # If not assume the file is in the Mesh directory
         else:
-            IN_FILE="{}/{}".format(VL.MESH_DIR, mesh)
+            IN_FILE="{}/{}".format(MESH_DIR, mesh)
 
 
         GVXRDict = { 'mesh_file':IN_FILE,
-                    'output_file':"{}/{}".format(VL.OUT_DIR,GVXRName)
+                    'output_file':"{}/{}".format(OUT_DIR,GVXRName)
                 }
 # Define flag to display visualisations
         if (VL.mode=='Headless'):
@@ -131,10 +136,10 @@ def Setup(VL, RunGVXR=True):
             GVXRDict['Material_file'] = Parameters.Material_file
         elif hasattr(Parameters,'Material_file') and not os.path.isabs(Parameters.Material_file):
         # This makes a non abs. path relative to the output directory not the run directory (for consistency)
-            GVXRDict['Material_file'] = "{}/{}".format(VL.OUT_DIR,Parameters.Material_file)
+            GVXRDict['Material_file'] = "{}/{}".format(VL.PROJECT_DIR,Parameters.Material_file)
         else:
         # greyscale not given so generate a file in the output directory 
-            GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.OUT_DIR,GVXRName) 
+            GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.PROJECT_DIR,GVXRName) 
 ########### Setup x-ray beam ##########
 # create dummy beam and to get filled in with values either from Parameters OR Nikon file.
         dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,Beam_Type='point')
@@ -150,11 +155,11 @@ def Setup(VL, RunGVXR=True):
         if Parameters.use_spekpy:
             dummy_Beam = InitSpectrum(Beam=dummy_Beam,Headless=GVXRDict['Headless'])
         else:
-            if (Parameters.Energy is None) or (Parameters.Intensity is None):
-                raise ValueError('you must Specify a beam Energy and Beam Intensity when not using Spekpy.')
-            else:
+            if hasattr(Parameters,'Energy') and hasattr(Parameters,'Intensity'):
                 dummy_Beam.Energy = Parameters.Energy
                 dummy_Beam.Intensity = Parameters.Intensity
+            else:
+                raise ValueError('you must Specify a beam Energy and Beam Intensity when not using Spekpy.')
 #################################################
         if hasattr(Parameters,'Nikon_file'):
             Nikon_file = Parameters.Nikon_file
@@ -188,8 +193,8 @@ def Setup(VL, RunGVXR=True):
 
             Model = Cad_Model(PosX=Parameters.Model_PosX,
                 PosY=Parameters.Model_PosY,PosZ=Parameters.Model_PosZ)
-            if hasattr(Parameters,'model_rotation'):
-                Model.rotation = Parameters.model_rotation
+            if hasattr(Parameters,'rotation'):
+                Model.rotation = Parameters.rotation
             GVXRDict['Model'] = Model
 
             if hasattr(Parameters,'num_projections'): 
@@ -203,6 +208,8 @@ def Setup(VL, RunGVXR=True):
             GVXRDict['im_format'] = Parameters.image_format
 
         VL.GVXRData[GVXRName] = GVXRDict.copy()
+        Json_file = "{}/{}_params.json".format(VL.PROJECT_DIR,GVXRName)
+        dump_to_json(VL.GVXRData[GVXRName],Json_file)
 
 def Run(VL):
     from Scripts.Common.VLPackages.GVXR.CT_Scan import CT_scan

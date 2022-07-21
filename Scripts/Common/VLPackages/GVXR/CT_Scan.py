@@ -8,7 +8,8 @@ import os
 from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
 import numexpr as ne
 
-def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headless=False,num_projections = 180,angular_step=1,im_format=None):
+def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headless=False,
+num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
     ''' Main run function for GVXR'''
     # Print the libraries' version
     print (gvxr.getVersionOfSimpleGVXR())
@@ -32,27 +33,47 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
 
     #extract np arrays of mesh data from meshio
     points = mesh.points
-    #triangles = mesh.get_cells_type('triangle')
+    triangles = mesh.get_cells_type('triangle')
     tetra = mesh.get_cells_type('tetra')
 
-    if (not np.any(tetra)):
-            raise ValueError("Input file must contain Tetrahedron data")
+    if (not np.any(triangles) and not np.any(tetra)):
+        raise ValueError("Input file must contain one of either Tets or Triangles")
 
+    if not np.any(triangles) and not use_tetra:
+        #no triangle data but trying to use triangles
+        raise ValueError("User asked to use triangles but input file does "
+        "not contain Triangle data")
+
+    if not np.any(tetra) and use_tetra:
+        #no tetra data but trying to use tets
+        raise ValueError("User asked to use tets but file does not contain Tetrahedron data")
+        
         # extract dict of material names and integer tags
     try:
         all_mat_tags=mesh.cell_tags
     except AttributeError:
         all_mat_tags = {}
+# switch element type based on flag, this prevents us having to keep checking
+#  if using tets or tri.
+    if use_tetra:
+        #extract surface triangles from volume tetrahedron mesh
+        elements = tets2tri(tetra,points)
+    else:
+        elements = triangles
 
     if not all_mat_tags:
         print ("[WARN] No materials defined in input file so we assume the whole mesh is made of a single material.")
         mat_tag_dict={0:['Un-Defined']}
-        mat_ids = np.zeros(np.shape(tetra),dtype = int) 
+        mat_ids = np.zeros(np.shape(elements),dtype = int) 
         tags = np.unique(mat_ids)
     else:
-    # pull the dictionary containing material id's for each tetrahderon
+    # pull the dictionary containing material id's for each element
     # and the np array of ints that label the materials.
-        mat_ids = mesh.get_cell_data('cell_tags','tetra')
+        if use_tetra:
+            mat_ids = mesh.get_cell_data('cell_tags','tetra')
+        else:
+            mat_ids = mesh.get_cell_data('cell_tags','triangle')
+        
         tags = np.unique(mat_ids)
         if(np.any(mat_ids==0)):
             all_mat_tags[0]=['Un-Defined']
@@ -67,7 +88,7 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     if os.path.exists(Material_file):
         Material_list = Read_Material_File(Material_file,mat_tag_dict)
         if len(tags) != len(Material_list):
-            raise ValueError( f"Error: The number of Materials read in from {Material_file} does not match the number of materials in {inputfile}.")
+            raise ValueError( f"Error: The number of Materials read in from {Material_file} does not match the number of materials in {mesh_file}.")
     else:
         Material_list = Generate_Material_File(Material_file,mat_tag_dict)
 
@@ -76,9 +97,9 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
         nodes = np.where(mat_ids==N)
         nodes=nodes[0]
         #set first value outside loop
-        mat_nodes=tetra[nodes[0],np.newaxis]
+        mat_nodes=elements[nodes[0],np.newaxis]
         for M in nodes[1:]:
-            mat_nodes=np.vstack([mat_nodes,tetra[M]])
+            mat_nodes=np.vstack([mat_nodes,elements[M]])
         meshes.append(mat_nodes)
 
 
@@ -107,19 +128,17 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
 
     gvxr.resetBeamSpectrum()
     for energy, count in zip(Beam.Energy,Beam.Intensity):
-        print(energy)
         gvxr.addEnergyBinToSpectrum(energy, Beam.Energy_units, count);
     
     # Set up the detector
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
     gvxr.setDetectorPosition(Detector.PosX,Detector.PosY, Detector.PosZ, Detector.Pos_units);
-    gvxr.setDetectorUpVector(-1, 0, 0);
+    gvxr.setDetectorUpVector(0, 0, -1);
     gvxr.setDetectorNumberOfPixels(Detector.Pix_X, Detector.Pix_Y);
     gvxr.setDetectorPixelSize(Detector.Spacing_X, Detector.Spacing_Y, Detector.Spacing_units);
 
     for i,mesh in enumerate(meshes):
-        mesh = tets2tri(mesh,points)
         label = str(tags[i]);
         Mesh_Name = Material_list[i][0]
     ### BLOCK #####
@@ -136,12 +155,25 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
         else:
             gvxr.addPolygonMeshAsInnerSurface(Mesh_Name)
     # set initial rotation
-    # note GVXR for whatever reason has wierd rotation axes'
-    # I have checked these and they are correct for us.
-    for N in Material_list:
-            gvxr.rotateNode(N[0], Model.rotation[0], 0, 0, 1); # x rotation axis
-            gvxr.rotateNode(N[0], Model.rotation[1], 1, 0, 0); # y rotation axis
-            gvxr.rotateNode(N[0], Model.rotation[2], 0, 1, 0); # z rotation axis
+    # note GVXR uses OpenGL which perfoms rotations with object axes not global.
+    # This makes rotaions around the gloabal axes very tricky.
+    M = len(Material_list)
+    total_rotation = np.zeros((3,M))
+    for i,N in enumerate(Material_list):
+            
+            # Gloabal X-axis rotation:
+            global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[1,0,0]) # caculate vector along global x-axis in object co-odinates
+            gvxr.rotateNode(N[0], Model.rotation[0], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom x rotation axis
+            total_rotation[0,i] += Model.rotation[0]# track total rotation
+            # Gloabal Y-axis rotation:
+            global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[0,1,0]) # caculate vector along global Y-axis in object co-odinates
+            gvxr.rotateNode(N[0], Model.rotation[1], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Y rotation axis
+            total_rotation[1,i] += Model.rotation[1]# track total rotation
+            # Global Z-axis Rotaion:
+            global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
+            gvxr.rotateNode(N[0], Model.rotation[2], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Z rotation axis
+            total_rotation[2,i] += Model.rotation[2]# track total rotation 
+    
     
     # Update the 3D visualisation
     gvxr.displayScene();       
@@ -151,24 +183,26 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
     projections = [];
     theta = [];
 
+    # calculate the rotation vector in model co-ordiantes that points
+    # along the global axis
+    # this is needed to alow us to rotate around the global axis rather than the cad model axis.
+    global_axis_vec = world_to_model_axis(total_rotation[:,1],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
     for i in range(num_projections):
         # Compute an X-ray image and add it to the list of projections
         projections.append(gvxr.computeXRayImage());
 
         # Update the 3D visualisation
         gvxr.displayScene();
-
-        # Rotate the model by 1 degree
-        for N in Material_list:
-            gvxr.rotateNode(N[0], angular_step, 1, 0, 0);
-
+        # Rotate the model by angular_step degrees
+        for i,N in enumerate(Material_list):
+            gvxr.rotateNode(N[0], angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
+            total_rotation[2,i]+=angular_step
         theta.append(i * angular_step * math.pi / 180);
 
     # Convert the projections as a Numpy array
-    projections = np.array(projections);
-
+    projections = np.array(projections,'uint32');
     #return projections
-
+    write_image(output_file,projections,im_format=im_format);
     # Perform the flat-Field correction of raw data
     dark = np.zeros(projections.shape);
 
@@ -181,12 +215,13 @@ def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headles
         total_energy += energy * count;
     flat = np.ones(projections.shape) * total_energy;
 
-    projections = flat_field_normalize(projections,flat,dark)
+    #projections = flat_field_normalize(projections,flat,dark).astype('uint32')
     
     # Calculate  -log(projections)  to linearize transmission tomography data
-    projections = minus_log(projections).astype('uint8')
-    
+    projections = minus_log(projections).astype('uint32')
+    output_file = output_file + '_inv'
     write_image(output_file,projections,im_format=im_format);
+    
 
     # Display the 3D scene (no event loop)
     # Run an interactive loop
@@ -232,7 +267,7 @@ def minus_log(arr):
     """
 
     out = ne.evaluate('-log(arr)')
-
+    print(out)
     return out
 
 
@@ -261,7 +296,6 @@ def flat_field_normalize(arr, flat, dark, cutoff=None):
     l = np.float32(1e-6)
     flat = np.mean(flat, axis=0, dtype=np.float32)
     dark = np.mean(dark, axis=0, dtype=np.float32)
-
     #get range for normalization
     denom = ne.evaluate('flat-dark')
     #remove values less than threshold l to avoid divide by zero
@@ -272,4 +306,5 @@ def flat_field_normalize(arr, flat, dark, cutoff=None):
     if cutoff is not None:
         cutoff = np.float32(cutoff)
         out = ne.evaluate('where(out>cutoff,cutoff,out)')
+    
     return out

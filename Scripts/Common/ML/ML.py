@@ -9,66 +9,30 @@ import time
 
 from .slsqp_multi import slsqp_multi
 
-class ExactGPmodel(gpytorch.models.ExactGP):
-    '''
-    Gaussian process regression model.
-    '''
-    def __init__(self, train_x, train_y, likelihood, kernel,options={},ard=True):
-        super(ExactGPmodel, self).__init__(train_x, train_y, likelihood)
+from . import Models
 
-        self.mean_module = gpytorch.means.ConstantMean()
-
-        ard_num_dims = train_x.shape[1] if ard else None
-        if kernel.lower() in ('rbf'):
-            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=ard_num_dims))
-        if kernel.lower().startswith('matern'):
-            split = kernel.split('_')
-            nu = float(split[1]) if len(split)==2 else 2.5
-            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=nu,ard_num_dims=ard_num_dims))
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-    def Gradient(self, x):
-        x.requires_grad=True
-        with gpytorch.settings.fast_pred_var():
-            # pred = self.likelihood(self(x))
-            pred = self(x)
-            grads = torch.autograd.grad(pred.mean.sum(), x)[0]
-            return grads
-
-    def Gradient_mean(self, x):
-        x.requires_grad=True
-        # pred = self.likelihood(self(x))
-        mean = self(x).mean
-        dmean = torch.autograd.grad(mean.sum(), x)[0]
-        return dmean, mean
-
-    def Gradient_variance(self, x):
-        x.requires_grad=True
-        with gpytorch.settings.fast_pred_var():
-            # pred = self.likelihood(self(x))
-            var = self(x).variance
-            dvar = torch.autograd.grad(var.sum(), x)[0]
-        return dvar, var
-
-def Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
+# ==============================================================================
+# Functions to easily create GPR
+def Create_GPR(TrainIn,TrainOut,kernel='RBF',prev_state=None,min_noise=None,input_scale=None,
+                output_scale=None,multitask=False):
     if TrainOut.ndim==1:
         # single output
-        likelihood, model = _Create_GPR(TrainIn, TrainOut, Kernel, min_noise=min_noise,
+        likelihood, model = _SingleGPR(TrainIn, TrainOut, kernel, min_noise=min_noise,
+                                        input_scale=input_scale,output_scale=output_scale)
+
+    elif multitask:
+        likelihood, model = _MultitaskGPR(TrainIn,TrainOut,kernel,min_noise=min_noise,
                                         input_scale=input_scale,output_scale=output_scale)
     else:
         # multiple output
         NbModel = TrainOut.shape[1]
         # Change kernel and min_noise to a list
-        if type(Kernel) not in (list,tuple): Kernel = [Kernel]*NbModel
+        if type(kernel) not in (list,tuple): kernel = [kernel]*NbModel
         if type(min_noise) not in (list,tuple): min_noise = [min_noise]*NbModel
         models,likelihoods = [], []
         for i in range(NbModel):
             _output_scale = output_scale[:,i] if output_scale is not None else None
-            likelihood, model = _Create_GPR(TrainIn, TrainOut[:,i], Kernel[i], min_noise = min_noise[i],
+            likelihood, model = _SingleGPR(TrainIn, TrainOut[:,i], kernel[i], min_noise = min_noise[i],
                                             input_scale=input_scale, output_scale=_output_scale)
             models.append(model)
             likelihoods.append(likelihood)
@@ -86,9 +50,9 @@ def Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None,input_scal
 
     return likelihood, model
 
-def _Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
+def _SingleGPR(TrainIn,TrainOut,kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = ExactGPmodel(TrainIn, TrainOut, likelihood, Kernel)
+    model = Models.ExactGPmodel(TrainIn, TrainOut, likelihood, kernel)
     if not prev_state:
         if min_noise != None:
             likelihood.noise_covar.register_constraint('raw_noise',gpytorch.constraints.GreaterThan(min_noise))
@@ -101,6 +65,17 @@ def _Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None,input_sca
     else:
         state_dict = torch.load(prev_state)
         model.load_state_dict(state_dict)
+
+    if input_scale is not None: model.input_scale = input_scale
+    if output_scale is not None: model.output_scale = output_scale
+
+    return likelihood, model
+
+
+def _MultitaskGPR(TrainIn,TrainOut,kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
+    ndim = TrainOut.shape[1]
+    likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=ndim)
+    model = Models.MultitaskGPModel(TrainIn, TrainOut, likelihood, kernel,rank=1)
 
     if input_scale is not None: model.input_scale = input_scale
     if output_scale is not None: model.output_scale = output_scale
@@ -171,18 +146,22 @@ def GPR_Train(model, Epochs=5000, lr=0.01, Print=50, ConvAvg=10, tol=1e-4,
                 PrintParameters(model)
 
     # Print out final information about training & model parameters
-    print('\n################################\n')
-    print("Iterations: {}\nLoss: {}".format(i+1,TotalLoss))
-    print("\nModel parameters:")
-    PrintParameters(model)
-    print('################################\n')
-
+    # print('\n################################\n')
+    # print("Iterations: {}\nLoss: {}".format(i+1,TotalLoss))
+    # print("\nModel parameters:")
+    # PrintParameters(model)
+    # print('################################\n')
+    
     return Losses
 
 def _Step(model, optimizer, mll, loss_lst, ConvAvg=10, tol=1e-4):
     optimizer.zero_grad() # set all gradients to zero
     # Calculate loss & add to list
+
     output = model(*model.train_inputs)
+
+
+
     loss = -mll(output, model.train_targets)
     loss_lst.append(loss.item())
     # Check convergence using the loss list. If convergence, return
@@ -193,6 +172,8 @@ def _Step(model, optimizer, mll, loss_lst, ConvAvg=10, tol=1e-4):
     # Calculate gradients & update model parameters using the optimizer
     loss.backward()
     optimizer.step()
+
+
 
 def CheckConvergence(Loss, ConvAvg=10, tol=1e-4):
     ''' Checks the list of loss values to decide whether or not convergence has been reached'''
@@ -402,7 +383,7 @@ def GetInputs(Parameters,commands):
         exec("inputs.append(Parameters.{})".format(command))
     return inputs
 
-def ModelSummary(NbInput,NbOutput,TrainNb,TestNb,Features=None,Labels=None):
+def ModelSummary(NbInput,NbOutput,TrainNb,TestNb=None,Features=None,Labels=None):
     ModelDesc = "Model Summary\n\n"\
                 "Nb.Inputs: {}\nNb.Outputs: {}\n\n"\
                 "Nb.Train data: {}\nNb.Test data: {}\n\n".format(NbInput,NbOutput,TrainNb,TestNb)
@@ -490,3 +471,44 @@ def InputQuery(model, NbInput, base=0.5, Ndisc=50):
             stdev = out.stddev.numpy()
         pred_mean.append(mean);pred_std.append(stdev)
     return pred_mean,pred_std
+
+
+
+# ==============================================================================
+def PCA(Data, metric={'threshold':0.99}):
+    U,s,VT = np.linalg.svd(Data,full_matrices=False)
+
+    if 'threshold' in metric:
+        s_sc = np.cumsum(s)
+        s_sc = s_sc/s_sc[-1]
+        threshold_ix = np.argmax( s_sc > metric['threshold']) + 1
+    else: threshold_ix = 0
+
+    if 'error' in metric:
+        for j in range(VT.shape[1]):
+            Datacompress = Data.dot(VT[:j+1,:].T)
+            Datauncompress = Datacompress.dot(VT[:j+1,:])
+            diff = np.abs(Data - Datauncompress)/Data
+            maxix = np.unravel_index(np.argmax(diff, axis=None), diff.shape)
+            if diff[maxix] < metric['error']:
+                error_ix = j
+                break
+    else: error_ix = 0
+
+    ix = max(threshold_ix,error_ix)
+    VT = VT[:ix,:]
+
+    Datacompress = Data.dot(VT.T)
+    Datauncompress = Datacompress.dot(VT)
+    diff = np.abs(Data - Datauncompress)
+    absmaxix = np.unravel_index(np.argmax(diff, axis=None), diff.shape)
+    percmaxix = np.unravel_index(np.argmax(diff/Data, axis=None), diff.shape)
+
+    print("Compressing data from {} to {} dimensions using PCA.\n"\
+           "Max absolute error: Original={:.2f}, compressed={:.2f}\n"\
+           "Max percentage error: Original={:.2f}, compressed={:.2f}\n"\
+           .format(Data.shape[1],ix,Data[absmaxix],Datauncompress[absmaxix],
+                   Data[percmaxix],Datauncompress[percmaxix])
+          )
+
+    return VT

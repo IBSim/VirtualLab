@@ -252,7 +252,26 @@ class VLSetup():
 
         # ======================================================================
         # VLType is in Master but not in Var
-        elif Var==None: return {Master.Name : Master.__dict__}
+        elif Var==None:
+            # Check if VLFunctions.Parameters_Var function has been used to create
+            # an iterator to vary parameters within master file.
+            typelist = [type(val) for val in Master.__dict__.values()]
+            if type(iter([])) in typelist:
+                # itertor found so we consider this as a varying parameter
+                Var = Namespace()
+                for key, val in Master.__dict__.items():
+                    if type(val) == type(iter([])):
+                        setattr(Var,key,list(val))
+                # Check that Name is also an iterator
+                if not hasattr(Var,'Name'):
+                    message = "{}.Name is not an iterable".format(VLType)
+                    self.Exit(ErrorMessage(message))
+                # Assign Var to class. Behaviour is the same as if _Parameters_Var
+                # file had been used.
+                setattr(self.Parameters_Var,VLType,Var)
+            else:
+                # No iterator, just a single study
+                return {Master.Name : Master.__dict__}
 
         # ======================================================================
         # VLType is in Var

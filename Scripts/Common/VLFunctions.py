@@ -276,3 +276,7 @@ def Interp_2D(Coordinates,Connectivity,Query):
     nds = Connectivity[elemix,:]
 
     return nds, weighting
+
+
+def ParametersVar(arglist):
+    return iter(arglist)

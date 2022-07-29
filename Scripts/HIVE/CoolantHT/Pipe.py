@@ -236,17 +236,20 @@ class PipeGeom():
 
     def set_roughness(self,roughness):
         """ sets a value for roughness"""
-        
+
         self.roughness = roughness
         self.get_relative_roughness()
         return roughness
 
 
+    def get_flowrate(self, velocity):
+        return self.get_area()*velocity*1000 #return l/s
+
     def check_if_htc_validated(self):
-        """ Makes sure that the htc calculation is within the 
+        """ Makes sure that the htc calculation is within the
         range of experimental validation boundaries
         """
-        
+
         if self.shape == 'smooth tube':
             if (4e-3 <= self.pipediameter <= 14e-3) is False:
                 print('\tWARNING: smooth pipe pipe diameter',
@@ -280,7 +283,7 @@ class PipeGeom():
 
 def test_geometry():
     """ this function used for testing """
-    
+
     '''
     testpiece = Geometry(shape = 'smooth tube',
                          pipediameter = 10e-3,

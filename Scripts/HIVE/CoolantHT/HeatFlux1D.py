@@ -2,8 +2,6 @@ from collections.abc import Iterable
 import numpy as np
 from scipy.interpolate import interp1d
 
-from .Coolant import Properties as ClProp
-from .Pipe import PipeGeom
 from .ForcedConvection import FC,VerifyFC
 from .SubcooledBoiling import SB, VerifySB, T_onb
 from .CriticalHeatFlux import CHF, VerifyCHF, T_CHF
@@ -50,8 +48,6 @@ def HIVE_Coolant(Temprange, coolant, geometry, CorrFC='st', CorrSB='jaeri', Corr
             data.append([T_K,q])
         data.append([End,SB(End,coolant,geometry,CorrFC,CorrSB,Tonb)])
         data = np.array(data)
-    # print()
-    # print(data)
 
     f = interp1d(data[:,0],data[:,1])
     q_sat, q_onb = f([coolant.T_sat, Tonb])

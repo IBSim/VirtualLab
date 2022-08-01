@@ -40,6 +40,7 @@ class VLSetup():
         # Define path to scripts
         self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
         self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
+        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
         # Add these to path
         sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 

@@ -1,5 +1,9 @@
 import os
 import sys
+import time
+import pandas as pd
+from types import SimpleNamespace as Namespace
+
 import numpy as np
 import torch
 import gpytorch
@@ -7,9 +11,40 @@ import h5py
 from natsort import natsorted
 import time
 
-from .slsqp_multi import slsqp_multi
-
+from Scripts.Common.Optimisation import slsqp_multi
 from . import Models
+
+def DataspaceAdd(Dataspace,**kwargs):
+    for varname, data in kwargs.items():
+        data_in, data_out = data
+        scaled_in = DataScale(data_in,*Dataspace.InputScaler)
+        setattr(Dataspace,"{}In_scale".format(varname), torch.from_numpy(scaled_in))
+        scaled_out = DataScale(data_out,*Dataspace.OutputScaler)
+        setattr(Dataspace,"{}Out_scale".format(varname), torch.from_numpy(scaled_out))
+
+def DataspaceTrain(TrainData, **kwargs):
+
+    TrainIn,TrainOut = TrainData
+
+    # ==========================================================================
+    # Scale ranges for training data
+    InputScaler = ScaleValues(TrainIn)
+    OutputScaler = ScaleValues(TrainOut)
+    # scale training data
+    TrainIn_scale = DataScale(TrainIn,*InputScaler)
+    TrainOut_scale = DataScale(TrainOut,*OutputScaler)
+    # convert to tensors
+    TrainIn_scale = torch.from_numpy(TrainIn_scale)
+    TrainOut_scale = torch.from_numpy(TrainOut_scale)
+
+    Dataspace = Namespace(InputScaler=InputScaler,OutputScaler=OutputScaler,
+                    NbInput=TrainIn.shape[1], NbOutput=TrainOut.shape[1],
+                    NbTrain=TrainIn.shape[0], TrainIn_scale=TrainIn_scale,
+                    TrainOut_scale=TrainOut_scale)
+
+    DataspaceAdd(Dataspace,**kwargs)
+
+    return Dataspace
 
 # ==============================================================================
 # Functions to easily create GPR
@@ -151,7 +186,7 @@ def GPR_Train(model, Epochs=5000, lr=0.01, Print=50, ConvAvg=10, tol=1e-4,
     # print("\nModel parameters:")
     # PrintParameters(model)
     # print('################################\n')
-    
+
     return Losses
 
 def _Step(model, optimizer, mll, loss_lst, ConvAvg=10, tol=1e-4):

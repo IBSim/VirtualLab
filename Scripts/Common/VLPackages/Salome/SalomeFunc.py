@@ -158,3 +158,15 @@ def MeshStore(MeshRn,MeshFile,RCfile,**kwargs):
 def MeshRC(RCfile,returncode):
     with open(RCfile,'w') as f:
         f.write(str(returncode))
+
+def GetFunc(FilePath, funcname):
+    path,ext = os.path.splitext(FilePath)
+    dirname = os.path.dirname(path)
+    basename = os.path.basename(path)
+
+    sys.path.insert(0,dirname)
+    module = importlib.import_module(basename) #reload?
+    sys.path.pop(0)
+
+    func = getattr(module, funcname, None)
+    return func

@@ -7,13 +7,11 @@ from salome.geom import geomBuilder
 salome.salome_init()
 
 # This function gives the ArgDict dictionary we passed to SalomeRun
-
 MeshDict = SalomeFunc.GetArgs()
-
-# Import the Create function which is used to generate the mesh using the mesh parameters
 Parameters = MeshDict['Parameters']
-Create = __import__(Parameters.File).Create
 
+# Import the function which is used to generate the mesh using the mesh parameters
+Create = SalomeFunc.GetFunc(*MeshDict['FileInfo'])
 MeshRn = Create(Parameters)
 
 if MeshDict.get('Debug',False):
@@ -28,7 +26,7 @@ elif type(MeshRn)==salome.smesh.smeshBuilder.Mesh:
     if hasattr(Parameters,'ExportGeom'):
         geompy = geomBuilder.New()
         SampleGeom = MeshRn.GetShape()
-        fname = os.path.splitext(MeshDict['MESH_FILE'])[0] # Same name as mesh 
+        fname = os.path.splitext(MeshDict['MESH_FILE'])[0] # Same name as mesh
 
         if Parameters.ExportGeom.lower() in ('step','stp'):
             import GEOM

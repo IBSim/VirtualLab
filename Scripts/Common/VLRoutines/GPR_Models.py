@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 import VLFunctions as VLF
 from Scripts.Common.tools import MEDtools
-from Scripts.Common.ML import ML, Surrogate
+from Scripts.Common.ML import ML
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)

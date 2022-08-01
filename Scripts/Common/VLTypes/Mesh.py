@@ -18,7 +18,7 @@ def Setup(VL, RunMesh=True, Import=False):
     if not (RunMesh and MeshDicts): return
     sys.path.insert(0, VL.SIM_MESH)
 
-    Files = [] # Something we want to keep track of
+    FileDict = {} # Something we want to keep track of
     for MeshName, ParaDict in MeshDicts.items():
         MeshPath = "{}/{}".format(VL.MESH_DIR, MeshName)
         if Import:
@@ -27,17 +27,23 @@ def Setup(VL, RunMesh=True, Import=False):
         Parameters = Namespace(**ParaDict)
 
         # ======================================================================
-        # Perform checks
-        # Check that mesh file exists
-        FilePath = VLF.FileFunc(VL.SIM_MESH, Parameters.File)[0]
-        if Parameters.File not in Files:
-            FileExist = VLF.CheckFile(FilePath)[0]
-            if not FileExist:
-                VL.Exit(VLF.ErrorMessage("The file {} does not "\
-                                        "exist".format(FilePath)))
-            Files.append(Parameters.File)
+        # get file path & perform checks
+        # default name is Single
+        file_name,func_name = VLF.FileFuncSplit(ParaDict['File'],'Create')
 
+        if (file_name,func_name) not in FileDict:
+            # Check file in directory & get path
+            FilePath = VL.GetFilePath([VL.SIM_MESH], file_name,
+                                      file_ext='py', exit_on_error=True)
+            # Check function func_name is in the file
+            a = VL.GetFunction(FilePath,func_name,exit_on_error=True)
+            File_func = [FilePath,func_name]
+            FileDict[(file_name,func_name)] = File_func
+        else:
+            File_func = FileDict[(file_name,func_name)]
 
+        # ======================================================================
+        # Verify mesh parameters
         Verify = VLF.GetFunc(FilePath,'Verify')
         if Verify != None:
             error, warning = Verify(Parameters)
@@ -53,6 +59,7 @@ def Setup(VL, RunMesh=True, Import=False):
         MeshDict = {'Name':MeshName,
                     'MESH_FILE':"{}.med".format(MeshPath),
                     'TMP_CALC_DIR':"{}/Mesh/{}".format(VL.TEMP_DIR, MeshName),
+                    'FileInfo':File_func,
                     'Parameters':Parameters
                     }
         if VL.mode in ('Headless','Continuous'):

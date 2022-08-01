@@ -14,7 +14,7 @@ import numpy as np
 
 import VLconfig
 from . import Analytics
-from .VLFunctions import ErrorMessage, WarningMessage
+from . import VLFunctions as VLF
 from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, Vox as VoxFn
 
 class VLSetup():
@@ -75,7 +75,7 @@ class VLSetup():
         elif Mode.lower() in ('t','terminal'): self.mode = 'Terminal'
         elif Mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
         elif Mode.lower() in ('h', 'headless'): self.mode = 'Headless'
-        else : self.Exit(ErrorMessage("Mode must be one of; 'Interactive',\
+        else : self.Exit(VLF.ErrorMessage("Mode must be one of; 'Interactive',\
                                       'Terminal','Continuous', 'Headless'"))
 
     def _SetLauncher(self,Launcher='Process'):
@@ -84,7 +84,7 @@ class VLSetup():
         elif Launcher.lower() == 'process': self._Launcher = 'Process'
         elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
         elif Launcher.lower() == 'mpi_worker': self._Launcher = 'MPI_Worker'
-        else: self.Exit(ErrorMessage("Launcher must be one of; 'Sequential',\
+        else: self.Exit(VLF.ErrorMessage("Launcher must be one of; 'Sequential',\
                                      'Process', 'MPI'"))
 
     def _SetNbJobs(self,NbJobs=1):
@@ -95,19 +95,19 @@ class VLSetup():
             if NbJobs.is_integer():
                 _NbJobs = NbJobs
             else:
-                self.Exit(ErrorMessage("NbJobs must be an integer"))
+                self.Exit(VLF.ErrorMessage("NbJobs must be an integer"))
         else:
-            self.Exit(ErrorMessage("NbJobs must be an integer"))
+            self.Exit(VLF.ErrorMessage("NbJobs must be an integer"))
 
         if _NbJobs >= 1:
             self._NbJobs = _NbJobs
         else:
-            self.Exit(ErrorMessage("NbJobs must be positive"))
+            self.Exit(VLF.ErrorMessage("NbJobs must be positive"))
 
     def _SetInputDir(self,InputDir):
         InputDir = self._ParsedArgs.get('InputDir',InputDir)
         if not os.path.isdir(InputDir):
-            self.Exit(ErrorMessage("InputDir is not a valid directory"))
+            self.Exit(VLF.ErrorMessage("InputDir is not a valid directory"))
         self._InputDir = InputDir
         self.PARAMETERS_DIR = '{}/{}/{}'.format(self._InputDir, self.Simulation, self.Project)
 
@@ -118,7 +118,7 @@ class VLSetup():
 
     def _SetMaterialDir(self,MaterialDir):
         if not os.path.isdir(MaterialDir):
-            self.Exit(ErrorMessage("MaterialDir is not a valid directory"))
+            self.Exit(VLF.ErrorMessage("MaterialDir is not a valid directory"))
         MaterialDir = self._ParsedArgs.get('MaterialDir',MaterialDir)
         self.MATERIAL_DIR = MaterialDir
 
@@ -132,7 +132,7 @@ class VLSetup():
         Diff = set(kwargs).difference(['Mode','Launcher','NbJobs','InputDir',
                                     'OutputDir','MaterialDir','Cleanup'])
         if Diff:
-            self.Exit("Error: {} are not option(s) for settings".format(list(Diff)))
+            self.Exit(VLF.ErrorMessage("The following are not valid options in Settings:\n{}".format("\n".join(Diff))))
 
         if 'Mode' in kwargs:
             self._SetMode(kwargs['Mode'])
@@ -150,7 +150,7 @@ class VLSetup():
             self._SetMaterialDir(kwargs['MaterialDir'])
 
     def Parameters(self, Parameters_Master, Parameters_Var=None,
-                    RunMesh=True, RunSim=True, RunDA=True, 
+                    RunMesh=True, RunSim=True, RunDA=True,
                     RunVox=True, Import=False):
 
         # Update args with parsed args
@@ -167,7 +167,7 @@ class VLSetup():
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
 
-        
+
         MeshFn.Setup(self,RunMesh, Import)
         SimFn.Setup(self,RunSim, Import)
         DAFn.Setup(self,RunDA, Import)
@@ -185,7 +185,13 @@ class VLSetup():
         # Check File exists
         if not os.path.exists(Abs_Parameters):
             message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
-            self.Exit(ErrorMessage(message))
+            self.Exit(VLF.ErrorMessage(message))
+
+        if ParameterArgs !=None:
+            # If arguments are provided then it's pickled to a file
+            arg_path = "{}/{}.pkl".format(self.TEMP_DIR,uuid.uuid4())
+            VLF.WriteArgs(arg_path,ParameterArgs)
+            sys.argv.append("ParameterArgs={}".format(arg_path))
 
         sys.path.insert(0, os.path.dirname(Abs_Parameters))
         Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
@@ -200,7 +206,7 @@ class VLSetup():
 
         if Master == None and Var == None:
             message = "Both Parameters_Master or Parameters_Var can't be None"
-            self.Exit(ErrorMessage(message))
+            self.Exit(VLF.ErrorMessage(message))
 
         # ======================================================================
         # If string, import files
@@ -213,10 +219,10 @@ class VLSetup():
         # Check any of the attributes of NS are included
         if Master != None and not set(Master.__dict__).intersection(VLTypes):
             message = "Parameters_Master contains none of the attrbutes {}".format(VLTypes)
-            self.Exit(ErrorMessage(message))
+            self.Exit(VLF.ErrorMessage(message))
         if Var != None and not set(Var.__dict__).intersection(VLTypes):
             message = "Parameters_Var contains none of the attrbutes {}".format(VLTypes)
-            self.Exit(ErrorMessage(message))
+            self.Exit(VLF.ErrorMessage(message))
 
         # ======================================================================
         self.Parameters_Master = Namespace()
@@ -228,10 +234,10 @@ class VLSetup():
             # Check all in NS have the attribute 'Name'
             if master_nm != None and not hasattr(master_nm,'Name'):
                 message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(nm)
-                self.Exit(ErrorMessage(message))
+                self.Exit(VLF.ErrorMessage(message))
             if master_nm != None and not hasattr(master_nm,'Name'):
                 message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(nm)
-                self.Exit(ErrorMessage(message))
+                self.Exit(VLF.ErrorMessage(message))
 
             # ==================================================================
             setattr(self.Parameters_Master, nm, master_nm)
@@ -265,7 +271,7 @@ class VLSetup():
                 # Check that Name is also an iterator
                 if not hasattr(Var,'Name'):
                     message = "{}.Name is not an iterable".format(VLType)
-                    self.Exit(ErrorMessage(message))
+                    self.Exit(VLF.ErrorMessage(message))
                 # Assign Var to class. Behaviour is the same as if _Parameters_Var
                 # file had been used.
                 setattr(self.Parameters_Var,VLType,Var)
@@ -289,7 +295,7 @@ class VLSetup():
             attrstr = "\n".join(["{}.{}".format(VLType,i) for i in errVar])
             message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
                 "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(VLType,attrstr)
-            self.Exit(ErrorMessage(message))
+            self.Exit(VLF.ErrorMessage(message))
 
         # VLType is in Master and Var
         if Master!=None and Var !=None:
@@ -299,7 +305,7 @@ class VLSetup():
                 attstr = "\n".join(["{}.{}".format(VLType,i) for i in dfattrs])
                 message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
                     "{}\n\nThis may lead to unexpected results.".format(attstr)
-                print(WarningMessage(message))
+                print(VLF.WarningMessage(message))
 
         # ======================================================================
         # Create dictionary for each entry in Parameters_Var
@@ -314,6 +320,33 @@ class VLSetup():
 
         return ParaDict
 
+    def GetFilePath(self, Dirs, file_name, file_ext='py', exit_on_error=True):
+        ''' This function will return either the file path if it exists or None.'''
+        # ==========================================================================
+        # Check file exists
+        if type(Dirs) == str: Dirs=[Dirs]
+        FilePath = None
+        for dir in Dirs:
+            _FilePath = "{}/{}.{}".format(dir,file_name,file_ext)
+            FileExist = os.path.isfile(_FilePath)
+            if FileExist:
+                FilePath = _FilePath
+                break
+
+        if exit_on_error and FilePath is None:
+            self.Exit(VLF.ErrorMessage("The file {}.{} is not in the following directories:\n"\
+                    "{}".format(file_name,file_ext,"\n".join(Dirs))))
+
+        return FilePath
+
+    def GetFunction(self, file_path, func_name, exit_on_error=True):
+        func = VLF.GetFunc(file_path,func_name)
+
+        if exit_on_error and func is None:
+            self.Exit(VLF.ErrorMessage("The function {} is not "\
+                    "in {}".format(func_name,file_path)))
+
+        return func
 
     def Mesh(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)

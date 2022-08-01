@@ -22,24 +22,27 @@ def Setup(VL, RunDA=True, Import=False):
     os.makedirs(VL.tmpDA_DIR, exist_ok=True)
 
 
-    Files = [] # Something we want to keep track of
+    FileDict = {}
     for DAName, ParaDict in DADicts.items():
         CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, DAName)
         if Import:
             ParaDict = VLF.ImportUpdate("{}/Parameters.py".format(CALC_DIR), ParaDict)
 
         # ======================================================================
-        # Perform check to see if file exists
-        if ParaDict['File'] not in Files:
-            FilePath,FuncName = VLF.FileFunc(VL.SIM_DA, ParaDict['File'])
-            FileExist,FuncExist = VLF.CheckFile(FilePath,FuncName)
-            if not FileExist:
-                VL.Exit(VLF.ErrorMessage("The file {} does not "\
-                        "exist".format(FilePath)))
-            if not FuncExist:
-                VL.Exit(VLF.ErrorMessage("The function {} does not "\
-                        "exist in {}".format(FuncName,FilePath)))
-            Files.append(ParaDict['File'])
+        # get file path & perform checks
+        # default name is Single
+        file_name,func_name = VLF.FileFuncSplit(ParaDict['File'],'Single')
+
+        if (file_name,func_name) not in FileDict:
+            # Check file in directory & get path
+            FilePath = VL.GetFilePath([VL.SIM_DA,VL.VLRoutine_SCRIPTS], file_name,
+                                      file_ext='py', exit_on_error=True)
+            # Check function func_name is in the file
+            VL.GetFunction(FilePath,func_name,exit_on_error=True)
+            File_func = [FilePath,func_name]
+            FileDict[(file_name,func_name)] = File_func
+        else:
+            File_func = FileDict[(file_name,func_name)]
 
         # ==========================================================================
         # Create dictionary for each analysis
@@ -47,6 +50,7 @@ def Setup(VL, RunDA=True, Import=False):
                  'CALC_DIR':CALC_DIR,
                  'TMP_CALC_DIR':"{}/{}".format(VL.tmpDA_DIR, DAName),
                  'Parameters':Namespace(**ParaDict),
+                 'FileInfo':File_func,
                  'Data':{}}
 
         # Important information can be added to Data during any stage of the
@@ -70,8 +74,7 @@ def PoolRun(VL, DADict):
     os.makedirs(DADict['CALC_DIR'], exist_ok=True)
     VLF.WriteData("{}/Parameters.py".format(DADict['CALC_DIR']), Parameters)
 
-    FilePath, FuncName = VLF.FileFunc(VL.SIM_DA, Parameters.File)
-    DASgl = VLF.GetFunc(FilePath,FuncName)
+    DASgl = VLF.GetFunc(*DADict['FileInfo'])
 
     err = DASgl(VL,DADict)
 

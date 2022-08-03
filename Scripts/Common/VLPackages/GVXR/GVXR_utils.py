@@ -204,13 +204,14 @@ def dump_to_json(Python_dict:dict,file_name:str):
     import json
     import dataclasses as dc
     # Remove all parmas that are Dataclasses as we will deal with them seperatly
-    params = without_keys(Python_dict,["Beam","Detector","Model"])
+    IO_params = without_keys(Python_dict,["Beam","Detector","Model"])
     #extract datclasses as seperate dicts
     Beam = Python_dict["Beam"].__dict__
     Cad = Python_dict["Model"].__dict__
     Det = Python_dict["Detector"].__dict__
+
+    params ={**IO_params, **Beam, **Cad,**Det}
     with open(file_name, 'w') as fp:
-        fp.write("IO Params:\n")
         json.dump(params, fp)
         fp.write("\nBeam Params:\n")
         json.dump(Beam, fp)

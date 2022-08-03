@@ -17,16 +17,16 @@ class MyConfig:
 # A class for holding x-ray beam data
 @dataclass(config=MyConfig)
 class Xray_Beam:
-    PosX: float
-    PosY: float
-    PosZ: float
+    Beam_PosX: float
+    Beam_PosY: float
+    Beam_PosZ: float
     Beam_Type: str
     Energy: List[float] = Field(default=None)
     Intensity: List[float] = Field(default=None)
     Tube_Voltage: float = Field(default=None)
     Tube_Angle: float = Field(default=None)
     Filters: str = Field(default=None)
-    Pos_units: str = Field(default='mm')
+    Beam_Pos_units: str = Field(default='mm')
     Energy_units: str = Field(default='MeV')
 
 
@@ -68,9 +68,9 @@ def check_BeamEnergy_or_TubeVoltage(cls,values):
 @dataclass
 class Xray_Detector:
 # position of detector in space 
-    PosX: float
-    PosY: float
-    PosZ: float
+    Det_PosX: float
+    Det_PosY: float
+    Det_PosZ: float
 # number of pixels in the x and y dir
     Pix_X: int
     Pix_Y: int
@@ -78,20 +78,20 @@ class Xray_Detector:
     Spacing_X: float =Field(default=0.5)
     Spacing_Y: float =Field(default=0.5)
 #units
-    Pos_units: str = Field(default='mm')
+    Det_Pos_units: str = Field(default='mm')
     Spacing_units: str = Field(default='mm')
 
 @dataclass
 class Cad_Model:
     # position of cad model in space 
-    PosX: float
-    PosY: float
-    PosZ: float
+    Model_PosX: float
+    Model_PosY: float
+    Model_PosZ: float
     # inital rotation of model around each axis [x,y,z]
     # To keep things simple this defaults to [0,0,0]
     # Nikon files define these as Tilt, InitalAngle, and Roll repectivley. 
     rotation: float  = Field(default_factory=lambda:[0,0,0])
-    Pos_units: str = Field(default='mm')
+    Model_Pos_units: str = Field(default='mm')
 
 def Setup(VL, RunGVXR=True):
     '''
@@ -142,7 +142,7 @@ def Setup(VL, RunGVXR=True):
             GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.PROJECT_DIR,GVXRName) 
 ########### Setup x-ray beam ##########
 # create dummy beam and to get filled in with values either from Parameters OR Nikon file.
-        dummy_Beam = Xray_Beam(PosX=0,PosY=0,PosZ=0,Beam_Type='point')
+        dummy_Beam = Xray_Beam(Beam_PosX=0,Beam_PosY=0,Beam_PosZ=0,Beam_Type='point')
         
         if hasattr(Parameters,'Energy_units'): 
             dummy_Beam.Energy_units = Parameters.Energy_units
@@ -166,21 +166,21 @@ def Setup(VL, RunGVXR=True):
 # create dummy detector and cad model to get filled in with values 
 # from nikon file.
 # Note: the function adds the 3 data classes to the GVXRdict itself.
-            dummy_Det = Xray_Detector(PosX=0,PosY=0,PosZ=0,Pix_X=0,Pix_Y=0)
-            dummy_Model = Cad_Model(PosX=0,PosY=0,PosZ=0)
+            dummy_Det = Xray_Detector(Det_PosX=0,Det_PosY=0,Det_PosZ=0,Pix_X=0,Pix_Y=0)
+            dummy_Model = Cad_Model(Model_PosX=0,Model_PosY=0,Model_PosZ=0)
             GVXRDict = ReadNikonData(GVXRDict,Nikon_file,dummy_Beam,dummy_Det,dummy_Model)
         else:
 #############################################################
 # fill in values for x-ray detector, beam and cad model 
 # from Parameters.
-            dummy_Beam.PosX=Parameters.Beam_PosX
-            dummy_Beam.PosY=Parameters.Beam_PosY
-            dummy_Beam.PosZ=Parameters.Beam_PosZ
+            dummy_Beam.Beam_PosX=Parameters.Beam_PosX
+            dummy_Beam.Beam_PosY=Parameters.Beam_PosY
+            dummy_Beam.Beam_PosZ=Parameters.Beam_PosZ
             dummy_Beam.Beam_Type=Parameters.Beam_Type
             GVXRDict['Beam'] = dummy_Beam
 
-            Detector = Xray_Detector(PosX=Parameters.Detect_PosX,
-                PosY=Parameters.Detect_PosY,PosZ=Parameters.Detect_PosZ,
+            Detector = Xray_Detector(Det_PosX=Parameters.Detect_PosX,
+                Det_PosY=Parameters.Detect_PosY,Det_PosZ=Parameters.Detect_PosZ,
                 Pix_X=Parameters.Pix_X,Pix_Y=Parameters.Pix_Y)
 
             if hasattr(Parameters,'Spacing_X'): 
@@ -191,8 +191,8 @@ def Setup(VL, RunGVXR=True):
   
             GVXRDict['Detector'] = Detector
 
-            Model = Cad_Model(PosX=Parameters.Model_PosX,
-                PosY=Parameters.Model_PosY,PosZ=Parameters.Model_PosZ)
+            Model = Cad_Model(Model_PosX=Parameters.Model_PosX,
+                Model_PosY=Parameters.Model_PosY,Model_PosZ=Parameters.Model_PosZ)
             if hasattr(Parameters,'rotation'):
                 Model.rotation = Parameters.rotation
             GVXRDict['Model'] = Model

@@ -118,7 +118,7 @@ num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
     # Set up the beam
     print("Set up the beam")
     #gvxr.setSourcePosition(15,-40.0, 12.5, "mm");
-    gvxr.setSourcePosition(Beam.PosX,Beam.PosY, Beam.PosZ, Beam.Pos_units);
+    gvxr.setSourcePosition(Beam.Beam_PosX,Beam.Beam_PosY, Beam.Beam_PosZ, Beam.Beam_Pos_units);
     if (Beam.Beam_Type == 'point'):
         gvxr.usePointSource();
     elif (Beam.Beam_Type == 'parallel'):
@@ -133,7 +133,7 @@ num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
     # Set up the detector
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
-    gvxr.setDetectorPosition(Detector.PosX,Detector.PosY, Detector.PosZ, Detector.Pos_units);
+    gvxr.setDetectorPosition(Detector.Det_PosX,Detector.Det_PosY, Detector.Det_PosZ, Detector.Det_Pos_units);
     gvxr.setDetectorUpVector(0, 0, -1);
     gvxr.setDetectorNumberOfPixels(Detector.Pix_X, Detector.Pix_Y);
     gvxr.setDetectorPixelSize(Detector.Spacing_X, Detector.Spacing_Y, Detector.Spacing_units);
@@ -148,7 +148,7 @@ num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
         "m");
         # place mesh at the orgin then traslate it according to the defined ofset
         #gvxr.moveToCentre(Mesh_Name);
-        gvxr.translateNode(Mesh_Name,Model.PosX,Model.PosY,Model.PosZ,Model.Pos_units)
+        gvxr.translateNode(Mesh_Name,Model.Model_PosX,Model.Model_PosY,Model.Model_PosZ,Model.Model_Pos_units)
         gvxr.setElement(Mesh_Name, Material_list[i][1]);
         if i==0:
             gvxr.addPolygonMeshAsOuterSurface(Mesh_Name)

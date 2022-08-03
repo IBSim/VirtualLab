@@ -55,7 +55,7 @@ def tets2tri(tetra,points):
     tri = np.array(list(surface),'int32')
     tri_surf = extract_unique_triangles(tri)
     stop = time.time()
-    print(f"Conversion took: {stop-start} seconds")
+    print(f"Tet to Tri conversion took: {stop-start} seconds")
 
     return tri_surf
 

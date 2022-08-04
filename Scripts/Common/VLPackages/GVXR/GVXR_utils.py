@@ -223,12 +223,6 @@ def dump_to_json(Python_dict:dict,file_name:str):
     params ={**IO_params, **Beam, **Cad,**Det}
     with open(file_name, 'w') as fp:
         json.dump(params, fp)
-        fp.write("\nBeam Params:\n")
-        json.dump(Beam, fp)
-        fp.write("\nCad Model Params:\n")
-        json.dump(Cad, fp)
-        fp.write("\nDetector Params:\n")
-        json.dump(Det, fp)
         fp.close()
 
 def world_to_model_axis(rotation,global_axis=[0,0,1]):

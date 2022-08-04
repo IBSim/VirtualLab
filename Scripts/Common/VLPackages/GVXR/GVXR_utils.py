@@ -8,7 +8,6 @@ def FlipNormal(triangle_index_set):
     ''' Function to swap index order of triangles to flip the surface normal.'''
     triangle_index_set = np.array(triangle_index_set)
     triangle_index_set[[0,1,2]] = triangle_index_set[[0,2,1]]
-
     return triangle_index_set
 
 def correct_normal(tri_ind,extra,points):
@@ -38,26 +37,38 @@ def extract_unique_triangles(t):
     sort_tri = np.sort(t,axis=1)
     _,index,counts = np.unique(sort_tri,axis=0,return_index=True, return_counts=True)
     tri = t[index[counts==1]]
-    return tri
+    return tri, index[counts==1]
 
-def tets2tri(tetra,points):
+def tets2tri(tetra,points,mat_ids):
     import itertools
     import time
     start = time.time()
-    surface = set()
-
-    for i,tet in enumerate(tetra):
+    # each tet has been broken dwon into 4 triangles 
+    # so we must expand mat_ids by 4 times to get the
+    #  id for each tri.
+    #mat_ids = np.repeat(mat_ids,4)
+    vol_mat_ids = np.empty(len(tetra)*4,'int')
+    surface = []
+    surf_mat_ids=[]
+    j = 0
+    for i,tet in enumerate(tetra,start=0):
         Nodes = tuple(itertools.combinations(tet,3))
         for face in Nodes:
+            vol_mat_ids[j] = mat_ids[i]
             extra = list(set(tetra[i]).difference(face))
+            #breakpoint()
             face = correct_normal(face,extra,points)
-            surface.add((face[0], face[1], face[2]))
+            surface.append([face[0], face[1], face[2]])
+            j+=1
+            
     tri = np.array(list(surface),'int32')
-    tri_surf = extract_unique_triangles(tri)
+    # extract triangles on the surface of the mesh and there id's
+    tri_surf, ind = extract_unique_triangles(tri)
+    surf_mat_ids = np.take(vol_mat_ids,ind)
     stop = time.time()
     print(f"Conversion took: {stop-start} seconds")
 
-    return tri_surf
+    return tri_surf, surf_mat_ids
 
 def Generate_Material_File(material_file,mat_tags):
     """ Function to generate a new Materail file if none are defined.
@@ -113,10 +124,10 @@ def find_the_key(dictionary:dict, target_keys:str):
     """Function to pull out the keys of a dictionary as a list."""
     return {key: dictionary[key] for key in target_keys}
 
-def write_image(output_file:str,vox:np.double,im_format:str=None):
+def write_image(output_file:str,vox:np.double,im_format:str='tiff'):
     from PIL import Image, ImageOps
     import tifffile as tf
-    if (im_format):
+    if (im_format != 'tiff'):
         for I in range(0,np.shape(vox)[2]):
             im = Image.fromarray(vox[:,:,I])
             im = ImageOps.grayscale(im)
@@ -124,7 +135,6 @@ def write_image(output_file:str,vox:np.double,im_format:str=None):
             im.save(im_output)
     else:
         im_output="{}.tiff".format(output_file)
-        #tf.imwrite(im_output,vox,photometric='minisblack')
         tf.imwrite(im_output,vox)
         
 def InitSpectrum(Beam,Verbose:bool=True,Headless:bool=False):

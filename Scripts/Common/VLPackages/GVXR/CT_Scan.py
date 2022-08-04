@@ -9,7 +9,7 @@ from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
 import numexpr as ne
 
 def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headless=False,
-num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
+num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False):
     ''' Main run function for GVXR'''
     # Print the libraries' version
     print (gvxr.getVersionOfSimpleGVXR())
@@ -53,18 +53,14 @@ num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
         all_mat_tags=mesh.cell_tags
     except AttributeError:
         all_mat_tags = {}
-# switch element type based on flag, this prevents us having to keep checking
-#  if using tets or tri.
-    if use_tetra:
-        #extract surface triangles from volume tetrahedron mesh
-        elements = tets2tri(tetra,points)
-    else:
-        elements = triangles
 
     if not all_mat_tags:
         print ("[WARN] No materials defined in input file so we assume the whole mesh is made of a single material.")
         mat_tag_dict={0:['Un-Defined']}
-        mat_ids = np.zeros(np.shape(elements),dtype = int) 
+        if use_tetra:
+            mat_ids = np.zeros(np.shape(tetra)[0],dtype = int)
+        else:
+            mat_ids = np.zeros(np.shape(triangles)[0],dtype = int) 
         tags = np.unique(mat_ids)
     else:
     # pull the dictionary containing material id's for each element
@@ -79,7 +75,14 @@ num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
             all_mat_tags[0]=['Un-Defined']
         mat_tag_dict = find_the_key(all_mat_tags, np.unique(mat_ids))
             
-
+# switch element type based on flag, this prevents us having to keep checking
+#  if using tets or tri.
+    if use_tetra:
+        #extract surface triangles from volume tetrahedron mesh
+        elements, mat_ids  = tets2tri(tetra,points,mat_ids)
+    else:
+        elements = triangles
+    
     if Material_file is None:
         Material_file = 'Materials.csv'
 
@@ -93,15 +96,17 @@ num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
         Material_list = Generate_Material_File(Material_file,mat_tag_dict)
 
     meshes=[]
+    
     for N in tags:
         nodes = np.where(mat_ids==N)
         nodes=nodes[0]
         #set first value outside loop
-        mat_nodes=elements[nodes[0],np.newaxis]
-        for M in nodes[1:]:
-            mat_nodes=np.vstack([mat_nodes,elements[M]])
+        #mat_nodes=elements[nodes[0],np.newaxis]
+        #for M in nodes[1:]:
+        #    mat_nodes=np.vstack([mat_nodes,elements[M]])
+        mat_nodes = np.take(elements,nodes,axis=0)
         meshes.append(mat_nodes)
-
+    
 
     #define boundray box for mesh
     min_corner = np.array([np.min(points[:,0]), np.min(points[:,1]), np.min(points[:,2])])
@@ -145,7 +150,7 @@ num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
         gvxr.makeTriangularMesh(Mesh_Name,
         points.flatten(),
         mesh.flatten(),
-        "m");
+        Model.Pos_units);
         # place mesh at the orgin then traslate it according to the defined ofset
         #gvxr.moveToCentre(Mesh_Name);
         gvxr.translateNode(Mesh_Name,Model.PosX,Model.PosY,Model.PosZ,Model.Pos_units)
@@ -186,7 +191,7 @@ num_projections = 180,angular_step=1,im_format=None,use_tetra=False):
     # calculate the rotation vector in model co-ordiantes that points
     # along the global axis
     # this is needed to alow us to rotate around the global axis rather than the cad model axis.
-    global_axis_vec = world_to_model_axis(total_rotation[:,1],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
+    global_axis_vec = world_to_model_axis(total_rotation[:,0],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
     for i in range(num_projections):
         # Compute an X-ray image and add it to the list of projections
         projections.append(gvxr.computeXRayImage());
@@ -267,7 +272,6 @@ def minus_log(arr):
     """
 
     out = ne.evaluate('-log(arr)')
-    print(out)
     return out
 
 

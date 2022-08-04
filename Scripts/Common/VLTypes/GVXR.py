@@ -177,12 +177,15 @@ def Setup(VL, RunGVXR=True):
             dummy_Beam.PosY=Parameters.Beam_PosY
             dummy_Beam.PosZ=Parameters.Beam_PosZ
             dummy_Beam.Beam_Type=Parameters.Beam_Type
+            if hasattr(Parameters,'Beam_Pos_units'):
+                dummy_Beam.Pos_units = Parameters.Beam_Pos_units
             GVXRDict['Beam'] = dummy_Beam
 
             Detector = Xray_Detector(PosX=Parameters.Detect_PosX,
                 PosY=Parameters.Detect_PosY,PosZ=Parameters.Detect_PosZ,
                 Pix_X=Parameters.Pix_X,Pix_Y=Parameters.Pix_Y)
-
+            if hasattr(Parameters,'Detect_Pos_units'):
+                Detector.Pos_units = Parameters.Detect_Pos_units
             if hasattr(Parameters,'Spacing_X'): 
                 Detector.Spacing_X = Parameters.Spacing_X
 
@@ -193,6 +196,8 @@ def Setup(VL, RunGVXR=True):
 
             Model = Cad_Model(PosX=Parameters.Model_PosX,
                 PosY=Parameters.Model_PosY,PosZ=Parameters.Model_PosZ)
+            if hasattr(Parameters,'Model_Pos_units'):
+                Model.Pos_units = Parameters.Model_Pos_units    
             if hasattr(Parameters,'rotation'):
                 Model.rotation = Parameters.rotation
             GVXRDict['Model'] = Model

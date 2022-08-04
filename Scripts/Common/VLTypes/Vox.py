@@ -23,17 +23,16 @@ def Setup(VL, RunVox=True):
     '''
     Vox - Mesh Voxelisation using Cuda or OpenMP
     '''
+    VoxDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Vox')
+    # if RunVox is False or VoxDicts is empty dont perform voxelisation and return instead.
+    if not (RunVox and VoxDicts): return
+    VL.VoxData = {}
     OUT_DIR = "{}/Voxel-Images".format(VL.PROJECT_DIR)
     MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
     if not os.path.exists(OUT_DIR):
         os.makedirs(OUT_DIR)
 
-    VL.VoxData = {}
-    VoxDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Vox')
-
-    # if RunVox is False or VoxDicts is empty dont perform voxelisation and return instead.
-    if not (RunVox and VoxDicts): return
     for VoxName, VoxParams in VoxDicts.items():
         Parameters = Namespace(**VoxParams)
         #check mesh for file extension and if not present assume salome med

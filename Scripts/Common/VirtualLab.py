@@ -253,6 +253,12 @@ class VLSetup():
         Master = getattr(self.Parameters_Master, VLType, None)
         Var = getattr(self.Parameters_Var, VLType, None)
 
+        # Check VLType is an appropriate type
+        if type(Master) not in (type(None),type(Namespace())):
+            print(VLF.WarningMessage("Variable '{}' named in Master but is not a namespace. This may lead yo unexpected results".format(VLType)))
+        if type(Var) not in (type(None),type(Namespace())):
+            print(VLF.WarningMessage("Variable '{}' named in Var but is not a namespace. This may lead yo unexpected results".format(VLType)))
+
         # ======================================================================
         # VLType isn't in Master of Var
         if Master==None and Var==None: return {}

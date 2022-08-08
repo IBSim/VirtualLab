@@ -12,7 +12,82 @@ from natsort import natsorted
 import time
 
 from Scripts.Common.Optimisation import slsqp_multi
+from Scripts.Common import VLFunctions as VLF
 from . import Models
+
+# ==============================================================================
+# Generic building function for GPR
+def BuildGPR(TrainData, TestData, ModelDir, ModelParameters={},
+             TrainingParameters={}, FeatureNames=None,LabelNames=None):
+
+    TrainIn,TrainOut = TrainData
+    TestIn,TestOut = TestData
+
+    Dataspace = DataspaceTrain(TrainData,Test=TestData)
+
+    # ==========================================================================
+    # Model summary
+
+    ModelSummary(Dataspace.NbInput,Dataspace.NbOutput,Dataspace.NbTrain,
+                    TestNb=TestIn.shape[0], Features=FeatureNames,
+                    Labels=LabelNames)
+
+    # ==========================================================================
+    # get model & likelihoods
+    likelihood, model = Create_GPR(Dataspace.TrainIn_scale, Dataspace.TrainOut_scale,
+                                   **ModelParameters,
+                                   input_scale=Dataspace.InputScaler,
+                                   output_scale=Dataspace.OutputScaler)
+
+    # Train model
+    Convergence = GPR_Train(model, **TrainingParameters)
+    model.eval()
+
+    ModelSave(ModelDir,model,TrainIn,TrainOut,Convergence)
+
+    return  likelihood, model, Dataspace
+
+# ==============================================================================
+# Functions for saving & loading models
+def ModelSave(ModelDir,model,TrainIn,TrainOut,Convergence):
+    ''' Function to store model infromation'''
+    # ==========================================================================
+    # Save information
+    os.makedirs(ModelDir,exist_ok=True)
+    # save data
+    np.save("{}/Input".format(ModelDir),TrainIn)
+    np.save("{}/Output".format(ModelDir), TrainOut)
+
+    # save model
+    ModelFile = "{}/Model.pth".format(ModelDir)
+    torch.save(model.state_dict(), ModelFile)
+
+    # Plot convergence & save
+    conv_len = [len(c) for c in Convergence]
+    conv_sum = np.zeros(max(conv_len))
+    for c in Convergence:
+        conv_sum[:len(c)]+=np.array(c)
+        conv_sum[len(c):]+=c[-1]
+    np.save("{}/Convergence".format(ModelDir),conv_sum)
+
+def Load_GPR(ModelDir):
+
+    TrainIn = np.load("{}/Input.npy".format(ModelDir))
+    TrainOut = np.load("{}/Output.npy".format(ModelDir))
+    Dataspace = DataspaceTrain([TrainIn,TrainOut])
+
+    Parameters = VLF.ReadParameters("{}/Parameters.py".format(ModelDir))
+    ModelParameters = getattr(Parameters,'ModelParameters',{})
+    likelihood, model = Create_GPR(Dataspace.TrainIn_scale, Dataspace.TrainOut_scale,
+                                   input_scale=Dataspace.InputScaler,
+                                   output_scale=Dataspace.OutputScaler,
+                                   prev_state="{}/Model.pth".format(ModelDir),
+                                   **ModelParameters)
+    model.eval()
+
+    return  likelihood, model, Dataspace, Parameters
+
+# ==============================================================================
 
 def DataspaceAdd(Dataspace,**kwargs):
     for varname, data in kwargs.items():

@@ -39,7 +39,7 @@ def GPR_hdf5(VL,DADict):
     # Get parameters and build model
     ModelParameters = getattr(Parameters,'ModelParameters',{})
     TrainingParameters = getattr(Parameters,'TrainingParameters',{})
-    likelihood, model, Dataspace = BuildGPR([TrainIn,TrainOut],[TestIn,TestOut],
+    likelihood, model, Dataspace = ML.BuildGPR([TrainIn,TrainOut],[TestIn,TestOut],
                             DADict['CALC_DIR'], ModelParameters=ModelParameters,
                             TrainingParameters=TrainingParameters)
 
@@ -79,7 +79,7 @@ def GPR_PCA_hdf5(VL,DADict):
     # Get parameters and build model
     ModelParameters = getattr(Parameters,'ModelParameters',{})
     TrainingParameters = getattr(Parameters,'TrainingParameters',{})
-    likelihood, model, Dataspace = BuildGPR([TrainIn,TrainOutCompress],[TestIn,TestOutCompress],
+    likelihood, model, Dataspace = ML.BuildGPR([TrainIn,TrainOutCompress],[TestIn,TestOutCompress],
                             DADict['CALC_DIR'], ModelParameters=ModelParameters,
                             TrainingParameters=TrainingParameters)
 
@@ -87,38 +87,6 @@ def GPR_PCA_hdf5(VL,DADict):
     # Get performance metric of model
     Metrics_PCA(model,[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
             [Dataspace.TestIn_scale,Dataspace.TestOut_scale], VT, Dataspace.OutputScaler)
-
-# ==============================================================================
-# Generic building function for GPR
-def BuildGPR(TrainData, TestData, ModelDir, ModelParameters={},
-             TrainingParameters={}, FeatureNames=None,LabelNames=None):
-
-    TrainIn,TrainOut = TrainData
-    TestIn,TestOut = TestData
-
-    Dataspace = ML.DataspaceTrain(TrainData,Test=TestData)
-
-    # ==========================================================================
-    # Model summary
-
-    ML.ModelSummary(Dataspace.NbInput,Dataspace.NbOutput,Dataspace.NbTrain,
-                    TestNb=TestIn.shape[0], Features=FeatureNames,
-                    Labels=LabelNames)
-
-    # ==========================================================================
-    # get model & likelihoods
-    likelihood, model = ML.Create_GPR(Dataspace.TrainIn_scale, Dataspace.TrainOut_scale,
-                                   **ModelParameters,
-                                   input_scale=Dataspace.InputScaler,
-                                   output_scale=Dataspace.OutputScaler)
-
-    # Train model
-    Convergence = ML.GPR_Train(model, **TrainingParameters)
-    model.eval()
-
-    ModelSave(ModelDir,model,TrainIn,TrainOut,Convergence)
-
-    return  likelihood, model, Dataspace
 
 # ==============================================================================
 # Functions used to asses performance of models
@@ -178,56 +146,3 @@ def _pred(model,input,fast_pred_var=True):
             pred_mean = _predfn(model,input)
 
     return pred_mean
-
-
-# ==============================================================================
-# Functions for saving & loading models
-def ModelSave(ModelDir,model,TrainIn,TrainOut,Convergence):
-    ''' Function to store model infromation'''
-    # ==========================================================================
-    # Save information
-    os.makedirs(ModelDir,exist_ok=True)
-    # save data
-    np.save("{}/Input".format(ModelDir),TrainIn)
-    np.save("{}/Output".format(ModelDir), TrainOut)
-
-    # save model
-    ModelFile = "{}/Model.pth".format(ModelDir)
-    torch.save(model.state_dict(), ModelFile)
-
-    # Plot convergence & save
-    conv_len = [len(c) for c in Convergence]
-    conv_sum = np.zeros(max(conv_len))
-    for c in Convergence:
-        conv_sum[:len(c)]+=np.array(c)
-        conv_sum[len(c):]+=c[-1]
-
-    plt.figure()
-    plt.plot(conv_sum)
-    plt.savefig("{}/Convergence.png".format(ModelDir),dpi=600)
-    plt.close()
-
-def Load_GPR(ModelDir):
-
-    TrainIn = np.load("{}/Input.npy".format(ModelDir))
-    TrainOut = np.load("{}/Output.npy".format(ModelDir))
-    Dataspace = ML.DataspaceTrain([TrainIn,TrainOut])
-
-    Parameters = VLF.ReadParameters("{}/Parameters.py".format(ModelDir))
-    ModelParameters = getattr(Parameters,'ModelParameters',{})
-    likelihood, model = ML.Create_GPR(Dataspace.TrainIn_scale, Dataspace.TrainOut_scale,
-                                   input_scale=Dataspace.InputScaler,
-                                   output_scale=Dataspace.OutputScaler,
-                                   prev_state="{}/Model.pth".format(ModelDir),
-                                   **ModelParameters)
-
-    model.eval()
-
-    return  likelihood, model, Dataspace, Parameters
-
-def Load_GPR_PCA(ModelDir):
-
-    VT = np.load("{}/VT.npy".format(ModelDir))
-    ret = Load_GPR(ModelDir)
-
-    return (*ret, VT)

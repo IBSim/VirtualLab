@@ -12,10 +12,8 @@ from importlib import import_module
 
 import VLFunctions as VLF
 from Scripts.Common.tools import MEDtools
-from Scripts.Common.ML import ML, Surrogate
+from Scripts.Common.ML import ML
 from Scripts.Common.Optimisation import slsqp_multi, GA, GA_Parallel
-
-import VLModels
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
@@ -27,7 +25,8 @@ def Test(VL,DADict):
     # ==========================================================================
     # Load temperature field model
     ModelDir_T = "{}/{}".format(VL.PROJECT_DIR,Parameters.TemperatureModelDir)
-    likelihood_T, model_T, Dataspace_T, ParametersModT,VT_T = VLModels.Load_GPR_PCA(ModelDir_T)
+    likelihood_T, model_T, Dataspace_T, ParametersModT = ML.Load_GPR(ModelDir_T)
+    VT_T = np.load("{}/VT.npy".format(ModelDir_T))
 
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
     DataIn_T, DataOut_T = ML.GetMLdata(DataFile_path, Parameters.DataT,
@@ -40,7 +39,8 @@ def Test(VL,DADict):
     # ==========================================================================
     # Load VonMises field model
     ModelDir_VM = "{}/{}".format(VL.PROJECT_DIR,Parameters.VMisModelDir)
-    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM,VT_VM = VLModels.Load_GPR_PCA(ModelDir_VM)
+    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM = ML.Load_GPR(ModelDir_VM)
+    VT_VM = np.load("{}/VT.npy".format(ModelDir_VM))
 
     DataIn_VM, DataOut_VM = ML.GetMLdata(DataFile_path, Parameters.DataVMis,
                                    Parameters.InputVMis, Parameters.OutputVMis,
@@ -75,7 +75,7 @@ def VerifyInputs(VL,DADict):
     # ==========================================================================
     # Load temperature field model
     ModelDir_T = "{}/{}".format(VL.PROJECT_DIR,Parameters.TemperatureModelDir)
-    likelihood_T, model_T, Dataspace_T, ParametersModT = VLModels.Load_GPR(ModelDir_T)
+    likelihood_T, model_T, Dataspace_T, ParametersModT = ML.Load_GPR(ModelDir_T)
 
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
     DataIn_T, DataOut_T = ML.GetMLdata(DataFile_path, Parameters.DataT,
@@ -87,7 +87,7 @@ def VerifyInputs(VL,DADict):
     # ==========================================================================
     # Load VonMises field model
     ModelDir_VM = "{}/{}".format(VL.PROJECT_DIR,Parameters.VMisModelDir)
-    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM = VLModels.Load_GPR(ModelDir_VM)
+    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM = ML.Load_GPR(ModelDir_VM)
 
     DataIn_VM, DataOut_VM = ML.GetMLdata(DataFile_path, Parameters.DataVMis,
                                    Parameters.InputVMis, Parameters.OutputVMis,
@@ -109,9 +109,13 @@ def VerifyInputs(VL,DADict):
     pred_VM = ML.DataRescale(pred_VM,*Dataspace_VM.OutputScaler)
 
     tdiff = np.abs(DataOut_T - pred_T)
-    print(tdiff.max(),tdiff.mean())
-    vmdiff = np.abs(DataOut_VM - pred_VM)
-    print(vmdiff.max(),vmdiff.mean())
+    vmdiff = np.abs(DataOut_VM - pred_VM)/10**6
+
+    print('Test data')
+    print("Temperature: Max. diff. {:.3f} C, Avg. diff {:.3f} C".format(tdiff.max(),tdiff.mean()))
+    print("VonMises: Max. diff. {:.3f} MPa, Avg. diff {:.3f} MPa".format(vmdiff.max(),vmdiff.mean()))
+    print()
+
 
     with torch.no_grad():
         pred_T = model_T(*[Dataspace_T.TrainIn_scale]*len(model_T.models))
@@ -126,9 +130,12 @@ def VerifyInputs(VL,DADict):
     target_T = ML.DataRescale(Dataspace_T.TrainOut_scale.detach().numpy(),*Dataspace_T.OutputScaler)
     target_VM = ML.DataRescale(Dataspace_VM.TrainOut_scale.detach().numpy(),*Dataspace_VM.OutputScaler)
     tdiff = np.abs(target_T - pred_T)
-    print(tdiff.max(),tdiff.mean())
-    vmdiff = np.abs(target_VM - pred_VM)
-    print(vmdiff.max(),vmdiff.mean())
+    vmdiff = np.abs(target_VM - pred_VM)/10**6
+
+    print('Train data')
+    print("Temperature: Max. diff. {:.3f} C, Avg. diff {:.3f} C".format(tdiff.max(),tdiff.mean()))
+    print("VonMises: Max. diff. {:.3f} MPa, Avg. diff {:.3f} MPa".format(vmdiff.max(),vmdiff.mean()))
+    print()
 
     return
 
@@ -156,7 +163,8 @@ def VerifyInputs_Surrogate(VL,DADict):
     # ==========================================================================
     # Load temperature field model
     ModelDir_T = "{}/{}".format(VL.PROJECT_DIR,Parameters.TemperatureModelDir)
-    likelihood_T, model_T, Dataspace_T, ParametersModT,VT_T = VLModels.Load_GPR_PCA(ModelDir_T)
+    likelihood_T, model_T, Dataspace_T, ParametersModT = ML.Load_GPR(ModelDir_T)
+    VT_T = np.load("{}/VT.npy".format(ModelDir_T))
 
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
     DataIn_T, DataOut_T = ML.GetMLdata(DataFile_path, Parameters.DataT,
@@ -169,7 +177,8 @@ def VerifyInputs_Surrogate(VL,DADict):
     # ==========================================================================
     # Load VonMises field model
     ModelDir_VM = "{}/{}".format(VL.PROJECT_DIR,Parameters.VMisModelDir)
-    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM,VT_VM = VLModels.Load_GPR_PCA(ModelDir_VM)
+    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM = ML.Load_GPR(ModelDir_VM)
+    VT_VM = np.load("{}/VT.npy".format(ModelDir_VM))
 
     DataIn_VM, DataOut_VM = ML.GetMLdata(DataFile_path, Parameters.DataVMis,
                                    Parameters.InputVMis, Parameters.OutputVMis,
@@ -187,7 +196,6 @@ def VerifyInputs_Surrogate(VL,DADict):
     pred_T = ML.DataRescale(pred_T,*Dataspace_T.OutputScaler)
     pred_T = pred_T.dot(VT_T)
 
-
     with torch.no_grad():
         pred_VM = model_VM(*[Dataspace_VM.DataIn_scale]*len(model_VM.models))
         pred_VM = np.transpose([p.mean.numpy() for p in pred_VM])
@@ -195,9 +203,12 @@ def VerifyInputs_Surrogate(VL,DADict):
     pred_VM = pred_VM.dot(VT_VM)
 
     tdiff = np.abs(DataOut_T.max(axis=1) - pred_T.max(axis=1))
-    print(tdiff.max(),tdiff.mean())
-    vmdiff = np.abs(DataOut_VM.max(axis=1) - pred_VM.max(axis=1))
-    print(vmdiff.max(),vmdiff.mean())
+    vmdiff = np.abs(DataOut_VM.max(axis=1) - pred_VM.max(axis=1))/10**6
+
+    print('Test data')
+    print("Temperature: Max. diff. {:.3f} C, Avg. diff {:.3f} C".format(tdiff.max(),tdiff.mean()))
+    print("VonMises: Max. diff. {:.3f} MPa, Avg. diff {:.3f} MPa".format(vmdiff.max(),vmdiff.mean()))
+    print()
 
     with torch.no_grad():
         pred_T = model_T(*[Dataspace_T.TrainIn_scale]*len(model_T.models))
@@ -216,9 +227,11 @@ def VerifyInputs_Surrogate(VL,DADict):
     target_VM = ML.DataRescale(Dataspace_VM.TrainOut_scale.detach().numpy(),*Dataspace_VM.OutputScaler)
     target_VM = target_VM.dot(VT_VM)
     tdiff = np.abs(target_T.max(axis=1) - pred_T.max(axis=1))
-    print(tdiff.max(),tdiff.mean())
-    vmdiff = np.abs(target_VM.max(axis=1) - pred_VM.max(axis=1))
-    print(vmdiff.max(),vmdiff.mean())
+    vmdiff = np.abs(target_VM.max(axis=1) - pred_VM.max(axis=1))/10**6
+    print('Train data')
+    print("Temperature: Max. diff. {:.3f} C, Avg. diff {:.3f} C".format(tdiff.max(),tdiff.mean()))
+    print("Von Mises: Max. diff. {:.3f} MPa, Avg. diff {:.3f} MPa".format(vmdiff.max(),vmdiff.mean()))
+    print()
 
 
     return

@@ -70,7 +70,7 @@ def Setup(VL, RunMesh=True, Import=False):
 
         VL.MeshData[MeshName] = MeshDict.copy()
 
-def PoolRun(VL, MeshDict,**kwargs):
+def PoolRun(VL, MeshDict,GUI=False):
     # Create directory for meshes.
     # This method supports meshes nested in sub-directories
     Meshfname = os.path.splitext(MeshDict['MESH_FILE'])[0]
@@ -86,7 +86,7 @@ def PoolRun(VL, MeshDict,**kwargs):
         script = '{}/MeshRun.py'.format(Salome.Dir)
 
     err = Salome.Run(script, DataDict = MeshDict, AddPath=[VL.SIM_SCRIPTS,VL.SIM_MESH],
-                     tempdir=MeshDict['TMP_CALC_DIR'])
+                     tempdir=MeshDict['TMP_CALC_DIR'],GUI=GUI)
     if err:
         return "Error in Salome run"
 
@@ -97,23 +97,28 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
     # MeshCheck allows you to mesh in the GUI (for debugging).Currently only 1
     # mesh can be debugged at a time. VirtualLab terminates when GUI is closed.
 
-    if MeshCheck and MeshCheck in VL.MeshData.keys():
-        MeshDict = VL.MeshData[MeshCheck]
-        VL.Logger('\n### Meshing {} in GUI ###\n'.format(MeshCheck), Print=True)
+    if MeshCheck:
+        if MeshCheck==True: MeshNames = list(VL.MeshData.keys())
+        elif type(MeshCheck) == str: MeshNames = [MeshCheck]
+        elif type(MeshCheck) in (list,tuple): MeshNames = MeshCheck
 
-        if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
-            script = '{}/MeshRun.py'.format(VL.SIM_MESH)
-        else:
-            script = '{}/MeshRun.py'.format(Salome.Dir)
-        MeshDict['Debug'] = True
-        Salome.Run(script, DataDict = MeshDict,tempdir=MeshDict['TMP_CALC_DIR'],
-                   AddPath=[VL.SIM_MESH,VL.SIM_SCRIPTS], GUI=True)
+        VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+                  '~~~ Meshing using GUI ~~~\n'\
+                  '~~~~~~~~~~~~~~~~~~~~~~~~~\n'.format(Print=True))
+        MeshDicts = []
+        for _mesh in MeshNames:
+            if _mesh not in VL.MeshData:
+                # check mesh name
+                VL.Exit(VLF.ErrorMessage("'{}' specified in MeshCheck is not being created".format(_mesh)))
+            # append to list
+            MeshDicts.append(VL.MeshData[_mesh])
 
-        VL.Exit('Terminating after checking mesh')
+        AddArgs = [[True]*len(MeshNames)] # gui = true flags
 
-    elif MeshCheck and MeshCheck not in VL.MeshData.keys():
-        VL.Exit(VLF.ErrorMessage("'{}' specified for MeshCheck is not one of meshes to be created.\n"\
-                     "Meshes to be created are:{}".format(MeshCheck, list(VL.Data.keys()))))
+        Errorfnc = VLPool(VL,PoolRun,MeshDicts,Args=AddArgs)
+        VL.Exit('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
+                '~ Terminating after MeshCheck ~\n'\
+                '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
 
     # ==========================================================================
     # Run Mesh routine
@@ -122,7 +127,6 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
               '~~~ Starting Meshing ~~~\n'\
               '~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
-    NbMeshes = len(VL.MeshData)
     MeshDicts = list(VL.MeshData.values())
 
     Errorfnc = VLPool(VL,PoolRun,MeshDicts)

@@ -17,13 +17,13 @@ from .VLFunctions import ErrorMessage, WarningMessage
 from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, Vox as VoxFn, GVXR as GVXRFn
 
 class VLSetup():
-    def __init__(self, Simulation, Project):
+    def __init__(self, Simulation, Project,container=True):
 
         # Get parsed args (achieved using the -k flag when launchign VirtualLab).
         self._GetParsedArgs()
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
-
+        self.container=container
         # ======================================================================
         # Define variables
         self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
@@ -60,6 +60,13 @@ class VLSetup():
             # Unlikely this would happen. Suffix random number to direcory name
             self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
             os.makedirs(self.TEMP_DIR)
+        if self.container:
+            # setup networking to comunicate with host script whilst running in a continer
+            import socket
+            sock = socket.socket()
+            sock.connect(("127.0.0.1", 9999))
+            sock.sendall("VirtualLab started:{}".format(1).encode())
+            sock.close()
 
         self.Logger('\n############################\n'\
                       '### Launching VirtualLab ###\n'\
@@ -353,6 +360,12 @@ class VLSetup():
 
     def Exit(self, mess='', Cleanup=True):
         self._SetCleanup(Cleanup=Cleanup)
+        if self.container:
+            import socket
+            sock = socket.socket()
+            sock.connect(("127.0.0.1", 9999))
+            sock.sendall("VirtualLab finished:{}".format(1).encode())
+            sock.close()
         sys.exit(mess)
 
     def _Cleanup(self,Cleanup=True):

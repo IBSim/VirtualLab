@@ -214,7 +214,10 @@ def Setup(VL, RunGVXR=True):
             GVXRDict['im_format'] = Parameters.image_format
 
         VL.GVXRData[GVXRName] = GVXRDict.copy()
-        Json_file = "{}/run_params/{}_params.json".format(VL.PROJECT_DIR,GVXRName)
+        Param_dir = "{}/run_params/".format(VL.PROJECT_DIR)
+        if not os.path.exists(Param_dir):
+            os.makedirs(Param_dir)
+        Json_file = "{}/{}_params.json".format(Param_dir,GVXRName)
         dump_to_json(VL.GVXRData[GVXRName],Json_file)
 
 def Run(VL):

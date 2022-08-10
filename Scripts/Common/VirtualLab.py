@@ -360,12 +360,6 @@ class VLSetup():
 
     def Exit(self, mess='', Cleanup=True):
         self._SetCleanup(Cleanup=Cleanup)
-        if self.container:
-            import socket
-            sock = socket.socket()
-            sock.connect(("127.0.0.1", 9999))
-            sock.sendall("VirtualLab finished:{}".format(1).encode())
-            sock.close()
         sys.exit(mess)
 
     def _Cleanup(self,Cleanup=True):
@@ -378,6 +372,13 @@ class VLSetup():
             Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
             Analytics.Run(Category,Action,self._ID)
 
+        if self.container:
+            import socket
+            sock = socket.socket()
+            sock.connect(("127.0.0.1", 9999))
+            sock.sendall("VirtualLab finished:{}".format(1).encode())
+            sock.close()
+            
         exitstr = '\n#############################\n'\
                     '### VirtualLab Terminated ###\n'\
                     '#############################\n'\

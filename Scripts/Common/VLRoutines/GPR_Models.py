@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 import VLFunctions as VLF
 from Scripts.Common.tools import MEDtools
-from Scripts.Common.ML import ML
+from Scripts.Common.ML import ML, GPR
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
@@ -39,7 +39,7 @@ def GPR_hdf5(VL,DADict):
     # Get parameters and build model
     ModelParameters = getattr(Parameters,'ModelParameters',{})
     TrainingParameters = getattr(Parameters,'TrainingParameters',{})
-    likelihood, model, Dataspace = ML.BuildGPR([TrainIn,TrainOut],[TestIn,TestOut],
+    likelihood, model, Dataspace = GPR.BuildModel([TrainIn,TrainOut],[TestIn,TestOut],
                             DADict['CALC_DIR'], ModelParameters=ModelParameters,
                             TrainingParameters=TrainingParameters)
 
@@ -79,7 +79,7 @@ def GPR_PCA_hdf5(VL,DADict):
     # Get parameters and build model
     ModelParameters = getattr(Parameters,'ModelParameters',{})
     TrainingParameters = getattr(Parameters,'TrainingParameters',{})
-    likelihood, model, Dataspace = ML.BuildGPR([TrainIn,TrainOutCompress],[TestIn,TestOutCompress],
+    likelihood, model, Dataspace = GPR.BuildModel([TrainIn,TrainOutCompress],[TestIn,TestOutCompress],
                             DADict['CALC_DIR'], ModelParameters=ModelParameters,
                             TrainingParameters=TrainingParameters)
 

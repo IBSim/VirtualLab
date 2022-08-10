@@ -6,89 +6,14 @@ from types import SimpleNamespace as Namespace
 
 import numpy as np
 import torch
-import gpytorch
 import h5py
 from natsort import natsorted
 import time
 
 from Scripts.Common.Optimisation import slsqp_multi
-from Scripts.Common import VLFunctions as VLF
-from . import Models
 
 # ==============================================================================
-# Generic building function for GPR
-def BuildGPR(TrainData, TestData, ModelDir, ModelParameters={},
-             TrainingParameters={}, FeatureNames=None,LabelNames=None):
-
-    TrainIn,TrainOut = TrainData
-    TestIn,TestOut = TestData
-
-    Dataspace = DataspaceTrain(TrainData,Test=TestData)
-
-    # ==========================================================================
-    # Model summary
-
-    ModelSummary(Dataspace.NbInput,Dataspace.NbOutput,Dataspace.NbTrain,
-                    TestNb=TestIn.shape[0], Features=FeatureNames,
-                    Labels=LabelNames)
-
-    # ==========================================================================
-    # get model & likelihoods
-    likelihood, model = Create_GPR(Dataspace.TrainIn_scale, Dataspace.TrainOut_scale,
-                                   **ModelParameters,
-                                   input_scale=Dataspace.InputScaler,
-                                   output_scale=Dataspace.OutputScaler)
-
-    # Train model
-    Convergence = GPR_Train(model, **TrainingParameters)
-    model.eval()
-
-    ModelSave(ModelDir,model,TrainIn,TrainOut,Convergence)
-
-    return  likelihood, model, Dataspace
-
-# ==============================================================================
-# Functions for saving & loading models
-def ModelSave(ModelDir,model,TrainIn,TrainOut,Convergence):
-    ''' Function to store model infromation'''
-    # ==========================================================================
-    # Save information
-    os.makedirs(ModelDir,exist_ok=True)
-    # save data
-    np.save("{}/Input".format(ModelDir),TrainIn)
-    np.save("{}/Output".format(ModelDir), TrainOut)
-
-    # save model
-    ModelFile = "{}/Model.pth".format(ModelDir)
-    torch.save(model.state_dict(), ModelFile)
-
-    # Plot convergence & save
-    conv_len = [len(c) for c in Convergence]
-    conv_sum = np.zeros(max(conv_len))
-    for c in Convergence:
-        conv_sum[:len(c)]+=np.array(c)
-        conv_sum[len(c):]+=c[-1]
-    np.save("{}/Convergence".format(ModelDir),conv_sum)
-
-def Load_GPR(ModelDir):
-
-    TrainIn = np.load("{}/Input.npy".format(ModelDir))
-    TrainOut = np.load("{}/Output.npy".format(ModelDir))
-    Dataspace = DataspaceTrain([TrainIn,TrainOut])
-
-    Parameters = VLF.ReadParameters("{}/Parameters.py".format(ModelDir))
-    ModelParameters = getattr(Parameters,'ModelParameters',{})
-    likelihood, model = Create_GPR(Dataspace.TrainIn_scale, Dataspace.TrainOut_scale,
-                                   input_scale=Dataspace.InputScaler,
-                                   output_scale=Dataspace.OutputScaler,
-                                   prev_state="{}/Model.pth".format(ModelDir),
-                                   **ModelParameters)
-    model.eval()
-
-    return  likelihood, model, Dataspace, Parameters
-
-# ==============================================================================
-
+# Routine for storing data and scaling
 def DataspaceAdd(Dataspace,**kwargs):
     for varname, data in kwargs.items():
         data_in, data_out = data
@@ -120,197 +45,6 @@ def DataspaceTrain(TrainData, **kwargs):
     DataspaceAdd(Dataspace,**kwargs)
 
     return Dataspace
-
-# ==============================================================================
-# Functions to easily create GPR
-def Create_GPR(TrainIn,TrainOut,kernel='RBF',prev_state=None,min_noise=None,input_scale=None,
-                output_scale=None,multitask=False):
-    if TrainOut.ndim==1:
-        # single output
-        likelihood, model = _SingleGPR(TrainIn, TrainOut, kernel, min_noise=min_noise,
-                                        input_scale=input_scale,output_scale=output_scale)
-
-    elif multitask:
-        likelihood, model = _MultitaskGPR(TrainIn,TrainOut,kernel,min_noise=min_noise,
-                                        input_scale=input_scale,output_scale=output_scale)
-    else:
-        # multiple output
-        NbModel = TrainOut.shape[1]
-        # Change kernel and min_noise to a list
-        if type(kernel) not in (list,tuple): kernel = [kernel]*NbModel
-        if type(min_noise) not in (list,tuple): min_noise = [min_noise]*NbModel
-        models,likelihoods = [], []
-        for i in range(NbModel):
-            _output_scale = output_scale[:,i] if output_scale is not None else None
-            likelihood, model = _SingleGPR(TrainIn, TrainOut[:,i], kernel[i], min_noise = min_noise[i],
-                                            input_scale=input_scale, output_scale=_output_scale)
-            models.append(model)
-            likelihoods.append(likelihood)
-
-        model = gpytorch.models.IndependentModelList(*models)
-        likelihood = gpytorch.likelihoods.LikelihoodList(*likelihoods)
-
-    if prev_state:
-        # Check that the file exists
-        if os.path.isfile(prev_state):
-            state_dict = torch.load(prev_state)
-            model.load_state_dict(state_dict)
-        else:
-            print('Warning\nPrevious state file doesnt exist\nNo previous model is loaded\n')
-
-    return likelihood, model
-
-def _SingleGPR(TrainIn,TrainOut,kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
-    likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = Models.ExactGPmodel(TrainIn, TrainOut, likelihood, kernel)
-    if not prev_state:
-        if min_noise != None:
-            likelihood.noise_covar.register_constraint('raw_noise',gpytorch.constraints.GreaterThan(min_noise))
-
-        # Start noise at lower level to avoid bad optima, but ensure it isn't zero
-        noise_lower = likelihood.noise_covar.raw_noise_constraint.lower_bound
-        noise_init = max(5*noise_lower,1e-8)
-        hypers = {'likelihood.noise_covar.noise': noise_init}
-        model.initialize(**hypers)
-    else:
-        state_dict = torch.load(prev_state)
-        model.load_state_dict(state_dict)
-
-    if input_scale is not None: model.input_scale = input_scale
-    if output_scale is not None: model.output_scale = output_scale
-
-    return likelihood, model
-
-
-def _MultitaskGPR(TrainIn,TrainOut,kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
-    ndim = TrainOut.shape[1]
-    likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=ndim)
-    model = Models.MultitaskGPModel(TrainIn, TrainOut, likelihood, kernel,rank=1)
-
-    if input_scale is not None: model.input_scale = input_scale
-    if output_scale is not None: model.output_scale = output_scale
-
-    return likelihood, model
-
-# ==============================================================================
-# Train the GPR model
-def GPR_Train(model, Epochs=5000, lr=0.01, Print=50, ConvAvg=10, tol=1e-4,
-              Verbose=False, SumOutput=False):
-
-    likelihood = model.likelihood
-    model.train()
-    likelihood.train()
-
-    MultiOutput = True if hasattr(model,'models') else False
-    # Create the necessary loss functions and optimisers
-    if MultiOutput and not SumOutput:
-        # Each output of the model is trained seperately
-        TrackLoss, Completed = 0, []
-        _mll = gpytorch.mlls.ExactMarginalLogLikelihood
-        LossFn,Losses, optimizer = [],[],[]
-        for mod in model.models:
-            LossFn.append(_mll(mod.likelihood,mod))
-            optimizer.append(torch.optim.Adam(mod.parameters(), lr=lr))
-            Losses.append([])
-    elif MultiOutput:
-        # Each output is trained together
-        Losses = [[]]
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        LossFn = gpytorch.mlls.SumMarginalLogLikelihood(likelihood, model)
-    else:
-        # Single output model
-        Losses = [[]]
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        LossFn = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood,model)
-
-    # Start looping over training data
-    for i in range(Epochs):
-        if MultiOutput and not SumOutput:
-            TotalLoss = TrackLoss
-            for j,mod in enumerate(model.models):
-                if j in Completed: continue
-
-                _Losses = Losses[j]
-                _convergence = _Step(mod,optimizer[j],LossFn[j],_Losses,ConvAvg=ConvAvg,tol=tol)
-                TotalLoss+=_Losses[-1]
-
-                if _convergence != None:
-                    Completed.append(j)
-                    TrackLoss+=_Losses[-1]
-                    print("Output {}: {}".format(j,_convergence))
-
-            TotalLoss = TotalLoss/(j+1)
-            if len(Completed)==j+1:
-                break
-        else:
-            _Losses = Losses[0]
-            convergence = _Step(model,optimizer,LossFn,_Losses,ConvAvg=ConvAvg,tol=tol)
-            TotalLoss = _Losses[-1]
-            if convergence != None:
-                print(convergence)
-                break
-
-        if i==0 or (i+1) % Print == 0:
-            print("Iteration: {}, Loss: {}".format(i+1,TotalLoss))
-            if Verbose:
-                PrintParameters(model)
-
-    # Print out final information about training & model parameters
-    # print('\n################################\n')
-    # print("Iterations: {}\nLoss: {}".format(i+1,TotalLoss))
-    # print("\nModel parameters:")
-    # PrintParameters(model)
-    # print('################################\n')
-
-    return Losses
-
-def _Step(model, optimizer, mll, loss_lst, ConvAvg=10, tol=1e-4):
-    optimizer.zero_grad() # set all gradients to zero
-    # Calculate loss & add to list
-
-    output = model(*model.train_inputs)
-
-
-
-    loss = -mll(output, model.train_targets)
-    loss_lst.append(loss.item())
-    # Check convergence using the loss list. If convergence, return
-    convergence = CheckConvergence(loss_lst,ConvAvg=ConvAvg,tol=tol)
-    if convergence != None:
-        return convergence
-
-    # Calculate gradients & update model parameters using the optimizer
-    loss.backward()
-    optimizer.step()
-
-
-
-def CheckConvergence(Loss, ConvAvg=10, tol=1e-4):
-    ''' Checks the list of loss values to decide whether or not convergence has been reached'''
-    if len(Loss) >= 2*ConvAvg:
-        mean_new = np.mean(Loss[-ConvAvg:])
-        mean_old = np.mean(Loss[-2*ConvAvg:-ConvAvg])
-        if mean_new > mean_old:
-            return "Convergence reached. Loss increasing"
-        elif np.abs(mean_new-mean_old)<tol:
-            return "Convergence reached. Loss change smaller than tolerance"
-
-def PrintParameters(model):
-    Modstr = "Length scales: {}\nOutput scale: {}\nNoise: {}\n\n"
-    if hasattr(model,'models'):
-        Rstr = ""
-        for i,mod in enumerate(model.models):
-            LS = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
-            OS = mod.covar_module.outputscale.detach().numpy()
-            N = mod.likelihood.noise.detach().numpy()[0]
-            Rstr += ("Output {}\n"+Modstr).format(i,LS,OS,N)
-    else:
-            LS = model.covar_module.base_kernel.lengthscale.detach().numpy()[0]
-            OS = model.covar_module.outputscale.detach().numpy()
-            N = model.likelihood.noise.detach().numpy()[0]
-            Rstr = Modstr.format(LS,OS,N)
-
-    print(Rstr,end='')
 
 # ==============================================================================
 # Data scaling and rescaling functions
@@ -356,14 +90,41 @@ def Rsq(Predicted,Target):
     MSE_val = ((Predicted - Target)**2).sum()
     return 1-(MSE_val/divisor)
 
-def GetMetrics(model,x,target):
-    with torch.no_grad():
-        pred = model(x).mean.numpy()
+# def _GetMetrics(model,x,target):
+#     with torch.no_grad():
+#         pred = model(x).mean.numpy()
+#     mse = MSE(pred,target)
+#     mae = MAE(pred,target)
+#     rmse = RMSE(pred,target)
+#     rsq = Rsq(pred,target)
+#     return mse,mae,rmse,rsq
+#
+# def GetMetrics(model,x,target):
+#     if hasattr(model,'models'):
+#         mse,mae,rmse,rsq=[],[],[],[]
+#         for i,mod in enumerate(model.models):
+#             _mse,_mae,_rmse,_rsq = _GetMetrics(mod,x,target[:,i])
+#             mse.append(_mse);mae.append(_mae);
+#             rmse.append(_rmse);rsq.append(_rsq);
+#     else:
+#         mse,mae,rmse,rsq = _GetMetrics(model,x,target)
+#
+#     df=pd.DataFrame({"MSE":mse,"MAE":mae,"RMSE":rmse,"R^2":rsq},
+#                     index=["Output_{}".format(i) for i in range(len(mse))])
+#     pd.options.display.float_format = '{:.3e}'.format
+#     return df
+
+def GetMetrics2(pred,target):
     mse = MSE(pred,target)
     mae = MAE(pred,target)
     rmse = RMSE(pred,target)
     rsq = Rsq(pred,target)
-    return mse,mae,rmse,rsq
+
+    df=pd.DataFrame({"MSE":mse,"MAE":mae,"RMSE":rmse,"R^2":rsq},
+                    index=["Output_{}".format(i) for i in range(len(mse))])
+    pd.options.display.float_format = '{:.3e}'.format
+    return df
+
 
 # ==============================================================================
 # Functions used for reading & writing data
@@ -401,10 +162,10 @@ def Writehdf(File, data_path, array, attrs={}):
 
 def Readhdf(File, data_paths):
     Database = Openhdf(File,'r')
-
     if type(data_paths)==str: data_paths = [data_paths]
     data = []
     for data_path in data_paths:
+        print(data_path)
         _data = Database[data_path][:]
         data.append(_data)
     Database.close()
@@ -582,10 +343,11 @@ def InputQuery(model, NbInput, base=0.5, Ndisc=50):
         pred_mean.append(mean);pred_std.append(stdev)
     return pred_mean,pred_std
 
-
-
 # ==============================================================================
+# Data compression algorithms
+
 def PCA(Data, metric={'threshold':0.99}):
+    ''' Funtion which performs principal component analysis'''
     U,s,VT = np.linalg.svd(Data,full_matrices=False)
 
     if 'threshold' in metric:
@@ -621,4 +383,4 @@ def PCA(Data, metric={'threshold':0.99}):
                    Data[percmaxix],Datauncompress[percmaxix])
           )
 
-    return VT
+    return VT # Return compression matrix

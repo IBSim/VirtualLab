@@ -96,14 +96,15 @@ def Metrics(model, TrainData, TestData, fast_pred_var=True):
     # Get error metrics for model
 
     for data,name in zip([TrainData,TestData],['Train','Test']):
+        print('\n=============================================================\n')
+        print('{} metrics'.format(name))
+
         data_in,data_out = data
         data_out = data_out.detach().numpy()
 
         pred_mean = _pred(model,data_in,fast_pred_var=fast_pred_var)
         df_data = ML.GetMetrics2(pred_mean,data_out)
 
-        print('\n=============================================================\n')
-        print('{} metrics'.format(name))
         print(df_data)
 
 def Metrics_PCA(model, TrainData, TestData, VT, OutputScaler, fast_pred_var=True):
@@ -111,6 +112,8 @@ def Metrics_PCA(model, TrainData, TestData, VT, OutputScaler, fast_pred_var=True
     # Get error metrics for model
 
     for data,name in zip([TrainData,TestData],['Train','Test']):
+        print('\n=============================================================\n')
+        print('{} metrics'.format(name))
         data_in,data_out = data
         if hasattr(data_out,'detach'):
             data_out = data_out.detach().numpy()
@@ -118,8 +121,6 @@ def Metrics_PCA(model, TrainData, TestData, VT, OutputScaler, fast_pred_var=True
         pred_mean = _pred(model,data_in,fast_pred_var=fast_pred_var)
         df_data = ML.GetMetrics2(pred_mean,data_out)
 
-        print('\n=============================================================\n')
-        print('{} metrics'.format(name))
         print(df_data)
 
         pred_mean_rescale = ML.DataRescale(pred_mean,*OutputScaler)

@@ -11,6 +11,7 @@ from natsort import natsorted
 import time
 
 from Scripts.Common.Optimisation import slsqp_multi
+from Scripts.Common import VLFunctions as VLF
 
 # ==============================================================================
 # Routine for storing data and scaling
@@ -165,10 +166,20 @@ def Readhdf(File, data_paths):
     if type(data_paths)==str: data_paths = [data_paths]
     data = []
     for data_path in data_paths:
-        print(data_path)
+        # Check data is in file
+        if data_path not in Database:
+            print(VLF.ErrorMessage("data '{}'' is not in file {}".format(data_path,File)))
+            sys.exit()
+        # Get data from file
         _data = Database[data_path][:]
+        # Reshape 1D data to 2D
+        if _data.ndim==1:
+            _data = _data.reshape((_data.size,1))
+
         data.append(_data)
+
     Database.close()
+
     return data
 
 def GetMLdata(DataFile_path,DataNames,InputName,OutputName,Nb=-1):

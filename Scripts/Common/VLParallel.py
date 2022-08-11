@@ -108,6 +108,15 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
 
+    if Args:
+        assert len(Args)==len(Dicts)
+
+    PoolArgs = []
+    for i,_dict in enumerate(Dicts):
+        a = [fnc,VL,_dict]
+        if Args: a.extend(Args[i])
+        PoolArgs.append(a)
+
     try:
         if launcher == 'Sequential' or len(Dicts)==1:
             # Run studies one after the other

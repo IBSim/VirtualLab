@@ -217,7 +217,7 @@ def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
     NbSim = len(VL.SimData)
     SimDicts = list(VL.SimData.values())
     Flags = [RunPreAster,RunAster,RunPostAster]
-    AddArgs = [[Flags]*NbSim] #Additional arguments
+    AddArgs = [[Flags]]*NbSim #Additional arguments
 
     Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs)
     if Errorfnc:

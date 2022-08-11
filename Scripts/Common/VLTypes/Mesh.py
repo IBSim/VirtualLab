@@ -113,7 +113,7 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
             # append to list
             MeshDicts.append(VL.MeshData[_mesh])
 
-        AddArgs = [[True]*len(MeshNames)] # gui = true flags
+        AddArgs = [[True]]*len(MeshNames) # gui = true flags
 
         Errorfnc = VLPool(VL,PoolRun,MeshDicts,Args=AddArgs)
         VL.Exit('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\

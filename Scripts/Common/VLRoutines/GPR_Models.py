@@ -2,13 +2,12 @@
 import os
 import sys
 import shutil
+import pandas as pd
 
 import numpy as np
 import torch
 import gpytorch
-import matplotlib.pyplot as plt
 
-import VLFunctions as VLF
 from Scripts.Common.tools import MEDtools
 from Scripts.Common.ML import ML, GPR
 
@@ -105,7 +104,8 @@ def Metrics(model, TrainData, TestData, fast_pred_var=True):
         pred_mean = _pred(model,data_in,fast_pred_var=fast_pred_var)
         df_data = ML.GetMetrics2(pred_mean,data_out)
 
-        print(df_data)
+        with pd.option_context('display.max_rows', None):
+            print(df_data)
 
 def Metrics_PCA(model, TrainData, TestData, VT, OutputScaler, fast_pred_var=True):
     # =========================================================================
@@ -121,7 +121,8 @@ def Metrics_PCA(model, TrainData, TestData, VT, OutputScaler, fast_pred_var=True
         pred_mean = _pred(model,data_in,fast_pred_var=fast_pred_var)
         df_data = ML.GetMetrics2(pred_mean,data_out)
 
-        print(df_data)
+        with pd.option_context('display.max_rows', None):
+            print(df_data)
 
         pred_mean_rescale = ML.DataRescale(pred_mean,*OutputScaler)
         data_out_rescale = ML.DataRescale(data_out,*OutputScaler)

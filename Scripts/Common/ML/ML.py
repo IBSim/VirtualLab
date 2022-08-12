@@ -12,6 +12,7 @@ import time
 
 from Scripts.Common.Optimisation import slsqp_multi
 from Scripts.Common import VLFunctions as VLF
+from Scripts.Common.tools import Paralleliser
 
 # ==============================================================================
 # Routine for storing data and scaling
@@ -129,16 +130,7 @@ def GetMetrics2(pred,target):
 
 # ==============================================================================
 # Functions used for reading & writing data
-def GetResPaths(ResDir,DirOnly=True,Skip=['_']):
-    ''' This returns a naturally sorted list of the directories in ResDir'''
-    ResPaths = []
-    for _dir in natsorted(os.listdir(ResDir)):
-        if _dir.startswith(tuple(Skip)): continue
-        path = "{}/{}".format(ResDir,_dir)
-        if DirOnly and os.path.isdir(path):
-            ResPaths.append(path)
 
-    return ResPaths
 
 def Openhdf(File,style,timer=5):
     ''' Repeatedly attemps to open hdf file if it is held by another process for
@@ -181,6 +173,8 @@ def Readhdf(File, data_paths):
     Database.close()
 
     return data
+
+
 
 def GetMLdata(DataFile_path,DataNames,InputName,OutputName,Nb=-1):
     if type(DataNames)==str:DataNames = [DataNames]
@@ -236,11 +230,6 @@ def GetMLattrs(DataFile_path,DataNames,ArrayName):
     Database.close()
     return attrs
 
-def WriteMLdata(DataFile_path,DataNames,ArrayName,DataList, attrs={}):
-    for resname, data in zip(DataNames, DataList):
-        DataPath = "{}/{}".format(resname,ArrayName) # path to data in file
-        Writehdf(DataFile_path, DataPath, data, attrs=attrs)
-
 def CompileData(ResDirs,MapFnc,args=[]):
     In,Out = [],[]
     for ResDir in ResDirs:
@@ -254,6 +243,48 @@ def CompileData(ResDirs,MapFnc,args=[]):
         Out.append(_Out)
     return In, Out
 
+def WriteMLdata(DataFile_path,DataNames,ArrayName,DataList, attrs={}):
+    for resname, data in zip(DataNames, DataList):
+        DataPath = "{}/{}".format(resname,ArrayName) # path to data in file
+        Writehdf(DataFile_path, DataPath, data, attrs=attrs)
+
+
+
+def GetResPaths(ResDir,DirOnly=True,Skip=['_']):
+    ''' This returns a naturally sorted list of the directories in ResDir'''
+    ResPaths = []
+    for _dir in natsorted(os.listdir(ResDir)):
+        if _dir.startswith(tuple(Skip)): continue
+        path = "{}/{}".format(ResDir,_dir)
+        if DirOnly and os.path.isdir(path):
+            ResPaths.append(path)
+
+    return ResPaths
+
+def ExtractData(ResPath,functions,args,kwargs):
+    ''' Function which extracts data from results directory ResPath using functions,
+        args and kwargs. '''
+    ret = []
+    for _function,_args,_kwargs in zip(functions,args,kwargs):
+        _ret = _function(ResPath,*_args,**_kwargs)
+        ret.append(_ret)
+    return ret
+
+def ExtractData_Dir(ResDir,functions,args,kwargs, parallel_options={}):
+    ''' Parallelised function which allows data to be extracted from all
+        results in a directory. M sets of data can be extracted using the M
+        functions, args and kwargs for the N results in ResDir. '''
+
+    # Get paths to all directories in ResDir
+    ResPaths = GetResPaths(ResDir)
+    # write args in format so that it can be passed to the paralleliser function
+    Args_parallel = [[p,functions,args,kwargs] for p in ResPaths]
+    # Pass function and arguments to paralleliser (default behaviour: no parallelisation)
+    Res = Paralleliser(ExtractData,Args_parallel,**parallel_options)
+    # re-order results Res from N lists of length M to M lists of length N
+    Res = list(zip(*Res))
+    return Res
+
 def GetInputs(Parameters,commands):
     ''' Using exec allows us to get individual values from dictionaries or lists.
     i.e. a command of 'DataList[1]' will get the value from index 1 of the lists
@@ -264,6 +295,8 @@ def GetInputs(Parameters,commands):
     for i,command in enumerate(commands):
         exec("inputs.append(Parameters.{})".format(command))
     return inputs
+
+
 
 def ModelSummary(NbInput,NbOutput,TrainNb,TestNb=None,Features=None,Labels=None):
     ModelDesc = "Model Summary\n\n"\

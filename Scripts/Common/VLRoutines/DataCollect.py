@@ -1,0 +1,119 @@
+
+import os
+import sys
+
+import numpy as np
+
+import VLFunctions as VLF
+from Scripts.Common.tools import MEDtools
+from Scripts.Common.ML import ML
+
+# ==============================================================================
+# Functions for gathering necessary data and writing to file
+def CompileData(VL,DADict):
+    Parameters = DADict["Parameters"]
+
+    # Top level directory containing directories of simulation results
+    ResDir_TLD = "{}/{}".format(VL.PROJECT_DIR,Parameters.CompileData)
+    # File which will store extracted data
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
+
+    names, functions, args, kwargs = [],[],[],[]
+    for _dict in Parameters.Collect:
+        # checks
+        if 'Name' not in _dict:
+            print(VLF.ErrorMessage("'Name' must be specified in the Collect dictionary."))
+            sys.exit()
+        else:
+            name = _dict['Name']
+
+        if 'Function' not in _dict:
+            print(VLF.ErrorMessage("'Function' must be specified in the Collect dictionary."))
+            sys.exit()
+        else:
+            function = _dict['Function']
+
+        # get function
+        # TODO: generalise this bit
+        fn = globals()[function]
+
+        names.append(name)
+        functions.append(fn)
+        args.append(_dict.get('args',()))
+        kwargs.append(_dict.get('kwargs',{}))
+
+    # ==========================================================================
+    # Go through results in ResDir and extract data using functions, args and kwargs
+    data_list = ML.ExtractData_Dir(ResDir_TLD,functions,args,kwargs)
+
+    # ==========================================================================
+    # Write the collected data to file
+    for name, data in zip(names,data_list):
+        data_path = "{}/{}".format(Parameters.CompileData,name)
+        ML.Writehdf(DataFile_path, data_path, data)
+
+def Example1(ResDir_path):
+    # Do something with results in ResDir_path
+    ans=2
+    return ans
+
+def Example2(ResDir_path,a,var=3):
+    # Do something with results in ResDir_path
+    ans= 2*a + var
+    return ans
+
+def Inputs(ResDir_path, InputVariables, Parameters_basename ='Parameters.py'):
+    ''' Get values for the variables specified in InputVariables.'''
+
+    paramfile = "{}/{}".format(ResDir_path,Parameters_basename)
+    Parameters = VLF.ReadParameters(paramfile)
+    Values = ML.GetInputs(Parameters, InputVariables)
+    return Values
+
+# ==============================================================================
+# Code Aster
+def TemperatureField(ResDir_path, ResFileName, ResName='Temperature'):
+    ''' Get temperature values at all nodes'''
+
+    ResFilePath = "{}/{}".format(ResDir_path,ResFileName)
+    Temps = MEDtools.FieldResult(ResFilePath,ResName)
+    return  Temps
+
+def MaxTemperature(ResDir_path, ResFileName, ResName='Temperature'):
+    TempField = TemperatureField(ResDir_path, ResFileName, ResName=ResName)
+    return TempField.max()
+
+def MinTemperature(ResDir_path, ResFileName, ResName='Temperature'):
+    TempField = TemperatureField(ResDir_path, ResFileName, ResName=ResName)
+    return TempField.min()
+
+def VMisField(ResDir_path, ResFileName, ResName='Stress'):
+    ''' Get temperature values at all nodes'''
+
+    # Get temperature values from results
+    ResFilePath = "{}/{}".format(ResDir_path,ResFileName)
+    Stress = MEDtools.ElementResult(ResFilePath,ResName)
+    Stress = Stress.reshape((int(Stress.size/6),6))
+
+    VMis = (((Stress[:,0] - Stress[:,1])**2 + (Stress[:,1] - Stress[:,2])**2 + \
+              (Stress[:,2] - Stress[:,0])**2 + 6*(Stress[:,3:]**2).sum(axis=1)  )/2)**0.5
+
+    mesh = MEDtools.MeshInfo(ResFilePath)
+    cnct = mesh.ConnectByType('Volume')
+
+    # extrapolate element value to node to reduce storage requirements
+    sumvmis,sumcount = np.zeros(mesh.NbNodes),np.zeros(mesh.NbNodes)
+    for i,vm in zip(cnct,VMis):
+        sumvmis[i-1]+=vm
+        sumcount[i-1]+=1
+    VMis_nd = sumvmis/sumcount
+
+    return VMis_nd
+
+def MaxVMis(ResDir_path, ResFileName, ResName='Temperature'):
+    VMis_all = VMisField(ResDir_path, ResFileName, ResName=ResName)
+    return VMis_all.max()
+
+def MinVMis(ResDir_path, ResFileName, ResName='Temperature'):
+    VMis_all = VMisField(ResDir_path, ResFileName, ResName=ResName)
+    return VMis_all.min()

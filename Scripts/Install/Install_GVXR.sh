@@ -19,6 +19,36 @@ sudo chown ${SUDO_USER} -R ${VL_DIR}
 # to add: make sure pip and conda ownership issues are fixed if needed.
 }
 ########################
+### Check if Conda is installed
+search_var=anaconda*
+conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+else
+  search_var=miniconda*
+  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+  if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+  fi
+fi
+### If conda found activate environment
+### If no conda, prerequisites are assumed installed in local python
+if hash conda 2>/dev/null; then
+  USE_CONDA=true
+  CONDAENV="$(basename -- $VL_DIR)"
+
+  if conda info --envs | grep -q $CONDAENV; then
+      echo "Found existing VirtualLab Conda environment"      
+  else
+      echo "VirtualLab conda environment not found so creating."
+      conda create -n $CONDAENV
+  fi
+  conda activate $CONDAENV
+
+else
+    USE_CONDA=false
+fi
+#################################################################
 export CC=/usr/bin/gcc
 export CXX=/usr/bin/g++
 source ${VL_DIR}/VLconfig.py 
@@ -62,10 +92,12 @@ sudo apt install libpcre3 libpcre3-dev -y
 make
 make install
 cd ${GVXR_DIR}
-#conda activate VirtualLab
 # install python packages
-#conda install matplotlib
-#pip install numexpr
+if ${USE_CONDA}; then
+    conda install matplotlib scikit-image
+else
+    pip install matplotlib scikit-image
+pip install numexpr
 #conda install scikit-image
 #grab the GVXR Source
 svn checkout svn://zedbluffer@svn.code.sf.net/p/gvirtualxray/code/branches/use-xraylib gvirtualxray-code -r 2182

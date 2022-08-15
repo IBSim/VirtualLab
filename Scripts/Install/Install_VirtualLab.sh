@@ -294,6 +294,10 @@ if [ "$ALL" == "y" ]; then
 	if [ "$CAD2VOX_INST" == "y" ]; then
         	echo " - Cad2Vox will be installed in the default directory and configured as part of VirtualLab install."
 	fi
+	
+	if [ "$GVXR_INST" == "y" ]; then
+        	echo " - GVXR will be installed in the default directory and configured as part of VirtualLab install."
+	fi
 fi
 ### Check that no additional args were given that weren't caught.
 shift $(($OPTIND - 1))
@@ -431,6 +435,13 @@ if [ "$CAD2VOX_INST" == "y" ]; then
   source $VL_DIR/Scripts/Install/Install_Cad2Vox.sh
 else
   banner "Skipping Cad2Vox installation" "blue" "*"
+fi
+### Install Cad2Vox if flagged
+if [ "$GVXR_INST" == "y" ]; then
+  banner "Installing GVXR" "green" "*"
+  source $VL_DIR/Scripts/Install/Install_GVXR.sh
+else
+  banner "Skipping GVXR installation" "blue" "*"
 fi
 
 sudo chown -R ${SUDO_USER:-$USER} $VL_DIR

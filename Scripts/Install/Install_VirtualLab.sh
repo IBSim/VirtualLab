@@ -19,10 +19,12 @@ echo
 ### Default location to install VirtualLab if no flag.
 VL_DIR="$USER_HOME/VirtualLab"
 SKIP=n
-PYTHON_INST="n
+PYTHON_INST="n"
 SALOME_INST="n"
 ERMES_INST="n"
 CAD2VOX_INST="n"
+GVXR_INST="n"
+
 ALL="n"
 ASTER_SUBDIR="/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
 
@@ -33,7 +35,7 @@ ASTER_SUBDIR="/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
 usage() {
   echo
   echo "Usage:"
-  echo " $0 [-d <path>] [-A] [-P {y/c/n}] [-S \"{y/n} <path>\"] [-E {y/n}]"
+  echo " $0 [-d <path>] [-A] [-P {y/c/n}] [-S \"{y/n} <path>\"] [-E {y/n}] [-C {y/n}] [-G {y/n}]"
   echo
   echo "A script to install VirtualLab and its dependencies."
   echo
@@ -57,6 +59,8 @@ usage() {
   echo "   '-E n' Do not install ERMES"
   echo "   '-C y' Install Cad2Vox"
   echo "   '-C n' Do not install Cad2Vox"
+  echo "   '-G y' Install GVXR"
+  echo "   '-G n' Do not install GVXR"
   echo "   '-y' Skip install confirmation dialogue."
   echo
   echo "Default behaviour is to not install python, salome or ERMES."
@@ -145,7 +149,7 @@ if [[ $EUID -ne 0 ]]; then
    echo 'Re-run with "sudo ./Install_VirtualLab.sh {options}".'
    exit_abnormal
 fi
-while getopts "d:AP:S:E:C:yh" options; do
+while getopts "d:AP:S:E:C:G:yh" options; do
   case "${options}" in
     d)
       VL_DIR=$(readlink -m ${OPTARG})
@@ -236,6 +240,22 @@ while getopts "d:AP:S:E:C:yh" options; do
         echo "   please do this manually or by sourcing Install_Cad2Vox.sh."
       else
         echo "Error: Invalid option argument $CAD2VOX_INST" >&2
+        exit_abnormal
+      fi
+      ;;
+    G)
+	GVXR_INST=${OPTARG}
+      if [ "$GVXR_INST" == "y" ]; then
+      ### skip displaying message if using -A to avoid doubling up install messages.
+         if [ $ALL != "y" ]; then
+        	echo " - GVXR will be installed in the default directory and configured as part of VirtualLab install."
+         fi
+
+      elif [ "$GVXR_INST" == "n" ]; then
+        echo " - GVXR will not be installed or configured during setup,"
+        echo "   please do this manually or by sourcing Install_Cad2Vox.sh."
+      else
+        echo "Error: Invalid option argument $GVXR_INST" >&2
         exit_abnormal
       fi
       ;;	

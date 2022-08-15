@@ -69,7 +69,7 @@ if __name__ == "__main__":
     thread.start()
     #start VirtualLab
     lock.acquire()
-    subprocess.Popen(f'singularity exec --no-home --writable-tmpfs -B {vlab_dir}:/home/ibsim/VirtualLab virtualLab.sif '
+    subprocess.Popen(f'singularity exec --containall --writable-tmpfs -B {vlab_dir}:/home/ibsim/VirtualLab virtualLab.sif '
                     'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/Run1.py', shell=True)
     next_cnt_id += 1
     lock.release()

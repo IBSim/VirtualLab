@@ -90,8 +90,8 @@ fi
 sudo -u ${SUDO_USER:-$USER} pip install cad2vox
 
 # Run Test Suite
-if ${CAD2VOX_WITH_CUDA}; then
-pytest
-else
+#if ${CAD2VOX_WITH_CUDA}; then
+#pytest
+#else
 pytest -K "not CUDA"
-fi
+#fi

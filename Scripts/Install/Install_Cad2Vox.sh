@@ -87,7 +87,7 @@ else
     sudo -u ${SUDO_USER:-$USER} pip3 install --user -r requirements.txt
 fi
 
-sudo -u ${SUDO_USER:-$USER} pip install cad2vox
+sudo -u ${SUDO_USER:-$USER} pip3 install cad2vox
 
 # Run Test Suite
 #if ${CAD2VOX_WITH_CUDA}; then

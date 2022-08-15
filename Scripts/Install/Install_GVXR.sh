@@ -96,8 +96,9 @@ cd ${GVXR_DIR}
 if ${USE_CONDA}; then
     conda install matplotlib scikit-image pydantic
 else
-    pip install matplotlib scikit-image pydantic
-pip install numexpr
+    sudo -u ${SUDO_USER:-$USER} pip3 install matplotlib scikit-image pydantic
+fi
+sudo -u ${SUDO_USER:-$USER} pip3 install numexpr
 #conda install scikit-image
 #grab the GVXR Source
 svn checkout svn://zedbluffer@svn.code.sf.net/p/gvirtualxray/code/branches/use-xraylib gvirtualxray-code -r 2182
@@ -126,11 +127,11 @@ make -j6
 make install
 echo "Adding GVXR to PYTHONPATH"
 sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}/gvxrWrapper-1.0.6/python3:\${PYTHONPATH}" >> $USER_HOME/.VLprofile
-source $USER_HOME/.VLprofile
+source ${USER_HOME}/.VLprofile
 echo "Installing Speckpy"
 cd ${VL_DIR}/third_party
 git clone https://bitbucket.org/spekpy/spekpy_release.git
 cd spekpy_release
 sudo -u ${SUDO_USER:-$USER} pip3 install .
 cd ${VL_DIR}
-cleanup()
+cleanup

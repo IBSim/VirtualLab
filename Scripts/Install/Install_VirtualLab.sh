@@ -380,11 +380,8 @@ cd $VL_DIR
 if test -d ".git"; then
     # give some fake credentials here because for some reason git complains about
     # not knowing who the user is.
-  git config user.email "ibsim@vlab.com"
-  git config user.name "ibsim"
   sudo -u ${SUDO_USER:-$USER} git pull https://gitlab.com/ibsim/virtuallab.git
 else
-  echo "hit"
   sudo -u ${SUDO_USER:-$USER} git clone https://gitlab.com/ibsim/virtuallab.git .
   sudo chown -R ${SUDO_USER:-$USER} $VL_DIR
 fi

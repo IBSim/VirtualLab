@@ -197,7 +197,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
 
   # install pyina (uses MPI)
   sudo apt install -y mpich
-  conda install -y mpi4py=3.0.3 dill=0.3.3 pox=0.2.9
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user mpi4py==3.0.3 dill==0.3.3 pox==0.2.9
   sudo -u ${SUDO_USER:-$USER} pip3 install --user -U --no-deps pyina==0.2.4
   source ~/.profile # This adds $HOME/.local/bin to $PATH which is needed by pyina
 

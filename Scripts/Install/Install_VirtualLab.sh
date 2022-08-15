@@ -384,6 +384,7 @@ if test -d ".git"; then
   git config user.name "ibsim"
   sudo -u ${SUDO_USER:-$USER} git pull https://gitlab.com/ibsim/virtuallab.git
 else
+  echo "hit"
   sudo -u ${SUDO_USER:-$USER} git clone https://gitlab.com/ibsim/virtuallab.git .
   sudo chown -R ${SUDO_USER:-$USER} $VL_DIR
 fi

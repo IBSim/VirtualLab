@@ -378,8 +378,8 @@ fi
 ### Download latest VirtualLab code
 cd $VL_DIR
 if test -d ".git"; then
+    sudo -u ${SUDO_USER:-$USER} git fetch
     sudo -u ${SUDO_USER:-$USER} git reset --hard
-    sudo -u ${SUDO_USER:-$USER} git pull
 else
   sudo -u ${SUDO_USER:-$USER} git clone https://gitlab.com/ibsim/virtuallab.git .
   sudo chown -R ${SUDO_USER:-$USER} $VL_DIR

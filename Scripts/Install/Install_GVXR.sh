@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+sudo -k
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 #########################
@@ -100,14 +101,13 @@ else
 fi
 #conda install scikit-image
 #grab the GVXR Source
-wget https://sourceforge.net/projects/gvirtualxray/files/1.1/gVirtualXRay-1.1.3-Source.zip/download
-mv download gVirtualXRay-1.1.3-Source.zip
-unzip gVirtualXRay-1.1.3-Source.zip
-cd gVirtualXRay-1.1.3
+wget https://sourceforge.net/projects/gvirtualxray/files/1.1/gVirtualXRay1.1.5-Source.zip/download
+mv download gVirtualXRay-1.1.5-Source.zip
+unzip gVirtualXRay-1.1.5-Source.zip
+cd gVirtualXRay-1.1.5
 mkdir -p bin-release
 export GVXR_INSTALL_DIR=${GVXR_DIR}_Install
 
-pwd
 cd bin-release
 ${GVXR_DIR}/cmake-3.23.1/bin/cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 -DCMAKE_INSTALL_PREFIX:STRING=$GVXR_INSTALL_DIR \
@@ -121,7 +121,7 @@ ${GVXR_DIR}/cmake-3.23.1/bin/cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 -DBUILD_WRAPPER_RUBY:BOOL=OFF \
 -DBUILD_WRAPPER_TCL:BOOL=OFF \
 -DUSE_LIBTIFF:BOOL=OFF \
--S ${GVXR_DIR}/gVirtualXRay-1.1.3 -B $PWD
+-S .. -B $PWD
 
 # now one final make build GVXR.
 make -j6

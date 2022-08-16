@@ -12,92 +12,35 @@ from importlib import import_module
 
 import VLFunctions as VLF
 from Scripts.Common.tools import MEDtools
-from Scripts.Common.ML import ML
-from Scripts.Common.Optimisation import slsqp_multi, GA, GA_Parallel
+from Scripts.Common.ML import ML, GPR
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
 torch.set_default_dtype(torch_dtype)
 
-def Test(VL,DADict):
-    Parameters = DADict['Parameters']
-
-    # ==========================================================================
-    # Load temperature field model
-    ModelDir_T = "{}/{}".format(VL.PROJECT_DIR,Parameters.TemperatureModelDir)
-    likelihood_T, model_T, Dataspace_T, ParametersModT = ML.Load_GPR(ModelDir_T)
-    VT_T = np.load("{}/VT.npy".format(ModelDir_T))
-
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
-    DataIn_T, DataOut_T = ML.GetMLdata(DataFile_path, Parameters.DataT,
-                                   Parameters.InputT, Parameters.OutputT,
-                                   getattr(Parameters,'TestNb',-1))
-
-    DataOut_T_compress = DataOut_T.dot(VT_T.T)
-    ML.DataspaceAdd(Dataspace_T, Data=[DataIn_T,DataOut_T_compress])
-
-    # ==========================================================================
-    # Load VonMises field model
-    ModelDir_VM = "{}/{}".format(VL.PROJECT_DIR,Parameters.VMisModelDir)
-    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM = ML.Load_GPR(ModelDir_VM)
-    VT_VM = np.load("{}/VT.npy".format(ModelDir_VM))
-
-    DataIn_VM, DataOut_VM = ML.GetMLdata(DataFile_path, Parameters.DataVMis,
-                                   Parameters.InputVMis, Parameters.OutputVMis,
-                                   getattr(Parameters,'TestNb',-1))
-
-    DataOut_VM_compress = DataOut_VM.dot(VT_VM.T)
-    ML.DataspaceAdd(Dataspace_VM, Data=[DataIn_VM,DataOut_VM_compress])
-
-
-
-    # ix=2
-    # with torch.no_grad():
-    #     pred_T = model_T(*[Dataspace_T.DataIn_scale]*len(model_T.models))
-    #     pred_T = np.transpose([p.mean.numpy() for p in pred_T])
-    # pred_T = ML.DataRescale(pred_T,*Dataspace_T.OutputScaler)
-    # pred_T = pred_T.dot(VT_T)
-    # for i in range(20):
-    #     print(pred_T[ix,i], DataOut_T[ix,i])
-    #
-    # print()
-    # with torch.no_grad():
-    #     pred_VM = model_VM(*[Dataspace_VM.DataIn_scale]*len(model_VM.models))
-    #     pred_VM = np.transpose([p.mean.numpy() for p in pred_VM])
-    # pred_VM = ML.DataRescale(pred_VM,*Dataspace_VM.OutputScaler)
-    # pred_VM = pred_VM.dot(VT_VM)
-    # for i in range(20):
-    #     print(pred_VM[ix,i], DataOut_VM[ix,i],(pred_VM[ix,i]/DataOut_VM[ix,i]) -1)
-
 def VerifyInputs(VL,DADict):
     Parameters = DADict['Parameters']
 
     # ==========================================================================
-    # Load temperature field model
+    # Load temperature field model & test data
     ModelDir_T = "{}/{}".format(VL.PROJECT_DIR,Parameters.TemperatureModelDir)
-    likelihood_T, model_T, Dataspace_T, ParametersModT = ML.Load_GPR(ModelDir_T)
+    likelihood_T, model_T, Dataspace_T, ParametersModT = GPR.LoadModel(ModelDir_T)
 
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
-    DataIn_T, DataOut_T = ML.GetMLdata(DataFile_path, Parameters.DataT,
-                                   Parameters.InputT, Parameters.OutputT,
-                                   getattr(Parameters,'TestNb',-1))
-
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TemperatureData[0])
+    DataIn_T, DataOut_T = ML.GetDataML(DataFile_path, *Parameters.TemperatureData[1:])
     ML.DataspaceAdd(Dataspace_T, Data=[DataIn_T,DataOut_T])
 
     # ==========================================================================
-    # Load VonMises field model
+    # Load VonMises field model & test data
     ModelDir_VM = "{}/{}".format(VL.PROJECT_DIR,Parameters.VMisModelDir)
-    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM = ML.Load_GPR(ModelDir_VM)
+    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM = GPR.LoadModel(ModelDir_VM)
 
-    DataIn_VM, DataOut_VM = ML.GetMLdata(DataFile_path, Parameters.DataVMis,
-                                   Parameters.InputVMis, Parameters.OutputVMis,
-                                   getattr(Parameters,'TestNb',-1))
-
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.VMisData[0])
+    DataIn_VM, DataOut_VM = ML.GetDataML(DataFile_path, *Parameters.VMisData[1:])
     ML.DataspaceAdd(Dataspace_VM, Data=[DataIn_VM,DataOut_VM])
 
-
     # ==========================================================================
-
+    # Make temperature predictions for train & test data using models
     with torch.no_grad():
         pred_T = model_T(*[Dataspace_T.DataIn_scale]*len(model_T.models))
         pred_T = np.transpose([p.mean.numpy() for p in pred_T])
@@ -116,7 +59,8 @@ def VerifyInputs(VL,DADict):
     print("VonMises: Max. diff. {:.3f} MPa, Avg. diff {:.3f} MPa".format(vmdiff.max(),vmdiff.mean()))
     print()
 
-
+    # ==========================================================================
+    # Make VonMises predictions for train & test data using models
     with torch.no_grad():
         pred_T = model_T(*[Dataspace_T.TrainIn_scale]*len(model_T.models))
         pred_T = np.transpose([p.mean.numpy() for p in pred_T])
@@ -137,56 +81,50 @@ def VerifyInputs(VL,DADict):
     print("VonMises: Max. diff. {:.3f} MPa, Avg. diff {:.3f} MPa".format(vmdiff.max(),vmdiff.mean()))
     print()
 
-    return
-
-    Experiments = np.array(Parameters.Experiments)
-    Experiments_scale = torch.from_numpy(ML.DataScale(Experiments,*Dataspace_T.InputScaler))
-
-    with torch.no_grad():
-        pred_T = model_T(*[Experiments_scale]*len(model_T.models))
-        pred_T = np.transpose([p.mean.numpy() for p in pred_T])
-    pred_T = ML.DataRescale(pred_T,*Dataspace_T.OutputScaler)
-
-    with torch.no_grad():
-        pred_VM = model_VM(*[Experiments_scale]*len(model_VM.models))
-        pred_VM = np.transpose([p.mean.numpy() for p in pred_VM])
-    pred_VM = ML.DataRescale(pred_VM,*Dataspace_VM.OutputScaler)
-    print(pred_T.shape)
-    argmaxT = np.argmax(pred_T,axis=1)
-    argmaxVM = np.argmax(pred_VM,axis=1)
-    for i,(t,vm) in enumerate(zip(argmaxT,argmaxVM)):
-        print(pred_T[i,t],t, pred_VM[i,vm]/10**6,vm)
+    # Experiments = np.array(Parameters.Experiments)
+    # Experiments_scale = torch.from_numpy(ML.DataScale(Experiments,*Dataspace_T.InputScaler))
+    #
+    # with torch.no_grad():
+    #     pred_T = model_T(*[Experiments_scale]*len(model_T.models))
+    #     pred_T = np.transpose([p.mean.numpy() for p in pred_T])
+    # pred_T = ML.DataRescale(pred_T,*Dataspace_T.OutputScaler)
+    #
+    # with torch.no_grad():
+    #     pred_VM = model_VM(*[Experiments_scale]*len(model_VM.models))
+    #     pred_VM = np.transpose([p.mean.numpy() for p in pred_VM])
+    # pred_VM = ML.DataRescale(pred_VM,*Dataspace_VM.OutputScaler)
+    # print(pred_T.shape)
+    # argmaxT = np.argmax(pred_T,axis=1)
+    # argmaxVM = np.argmax(pred_VM,axis=1)
+    # for i,(t,vm) in enumerate(zip(argmaxT,argmaxVM)):
+    #     print(pred_T[i,t],t, pred_VM[i,vm]/10**6,vm)
 
 def VerifyInputs_Surrogate(VL,DADict):
     Parameters = DADict['Parameters']
 
     # ==========================================================================
-    # Load temperature field model
+    # Load temperature field model & test data
     ModelDir_T = "{}/{}".format(VL.PROJECT_DIR,Parameters.TemperatureModelDir)
-    likelihood_T, model_T, Dataspace_T, ParametersModT = ML.Load_GPR(ModelDir_T)
+    likelihood_T, model_T, Dataspace_T, ParametersModT = GPR.LoadModel(ModelDir_T)
     VT_T = np.load("{}/VT.npy".format(ModelDir_T))
 
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
-    DataIn_T, DataOut_T = ML.GetMLdata(DataFile_path, Parameters.DataT,
-                                   Parameters.InputT, Parameters.OutputT,
-                                   getattr(Parameters,'TestNb',-1))
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TemperatureData[0])
+    DataIn_T, DataOut_T = ML.GetDataML(DataFile_path, *Parameters.TemperatureData[1:])
 
     DataOut_T_compress = DataOut_T.dot(VT_T.T)
     ML.DataspaceAdd(Dataspace_T, Data=[DataIn_T,DataOut_T_compress])
 
     # ==========================================================================
-    # Load VonMises field model
+    # Load VonMises field model & test data
     ModelDir_VM = "{}/{}".format(VL.PROJECT_DIR,Parameters.VMisModelDir)
-    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM = ML.Load_GPR(ModelDir_VM)
+    likelihood_VM, model_VM, Dataspace_VM, ParametersModVM = GPR.LoadModel(ModelDir_VM)
     VT_VM = np.load("{}/VT.npy".format(ModelDir_VM))
 
-    DataIn_VM, DataOut_VM = ML.GetMLdata(DataFile_path, Parameters.DataVMis,
-                                   Parameters.InputVMis, Parameters.OutputVMis,
-                                   getattr(Parameters,'TestNb',-1))
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.VMisData[0])
+    DataIn_VM, DataOut_VM = ML.GetDataML(DataFile_path, *Parameters.VMisData[1:])
 
     DataOut_VM_compress = DataOut_VM.dot(VT_VM.T)
     ML.DataspaceAdd(Dataspace_VM, Data=[DataIn_VM,DataOut_VM_compress])
-
 
     # ==========================================================================
 
@@ -233,105 +171,135 @@ def VerifyInputs_Surrogate(VL,DADict):
     print("Von Mises: Max. diff. {:.3f} MPa, Avg. diff {:.3f} MPa".format(vmdiff.max(),vmdiff.mean()))
     print()
 
-
     return
 
 
-    Experiments = np.array(Parameters.Experiments)
-    Experiments_scale = torch.from_numpy(ML.DataScale(Experiments,*Dataspace_T.InputScaler))
 
+    # with torch.no_grad():
+    #     pred_T = model_T(*[Dataspace_T.DataIn_scale]*len(model_T.models))
+    #     pred_T_test = np.transpose([p.mean.numpy() for p in pred_T])
+    # pred_T_test = ML.DataRescale(pred_T_test,*Dataspace_T.OutputScaler)
+    #
+    # with torch.no_grad():
+    #     pred_T = model_T(*[Dataspace_T.TrainIn_scale]*len(model_T.models))
+    #     pred_T_train = np.transpose([p.mean.numpy() for p in pred_T])
+    # pred_T_train = ML.DataRescale(pred_T_train,*Dataspace_T.OutputScaler)
+    #
+    #
+    # for i in range(1,1+VT_T.shape[0]):
+    #     pred_test = pred_T_test[:,:i].dot(VT_T[:i,:])
+    #     pred_train = pred_T_train[:,:i].dot(VT_T[:i,:])
+    #     df_test = ML.GetMetrics2(pred_test,DataOut_T)
+    #     df_train = ML.GetMetrics2(pred_train,target_T)
+    #     print(i)
+    #     print(df_train.mean())
+    #     print(df_test.mean())
+    #     print()
+
+    # Experiments = np.array(Parameters.Experiments)
+    # Experiments_scale = torch.from_numpy(ML.DataScale(Experiments,*Dataspace_T.InputScaler))
+    #
+    # with torch.no_grad():
+    #     pred_T = model_T(*[Experiments_scale]*len(model_T.models))
+    #     pred_T = np.transpose([p.mean.numpy() for p in pred_T])
+    # pred_T = ML.DataRescale(pred_T,*Dataspace_T.OutputScaler)
+    # pred_T = pred_T.dot(VT_T)
+    #
+    # with torch.no_grad():
+    #     pred_VM = model_VM(*[Experiments_scale]*len(model_VM.models))
+    #     pred_VM = np.transpose([p.mean.numpy() for p in pred_VM])
+    # pred_VM = ML.DataRescale(pred_VM,*Dataspace_VM.OutputScaler)
+    # pred_VM = pred_VM.dot(VT_VM)
+    #
+    # argmaxT = np.argmax(pred_T,axis=1)
+    # argmaxVM = np.argmax(pred_VM,axis=1)
+    # for i,(t,vm) in enumerate(zip(argmaxT,argmaxVM)):
+    #     print(pred_T[i,t],t, pred_VM[i,vm]/10**6,vm)
+
+def Field_v_Max(VL,DADict):
+    Parameters = DADict['Parameters']
+
+    # ==========================================================================
+    # Load field model & test data
+    ModelDir_field = "{}/{}".format(VL.PROJECT_DIR,Parameters.ModelDir_Field)
+    likelihood_field, model_field, Dataspace_field, ParametersMod_field = GPR.LoadModel(ModelDir_field)
+    VT = np.load("{}/VT.npy".format(ModelDir_field))
+
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataField[0])
+    DataIn_field, DataOut_field = ML.GetDataML(DataFile_path, *Parameters.DataField[1:])
+    DataOut_field_compress = DataOut_field.dot(VT.T)
+    ML.DataspaceAdd(Dataspace_field, Data=[DataIn_field,DataOut_field_compress])
+
+    # ==========================================================================
+    # Load max. model & test data
+    ModelDir_max = "{}/{}".format(VL.PROJECT_DIR,Parameters.ModelDir_Max)
+    likelihood_max, model_max, Dataspace_max, ParametersMod_max = GPR.LoadModel(ModelDir_max)
+
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataMax[0])
+    DataIn_max, DataOut_max = ML.GetDataML(DataFile_path, *Parameters.DataMax[1:])
+    ML.DataspaceAdd(Dataspace_max, Data=[DataIn_max,DataOut_max])
+
+    print((DataIn_max==DataIn_field).all()) # data sets are the same
+
+    # ==========================================================================
+    # Make predictions for train & test data using max. model
     with torch.no_grad():
-        pred_T = model_T(*[Experiments_scale]*len(model_T.models))
-        pred_T = np.transpose([p.mean.numpy() for p in pred_T])
-    pred_T = ML.DataRescale(pred_T,*Dataspace_T.OutputScaler)
-    pred_T = pred_T.dot(VT_T)
+        pred_max_test = model_max(*[Dataspace_max.DataIn_scale]*len(model_max.models))
+        pred_max_test = np.transpose([p.mean.numpy() for p in pred_max_test])
+        pred_max_train = model_max(*[Dataspace_max.TrainIn_scale]*len(model_max.models))
+        pred_max_train = np.transpose([p.mean.numpy() for p in pred_max_train])
 
+    pred_max_test = ML.DataRescale(pred_max_test,*Dataspace_max.OutputScaler)
+    pred_max_train = ML.DataRescale(pred_max_train,*Dataspace_max.OutputScaler)
+
+    tdiff_test = np.abs(DataOut_max - pred_max_test)
+    _target = ML.DataRescale(Dataspace_max.TrainOut_scale.detach().numpy(),*Dataspace_max.OutputScaler)
+    tdiff_train = np.abs(_target - pred_max_train)
+
+    print('Max. model')
+    print("Test data: Max. diff. {:.3f}, Avg. diff {:.3f}".format(tdiff_test.max(),tdiff_test.mean()))
+    print("Train data: Max. diff. {:.3f}, Avg. diff {:.3f}".format(tdiff_train.max(),tdiff_train.mean()))
+    print()
+
+    # ==========================================================================
+    # Make predictions for train & test data using field. model
     with torch.no_grad():
-        pred_VM = model_VM(*[Experiments_scale]*len(model_VM.models))
-        pred_VM = np.transpose([p.mean.numpy() for p in pred_VM])
-    pred_VM = ML.DataRescale(pred_VM,*Dataspace_VM.OutputScaler)
-    pred_VM = pred_VM.dot(VT_VM)
+        pred_field_test = model_field(*[Dataspace_field.DataIn_scale]*len(model_field.models))
+        pred_field_test = np.transpose([p.mean.numpy() for p in pred_field_test])
+        pred_field_train = model_field(*[Dataspace_field.TrainIn_scale]*len(model_field.models))
+        pred_field_train = np.transpose([p.mean.numpy() for p in pred_field_train])
 
-    argmaxT = np.argmax(pred_T,axis=1)
-    argmaxVM = np.argmax(pred_VM,axis=1)
-    for i,(t,vm) in enumerate(zip(argmaxT,argmaxVM)):
-        print(pred_T[i,t],t, pred_VM[i,vm]/10**6,vm)
+    pred_field_test = ML.DataRescale(pred_field_test,*Dataspace_field.OutputScaler)
+    pred_field_test = pred_field_test.dot(VT)
+    pred_field_train = ML.DataRescale(pred_field_train,*Dataspace_field.OutputScaler)
+    pred_field_train = pred_field_train.dot(VT)
+
+    tdiff_test = np.abs(DataOut_field.max(axis=1) - pred_field_test.max(axis=1))
+    _target = ML.DataRescale(Dataspace_field.TrainOut_scale.detach().numpy(),*Dataspace_field.OutputScaler)
+    _target = _target.dot(VT)
+    tdiff_train = np.abs(_target.max(axis=1) - pred_field_train.max(axis=1))
+
+    print('Field model')
+    print("Test data: Max. diff. {:.3f}, Avg. diff {:.3f}".format(tdiff_test.max(),tdiff_test.mean()))
+    print("Train data: Max. diff. {:.3f}, Avg. diff {:.3f}".format(tdiff_train.max(),tdiff_train.mean()))
+    print()
+
+    # print((Dataspace_max.DataIn_scale==Dataspace_field.DataIn_scale).all())
+    # print((Dataspace_max.TrainIn_scale==Dataspace_field.TrainIn_scale).all())
+    # print((DataOut_field.max(axis=1) == DataOut_max.flatten()).all())
 
 
 # ==============================================================================
-# Functions for gathering necessary data and writing to file
-def CompileData(VL,DADict):
-    Parameters = DADict["Parameters"]
+# Data collection function
+def MaxFromField(VL,DADict):
+    Parameters = DADict['Parameters']
+    DataFile = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile) # full path
 
-    # ==========================================================================
-    # Get list of all the results directories which will be searched through
-    CmpData = Parameters.CompileData
-    if type(CmpData)==str:CmpData = [CmpData]
-    ResDirs = ["{}/{}".format(VL.PROJECT_DIR,resname) for resname in CmpData]
+    DataGroup = getattr(Parameters,'DataGroup',None)
+    field_data = ML.Readhdf(DataFile,Parameters.FieldName,group=DataGroup)
 
-    # ==========================================================================
-    # Specify the function used to gather the necessary data & any arguments required
-    args= []
-    if Parameters.OutputFn.lower()=="fieldtemperatures":
-        OutputFn = _FieldTemperatures
-        args = [Parameters.InputVariables, Parameters.ResFileName]
-    elif Parameters.OutputFn.lower()=="fieldvmis":
-        OutputFn = _FieldVMis
-        args = [Parameters.InputVariables, Parameters.ResFileName]
+    for data,newname in zip(field_data,Parameters.MaxName):
+        max_data = data.max(axis=1)
+        max_data = max_data.reshape((max_data.size,1)) #ensure 2 dim
 
-    # ==========================================================================
-    # Apply OutputFn to all sub dirs in ResDirs
-    InData, OutData = ML.CompileData(ResDirs,OutputFn,args=args)
-
-    # ==========================================================================
-    # Write the input and output data to DataFile_path
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
-
-    ML.WriteMLdata(DataFile_path, CmpData, Parameters.InputArray, InData,
-                    attrs=getattr(Parameters,'InputAttributes',{}))
-    ML.WriteMLdata(DataFile_path, CmpData, Parameters.OutputArray, OutData,
-                    attrs=getattr(Parameters,'OutputAttributes',{}))
-
-
-# ==============================================================================
-# Data collection functions
-def _FieldTemperatures(ResDir, InputVariables, ResFileName, ResName='Temperature'):
-    ''' Get temperature values at all nodes'''
-
-
-    paramfile = "{}/Parameters.py".format(ResDir)
-    Parameters = VLF.ReadParameters(paramfile)
-    In = ML.GetInputs(Parameters,InputVariables)
-
-    # Get temperature values from results
-    ResFilePath = "{}/{}".format(ResDir,ResFileName)
-    Out = MEDtools.FieldResult(ResFilePath,ResName)
-
-    return In, Out
-
-def _FieldVMis(ResDir, InputVariables, ResFileName, ResName='Stress'):
-    ''' Get temperature values at all nodes'''
-
-    paramfile = "{}/Parameters.py".format(ResDir)
-    Parameters = VLF.ReadParameters(paramfile)
-    In = ML.GetInputs(Parameters,InputVariables)
-
-    # Get temperature values from results
-    ResFilePath = "{}/{}".format(ResDir,ResFileName)
-    Stress = MEDtools.ElementResult(ResFilePath,ResName)
-    Stress = Stress.reshape((int(Stress.size/6),6))
-
-    VMis = (((Stress[:,0] - Stress[:,1])**2 + (Stress[:,1] - Stress[:,2])**2 + \
-              (Stress[:,2] - Stress[:,0])**2 + 6*(Stress[:,3:]**2).sum(axis=1)  )/2)**0.5
-
-    mesh = MEDtools.MeshInfo(ResFilePath)
-    cnct = mesh.ConnectByType('Volume')
-
-    # average out to node
-    sumvmis,sumcount = np.zeros(mesh.NbNodes),np.zeros(mesh.NbNodes)
-    for i,vm in zip(cnct,VMis):
-        sumvmis[i-1]+=vm
-        sumcount[i-1]+=1
-    VMis_nd = sumvmis/sumcount
-
-    return In, VMis_nd
+        ML.Writehdf(DataFile,newname,max_data,group=DataGroup)

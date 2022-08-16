@@ -131,7 +131,6 @@ def GetMetrics2(pred,target):
 # ==============================================================================
 # Functions used for reading & writing data
 
-
 def Openhdf(File,style,timer=5):
     ''' Repeatedly attemps to open hdf file if it is held by another process for
     the time allocated by timer '''
@@ -144,7 +143,9 @@ def Openhdf(File,style,timer=5):
             if time.time() - st > timer:
                 sys.exit('Timeout on opening hdf file')
 
-def Writehdf(File, data_path, array, attrs={}):
+def Writehdf(File, data_path, array, attrs={}, group=None):
+    if group: data_path = "{}/{}".format(group,data_path)
+
     Database = Openhdf(File,'a')
     if data_path in Database:
         del Database[data_path]
@@ -153,14 +154,16 @@ def Writehdf(File, data_path, array, attrs={}):
         dset.attrs.update(**attrs)
     Database.close()
 
-def Readhdf(File, data_paths):
+def Readhdf(File, data_paths,group=None):
     Database = Openhdf(File,'r')
     if type(data_paths)==str: data_paths = [data_paths]
     data = []
     for data_path in data_paths:
+        # add prefix to pat
+        if group: data_path = "{}/{}".format(group,data_path)
         # Check data is in file
         if data_path not in Database:
-            print(VLF.ErrorMessage("data '{}'' is not in file {}".format(data_path,File)))
+            print(VLF.ErrorMessage("data '{}' is not in file {}".format(data_path,File)))
             sys.exit()
         # Get data from file
         _data = Database[data_path][:]
@@ -175,7 +178,8 @@ def Readhdf(File, data_paths):
     return data
 
 
-
+# =====
+# depr.
 def GetMLdata(DataFile_path,DataNames,InputName,OutputName,Nb=-1):
     if type(DataNames)==str:DataNames = [DataNames]
     N = len(DataNames)
@@ -250,6 +254,32 @@ def WriteMLdata(DataFile_path,DataNames,ArrayName,DataList, attrs={}):
 
 
 
+
+
+# ==============================================================================
+# Functions used for ML work
+
+def GetData(DataFile,DataNames,group=None, Nb=-1):
+    data = Readhdf(DataFile,DataNames,group=group) # read DataNames for DataFile
+
+    for i in range(len(data)):
+        _Nb = Nb[i] if type(Nb)==list else Nb
+        if _Nb==-1:continue # -1 means we use all data
+
+        if type(_Nb)==int:
+            data[i] = data[i][:_Nb]
+        if type(_Nb) in (list,tuple):
+            l,u = _Nb
+            data[i] = data[i][l:u]
+
+    return np.vstack(data)
+
+def GetDataML(DataFile,InputNames,OutputNames,options={}):
+    ''' This function gets inputs and outputs for supervised ML. '''
+    in_data = GetData(DataFile,InputNames,**options)
+    out_data = GetData(DataFile,OutputNames,**options)
+    return in_data, out_data
+
 def GetResPaths(ResDir,DirOnly=True,Skip=['_']):
     ''' This returns a naturally sorted list of the directories in ResDir'''
     ResPaths = []
@@ -296,8 +326,6 @@ def GetInputs(Parameters,commands):
         exec("inputs.append(Parameters.{})".format(command))
     return inputs
 
-
-
 def ModelSummary(NbInput,NbOutput,TrainNb,TestNb=None,Features=None,Labels=None):
     ModelDesc = "Model Summary\n\n"\
                 "Nb.Inputs: {}\nNb.Outputs: {}\n\n"\
@@ -310,6 +338,7 @@ def ModelSummary(NbInput,NbOutput,TrainNb,TestNb=None,Features=None,Labels=None)
         ModelDesc += "Output labels:\n{}\n".format(Labels)
 
     print(ModelDesc)
+
 # ==============================================================================
 # ML model Optima
 

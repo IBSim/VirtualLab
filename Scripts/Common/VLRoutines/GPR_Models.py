@@ -26,13 +26,12 @@ def GPR_hdf5(VL,DADict):
 
     # ==========================================================================
     # Get Train & test data from file DataFile_path
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
-    TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
-                                     Parameters.InputArray, Parameters.OutputArray,
-                                     getattr(Parameters,'TrainNb',-1))
-    TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData,
-                                   Parameters.InputArray, Parameters.OutputArray,
-                                   getattr(Parameters,'TestNb',-1))
+
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TrainData[0])
+    TrainIn, TrainOut = ML.GetDataML(DataFile_path, *Parameters.TrainData[1:])
+
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TestData[0])
+    TestIn, TestOut = ML.GetDataML(DataFile_path, *Parameters.TestData[1:])
 
     # ==========================================================================
     # Get parameters and build model
@@ -44,11 +43,30 @@ def GPR_hdf5(VL,DADict):
 
     # ==========================================================================
     # Get performance metric of model
-    Metrics(model,[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
-            [Dataspace.TestIn_scale,Dataspace.TestOut_scale])
+    Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
+            'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
+    metrics_dict = Metrics(model,Data) # dict of pandas dfs with same keys as Data
+
+    for key, val in metrics_dict.items():
+        print('\n=============================================================\n')
+        print('{} metrics'.format(key))
+        print(val)
+    print()
+
+    NbOutput = TrainOut.shape[1] if TrainOut.ndim==2 else 1
+    for i in range(NbOutput):
+        print("Output_{}\n".format(i))
+
+        for key,val in metrics_dict.items():
+            d = ", ".join("{:.3e}".format(v) for v in val.iloc[i].tolist())
+            print("{:<8}: {}".format(key,d))
+        print()
+        GPR.PrintParameters(model.models[i])
+
+
 
 def GPR_PCA_hdf5(VL,DADict):
-    # np.random.seed(100)
+
     Parameters = DADict['Parameters']
 
     NbTorchThread = getattr(Parameters,'NbTorchThread',None)
@@ -56,13 +74,12 @@ def GPR_PCA_hdf5(VL,DADict):
 
     # ==========================================================================
     # Get Train & test data from file DataFile_path
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
-    TrainIn, TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
-                                     Parameters.InputArray, Parameters.OutputArray,
-                                     getattr(Parameters,'TrainNb',-1))
-    TestIn, TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData,
-                                   Parameters.InputArray, Parameters.OutputArray,
-                                   getattr(Parameters,'TestNb',-1))
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TrainData[0])
+    TrainIn, TrainOut = ML.GetDataML(DataFile_path, *Parameters.TrainData[1:])
+
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TestData[0])
+    TestIn, TestOut = ML.GetDataML(DataFile_path, *Parameters.TestData[1:])
+
     # ==========================================================================
     # Compress data & save compression matrix in CALC_DIR
     if os.path.isfile("{}/VT.npy".format(DADict['CALC_DIR'])) and not getattr(Parameters,'VT',True):
@@ -84,52 +101,67 @@ def GPR_PCA_hdf5(VL,DADict):
 
     # ==========================================================================
     # Get performance metric of model
-    Metrics_PCA(model,[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
-            [Dataspace.TestIn_scale,Dataspace.TestOut_scale], VT, Dataspace.OutputScaler)
+
+    # ==========================================================================
+    # Get performance metric of model
+    Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
+            'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
+    # dict of pandas dfs with same keys as Data
+    metrics_dict,metrics_scaled_dict = Metrics_PCA(model,Data,VT, Dataspace.OutputScaler)
+
+    for key, val in metrics_scaled_dict.items():
+        print('\n=============================================================\n')
+        print('{} metrics'.format(key))
+        print(val)
+    print()
+
+    NbOutput = TrainOutCompress.shape[1]
+    for i in range(NbOutput):
+        print("Output_{}\n".format(i))
+
+        for key,val in metrics_dict.items():
+            d = ", ".join("{:.3e}".format(v) for v in val.iloc[i].tolist())
+            print("{:<8}: {}".format(key,d))
+        print()
+        GPR.PrintParameters(model.models[i])
 
 # ==============================================================================
 # Functions used to asses performance of models
 
-def Metrics(model, TrainData, TestData, fast_pred_var=True):
+def Metrics(model, Data, fast_pred_var=True):
     # =========================================================================
     # Get error metrics for model
-
-    for data,name in zip([TrainData,TestData],['Train','Test']):
-        print('\n=============================================================\n')
-        print('{} metrics'.format(name))
-
-        data_in,data_out = data
+    metrics = {}
+    for key, val in Data.items():
+        data_in,data_out = val
         data_out = data_out.detach().numpy()
 
         pred_mean = _pred(model,data_in,fast_pred_var=fast_pred_var)
         df_data = ML.GetMetrics2(pred_mean,data_out)
+        metrics[key] = df_data
 
-        with pd.option_context('display.max_rows', None):
-            print(df_data)
+    return metrics
 
-def Metrics_PCA(model, TrainData, TestData, VT, OutputScaler, fast_pred_var=True):
+def Metrics_PCA(model, Data, VT, OutputScaler, fast_pred_var=True):
     # =========================================================================
     # Get error metrics for model
-
-    for data,name in zip([TrainData,TestData],['Train','Test']):
-        print('\n=============================================================\n')
-        print('{} metrics'.format(name))
-        data_in,data_out = data
-        if hasattr(data_out,'detach'):
-            data_out = data_out.detach().numpy()
+    metrics,metrics_scaled = {}, {}
+    for key, val in Data.items():
+        data_in,data_out = val
+        data_out = data_out.detach().numpy()
 
         pred_mean = _pred(model,data_in,fast_pred_var=fast_pred_var)
         df_data = ML.GetMetrics2(pred_mean,data_out)
-
-        with pd.option_context('display.max_rows', None):
-            print(df_data)
+        metrics[key] = df_data
 
         pred_mean_rescale = ML.DataRescale(pred_mean,*OutputScaler)
         data_out_rescale = ML.DataRescale(data_out,*OutputScaler)
 
         df_data_uncompress = ML.GetMetrics2(pred_mean_rescale.dot(VT),data_out_rescale.dot(VT))
-        print('\nUncompresses output (averaged)')
-        print(df_data_uncompress.mean())
+
+        metrics_scaled[key] = df_data_uncompress.mean()
+
+    return metrics, metrics_scaled
 
 def _pred(model,input,fast_pred_var=True):
     def _predfn(model,input):

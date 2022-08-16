@@ -100,7 +100,7 @@ else
 fi
 #conda install scikit-image
 #grab the GVXR Source
-svn checkout  svn checkout https://svn.code.sf.net/p/gvirtualxray/code/ gvirtualxray-code
+svn checkout https://svn.code.sf.net/p/gvirtualxray/code/ gvirtualxray-code
 cd gvirtualxray-code
 mkdir -p bin-release
 export GVXR_INSTALL_DIR=${GVXR_DIR}_Install

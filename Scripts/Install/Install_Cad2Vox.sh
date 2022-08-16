@@ -92,5 +92,5 @@ sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install cad2vox
 #if ${CAD2VOX_WITH_CUDA}; then
 #pytest
 #else
-pyton3 -m pytest -k "not CUDA"
+python3 -m pytest -k "not CUDA"
 #fi

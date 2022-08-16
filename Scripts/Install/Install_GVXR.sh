@@ -131,6 +131,6 @@ echo "Installing Speckpy"
 cd ${VL_DIR}/third_party
 git clone https://bitbucket.org/spekpy/spekpy_release.git
 cd spekpy_release
-sudo -u ${SUDO_USER:-$USER} pip3 install .
+pip install .
 cd ${VL_DIR}
 cleanup

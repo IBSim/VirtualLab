@@ -62,7 +62,8 @@ echo "Installing Speckpy"
 cd ${VL_DIR}/third_party
 git clone https://bitbucket.org/spekpy/spekpy_release.git
 cd spekpy_release
-sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install .
+#sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install .
+pip install .
 # install GVXR pip version
 sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install GVXR
 cd ${VL_DIR}

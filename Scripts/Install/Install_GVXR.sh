@@ -94,11 +94,10 @@ make install
 cd ${GVXR_DIR}
 # install python packages
 if ${USE_CONDA}; then
-    conda install matplotlib scikit-image pydantic
+    conda install matplotlib scikit-image pydantic numexpr
 else
-    sudo -u ${SUDO_USER:-$USER} pip3 install matplotlib scikit-image pydantic
+    sudo -u ${SUDO_USER:-$USER} pip3 install matplotlib scikit-image pydantic numexpr
 fi
-sudo -u ${SUDO_USER:-$USER} pip3 install numexpr
 #conda install scikit-image
 #grab the GVXR Source
 svn checkout svn://zedbluffer@svn.code.sf.net/p/gvirtualxray/code/branches/use-xraylib gvirtualxray-code

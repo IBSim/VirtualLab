@@ -437,10 +437,10 @@ if [ "$CAD2VOX_INST" == "y" ]; then
 else
   banner "Skipping Cad2Vox installation" "blue" "*"
 fi
-### Install Cad2Vox if flagged
+### Install GVXR if flagged
 if [ "$GVXR_INST" == "y" ]; then
   banner "Installing GVXR" "green" "*"
-  source $VL_DIR/Scripts/Install/Install_GVXR.sh
+  source $VL_DIR/Scripts/Install/Install_GVXR_pip.sh
 else
   banner "Skipping GVXR installation" "blue" "*"
 fi

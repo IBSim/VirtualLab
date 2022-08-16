@@ -101,7 +101,7 @@ fi
 sudo -u ${SUDO_USER:-$USER} pip3 install numexpr
 #conda install scikit-image
 #grab the GVXR Source
-svn checkout svn://zedbluffer@svn.code.sf.net/p/gvirtualxray/code/branches/use-xraylib gvirtualxray-code -r 2182
+svn checkout svn://zedbluffer@svn.code.sf.net/p/gvirtualxray/code/branches/use-xraylib gvirtualxray-code
 cd gvirtualxray-code
 mkdir -p bin-release
 export GVXR_INSTALL_DIR=${GVXR_DIR}_Install

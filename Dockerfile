@@ -73,6 +73,7 @@ COPY patch.sh /home/ibsim/patch.sh
 USER ibsim
 WORKDIR /tmp
 ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=linux
 # Install miniconda instead of full anaconda to space space in final image.
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
 bash Miniconda3-latest-Linux-x86_64.sh -b && \
@@ -86,5 +87,5 @@ RUN sudo chmod 755 /home/ibsim/patch.sh && \
     sudo rm /home/ibsim/salome_meca-2019.0.3-1-universal.run && \
     sudo rm /home/ibsim/salome_meca-2019.0.3-1-universal.tgz && \
     sudo rm /home/ibsim/VirtualLab/Scripts/Install/ERMES-CPlas-v12.5.zip
-
-RUN sudo ./Install_VirtualLab.sh -C y -y
+#RUN sudo ./Install_VirtualLab.sh -C y -y
+#RUN sudo ./Install_VirtualLab.sh -G y -y

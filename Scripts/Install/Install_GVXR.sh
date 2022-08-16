@@ -100,8 +100,10 @@ else
 fi
 #conda install scikit-image
 #grab the GVXR Source
-svn checkout https://svn.code.sf.net/p/gvirtualxray/code/ gvirtualxray-code
-cd gvirtualxray-code
+wget https://sourceforge.net/projects/gvirtualxray/files/1.1/gVirtualXRay-1.1.3-Source.zip/download
+mv download gVirtualXRay-1.1.3-Source.zip
+unzip gVirtualXRay-1.1.3-Source.zip
+cd gVirtualXRay-1.1.3
 mkdir -p bin-release
 export GVXR_INSTALL_DIR=${GVXR_DIR}_Install
 
@@ -119,7 +121,7 @@ ${GVXR_DIR}/cmake-3.23.1/bin/cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 -DBUILD_WRAPPER_RUBY:BOOL=OFF \
 -DBUILD_WRAPPER_TCL:BOOL=OFF \
 -DUSE_LIBTIFF:BOOL=OFF \
--S ${GVXR_DIR}/gvirtualxray-code -B $PWD
+-S ${GVXR_DIR}/gVirtualXRay-1.1.3 -B $PWD
 
 # now one final make build GVXR.
 make -j6

@@ -101,7 +101,7 @@ else
 fi
 #conda install scikit-image
 #grab the GVXR Source
-wget https://sourceforge.net/projects/gvirtualxray/files/1.1/gVirtualXRay1.1.5-Source.zip/download
+wget https://sourceforge.net/projects/gvirtualxray/files/1.1/gVirtualXRay-1.1.5-Source.zip/download
 mv download gVirtualXRay-1.1.5-Source.zip
 unzip gVirtualXRay-1.1.5-Source.zip
 cd gVirtualXRay-1.1.5

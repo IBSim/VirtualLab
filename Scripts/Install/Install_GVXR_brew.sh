@@ -127,7 +127,7 @@ make gvxrPython3 -j12
 # now one final make to link the rest of GVXR as normal
 make -j12
 make install
-brew install glfw glew
+#brew install glfw glew
 echo "Adding GVXR to PYTHONPATH"
 sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}/gvxrWrapper-1.0.5/python3:\${PYTHONPATH}" >> $USER_HOME/.VLprofile
 source ${USER_HOME}/.VLprofile

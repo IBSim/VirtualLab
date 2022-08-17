@@ -77,7 +77,7 @@ cd ${GVXR_DIR}
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/ibsim/.profile
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-brew install cmake swig
+brew install cmake swig glfw glew
 cd ${GVXR_DIR}
 # install python packages
 if ${USE_CONDA}; then

@@ -114,8 +114,6 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 # under all other unix platforms it is in lib64. This cases linking 
 # errors with swig which have yet to be addressed by Frank.
 make assimp -j12
-cmake -DCMAKE_BUILD_TYPE:STRING=Release \
-
 make glew -j12
 mkdir -p gvxr/glew-install/lib64
 cp gvxr/glew-install/lib/lib*.a gvxr/glew-install/lib64

@@ -116,16 +116,16 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 # to the "correct" place as cmake put them in lib under Ubuntu. Whereas 
 # under all other unix platforms it is in lib64. This cases linking 
 # errors with swig which have yet to be addressed by Frank.
-make assimp -j12
+#make assimp -j12
 #make glew -j12
 #mkdir -p gvxr/glew-install/lib64
 #cp gvxr/glew-install/lib/lib*.a gvxr/glew-install/lib64
 #make glfw -j12
 #mkdir -p glfw-install/lib64
 #cp glfw-install/lib/lib*.a glfw-install/lib64
-make gVirtualXRay -j12
-make SimpleGVXR -j12
-make gvxrPython3 -j12
+#make gVirtualXRay -j12
+#make SimpleGVXR -j12
+#make gvxrPython3 -j12
 
 # now one final make to link the rest of GVXR as normal
 make -j12

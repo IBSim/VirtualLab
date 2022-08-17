@@ -131,7 +131,7 @@ ${GVXR_DIR}/cmake-3.23.1/bin/cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 make -j6
 make install
 echo "Adding GVXR to PYTHONPATH"
-sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}/gvxrWrapper-1.0.6/python3:\${PYTHONPATH}" >> $USER_HOME/.VLprofile
+sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}/gvxrWrapper-1.0.5/python3:\${PYTHONPATH}" >> $USER_HOME/.VLprofile
 source ${USER_HOME}/.VLprofile
 echo "Installing Speckpy"
 cd ${VL_DIR}/third_party

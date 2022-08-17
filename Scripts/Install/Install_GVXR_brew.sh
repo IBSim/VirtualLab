@@ -115,11 +115,11 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 # errors with swig which have yet to be addressed by Frank.
 make assimp -j12
 make glew -j12
-mkdir -p $GVXR_INSTALL_DIR/glew-install/lib64
-cp $GVXR_INSTALL_DIR/glew-install/lib/lib*.a $GVXR_INSTALL_DIR/glew-install/lib64
+mkdir -p gvxr/glew-install/lib64
+cp gvxr/glew-install/lib/lib*.a gvxr/glew-install/lib64
 make glfw -j12
-mkdir -p $GVXR_INSTALL_DIR/glfw-install/lib64
-cp $GVXR_INSTALL_DIR/glfw-install/lib/lib*.a $GVXR_INSTALL_DIR/glfw-install/lib64
+mkdir -p glfw-install/lib64
+cp glfw-install/lib/lib*.a glfw-install/lib64
 make gVirtualXRay -j12
 make SimpleGVXR -j12
 make gvxrPython3 -j12

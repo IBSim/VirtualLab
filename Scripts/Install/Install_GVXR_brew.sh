@@ -115,6 +115,20 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 # under all other unix platforms it is in lib64. This cases linking 
 # errors with swig which have yet to be addressed by Frank.
 make assimp -j12
+cmake -DCMAKE_BUILD_TYPE:STRING=Release \
+-DCMAKE_INSTALL_PREFIX:STRING=$GVXR_INSTALL_DIR \
+-DBUILD_TESTING:BOOL=OFF \
+-DBUILD_WRAPPER_CSHARP:BOOL=OFF \
+-DBUILD_WRAPPER_JAVA:BOOL=OFF \
+-DBUILD_WRAPPER_OCTAVE:BOOL=OFF \
+-DBUILD_WRAPPER_PERL:BOOL=OFF \
+-DBUILD_WRAPPER_PYTHON3:BOOL=ON \
+-DBUILD_WRAPPER_R:BOOL=OFF \
+-DBUILD_WRAPPER_RUBY:BOOL=OFF \
+-DBUILD_WRAPPER_TCL:BOOL=OFF \
+-DUSE_LIBTIFF:BOOL=OFF \
+-DCMAKE_POLICY_DEFAULT_CMP0072=NEW \
+-S .. -B $PWD
 make glew -j12
 mkdir -p gvxr/glew-install/lib64
 cp gvxr/glew-install/lib/lib*.a gvxr/glew-install/lib64

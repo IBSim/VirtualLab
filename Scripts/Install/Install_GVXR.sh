@@ -54,6 +54,7 @@ export CC=/usr/bin/gcc
 export CXX=/usr/bin/g++
 source ${VL_DIR}/VLconfig.py 
 GVXR_DIR=${VL_DIR}/third_party/GVXR
+export GVXR_INSTALL_DIR=${GVXR_DIR}_Install
 mkdir -p ${GVXR_DIR}
 cd ${GVXR_DIR}
 #install apt packages
@@ -89,9 +90,13 @@ mv download swig.tar.gz
 tar -xzf swig.tar.gz
 cd swig-4.0.2
 sudo apt install libpcre3 libpcre3-dev -y
-./configure
+./configure --prefix=${GVXR_INSTALL_DIR}/swig
 make
 make install
+export SWIG_PATH=${GVXR_INSTALL_DIR}/swig
+sudo echo "export SWIG_PATH=${GVXR_INSTALL_DIR}/swig" >> $USER_HOME/.VLprofile
+export PATH=$SWIG_PATH:$PATH
+
 cd ${GVXR_DIR}
 # install python packages
 if ${USE_CONDA}; then
@@ -106,7 +111,6 @@ mv download gVirtualXRay-1.1.5-Source.zip
 unzip gVirtualXRay-1.1.5-Source.zip
 cd gVirtualXRay-1.1.5
 mkdir -p bin-release
-export GVXR_INSTALL_DIR=${GVXR_DIR}_Install
 
 cd bin-release
 ${GVXR_DIR}/cmake-3.23.1/bin/cmake -DCMAKE_BUILD_TYPE:STRING=Release \

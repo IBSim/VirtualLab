@@ -106,6 +106,8 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 -DBUILD_WRAPPER_RUBY:BOOL=OFF \
 -DBUILD_WRAPPER_TCL:BOOL=OFF \
 -DUSE_LIBTIFF:BOOL=OFF \
+-DUSE_SYSTEM_GLEW:BOOL=ON \
+-DUSE_SYSTEM_GLFW:BOOL=ON \
 -DCMAKE_POLICY_DEFAULT_CMP0072=NEW \
 -S .. -B $PWD
 
@@ -115,12 +117,12 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 # under all other unix platforms it is in lib64. This cases linking 
 # errors with swig which have yet to be addressed by Frank.
 make assimp -j12
-make glew -j12
-mkdir -p gvxr/glew-install/lib64
-cp gvxr/glew-install/lib/lib*.a gvxr/glew-install/lib64
-make glfw -j12
-mkdir -p glfw-install/lib64
-cp glfw-install/lib/lib*.a glfw-install/lib64
+#make glew -j12
+#mkdir -p gvxr/glew-install/lib64
+#cp gvxr/glew-install/lib/lib*.a gvxr/glew-install/lib64
+#make glfw -j12
+#mkdir -p glfw-install/lib64
+#cp glfw-install/lib/lib*.a glfw-install/lib64
 make gVirtualXRay -j12
 make SimpleGVXR -j12
 make gvxrPython3 -j12

@@ -75,8 +75,8 @@ ldconfig
 cd ${GVXR_DIR}
 #install latest CMAKE and swig from brew (18.04 repo one is to old)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-echo 'eval "$(/home/ibsim/.linuxbrew/bin/brew shellenv)"' >> /home/ibsim/.profile
-eval "$(/home/ibsim/.linuxbrew/bin/brew shellenv)"
+echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/ibsim/.profile
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 brew install cmake swig
 cd ${GVXR_DIR}
 # install python packages

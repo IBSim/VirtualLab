@@ -77,7 +77,7 @@ cd ${GVXR_DIR}
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/ibsim/.profile
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-brew install cmake swig glfw glew
+brew install cmake swig
 cd ${GVXR_DIR}
 # install python packages
 if ${USE_CONDA}; then
@@ -106,8 +106,6 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 -DBUILD_WRAPPER_RUBY:BOOL=OFF \
 -DBUILD_WRAPPER_TCL:BOOL=OFF \
 -DUSE_LIBTIFF:BOOL=OFF \
--DUSE_SYSTEM_GLEW:BOOL=ON \
--DUSE_SYSTEM_GLFW:BOOL=ON \
 -DCMAKE_POLICY_DEFAULT_CMP0072=NEW \
 -S .. -B $PWD
 
@@ -116,20 +114,21 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 # to the "correct" place as cmake put them in lib under Ubuntu. Whereas 
 # under all other unix platforms it is in lib64. This cases linking 
 # errors with swig which have yet to be addressed by Frank.
-#make assimp -j12
-#make glew -j12
-#mkdir -p gvxr/glew-install/lib64
-#cp gvxr/glew-install/lib/lib*.a gvxr/glew-install/lib64
-#make glfw -j12
-#mkdir -p glfw-install/lib64
-#cp glfw-install/lib/lib*.a glfw-install/lib64
-#make gVirtualXRay -j12
-#make SimpleGVXR -j12
-#make gvxrPython3 -j12
+make assimp -j12
+make glew -j12
+mkdir -p gvxr/glew-install/lib64
+cp gvxr/glew-install/lib/lib*.a gvxr/glew-install/lib64
+make glfw -j12
+mkdir -p glfw-install/lib64
+cp glfw-install/lib/lib*.a glfw-install/lib64
+make gVirtualXRay -j12
+make SimpleGVXR -j12
+make gvxrPython3 -j12
 
 # now one final make to link the rest of GVXR as normal
 make -j12
 make install
+brew install glfw glew
 echo "Adding GVXR to PYTHONPATH"
 sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}/gvxrWrapper-1.0.5/python3:\${PYTHONPATH}" >> $USER_HOME/.VLprofile
 source ${USER_HOME}/.VLprofile

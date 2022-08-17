@@ -108,8 +108,24 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 -DUSE_LIBTIFF:BOOL=OFF \
 -S .. -B $PWD
 
-# now one final make build GVXR.
-make -j6
+# Bodge to fix ubuntu specifc issues
+# in this case we build glew first then copy the resluting libaries
+# to the "correct" place as cmake put them in lib under Ubuntu. Whereas 
+# under all other unix platforms it is in lib64. This cases linking 
+# errors with swig which have yet to be addressed by Frank.
+make assimp -j12
+make glew -j12
+mkdir -p $GVXR_INSTALL_DIR/glew-install/lib64
+cp $GVXR_INSTALL_DIR/glew-install/lib/lib*.a $GVXR_INSTALL_DIR/glew-install/lib64
+make glfw -j12
+mkdir -p $GVXR_INSTALL_DIR/glfw-install/lib64
+cp $GVXR_INSTALL_DIR/glfw-install/lib/lib*.a $GVXR_INSTALL_DIR/glfw-install/lib64
+make gVirtualXRay -j12
+make SimpleGVXR -j12
+make gvxrPython3 -j12
+
+# now one final make to link the rest of GVXR as normal
+make -j12
 make install
 echo "Adding GVXR to PYTHONPATH"
 sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}/gvxrWrapper-1.0.5/python3:\${PYTHONPATH}" >> $USER_HOME/.VLprofile

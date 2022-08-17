@@ -60,7 +60,8 @@ cd ${GVXR_DIR}
 sudo apt update
 export DEBIAN_FRONTEND=noninteractive
 sudo apt install -y linux-headers-generic build-essential subversion libglu1-mesa-dev freeglut3-dev \
-mesa-common-dev libfftw3-dev libfftw3-doc zlib1g zlib1g-dev libxrandr-dev \
+mesa-common-dev libfftw3-dev libfftw3-doc zlib1g zlib1g-dev libxrandr-dev libglew-dev \
+libglvnd-dev libgl1-mesa-dev libegl1-mesa-dev \
 libxcursor-dev libxinerama-dev libx11-dev libxi-dev libxt-dev python3-tk python3-pip wget unzip curl 
 cd ${GVXR_DIR}
 #build LibTiff

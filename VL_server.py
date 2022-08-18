@@ -58,6 +58,7 @@ if __name__ == "__main__":
 # rerad in CMD arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--vlab", help = "Path to Directory ion host containing VirtualLab (default is assumed to be curent working directory).", default=os.getcwd())
+    parser.add_argument("-i", "--Run_file", help = "Runfile to use (default is assumed to be curent working directory).", default="Run.py")
     args = parser.parse_args()
     # start server listening for incoming jobs on seperate thread
     job_done = threading.Event()
@@ -66,11 +67,12 @@ if __name__ == "__main__":
     thread.daemon = True
 
     vlab_dir=os.path.abspath(args.vlab)
+    Run_file = args.Run_file
     thread.start()
     #start VirtualLab
     lock.acquire()
-    subprocess.Popen(f'singularity exec --containall --writable-tmpfs -B {vlab_dir}:/home/ibsim/VirtualLab virtualLab.sif '
-                    'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/Run1.py', shell=True)
+    subprocess.Popen(f'SINGULARITYENV_PYTHONPATH=/home/ibsim/VirtualLab/third_party/GVXR_Install/gvxrWrapper-1.0.5/python3 singularity exec --contain --writable-tmpfs --env-file contain_envs -B {vlab_dir}:/home/ibsim/VirtualLab virtualLab.sif '
+                    f'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
     next_cnt_id += 1
     lock.release()
     # wait untill all threads and virtualLab are done before closing

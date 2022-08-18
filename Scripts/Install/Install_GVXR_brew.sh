@@ -52,7 +52,7 @@ fi
 export CC=/usr/bin/gcc
 export CXX=/usr/bin/g++
 source ${VL_DIR}/VLconfig.py 
-GVXR_DIR=${VL_DIR}/third_party/GVXR
+GVXR_DIR=/GVXR
 export GVXR_INSTALL_DIR=${GVXR_DIR}_Install
 mkdir -p ${GVXR_DIR}
 cd ${GVXR_DIR}

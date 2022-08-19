@@ -71,7 +71,7 @@ if __name__ == "__main__":
     thread.start()
     #start VirtualLab
     lock.acquire()
-    subprocess.Popen(f'SINGULARITYENV_PYTHONPATH=/home/ibsim/VirtualLab/third_party/GVXR_Install/gvxrWrapper-1.0.5/python3 singularity exec --contain --writable-tmpfs --env-file contain_envs -B {vlab_dir}:/home/ibsim/VirtualLab virtualLab.sif '
+    subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab VL_GVXR '
                     f'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
     next_cnt_id += 1
     lock.release()

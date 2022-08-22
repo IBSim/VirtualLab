@@ -2,4 +2,4 @@
 
 from .Paralleliser import Paralleliser
 from .SamplingMethods import Sampling
-from .MEDtools import MeshInfo, FieldResult
+from .MEDtools import MeshInfo

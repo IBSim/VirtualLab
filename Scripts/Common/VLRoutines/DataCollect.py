@@ -119,3 +119,36 @@ def MaxVMis(ResDir_path, ResFileName, ResName='Temperature'):
 def MinVMis(ResDir_path, ResFileName, ResName='Temperature'):
     VMis_all = VMisField(ResDir_path, ResFileName, ResName=ResName)
     return VMis_all.min()
+
+def Power_ERMES(ResDir_path, ResFileName, ResName='Joule_heating', GroupName=None):
+    ''' Get result 'ResName' at all nodes. Results for certain groups can be
+        returned using GroupName argument.'''
+
+
+    JH_Node = NodalResult(ResDir_path, ResFileName, ResName, GroupName=GroupName)
+
+    meshdata = MEDtools.MeshInfo("{}/{}".format(ResDir_path,ResFileName))
+
+    NodeIDs = list(range(1,meshdata.NbNodes+1))
+    Coor = meshdata.GetNodeXYZ(NodeIDs)
+    Sample = meshdata.GroupInfo('Sample')
+    Connect = Sample.Connect
+
+    _Ix = np.searchsorted(NodeIDs,Connect)
+
+    # work out volume of each element
+    elem_cd = Coor[_Ix]
+    v1,v2 = elem_cd[:,1] - elem_cd[:,0], elem_cd[:,2] - elem_cd[:,0]
+    v3 = elem_cd[:,3] - elem_cd[:,0]
+    cross = np.cross(v1,v2)
+    dot = (cross*v3).sum(axis=1)
+    Volumes = 1/float(6)*np.abs(dot)
+
+    # work out average joule heating per volume
+    _jh = JH_Node[_Ix]
+    JH_vol = _jh.mean(axis=1)
+
+    # Calculate power
+    Power = (Volumes*JH_vol).sum()
+
+    return Power

@@ -72,19 +72,21 @@ def Inputs(ResDir_path, InputVariables, Parameters_basename ='Parameters.py'):
 
 # ==============================================================================
 # Code Aster
-def TemperatureField(ResDir_path, ResFileName, ResName='Temperature'):
-    ''' Get temperature values at all nodes'''
+def NodalResult(ResDir_path, ResFileName, ResName, GroupName=None):
+    ''' Get result 'ResName' at all nodes. Results for certain groups can be
+        returned using GroupName argument.'''
 
     ResFilePath = "{}/{}".format(ResDir_path,ResFileName)
-    Temps = MEDtools.FieldResult(ResFilePath,ResName)
+    Temps = MEDtools.NodalResult(ResFilePath,ResName,GroupName=GroupName)
+
     return  Temps
 
-def MaxTemperature(ResDir_path, ResFileName, ResName='Temperature'):
-    TempField = TemperatureField(ResDir_path, ResFileName, ResName=ResName)
+def MaxNode(ResDir_path, ResFileName, ResName='Temperature'):
+    TempField = NodalField(ResDir_path, ResFileName, ResName=ResName)
     return TempField.max()
 
-def MinTemperature(ResDir_path, ResFileName, ResName='Temperature'):
-    TempField = TemperatureField(ResDir_path, ResFileName, ResName=ResName)
+def MinNode(ResDir_path, ResFileName, ResName='Temperature'):
+    TempField = NodalField(ResDir_path, ResFileName, ResName=ResName)
     return TempField.min()
 
 def VMisField(ResDir_path, ResFileName, ResName='Stress'):

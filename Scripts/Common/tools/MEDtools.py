@@ -182,7 +182,7 @@ class MeshInfo():
     def Close(self):
         self.g.close()
 
-def FieldResult(MEDFile, ResName, GroupName=None):
+def NodalResult(MEDFile, ResName, GroupName=None):
     g = h5py.File(MEDFile, 'r')
     gRes = g['/CHA/{}'.format(ResName)]
     step = list(gRes.keys())[0]

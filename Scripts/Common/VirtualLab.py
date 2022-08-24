@@ -10,20 +10,21 @@ import copy
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
 import atexit
-
+import json
 import VLconfig
 from . import Analytics
 from .VLFunctions import ErrorMessage, WarningMessage
-from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, Vox as VoxFn, GVXR as GVXRFn
-
+from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, \
+      Vox as VoxFn, GVXR as GVXRFn, CIL as CILFn
+from .VLContainer import Container_Utils as Utils
 class VLSetup():
-    def __init__(self, Simulation, Project,container=True):
+    def __init__(self, Simulation, Project,Cont_id=1):
 
         # Get parsed args (achieved using the -k flag when launchign VirtualLab).
         self._GetParsedArgs()
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
-        self.container=container
+        self.Container=Cont_id
         # ======================================================================
         # Define variables
         self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
@@ -60,17 +61,18 @@ class VLSetup():
             # Unlikely this would happen. Suffix random number to direcory name
             self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
             os.makedirs(self.TEMP_DIR)
-        if self.container:
+        if self.Container==1:
             # setup networking to comunicate with host script whilst running in a continer
             import socket
+            data = {"msg":"VirtualLab started","cont_id":1}
+            data_string = json.dumps(data)
             sock = socket.socket()
             sock.connect(("127.0.0.1", 9999))
-            sock.sendall("VirtualLab started:{}".format(1).encode())
+            sock.sendall(data_string.encode('utf-8'))
             sock.close()
-
-        self.Logger('\n############################\n'\
-                      '### Launching VirtualLab ###\n'\
-                      '############################\n',Print=True)
+            self.Logger('\n############################\n'\
+                        '### Launching VirtualLab ###\n'\
+                        '############################\n',Print=True)
 
 
     def _SetMode(self,Mode='H'):
@@ -157,7 +159,8 @@ class VLSetup():
 
     def Parameters(self, Parameters_Master, Parameters_Var=None,
                     RunMesh=True, RunSim=True, RunDA=True, 
-                    RunVox=True, RunGVXR=True, Import=False):
+                    RunVox=True, RunGVXR=True, RunCIL=True,
+                    Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -167,6 +170,7 @@ class VLSetup():
         RunDA = self._ParsedArgs.get('RunDA',RunDA)
         RunVox = self._ParsedArgs.get('RunVox',RunVox)
         RunGVXR = self._ParsedArgs.get('RunGVXR',RunGVXR)
+        RunCIL = self._ParsedArgs.get('RunCIL',RunCIL)
         Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
@@ -180,6 +184,7 @@ class VLSetup():
         DAFn.Setup(self,RunDA, Import)
         VoxFn.Setup(self,RunVox)
         GVXRFn.Setup(self,RunGVXR)
+        CILFn.Setup(self,RunCIL)
 
     def ImportParameters(self, Rel_Parameters):
         '''
@@ -332,6 +337,19 @@ class VLSetup():
     def CT_Scan(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return GVXRFn.Run(self,**kwargs)
+ #Hook for CIL       
+    def CT_Recon(self,**kwargs):
+        # if in main contianer submit job request
+        if self.Container==1:
+            Utils.RunJob(Cont_id=1,Tool="CIL",
+            Parameters_Master=self.Parameters_Master,
+            Parameters_Var=self.Parameters_Var,)
+            return
+        # if in secondary container try to run CIL
+        else:
+            kwargs = self._UpdateArgs(kwargs)
+            return CILFn.Run(self,**kwargs)
+
     def devDA(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return DAFn.Run(self,**kwargs)
@@ -371,13 +389,6 @@ class VLSetup():
             Category = "{}_Overview".format(self.Simulation)
             Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
             Analytics.Run(Category,Action,self._ID)
-
-        if self.container:
-            import socket
-            sock = socket.socket()
-            sock.connect(("127.0.0.1", 9999))
-            sock.sendall("VirtualLab finished:{}".format(1).encode())
-            sock.close()
             
         exitstr = '\n#############################\n'\
                     '### VirtualLab Terminated ###\n'\

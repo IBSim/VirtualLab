@@ -70,8 +70,11 @@ def LoadModel(ModelDir):
     TrainOut = np.load("{}/Output.npy".format(ModelDir))
     Dataspace = ML.DataspaceTrain([TrainIn,TrainOut])
 
-    Parameters = VLF.ReadParameters("{}/Parameters.py".format(ModelDir))
-    ModelParameters = getattr(Parameters,'ModelParameters',{})
+    if os.path.isfile("{}/Parameters.py".format(ModelDir)):
+        Parameters = VLF.ReadParameters("{}/Parameters.py".format(ModelDir))
+        ModelParameters = getattr(Parameters,'ModelParameters',{})
+    else:
+        ModelParameters, Parameters={},None
     likelihood, model = Create_GPR(Dataspace.TrainIn_scale, Dataspace.TrainOut_scale,
                                    input_scale=Dataspace.InputScaler,
                                    output_scale=Dataspace.OutputScaler,
@@ -82,27 +85,38 @@ def LoadModel(ModelDir):
     return  likelihood, model, Dataspace, Parameters
 # ==============================================================================
 # Functions to easily create GPR
-def Create_GPR(TrainIn,TrainOut,kernel='RBF',prev_state=None,min_noise=None,input_scale=None,
-                output_scale=None,multitask=False):
+def Create_GPR(TrainIn, TrainOut, prev_state=False, multitask=False, **kwargs):
+    # Check if a multitask moel is required (if multiple outputs)
+    # multitask = kwargs.pop('multitask') if 'multitask' in kwargs else False
+
     if TrainOut.ndim==1:
         # single output
-        likelihood, model = _SingleGPR(TrainIn, TrainOut, kernel, min_noise=min_noise,
-                                        input_scale=input_scale,output_scale=output_scale)
-
+        likelihood, model = _SingleGPR(TrainIn, TrainOut, **kwargs)
     elif multitask:
-        likelihood, model = _MultitaskGPR(TrainIn,TrainOut,kernel,min_noise=min_noise,
-                                        input_scale=input_scale,output_scale=output_scale)
+        # multiple output - multitask model
+        likelihood, model = _MultitaskGPR(TrainIn,TrainOut,**kwargs)
     else:
-        # multiple output
+        # multiple output - seperate model for each output
         NbModel = TrainOut.shape[1]
-        # Change kernel and min_noise to a list
-        if type(kernel) not in (list,tuple): kernel = [kernel]*NbModel
-        if type(min_noise) not in (list,tuple): min_noise = [min_noise]*NbModel
+
+        # Make list of kwargs dictionaries for each model
+        # same input scale for all inputs
+        input_scale = kwargs.pop('input_scale') if 'input_scale' in kwargs else None
+        kwargs_list = [{'input_scale':input_scale} for _ in range(NbModel)]
+        for key,val in kwargs.items():
+            if type(val) in (list,tuple):
+                if len(val)!=NbModel:
+                    sys.exit("Length not compatible")
+                else:
+                    for i in range(NbModel):
+                        kwargs_list[i][key] = val[i] # apply individual value to all
+            else:
+                for i in range(NbModel):
+                    kwargs_list[i][key] = val # apply single value to all
+
         models,likelihoods = [], []
         for i in range(NbModel):
-            _output_scale = output_scale[:,i] if output_scale is not None else None
-            likelihood, model = _SingleGPR(TrainIn, TrainOut[:,i], kernel[i], min_noise = min_noise[i],
-                                            input_scale=input_scale, output_scale=_output_scale)
+            likelihood, model = _SingleGPR(TrainIn, TrainOut[:,i], **kwargs_list[i])
             models.append(model)
             likelihoods.append(likelihood)
 
@@ -119,21 +133,17 @@ def Create_GPR(TrainIn,TrainOut,kernel='RBF',prev_state=None,min_noise=None,inpu
 
     return likelihood, model
 
-def _SingleGPR(TrainIn,TrainOut,kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
+def _SingleGPR(TrainIn, TrainOut, kernel='RBF', min_noise=None, noise_init=None,
+                                  input_scale=None, output_scale=None):
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
     model = ExactGPmodel(TrainIn, TrainOut, likelihood, kernel)
-    if not prev_state:
-        if min_noise != None:
-            likelihood.noise_covar.register_constraint('raw_noise',gpytorch.constraints.GreaterThan(min_noise))
 
-        # Start noise at lower level to avoid bad optima, but ensure it isn't zero
-        noise_lower = likelihood.noise_covar.raw_noise_constraint.lower_bound
-        noise_init = max(5*noise_lower,1e-8)
+    if min_noise != None:
+        likelihood.noise_covar.register_constraint('raw_noise',gpytorch.constraints.GreaterThan(min_noise))
+
+    if noise_init != None:
         hypers = {'likelihood.noise_covar.noise': noise_init}
         model.initialize(**hypers)
-    else:
-        state_dict = torch.load(prev_state)
-        model.load_state_dict(state_dict)
 
     if input_scale is not None: model.input_scale = input_scale
     if output_scale is not None: model.output_scale = output_scale
@@ -141,10 +151,19 @@ def _SingleGPR(TrainIn,TrainOut,kernel,prev_state=None,min_noise=None,input_scal
     return likelihood, model
 
 
-def _MultitaskGPR(TrainIn,TrainOut,kernel,prev_state=None,min_noise=None,input_scale=None,output_scale=None):
+def _MultitaskGPR(TrainIn, TrainOut, kernel='RBF', min_noise=None, noise_init=None,
+                                     input_scale=None,output_scale=None):
     ndim = TrainOut.shape[1]
     likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=ndim)
     model = MultitaskGPModel(TrainIn, TrainOut, likelihood, kernel,rank=1)
+
+    # TODO: work out adding noise constraint for multitask
+    # if min_noise != None:
+    #     likelihood.noise_covar.register_constraint('raw_noise',gpytorch.constraints.GreaterThan(min_noise))
+
+    # if noise_init != None:
+    #     hypers = {'likelihood.noise_covar.noise': noise_init}
+    #     model.initialize(**hypers)
 
     if input_scale is not None: model.input_scale = input_scale
     if output_scale is not None: model.output_scale = output_scale
@@ -153,8 +172,12 @@ def _MultitaskGPR(TrainIn,TrainOut,kernel,prev_state=None,min_noise=None,input_s
 
 # ==============================================================================
 # Train the GPR model
-def TrainModel(model, Epochs=5000, lr=0.01, Print=50, ConvAvg=10, tol=1e-4,
-              Verbose=False, SumOutput=False):
+
+def TrainModel(model, Epochs=5000, lr=0.01, Print=50,
+               ConvStart=None, ConvAvg=10, tol=1e-4,
+               Verbose=False, SumOutput=False):
+
+    if ConvStart is None: ConvStart = int(2*ConvAvg)
 
     likelihood = model.likelihood
     model.train()
@@ -184,13 +207,17 @@ def TrainModel(model, Epochs=5000, lr=0.01, Print=50, ConvAvg=10, tol=1e-4,
 
     # Start looping over training data
     for i in range(Epochs):
+
+        # Get convergence information
+        Conv_dict = {'ConvAvg':ConvAvg,'tol':tol} if i>=ConvStart else {}
+
         if MultiOutput and not SumOutput:
             TotalLoss = TrackLoss
             for j,mod in enumerate(model.models):
                 if j in Completed: continue
 
                 _Losses = Losses[j]
-                _convergence = _Step(mod,optimizer[j],LossFn[j],_Losses,ConvAvg=ConvAvg,tol=tol)
+                _convergence = _Step(mod,optimizer[j],LossFn[j],_Losses,Convergence=Conv_dict)
                 TotalLoss+=_Losses[-1]
 
                 if _convergence != None:
@@ -203,7 +230,7 @@ def TrainModel(model, Epochs=5000, lr=0.01, Print=50, ConvAvg=10, tol=1e-4,
                 break
         else:
             _Losses = Losses[0]
-            convergence = _Step(model,optimizer,LossFn,_Losses,ConvAvg=ConvAvg,tol=tol)
+            convergence = _Step(model,optimizer,LossFn,_Losses,Convergence=Conv_dict)
             TotalLoss = _Losses[-1]
             if convergence != None:
                 print(convergence)
@@ -211,19 +238,10 @@ def TrainModel(model, Epochs=5000, lr=0.01, Print=50, ConvAvg=10, tol=1e-4,
 
         if i==0 or (i+1) % Print == 0:
             print("Iteration: {}, Loss: {}".format(i+1,TotalLoss))
-            if Verbose:
-                PrintParameters(model)
-
-    # Print out final information about training & model parameters
-    # print('\n################################\n')
-    # print("Iterations: {}\nLoss: {}".format(i+1,TotalLoss))
-    # print("\nModel parameters:")
-    # PrintParameters(model)
-    # print('################################\n')
 
     return Losses
 
-def _Step(model, optimizer, mll, loss_lst, ConvAvg=10, tol=1e-4):
+def _Step(model, optimizer, mll, loss_lst, Convergence={}):
     optimizer.zero_grad() # set all gradients to zero
     # Calculate loss & add to list
 
@@ -232,9 +250,10 @@ def _Step(model, optimizer, mll, loss_lst, ConvAvg=10, tol=1e-4):
     loss = -mll(output, model.train_targets)
     loss_lst.append(loss.item())
     # Check convergence using the loss list. If convergence, return
-    convergence = CheckConvergence(loss_lst,ConvAvg=ConvAvg,tol=tol)
-    if convergence != None:
-        return convergence
+    if Convergence:
+        _convergence = CheckConvergence(loss_lst,**Convergence)
+        if _convergence != None:
+            return _convergence
 
     # Calculate gradients & update model parameters using the optimizer
     loss.backward()
@@ -245,13 +264,13 @@ def CheckConvergence(Loss, ConvAvg=10, tol=1e-4):
     if len(Loss) >= 2*ConvAvg:
         mean_new = np.mean(Loss[-ConvAvg:])
         mean_old = np.mean(Loss[-2*ConvAvg:-ConvAvg])
-        if mean_new > mean_old:
-            return "Convergence reached after {} iterations. Loss increasing".format(len(Loss))
-        elif np.abs(mean_new-mean_old)<tol:
+        # if mean_new > mean_old:
+        #     return "Convergence reached after {} iterations. Loss increasing".format(len(Loss))
+        if np.abs(mean_new-mean_old)<tol:
             return "Convergence reached after {} iterations. Loss change smaller than tolerance".format(len(Loss))
 
 def PrintParameters(model):
-    Modstr = "Length scales: {}\nOutput scale: {}\nNoise: {}\n\n"
+    Modstr = "Lengthscale: {}\nOutputscale: {:.3e}\nNoise: {:.3e}\n\n"
     if hasattr(model,'models'):
         Rstr = ""
         for i,mod in enumerate(model.models):
@@ -261,6 +280,7 @@ def PrintParameters(model):
             Rstr += ("Output {}\n"+Modstr).format(i,LS,OS,N)
     else:
             LS = model.covar_module.base_kernel.lengthscale.detach().numpy()[0]
+            LS = ", ".join("{:.3e}".format(_) for _ in LS)
             OS = model.covar_module.outputscale.detach().numpy()
             N = model.likelihood.noise.detach().numpy()[0]
             Rstr = Modstr.format(LS,OS,N)

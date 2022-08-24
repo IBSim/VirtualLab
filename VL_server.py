@@ -1,17 +1,41 @@
+from ast import Raise
 import socket
 import sys
 import subprocess
 import threading
 import argparse
 import os
+import json
+''' Script to enable comunication with and spawning of containers.
+        #######################################################################
+        Note: Current container ID's are:
+        1 - Base VirtualLab
+        2 - CIL
 
-next_cnt_id = 1
+        If/when you want to add more containers you will need to give 
+        them a unique id in the container_id's dict in VL_sever.py 
+        and add it to this list as a courtesy so everyone is on the same page
+        #######################################################################
+'''
 waiting_cnt_sockets = {}
 
-# watch -n1 ps aux | grep 'Apptainer runtime'
+Container_IDs = {"VLab":1,"CIL":2}
+def Format_Call_Str(Tool,vlab_dir):
+    ''' Function to format string for bindpoints and container to call specified tool.'''
+    if Tool == "CIL":
+        call_string = '-B /run:/run -B .:/home/ibsim/VirtualLab CIL_sand'
+        command = './Run_CIL.sh -m TrainingParameters_GVXR.py -v None -p GVXR -s Tutorials'.format()
 
-def process(job_done):
-    global next_cnt_id
+    elif Tool == "GVXR":
+        call_string = '-B {}:/home/ibsim/VirtualLab VL_GVXR.sif'.format(vlab_dir)
+        command = 'python'
+        
+    # Add others as need arises
+    else:
+        Raise(ValueError("Tool not recognised as callable in container."))
+    return call_string, command
+
+def process(vlab_dir):
     lock = threading.Lock()
     sock = socket.socket()
     sock.bind(("127.0.0.1", 9999))
@@ -19,28 +43,30 @@ def process(job_done):
 
     while True:
         client_socket, client_address = sock.accept()
-        data = client_socket.recv(1024).decode()
-        event, container_id = data.split(':')
-
+        data = client_socket.recv(1024).decode('utf-8')
+        #event, container_id, Tool = data.split(':')
+        rec_dict = json.loads(data)
+        event = rec_dict["msg"]
+        container_id = rec_dict["Cont_id"]
         print('Server - received "{}" event from container {} at {}'.format(event, container_id, client_address))
 
         if event == 'VirtualLab started':
             client_socket.close()
-        elif event == 'runJob':
+        elif event == 'RunJob':
+            Tool = rec_dict["Tool"]
             lock.acquire()
-            
+            call_string, command = Format_Call_Str(Tool,vlab_dir)
+            target_id = Container_IDs[Tool]
             print('Server - starting a new container with ID: {} '
-                  'as requested by container {}'.format(next_cnt_id, container_id))
+                  'as requested by container {}'.format(target_id, container_id))
 
-            subprocess.Popen('singularity exec --bind ./cont2/:/cont2/ python_3.8-slim.sif  '
-                             'python /cont2/cont2_client.py {}'.format(next_cnt_id), shell=True)
+            subprocess.Popen('singularity exec --contain --writable-tmpfs --nv {} {}'.format(call_string,command), shell=True)
 
-            waiting_cnt_sockets[str(next_cnt_id)] = {"socket": client_socket, "id": container_id}
-            next_cnt_id += 1
+            waiting_cnt_sockets[str(target_id)] = {"socket": client_socket, "id": container_id}
 
             lock.release()
 
-        elif event == 'VirtualLab finished':
+        elif event == 'finished':
             lock.acquire()
             if container_id in waiting_cnt_sockets:
                 print('Server - container {} finished working, '
@@ -50,30 +76,28 @@ def process(job_done):
                 waiting_cnt_socket.close()
             lock.release()
             client_socket.close()
-            #set flag to tell master thread its done and exit thread
-            job_done.set()
         else:
             raise ValueError()
+
 if __name__ == "__main__":
 # rerad in CMD arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--vlab", help = "Path to Directory ion host containing VirtualLab (default is assumed to be curent working directory).", default=os.getcwd())
     parser.add_argument("-i", "--Run_file", help = "Runfile to use (default is assumed to be curent working directory).", default="Run.py")
     args = parser.parse_args()
-    # start server listening for incoming jobs on seperate thread
-    job_done = threading.Event()
-    lock = threading.Lock()
-    thread = threading.Thread(target=process,args=(job_done,))
-    thread.daemon = True
-
     vlab_dir=os.path.abspath(args.vlab)
     Run_file = args.Run_file
+    # start server listening for incoming jobs on seperate thread
+    lock = threading.Lock()
+    thread = threading.Thread(target=process,args=(vlab_dir,))
+    thread.daemon = True
+
     thread.start()
     #start VirtualLab
     lock.acquire()
-    subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab VL_GVXR '
-                    f'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
-    next_cnt_id += 1
+    proc=subprocess.Popen('singularity exec --no-home --writable-tmpfs --nv -B /usr/share/glvnd -B {}:/home/ibsim/VirtualLab VL_GVXR.sif '
+                    'VirtualLab -S -f /home/ibsim/VirtualLab/RunFiles/{}'.format(vlab_dir,Run_file), shell=True)
+    
     lock.release()
-    # wait untill all threads and virtualLab are done before closing
-    job_done.wait()
+    # wait untill virtualLab is done before closing
+    proc.wait()

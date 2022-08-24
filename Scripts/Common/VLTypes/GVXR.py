@@ -97,15 +97,17 @@ def Setup(VL, RunGVXR=True):
     '''
     GVXR - Simulation of X-ray CT scans 
     '''
+    # if RunGVXR is False or GVXRDicts is empty dont perform Simulation and return instead.
+    GVXRDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
+    if not (RunGVXR or GVXRDicts): return
     OUT_DIR = "{}/GVXR-Images".format(VL.PROJECT_DIR)
     MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
     if not os.path.exists(OUT_DIR):
         os.makedirs(OUT_DIR)
     VL.GVXRData = {}
-    GVXRDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
-    # if RunGVXR is False or GVXRDicts is empty dont perform Simulation and return instead.
-    if not (RunGVXR and GVXRDicts): return
+    
+    
     for GVXRName, GVXRParams in GVXRDicts.items():
         Parameters = Namespace(**GVXRParams)
         #check mesh for file extension and if not present assume 

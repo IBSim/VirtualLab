@@ -232,11 +232,13 @@ def GetInputs(Parameters,commands):
 
 def ModelSummary(NbInput,NbOutput,TrainNb,TestNb=None,Features=None,Labels=None):
     ModelDesc = "Model Summary\n\n"\
-                "Nb.Inputs: {}\nNb.Outputs: {}\n\n"\
-                "Nb.Train data: {}\nNb.Test data: {}\n\n".format(NbInput,NbOutput,TrainNb,TestNb)
+                "Nb.Inputs: {}\nNb.Outputs: {}\n"\
+                "Nb.Train data: {}\n".format(NbInput,NbOutput,TrainNb)
+    if TestNb is not None:
+        ModelDesc+="Nb.Test data: {}\n".format(TestNb)
     if Features is not None:
         if type(Features) != str: Features = ", ".join(Features)
-        ModelDesc += "Input features:\n{}\n\n".format(Features)
+        ModelDesc += "Input features:\n{}\n".format(Features)
     if Labels is not None:
         if type(Labels) != str: Labels = ", ".join(Labels)
         ModelDesc += "Output labels:\n{}\n".format(Labels)

@@ -11,20 +11,18 @@ from . import ML
 
 # ==============================================================================
 # Generic building function for GPR
-def BuildModel(TrainData, TestData, ModelDir, ModelParameters={},
+def BuildModel(TrainData, ModelDir, ModelParameters={},
              TrainingParameters={}, FeatureNames=None,LabelNames=None):
 
     TrainIn,TrainOut = TrainData
-    TestIn,TestOut = TestData
-
-    Dataspace = ML.DataspaceTrain(TrainData,Test=TestData)
+    # Create dataspace to conveniently keep data together
+    Dataspace = ML.DataspaceTrain(TrainData)
 
     # ==========================================================================
     # Model summary
 
     ML.ModelSummary(Dataspace.NbInput,Dataspace.NbOutput,Dataspace.NbTrain,
-                    TestNb=TestIn.shape[0], Features=FeatureNames,
-                    Labels=LabelNames)
+                    Features=FeatureNames, Labels=LabelNames)
 
     # ==========================================================================
     # get model & likelihoods
@@ -294,7 +292,11 @@ class ExactGPmodel(gpytorch.models.ExactGP):
 
         self.mean_module = gpytorch.means.ConstantMean()
 
-        ard_num_dims = train_x.shape[1] if ard else None
+        if train_x.ndim>1 and ard:
+            ard_num_dims = train_x.shape[1]
+        else:
+            ard_num_dims =  None
+
         if kernel.lower() in ('rbf'):
             self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=ard_num_dims))
         if kernel.lower().startswith('matern'):

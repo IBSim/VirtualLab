@@ -32,7 +32,6 @@ def GPR_hdf5(VL,DADict):
 
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TestData[0])
     TestIn, TestOut = ML.GetDataML(DataFile_path, *Parameters.TestData[1:])
-
     if TrainOut.ndim==2 and TrainOut.shape[1]==1:
         TrainOut,TestOut = TrainOut.flatten(),TestOut.flatten()
 
@@ -40,9 +39,12 @@ def GPR_hdf5(VL,DADict):
     # Get parameters and build model
     ModelParameters = getattr(Parameters,'ModelParameters',{})
     TrainingParameters = getattr(Parameters,'TrainingParameters',{})
-    likelihood, model, Dataspace = GPR.BuildModel([TrainIn,TrainOut],[TestIn,TestOut],
+    likelihood, model, Dataspace = GPR.BuildModel([TrainIn,TrainOut],
                             DADict['CALC_DIR'], ModelParameters=ModelParameters,
                             TrainingParameters=TrainingParameters)
+
+    # add Test data to Dataspace (where it is scaled using training data)
+    ML.DataspaceAdd(Dataspace,Test=[TestIn,TestOut])
 
     # ==========================================================================
     # Get performance metric of model
@@ -73,8 +75,6 @@ def GPR_hdf5_Metrics(VL,DADict):
     Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
             'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
     Performance(model, Data, getattr(Parameters,'PrintParameters',False))
-
-
 
 def GPR_PCA_hdf5(VL,DADict):
 
@@ -120,9 +120,12 @@ def GPR_PCA_hdf5(VL,DADict):
     # Get parameters and build model
     ModelParameters = getattr(Parameters,'ModelParameters',{})
     TrainingParameters = getattr(Parameters,'TrainingParameters',{})
-    likelihood, model, Dataspace = GPR.BuildModel([TrainIn,TrainOutCompress],[TestIn,TestOutCompress],
+    likelihood, model, Dataspace = GPR.BuildModel([TrainIn,TrainOutCompress],
                             DADict['CALC_DIR'], ModelParameters=ModelParameters,
                             TrainingParameters=TrainingParameters)
+
+    # add Test data to Dataspace (where it is scaled using training data)
+    ML.DataspaceAdd(Dataspace,Test=[TestIn,TestOutCompress])
 
     # ==========================================================================
     # Get performance metric of model

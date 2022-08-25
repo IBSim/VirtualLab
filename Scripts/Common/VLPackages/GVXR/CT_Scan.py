@@ -9,7 +9,7 @@ from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
 import numexpr as ne
 
 def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headless=False,
-num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False):
+num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=False):
     ''' Main run function for GVXR'''
     # Print the libraries' version
     print (gvxr.getVersionOfSimpleGVXR())
@@ -20,11 +20,15 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False):
     if Headless:
     #headless
         gvxr.createWindow(-1,0,"EGL");
+    elif Vulkan:
+        # or with Vulkan
+        gvxr.createWindow(-1,0,"VULKAN");
+        gvxr.setWindowSize(512, 512);
     else:
-    # or with window
+    # or with window and OpenGL
         gvxr.createWindow();
         gvxr.setWindowSize(512, 512);
-    #
+    
 
     # Load the data
     print("Load the data");
@@ -253,6 +257,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False):
         'H: display/hide the X-ray detector\n')
         print(controls_msg)
         gvxr.renderLoop();
+    gvxr.destroyAllWindows();
     return 
 
 def minus_log(arr):

@@ -41,7 +41,8 @@ def cal_pop_fitness(self):
             new_idx.append(sol_idx)
 
     # Calculating the fitness value of each solution in the current population.
-    args = [self.population[new_idx],new_idx]
+
+    args = [[self.population[_new_idx],_new_idx] for _new_idx in new_idx]
     res = Paralleliser(self.fitness_func, args, **self._ParallelKwargs)
     for sol_idx, f in zip(new_idx,res):
         pop_fitness[sol_idx] = f

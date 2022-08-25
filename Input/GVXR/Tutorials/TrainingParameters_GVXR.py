@@ -24,6 +24,11 @@ GVXR.mesh = 'AMAZE_Sample'
 GVXR.use_spekpy = True
 GVXR.Tube_Voltage = 300
 GVXR.Tube_Angle = 12
+# chemical element corresponding to the material properties
+# of each region of the model. Can be any of Full name, Symbol
+# or Atomic number (Z). Cureently works for every element in the
+# peridic table up to Francium, that is elements 1-100
+GVXR.Material_list = ["Cu","W","Titanium"]
 # Beam energy (default units are MeV)
 #GVXR.Energy = [0.08]
 # xray beam intensity (no. of x-ray photons) default = 1000
@@ -87,3 +92,4 @@ GVXR.angular_step = 1
 GVXR.image_format = 'tiff'
 # Inital rotation of cad model in degrees about the x,y and z axis
 GVXR.rotation = [90,0,0]
+GVXR.use_tetra = True

@@ -20,6 +20,14 @@ GVXR = Namespace()
 GVXR.Name = 'Dragon'
 # name of the mesh(es) you wish to vitually CT scan
 GVXR.mesh = 'welsh-dragon-small.stl'
+# chemical element corresponding to the material properties
+# of each region of the model. Can be any of Full name, Symbol
+# or Atomic number (Z). Cureently works for every element in the
+# peridic table up to Francium, that is elements 1-100.
+# Note: in this case we only supply one elenmt since .stl 
+# files have only one region. Thus we define one material 
+# for the whole dragon model.
+GVXR.Material_list = ["Cu"]
 # Flag to use specpy to gentrate a beam spectrum
 GVXR.use_spekpy = True
 GVXR.Tube_Voltage = 300

@@ -100,16 +100,14 @@ def Read_Material_File(Material_file,mat_tags):
     print("Reading Materials from " + Material_file)
     df = pd.read_csv(Material_file)
 
-    for i,row in enumerate(df["Material"]):
-        #checking the data that is being read in
-        check_Materials(row)
+    
     
     #Materials_list = list(df["Material"].values)
     Materials_list = zip(df["Region Name"],df["Material"])
 
     return list(Materials_list)
 
-def check_Materials(Mat_value):
+def Check_Materials(Mat_list):
     """ Function to check the element name or number is one that GVXR recognises.
         This is done by passing the string to the gvxr.getElementAtomicNumber(string).
         This already has error handling functions so if the name is valid it will return
@@ -117,7 +115,8 @@ def check_Materials(Mat_value):
         throw an exception and print. "ERROR: Element (name:string) not found."
  """
     import gvxrPython3 as gvxr
-    atomic_number = gvxr.getElementAtomicNumber(Mat_value)
+    for Mat_value in Mat_list:
+        atomic_number = gvxr.getElementAtomicNumber(Mat_value)
     return
 
 def find_the_key(dictionary:dict, target_keys:str):

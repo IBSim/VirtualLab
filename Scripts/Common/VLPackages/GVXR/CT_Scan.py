@@ -4,11 +4,18 @@ import gvxrPython3 as gvxr
 import numpy as np
 import math
 import meshio
-import os
 from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
-import numexpr as ne
 
-def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_file=None,Headless=False,
+class GVXRError(Exception): 
+    def __init__(self, value): 
+        self.value = value
+    def __str__(self):
+        Errmsg = "\n========= Error =========\n\n"\
+        "{}\n\n"\
+        "=========================\n\n".format(self.value)
+        return Errmsg
+
+def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_list,Headless=False,
 num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=False):
     ''' Main run function for GVXR'''
     # Print the libraries' version
@@ -41,16 +48,16 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     tetra = mesh.get_cells_type('tetra')
 
     if (not np.any(triangles) and not np.any(tetra)):
-        raise ValueError("Input file must contain one of either Tets or Triangles")
+        raise GVXRError("Input file must contain one of either Tets or Triangles")
 
     if not np.any(triangles) and not use_tetra:
         #no triangle data but trying to use triangles
-        raise ValueError("User asked to use triangles but input file does "
+        raise GVXRError("User asked to use triangles but input file does "
         "not contain Triangle data")
 
     if not np.any(tetra) and use_tetra:
         #no tetra data but trying to use tets
-        raise ValueError("User asked to use tets but file does not contain Tetrahedron data")
+        raise GVXRError("User asked to use tets but file does not contain Tetrahedron data")
         
         # extract dict of material names and integer tags
     try:
@@ -86,30 +93,22 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         elements, mat_ids  = tets2tri(tetra,points,mat_ids)
     else:
         elements = triangles
-    
-    if Material_file is None:
-        Material_file = 'Materials.csv'
 
-    Material_file = os.path.abspath(Material_file)
-            
-    if os.path.exists(Material_file):
-        Material_list = Read_Material_File(Material_file,mat_tag_dict)
-        if len(tags) != len(Material_list):
-            raise ValueError( f"Error: The number of Materials read in from {Material_file} does not match the number of materials in {mesh_file}.")
-    else:
-        Material_list = Generate_Material_File(Material_file,mat_tag_dict)
+    if len(tags) != len(Material_list):
+        Errormsg = (f"Error: The number of Materials read in from Input file is {len(Material_list)} "
+        f"this does not match \nthe {len(mat_tag_dict)} materials in {mesh_file}.\n\n" 
+        f"The meshfile contains: \n {mat_tag_dict} \n\n The Input file contains:\n {Material_list}.")
+        gvxr.destroyAllWindows();
+        raise GVXRError(Errormsg)
 
     meshes=[]
-    
+    mesh_names=[]
     for N in tags:
         nodes = np.where(mat_ids==N)
         nodes=nodes[0]
-        #set first value outside loop
-        #mat_nodes=elements[nodes[0],np.newaxis]
-        #for M in nodes[1:]:
-        #    mat_nodes=np.vstack([mat_nodes,elements[M]])
         mat_nodes = np.take(elements,nodes,axis=0)
         meshes.append(mat_nodes)
+        mesh_names.append(all_mat_tags[N][0])
     
 
     #define boundray box for mesh
@@ -133,7 +132,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     elif (Beam.Beam_Type == 'parallel'):
         gvxr.useParallelBeam();
     else:
-        raise ValueError(f"Invalid beam type {Beam.Beam_Type}, must be either point or parallel")
+        raise GVXRError(f"Invalid beam type {Beam.Beam_Type} defined in Input File, must be either point or parallel")
 
     gvxr.resetBeamSpectrum()
     for energy, count in zip(Beam.Energy,Beam.Intensity):
@@ -148,39 +147,37 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     gvxr.setDetectorPixelSize(Detector.Spacing_X, Detector.Spacing_Y, Detector.Spacing_units);
 
     for i,mesh in enumerate(meshes):
-        label = str(tags[i]);
-        Mesh_Name = Material_list[i][0]
+        label = mesh_names[i];
     ### BLOCK #####
-        gvxr.makeTriangularMesh(Mesh_Name,
+        gvxr.makeTriangularMesh(label,
         points.flatten(),
         mesh.flatten(),
         Model.Pos_units);
         # place mesh at the orgin then traslate it according to the defined ofset
-        #gvxr.moveToCentre(Mesh_Name);
-        gvxr.translateNode(Mesh_Name,Model.Model_PosX,Model.Model_PosY,Model.Model_PosZ,Model.Model_Pos_units)
-        gvxr.setElement(Mesh_Name, Material_list[i][1]);
+        #gvxr.moveToCentre(label);
+        gvxr.translateNode(label,Model.Model_PosX,Model.Model_PosY,Model.Model_PosZ,Model.Model_Pos_units)
+        gvxr.setElement(label, Material_list[i]);
         if i==0:
-            gvxr.addPolygonMeshAsOuterSurface(Mesh_Name)
+            gvxr.addPolygonMeshAsOuterSurface(label)
         else:
-            gvxr.addPolygonMeshAsInnerSurface(Mesh_Name)
+            gvxr.addPolygonMeshAsInnerSurface(label)
     # set initial rotation
     # note GVXR uses OpenGL which perfoms rotations with object axes not global.
     # This makes rotaions around the gloabal axes very tricky.
-    M = len(Material_list)
+    M = len(mesh_names)
     total_rotation = np.zeros((3,M))
-    for i,N in enumerate(Material_list):
-            
+    for i,label in enumerate(mesh_names):
             # Gloabal X-axis rotation:
             global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[1,0,0]) # caculate vector along global x-axis in object co-odinates
-            gvxr.rotateNode(N[0], Model.rotation[0], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom x rotation axis
+            gvxr.rotateNode(label, Model.rotation[0], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom x rotation axis
             total_rotation[0,i] += Model.rotation[0]# track total rotation
             # Gloabal Y-axis rotation:
             global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[0,1,0]) # caculate vector along global Y-axis in object co-odinates
-            gvxr.rotateNode(N[0], Model.rotation[1], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Y rotation axis
+            gvxr.rotateNode(label, Model.rotation[1], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Y rotation axis
             total_rotation[1,i] += Model.rotation[1]# track total rotation
             # Global Z-axis Rotaion:
             global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
-            gvxr.rotateNode(N[0], Model.rotation[2], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Z rotation axis
+            gvxr.rotateNode(label, Model.rotation[2], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Z rotation axis
             total_rotation[2,i] += Model.rotation[2]# track total rotation 
     
     
@@ -203,8 +200,8 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         # Update the 3D visualisation
         gvxr.displayScene();
         # Rotate the model by angular_step degrees
-        for i,N in enumerate(Material_list):
-            gvxr.rotateNode(N[0], angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
+        for i,label in enumerate(mesh_names):
+            gvxr.rotateNode(label, angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
             total_rotation[2,i]+=angular_step
         theta.append(i * angular_step * math.pi / 180);
 
@@ -212,25 +209,6 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     projections = np.array(projections,'uint32');
     #return projections
     write_image(output_file,projections,im_format=im_format);
-    # Perform the flat-Field correction of raw data
-    dark = np.zeros(projections.shape);
-
-    # Retrieve the total energy
-    energy_bins = gvxr.getEnergyBins(Beam.Energy_units);
-    photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
-
-    total_energy = 0.0;
-    for energy, count in zip(energy_bins, photon_count_per_bin):
-        total_energy += energy * count;
-    flat = np.ones(projections.shape) * total_energy;
-
-    #projections = flat_field_normalize(projections,flat,dark).astype('uint32')
-    
-    # Calculate  -log(projections)  to linearize transmission tomography data
-    projections = minus_log(projections).astype('uint32')
-    output_file = output_file + '_inv'
-    write_image(output_file,projections,im_format=im_format);
-    
 
     # Display the 3D scene (no event loop)
     # Run an interactive loop
@@ -258,62 +236,4 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         print(controls_msg)
         gvxr.renderLoop();
     gvxr.destroyAllWindows();
-    return 
-
-def minus_log(arr):
-    """
-    Computation of the minus log of a given array using
-    numexpr to speed up caculation over numpy.
-
-    Parameters
-    ----------
-    arr : ndarray
-        3D stack of projections.
-
-    Returns
-    -------
-    ndarray
-        Minus-log of the input data.
-    """
-
-    out = ne.evaluate('-log(arr)')
-    return out
-
-
-def flat_field_normalize(arr, flat, dark, cutoff=None):
-    """
-    Normalize raw projection data using the flat and dark field projections.
-    Agaion using numexpr to Speed up calculations over plain numpy.
-
-    Parameters
-    ----------
-    arr : ndarray
-        3D stack of projections.
-    flat : ndarray
-        3D flat field data.
-    dark : ndarray
-        3D dark field data.
-    cutoff : float, optional
-        Permitted maximum value for the normalized data.
-    
-    Returns
-    -------
-    ndarray
-        Normalized 3D tomographic data.
-    """
-    
-    l = np.float32(1e-6)
-    flat = np.mean(flat, axis=0, dtype=np.float32)
-    dark = np.mean(dark, axis=0, dtype=np.float32)
-    #get range for normalization
-    denom = ne.evaluate('flat-dark')
-    #remove values less than threshold l to avoid divide by zero
-    ne.evaluate('where(denom<l,l,denom)', out=denom)
-    out = ne.evaluate('arr-dark')
-    out = ne.evaluate('out/denom', truediv=True)
-
-    if cutoff is not None:
-        cutoff = np.float32(cutoff)
-        out = ne.evaluate('where(out>cutoff,cutoff,out)')
-    
-    return out
+    return

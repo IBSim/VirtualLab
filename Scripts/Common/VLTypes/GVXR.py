@@ -17,7 +17,7 @@ def Setup(VL, RunGVXR=True):
     from pydantic.dataclasses import dataclass, Field
     from typing import Optional, List
     from Scripts.Common.VLPackages.GVXR.Utils_IO import ReadNikonData
-    from Scripts.Common.VLPackages.GVXR.GVXR_utils import InitSpectrum, dump_to_json
+    from Scripts.Common.VLPackages.GVXR.GVXR_utils import Check_Materials, InitSpectrum, dump_to_json
 
     class MyConfig:
         validate_assignment = True
@@ -134,15 +134,12 @@ def Setup(VL, RunGVXR=True):
         else:
             GVXRDict['Headless'] = False
 # Logic to handle placing Materail file in the correct place. i.e. in the output dir not the run directory.
-        if hasattr(Parameters,'Material_file') and os.path.isabs(Parameters.Material_file):
-        # Abs. paths go where they say
-            GVXRDict['Material_file'] = Parameters.Material_file
-        elif hasattr(Parameters,'Material_file') and not os.path.isabs(Parameters.Material_file):
-        # This makes a non abs. path relative to the output directory not the run directory (for consistency)
-            GVXRDict['Material_file'] = "{}/{}".format(VL.PROJECT_DIR,Parameters.Material_file)
+        if hasattr(Parameters,'Material_list'):
+            Check_Materials(Parameters.Material_list)
+            GVXRDict['Material_list'] = Parameters.Material_list
         else:
-        # greyscale not given so generate a file in the output directory 
-            GVXRDict['Material_file'] = "{}/Materials_{}.csv".format(VL.PROJECT_DIR,GVXRName) 
+            raise ValueError('You must Specify a Material_list in Input Parameters.')
+        
 ########### Setup x-ray beam ##########
 # create dummy beam and to get filled in with values either from Parameters OR Nikon file.
         dummy_Beam = Xray_Beam(Beam_PosX=0,Beam_PosY=0,Beam_PosZ=0,Beam_Type='point')
@@ -237,6 +234,6 @@ def Run(VL):
     for key in VL.GVXRData.keys():
         Errorfnc = CT_scan(**VL.GVXRData[key])
         if Errorfnc:
-            VL.Exit(VLF.ErrorMessage("The following GVXR routine(s) finished with errors:\n{}".format(Errorfnc)))
+            VL.Exit("The following GVXR routine(s) finished with errors:\n{}".format(Errorfnc))
 
     VL.Logger('\n### GVXR Complete ###',Print=True)

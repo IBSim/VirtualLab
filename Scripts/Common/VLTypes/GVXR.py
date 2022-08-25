@@ -1,105 +1,106 @@
-import os
-import sys
-sys.dont_write_bytecode=True
-from types import SimpleNamespace as Namespace
-from importlib import import_module
-import copy
-import Scripts.Common.VLFunctions as VLF
-import pydantic
-#from pydantic import ValidationError
-from pydantic.dataclasses import dataclass, Field
-from typing import Optional, List
-from Scripts.Common.VLPackages.GVXR.Utils_IO import ReadNikonData
-from Scripts.Common.VLPackages.GVXR.GVXR_utils import InitSpectrum, dump_to_json
-
-class MyConfig:
-    validate_assignment = True
-# A class for holding x-ray beam data
-@dataclass(config=MyConfig)
-class Xray_Beam:
-    Beam_PosX: float
-    Beam_PosY: float
-    Beam_PosZ: float
-    Beam_Type: str
-    Energy: List[float] = Field(default=None)
-    Intensity: List[float] = Field(default=None)
-    Tube_Voltage: float = Field(default=None)
-    Tube_Angle: float = Field(default=None)
-    Filters: str = Field(default=None)
-    Beam_Pos_units: str = Field(default='mm')
-    Energy_units: str = Field(default='MeV')
-
-
-@classmethod
-def xor(x: bool, y: bool) -> bool:
-    ''' Simple function to perform xor with two bool values'''
-    return bool((x and not y) or (not x and y))
-
-@pydantic.root_validator(pre=True)
-@classmethod
-def check_BeamEnergy_or_TubeVoltage(cls,values):
-    ''' if defining own values you need both Energy and Intensity
-    xor here passes if both or neither are defined. 
-    The same logic also applies if using Spekpy with tube Voltage and angle. 
-    This prevents the user from defining only one of the two needed values. '''
-
-    Energy_defined = 'Energy' not in values
-    Intensity_defined  = 'Intensity' not in values
-    Voltage_defined = 'Tube_Voltage' not in values
-    Angle_defined = 'Tube_Angle' not in values
-
-    if xor(Energy_defined,Intensity_defined):
-        raise ValueError ('If using Energy and/or Intenisity You must define both.')
-    # if using speckpy you need both Tube angle and voltage
-    elif xor(Voltage_defined,Angle_defined):  
-        raise ValueError('If using Tube Angle and/or Tube Voltage you must define both.')
-        
-#########################################
-# For reference in all cases our co-ordiantes 
-# are defined as:
-#
-# x -> horizontal on the detector/output image
-# y -> Vertical on the detector/output image
-# z -> axis between the src. and the detector.
-# Also projections are rotations counter 
-# clockwise around the y axis.
-##############################################        
-# A class for holding x-ray detector data
-@dataclass
-class Xray_Detector:
-# position of detector in space 
-    Det_PosX: float
-    Det_PosY: float
-    Det_PosZ: float
-# number of pixels in the x and y dir
-    Pix_X: int
-    Pix_Y: int
-#pixel spacing
-    Spacing_X: float =Field(default=0.5)
-    Spacing_Y: float =Field(default=0.5)
-#units
-    Det_Pos_units: str = Field(default='mm')
-    Spacing_units: str = Field(default='mm')
-
-@dataclass
-class Cad_Model:
-    # position of cad model in space 
-    Model_PosX: float
-    Model_PosY: float
-    Model_PosZ: float
-    # inital rotation of model around each axis [x,y,z]
-    # To keep things simple this defaults to [0,0,0]
-    # Nikon files define these as Tilt, InitalAngle, and Roll repectivley. 
-    rotation: float  = Field(default_factory=lambda:[0,0,0])
-    Model_Pos_units: str = Field(default='mm')
-
 def Setup(VL, RunGVXR=True):
     '''
     GVXR - Simulation of X-ray CT scans 
     '''
     # if RunGVXR is False or GVXRDicts is empty dont perform Simulation and return instead.
     GVXRDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
-    if not (RunGVXR or GVXRDicts): return
+    if not (RunGVXR and GVXRDicts): return
+    import os
+    import sys
+    sys.dont_write_bytecode=True
+    from types import SimpleNamespace as Namespace
+    from importlib import import_module
+    import copy
+    import Scripts.Common.VLFunctions as VLF
+    import pydantic
+    #from pydantic import ValidationError
+    from pydantic.dataclasses import dataclass, Field
+    from typing import Optional, List
+    from Scripts.Common.VLPackages.GVXR.Utils_IO import ReadNikonData
+    from Scripts.Common.VLPackages.GVXR.GVXR_utils import InitSpectrum, dump_to_json
+
+    class MyConfig:
+        validate_assignment = True
+    # A class for holding x-ray beam data
+    @dataclass(config=MyConfig)
+    class Xray_Beam:
+        Beam_PosX: float
+        Beam_PosY: float
+        Beam_PosZ: float
+        Beam_Type: str
+        Energy: List[float] = Field(default=None)
+        Intensity: List[float] = Field(default=None)
+        Tube_Voltage: float = Field(default=None)
+        Tube_Angle: float = Field(default=None)
+        Filters: str = Field(default=None)
+        Beam_Pos_units: str = Field(default='mm')
+        Energy_units: str = Field(default='MeV')
+
+
+    @classmethod
+    def xor(x: bool, y: bool) -> bool:
+        ''' Simple function to perform xor with two bool values'''
+        return bool((x and not y) or (not x and y))
+
+    @pydantic.root_validator(pre=True)
+    @classmethod
+    def check_BeamEnergy_or_TubeVoltage(cls,values):
+        ''' if defining own values you need both Energy and Intensity
+        xor here passes if both or neither are defined. 
+        The same logic also applies if using Spekpy with tube Voltage and angle. 
+        This prevents the user from defining only one of the two needed values. '''
+
+        Energy_defined = 'Energy' not in values
+        Intensity_defined  = 'Intensity' not in values
+        Voltage_defined = 'Tube_Voltage' not in values
+        Angle_defined = 'Tube_Angle' not in values
+
+        if xor(Energy_defined,Intensity_defined):
+            raise ValueError ('If using Energy and/or Intenisity You must define both.')
+        # if using speckpy you need both Tube angle and voltage
+        elif xor(Voltage_defined,Angle_defined):  
+            raise ValueError('If using Tube Angle and/or Tube Voltage you must define both.')
+            
+    #########################################
+    # For reference in all cases our co-ordiantes 
+    # are defined as:
+    #
+    # x -> horizontal on the detector/output image
+    # y -> Vertical on the detector/output image
+    # z -> axis between the src. and the detector.
+    # Also projections are rotations counter 
+    # clockwise around the y axis.
+    ##############################################        
+    # A class for holding x-ray detector data
+    @dataclass
+    class Xray_Detector:
+    # position of detector in space 
+        Det_PosX: float
+        Det_PosY: float
+        Det_PosZ: float
+    # number of pixels in the x and y dir
+        Pix_X: int
+        Pix_Y: int
+    #pixel spacing
+        Spacing_X: float =Field(default=0.5)
+        Spacing_Y: float =Field(default=0.5)
+    #units
+        Det_Pos_units: str = Field(default='mm')
+        Spacing_units: str = Field(default='mm')
+
+    @dataclass
+    class Cad_Model:
+        # position of cad model in space 
+        Model_PosX: float
+        Model_PosY: float
+        Model_PosZ: float
+        # inital rotation of model around each axis [x,y,z]
+        # To keep things simple this defaults to [0,0,0]
+        # Nikon files define these as Tilt, InitalAngle, and Roll repectivley. 
+        rotation: float  = Field(default_factory=lambda:[0,0,0])
+        Model_Pos_units: str = Field(default='mm')
+
+
     OUT_DIR = "{}/GVXR-Images".format(VL.PROJECT_DIR)
     MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
@@ -214,6 +215,12 @@ def Setup(VL, RunGVXR=True):
 ################################################################
         if hasattr(Parameters,'image_format'): 
             GVXRDict['im_format'] = Parameters.image_format
+
+        if hasattr(Parameters,'use_tetra'): 
+            GVXRDict['use_tetra'] = Parameters.use_tetra
+
+        if hasattr(Parameters,'Vulkan'): 
+            GVXRDict['Vulkan'] = Parameters.Vulkan
 
         VL.GVXRData[GVXRName] = GVXRDict.copy()
         Param_dir = "{}/run_params/".format(VL.PROJECT_DIR)

@@ -120,7 +120,7 @@ if __name__ == "__main__":
     #start VirtualLab
     lock.acquire()
     proc=subprocess.Popen('singularity exec --no-home --writable-tmpfs --nv -B /usr/share/glvnd -B {}:/home/ibsim/VirtualLab VL_GVXR.sif '
-                    'VirtualLab -S -f /home/ibsim/VirtualLab/RunFiles/{}'.format(vlab_dir,Run_file), shell=True)
+                    'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{}'.format(vlab_dir,Run_file), shell=True)
     
     lock.release()
     # wait untill virtualLab is done before closing

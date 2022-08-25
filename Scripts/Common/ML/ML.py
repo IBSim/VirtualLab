@@ -95,30 +95,6 @@ def Rsq(Predicted,Target):
     MSE_val = ((Predicted - Target)**2).sum()
     return 1-(MSE_val/divisor)
 
-# def _GetMetrics(model,x,target):
-#     with torch.no_grad():
-#         pred = model(x).mean.numpy()
-#     mse = MSE(pred,target)
-#     mae = MAE(pred,target)
-#     rmse = RMSE(pred,target)
-#     rsq = Rsq(pred,target)
-#     return mse,mae,rmse,rsq
-#
-# def GetMetrics(model,x,target):
-#     if hasattr(model,'models'):
-#         mse,mae,rmse,rsq=[],[],[],[]
-#         for i,mod in enumerate(model.models):
-#             _mse,_mae,_rmse,_rsq = _GetMetrics(mod,x,target[:,i])
-#             mse.append(_mse);mae.append(_mae);
-#             rmse.append(_rmse);rsq.append(_rsq);
-#     else:
-#         mse,mae,rmse,rsq = _GetMetrics(model,x,target)
-#
-#     df=pd.DataFrame({"MSE":mse,"MAE":mae,"RMSE":rmse,"R^2":rsq},
-#                     index=["Output_{}".format(i) for i in range(len(mse))])
-#     pd.options.display.float_format = '{:.3e}'.format
-#     return df
-
 def GetMetrics2(pred,target):
 
     N = 1 if pred.ndim==1 else pred.shape[1]
@@ -183,85 +159,6 @@ def Readhdf(File, data_paths,group=None):
     Database.close()
 
     return data
-
-
-# =====
-# depr.
-def GetMLdata(DataFile_path,DataNames,InputName,OutputName,Nb=-1):
-    if type(DataNames)==str:DataNames = [DataNames]
-    N = len(DataNames)
-
-    data_input, data_output = [],[]
-    for dataname in DataNames:
-        data_input.append("{}/{}".format(dataname,InputName))
-        data_output.append("{}/{}".format(dataname,OutputName))
-
-    Data = Readhdf(DataFile_path,data_input+data_output)
-    In,Out = Data[:N],Data[N:]
-
-    for i in range(N):
-        _Nb = Nb[i] if type(Nb)==list else Nb
-        if _Nb==-1:continue
-
-        if type(_Nb)==int:
-            In[i] = In[i][:_Nb]
-            Out[i] = Out[i][:_Nb]
-        if type(_Nb) in (list,tuple):
-            l,u = _Nb
-            In[i] = In[i][l:u]
-            Out[i] = Out[i][l:u]
-    In,Out = np.vstack(In),np.vstack(Out)
-    return In, Out
-
-def GetMLdata2(DataFile_path,DataNames,ArrayName,Nb=-1):
-    if type(DataNames)==str:DataNames = [DataNames]
-    data = ["{}/{}".format(dataname,ArrayName) for dataname in DataNames]
-    Data = Readhdf(DataFile_path,data)
-
-    for i in range(len(DataNames)):
-        _Nb = Nb[i] if type(Nb)==list else Nb
-        if _Nb==-1:continue
-
-        if type(_Nb)==int:
-            Data[i] = Data[i][:_Nb]
-        if type(_Nb) in (list,tuple):
-            l,u = _Nb
-            Data[i] = Data[i][l:u]
-
-    return np.vstack(Data)
-
-def GetMLattrs(DataFile_path,DataNames,ArrayName):
-    if type(DataNames)==str:DataNames = [DataNames]
-    Database = Openhdf(DataFile_path,'r')
-    attrs = {}
-    for dataname in DataNames:
-        data_path = "{}/{}".format(dataname,ArrayName)
-        data_attrs = Database[data_path].attrs
-        attrs.update(**data_attrs)
-    Database.close()
-    return attrs
-
-def CompileData(ResDirs,MapFnc,args=[]):
-    In,Out = [],[]
-    for ResDir in ResDirs:
-        ResPaths = GetResPaths(ResDir)
-        _In, _Out =[] ,[]
-        for ResPath in ResPaths:
-            _in, _out = MapFnc(ResPath,*args)
-            _In.append(_in)
-            _Out.append(_out)
-        In.append(_In)
-        Out.append(_Out)
-    return In, Out
-
-def WriteMLdata(DataFile_path,DataNames,ArrayName,DataList, attrs={}):
-    for resname, data in zip(DataNames, DataList):
-        DataPath = "{}/{}".format(resname,ArrayName) # path to data in file
-        Writehdf(DataFile_path, DataPath, data, attrs=attrs)
-
-
-
-
 
 # ==============================================================================
 # Functions used for ML work

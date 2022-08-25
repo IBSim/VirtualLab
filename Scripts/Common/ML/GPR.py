@@ -89,9 +89,9 @@ def Create_GPR(TrainIn, TrainOut, prev_state=False, multitask=False, **kwargs):
     # Check if a multitask moel is required (if multiple outputs)
     # multitask = kwargs.pop('multitask') if 'multitask' in kwargs else False
 
-    if TrainOut.ndim==1:
+    if TrainOut.ndim==1 or TrainOut.shape[1]==1:
         # single output
-        likelihood, model = _SingleGPR(TrainIn, TrainOut, **kwargs)
+        likelihood, model = _SingleGPR(TrainIn, TrainOut.flatten(), **kwargs)
     elif multitask:
         # multiple output - multitask model
         likelihood, model = _MultitaskGPR(TrainIn,TrainOut,**kwargs)
@@ -269,21 +269,17 @@ def CheckConvergence(Loss, ConvAvg=10, tol=1e-4):
         if np.abs(mean_new-mean_old)<tol:
             return "Convergence reached after {} iterations. Loss change smaller than tolerance".format(len(Loss))
 
-def PrintParameters(model):
+def PrintParameters(model, output_ix=None):
+    # index is for multiple models
     Modstr = "Lengthscale: {}\nOutputscale: {:.3e}\nNoise: {:.3e}\n\n"
     if hasattr(model,'models'):
-        Rstr = ""
-        for i,mod in enumerate(model.models):
-            LS = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
-            OS = mod.covar_module.outputscale.detach().numpy()
-            N = mod.likelihood.noise.detach().numpy()[0]
-            Rstr += ("Output {}\n"+Modstr).format(i,LS,OS,N)
-    else:
-            LS = model.covar_module.base_kernel.lengthscale.detach().numpy()[0]
-            LS = ", ".join("{:.3e}".format(_) for _ in LS)
-            OS = model.covar_module.outputscale.detach().numpy()
-            N = model.likelihood.noise.detach().numpy()[0]
-            Rstr = Modstr.format(LS,OS,N)
+        model = model.models[output_ix]
+
+    LS = model.covar_module.base_kernel.lengthscale.detach().numpy()[0]
+    LS = ", ".join("{:.3e}".format(_) for _ in LS)
+    OS = model.covar_module.outputscale.detach().numpy()
+    N = model.likelihood.noise.detach().numpy()[0]
+    Rstr = Modstr.format(LS,OS,N)
 
     print(Rstr,end='')
 

@@ -39,8 +39,11 @@ def DataspaceTrain(TrainData, **kwargs):
     TrainIn_scale = torch.from_numpy(TrainIn_scale)
     TrainOut_scale = torch.from_numpy(TrainOut_scale)
 
+    NbInput = TrainIn.shape[1] if TrainIn.ndim==2 else 1
+    NbOutput = TrainOut.shape[1] if TrainOut.ndim==2 else 1
+
     Dataspace = Namespace(InputScaler=InputScaler,OutputScaler=OutputScaler,
-                    NbInput=TrainIn.shape[1], NbOutput=TrainOut.shape[1],
+                    NbInput=NbInput, NbOutput=NbOutput,
                     NbTrain=TrainIn.shape[0], TrainIn_scale=TrainIn_scale,
                     TrainOut_scale=TrainOut_scale)
 
@@ -117,13 +120,17 @@ def Rsq(Predicted,Target):
 #     return df
 
 def GetMetrics2(pred,target):
+
+    N = 1 if pred.ndim==1 else pred.shape[1]
+
     mse = MSE(pred,target)
     mae = MAE(pred,target)
     rmse = RMSE(pred,target)
     rsq = Rsq(pred,target)
 
+
     df=pd.DataFrame({"MSE":mse,"MAE":mae,"RMSE":rmse,"R^2":rsq},
-                    index=["Output_{}".format(i) for i in range(len(mse))])
+                    index=["Output_{}".format(i) for i in range(N)])
     pd.options.display.float_format = '{:.3e}'.format
     return df
 
@@ -419,16 +426,19 @@ def InputQuery(model, NbInput, base=0.5, Ndisc=50):
 # ==============================================================================
 # Data compression algorithms
 
-def PCA(Data, metric={'threshold':0.99}):
+def PCA(Data, metric={}):
     ''' Funtion which performs principal component analysis'''
     U,s,VT = np.linalg.svd(Data,full_matrices=False)
+    nb_component = len(s)
 
+    # threshold of data variation to get above
     if 'threshold' in metric:
         s_sc = np.cumsum(s)
         s_sc = s_sc/s_sc[-1]
-        threshold_ix = np.argmax( s_sc > metric['threshold']) + 1
+        threshold_ix = np.argmax( s_sc >= metric['threshold']) + 1
     else: threshold_ix = 0
 
+    # error % to get below
     if 'error' in metric:
         for j in range(VT.shape[1]):
             Datacompress = Data.dot(VT[:j+1,:].T)
@@ -440,20 +450,11 @@ def PCA(Data, metric={'threshold':0.99}):
                 break
     else: error_ix = 0
 
-    ix = max(threshold_ix,error_ix)
-    VT = VT[:ix,:]
+    # number of principal components to keep
+    component_ix = int(metric['components'])if 'components' in metric else 0
 
-    Datacompress = Data.dot(VT.T)
-    Datauncompress = Datacompress.dot(VT)
-    diff = np.abs(Data - Datauncompress)
-    absmaxix = np.unravel_index(np.argmax(diff, axis=None), diff.shape)
-    percmaxix = np.unravel_index(np.argmax(diff/Data, axis=None), diff.shape)
+    ix = max(threshold_ix,error_ix,component_ix)
+    if ix==0: ix = nb_component
 
-    print("Compressing data from {} to {} dimensions using PCA.\n"\
-           "Max absolute error: Original={:.2f}, compressed={:.2f}\n"\
-           "Max percentage error: Original={:.2f}, compressed={:.2f}\n"\
-           .format(Data.shape[1],ix,Data[absmaxix],Datauncompress[absmaxix],
-                   Data[percmaxix],Datauncompress[percmaxix])
-          )
-
-    return VT # Return compression matrix
+    VT = VT[:ix,:] # only keep the first ix eigenvectors for compression
+    return VT

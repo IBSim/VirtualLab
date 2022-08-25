@@ -29,3 +29,5 @@ VirtualLab.Parameters(
            RunGVXR=True)
 
 VirtualLab.CT_Scan()
+
+VirtualLab.CT_Recon()

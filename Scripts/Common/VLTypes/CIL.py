@@ -1,15 +1,15 @@
 from types import SimpleNamespace as Namespace
 
-def Setup(VL, RunCIL=True):
+def Setup(VL, RunCIL=False):
 # if RunCIL is False or CILDicts is empty dont perform Simulation and return instead.
     CILdicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
-    if not (RunCIL or CILdicts): return
-    OUT_DIR = "{}/GVXR-Images".format(VL.PROJECT_DIR)
+    if not (RunCIL and CILdicts): return
+    VL.CILData = {}
     for CILName, CILParams in CILdicts.items():
         Parameters = Namespace(**CILParams)
 
-        CILdict = {'work_dir':"{}/{}".format(OUT_DIR,CILName),
-                    'Name':CILNAME
+        CILdict = {'work_dir':"{}/GVXR-Images".format(VL.PROJECT_DIR),
+                    'Name':CILName
                 }
 # Define flag to display visualisations
         if (VL.mode=='Headless'):
@@ -22,18 +22,18 @@ def Setup(VL, RunCIL=True):
         else:
             CILdict['Nikon'] = None
 
-        if hasattr(Parameters,'Beam_Pos_units'):
-            CILdict['Beam_Pos_units'] = Parameters.Beam_Pos_units
-        else:
-            CILdict['Beam_Pos_units'] = 'm'
+        #if hasattr(Parameters,'Beam_Pos_units'):
+        #    CILdict['Beam_Pos_units'] = Parameters.Beam_Pos_units
+        #else:
+        #    CILdict['Beam_Pos_units'] = 'm'
 
         CILdict['Beam'] = [Parameters.Beam_PosX,Parameters.Beam_PosY,
                         Parameters.Beam_PosZ]
 
-        if hasattr(Parameters,'Detect_Pos_units'):
-            CILdict['Det_Pos_units'] = Parameters.Detect_Pos_units
-        else:
-            CILdict['Det_Pos_units'] = 'm'
+        #if hasattr(Parameters,'Detect_Pos_units'):
+        #    CILdict['Det_Pos_units'] = Parameters.Detect_Pos_units
+        #else:
+        #    CILdict['Det_Pos_units'] = 'm'
         
         if hasattr(Parameters,'Spacing_X'): 
             CILdict['Spacing_X'] = Parameters.Spacing_X
@@ -45,8 +45,8 @@ def Setup(VL, RunCIL=True):
         else:
             CILdict['Spacing_Y'] = 0.5
 
-        CILdict['Detector'] = [Parameters.Det_PosX,Parameters.Det_PosY,
-                    Parameters.Det_PosZ]
+        CILdict['Detector'] = [Parameters.Detect_PosX,Parameters.Detect_PosY,
+                    Parameters.Detect_PosZ]
 
         CILdict['Model'] = [Parameters.Model_PosX,Parameters.Model_PosY,
                         Parameters.Model_PosZ]
@@ -55,10 +55,10 @@ def Setup(VL, RunCIL=True):
 
         CILdict['Pix_Y'] =Parameters.Pix_Y
 
-        if hasattr(Parameters,'Model_Pos_units'):
-            CILdict['Model_Pos_units'] = Parameters.Model_Pos_units    
-        else:
-            CILdict['Model_Pos_units'] = 'm'    
+        #if hasattr(Parameters,'Model_Pos_units'):
+        #    CILdict['Model_Pos_units'] = Parameters.Model_Pos_units    
+        #else:
+        #    CILdict['Model_Pos_units'] = 'm'    
         
         if hasattr(Parameters,'rotation'):
             CILdict['rotation'] = Parameters.rotation
@@ -92,6 +92,6 @@ def Run(VL):
     for key in VL.CILData.keys():
         Errorfnc = CT_Recon(**VL.CILData[key])
         if Errorfnc:
-            VL.Exit(VLF.ErrorMessage("The following CIL routine(s) finished with errors:\n{}".format(Errorfnc)))
+            VL.Exit("The following CIL routine(s) finished with errors:\n{}".format(Errorfnc))
 
     VL.Logger('\n### CIL Complete ###',Print=True)

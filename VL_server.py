@@ -20,11 +20,25 @@ import json
 waiting_cnt_sockets = {}
 
 Container_IDs = {"VLab":1,"CIL":2}
-def Format_Call_Str(Tool,vlab_dir):
+def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation):
     ''' Function to format string for bindpoints and container to call specified tool.'''
+##### Format cmd argumants #########
+    if param_var is None:
+        param_var = ''
+    else:
+        param_var = '-v ' + param_var
+    
+    param_master = '-m '+ param_master
+    Simulation = '-s ' + Simulation
+    Project = '-p ' + Project
+#########################################
+# Format run string and script to run   #
+# container based on tool used.         #
+#########################################
     if Tool == "CIL":
         call_string = '-B /run:/run -B .:/home/ibsim/VirtualLab CIL_sand'
-        command = './Run_CIL.sh -m TrainingParameters_GVXR.py -v None -p GVXR -s Tutorials'.format()
+        command = '/home/ibsim/VirtualLab/Run_CIL.sh {} {} {} {}'.format(param_master,param_var,Project,Simulation)
+        print(command)
 
     elif Tool == "GVXR":
         call_string = '-B {}:/home/ibsim/VirtualLab VL_GVXR.sif'.format(vlab_dir)
@@ -54,20 +68,29 @@ def process(vlab_dir):
             client_socket.close()
         elif event == 'RunJob':
             Tool = rec_dict["Tool"]
+            param_master = rec_dict["Parameters_Master"]
+            param_var = rec_dict["Parameters_Var"]
+            Project = rec_dict["Project"]
+            Simulation = rec_dict["Simulation"]
+
             lock.acquire()
-            call_string, command = Format_Call_Str(Tool,vlab_dir)
+            call_string, command = Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation)
             target_id = Container_IDs[Tool]
             print('Server - starting a new container with ID: {} '
                   'as requested by container {}'.format(target_id, container_id))
-
-            subprocess.Popen('singularity exec --contain --writable-tmpfs --nv {} {}'.format(call_string,command), shell=True)
-
+            try:
+                proc = subprocess.check_call('singularity exec --contain --writable-tmpfs --nv {} {}'.format(call_string,command), shell=True)
+            except Exception:
+                lock.release()
+                client_socket.close()
+                raise 
             waiting_cnt_sockets[str(target_id)] = {"socket": client_socket, "id": container_id}
-
             lock.release()
+            client_socket.close()
 
         elif event == 'finished':
             lock.acquire()
+            container_id = str(container_id)
             if container_id in waiting_cnt_sockets:
                 print('Server - container {} finished working, '
                       'notifying source container {}'.format(container_id, waiting_cnt_sockets[container_id]["id"]))
@@ -77,6 +100,7 @@ def process(vlab_dir):
             lock.release()
             client_socket.close()
         else:
+            client_socket.close()
             raise ValueError()
 
 if __name__ == "__main__":

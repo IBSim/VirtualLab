@@ -64,7 +64,7 @@ class VLSetup():
         if self.Container==1:
             # setup networking to comunicate with host script whilst running in a continer
             import socket
-            data = {"msg":"VirtualLab started","cont_id":1}
+            data = {"msg":"VirtualLab started","Cont_id":1}
             data_string = json.dumps(data)
             sock = socket.socket()
             sock.connect(("127.0.0.1", 9999))
@@ -159,7 +159,7 @@ class VLSetup():
 
     def Parameters(self, Parameters_Master, Parameters_Var=None,
                     RunMesh=True, RunSim=True, RunDA=True, 
-                    RunVox=True, RunGVXR=True, RunCIL=True,
+                    RunVox=True, RunGVXR=True, RunCIL=False,
                     Import=False):
 
         # Update args with parsed args
@@ -175,6 +175,11 @@ class VLSetup():
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
         VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR']
+        #Note: The call to GetParams converts params_master/var into Namespaces
+        # however we need to origional strings for passing into other containters.
+        # So we will ned to get them here.
+        self.Parameters_Master_str = Parameters_Master
+        self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
 
@@ -342,8 +347,10 @@ class VLSetup():
         # if in main contianer submit job request
         if self.Container==1:
             Utils.RunJob(Cont_id=1,Tool="CIL",
-            Parameters_Master=self.Parameters_Master,
-            Parameters_Var=self.Parameters_Var,)
+            Parameters_Master=self.Parameters_Master_str,
+            Parameters_Var=self.Parameters_Var_str,
+            Project=self.Project,
+            Simulation=self.Simulation)
             return
         # if in secondary container try to run CIL
         else:
@@ -389,11 +396,17 @@ class VLSetup():
             Category = "{}_Overview".format(self.Simulation)
             Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
             Analytics.Run(Category,Action,self._ID)
-            
-        exitstr = '\n#############################\n'\
-                    '### VirtualLab Terminated ###\n'\
-                    '#############################\n'\
-
+        if self.Container==1:    
+            exitstr = '\n#############################\n'\
+                        '### VirtualLab Terminated ###\n'\
+                        '#############################\n'\
+                        
+        else:
+            Utils.Cont_Finished(self.Container)
+            exitstr = '\n#############################\n'\
+                        '### Container Terminated ###\n'\
+                        '#############################\n'\
+        
         if not Cleanup:
             exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
         elif os.path.isdir(self.TEMP_DIR):

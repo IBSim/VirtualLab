@@ -1,5 +1,5 @@
 # SALOME python script
-import time
+
 import sys
 import numpy as np
 import  SMESH, SALOMEDS
@@ -8,17 +8,21 @@ smesh = smeshBuilder.New()
 from SalomeFunc import GetArgs
 
 
-ArgDict = GetArgs(sys.argv[1:])
+ArgDict = GetArgs()
 (Meshes, status) = smesh.CreateMeshesFromMED(ArgDict["MeshFile"])
-EMdata = np.load(ArgDict["EMLoadFile"])
 Sample = Meshes[0]
 
-Elements = list(map(int,EMdata[:,0]))
-grp = Sample.CreateEmptyGroup(SMESH.VOLUME, "EMLoadElements")
+EM_Groups = ArgDict['EM_Groups']
+
+Elements = []
+for a in EM_Groups:
+	Elements.extend(a.tolist())
+
+grp = Sample.CreateEmptyGroup(SMESH.VOLUME, "_EMgrp")
 grp.Add(Elements)
-st = time.time()
-for El in Elements:
-	grp = Sample.CreateEmptyGroup(SMESH.VOLUME, "M{}".format(El))
-	grp.Add([El])
-print(time.time()-st)
+
+for i, El in enumerate(EM_Groups):
+	grp = Sample.CreateEmptyGroup(SMESH.VOLUME, "_{}".format(i))
+	grp.Add(El.tolist())
+
 Sample.ExportMED( ArgDict["tmpMesh"], auto_groups=0, minor=40, overwrite=1,meshPart=None,autoDimension=1)

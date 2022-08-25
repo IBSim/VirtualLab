@@ -692,7 +692,6 @@ def EMI(VL, SimDict):
         EM_Groups = Elements
         EM_Loads = JH_Vol
 
-
     # Create mesh groups based on elements in EM_Groups
     tmpMeshFile = "{}/Mesh.med".format(SimDict["TMP_CALC_DIR"])
     GroupBy = getattr(Parameters,'GroupBy','H5PY')
@@ -748,11 +747,11 @@ def EMI(VL, SimDict):
 
         ElInfo["FAM"][:] = ElFam
         tmpMeshMed.close()
-    # elif GroupBy == 'SALOME':
-    #     ### May be broken so not reliable
-    #     ArgDict = {"MeshFile":SimDict["MeshFile"], "tmpMesh":tmpMeshFile,"EMLoadFile":EMLoadFile}
-    #     EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
-    #     VL.SalomeRun(EMGroupFile, ArgDict=ArgDict)
+    elif GroupBy == 'SALOME':
+        ### May be broken so not reliable
+        ArgDict = {"MeshFile":SimDict["MeshFile"], "tmpMesh":tmpMeshFile,"EM_Groups":EM_Groups}
+        EMGroupFile = "{}/_CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
+        SalomeRun(EMGroupFile, DataDict=ArgDict)
 
     # Change MeshFile to point to mesh file created in TMP_CALC_DIR containing groups for EM load
     SimDict['MeshFile'] = tmpMeshFile

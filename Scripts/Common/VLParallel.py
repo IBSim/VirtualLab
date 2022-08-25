@@ -6,12 +6,23 @@ from types import SimpleNamespace as Namespace
 import pickle
 import inspect
 from contextlib import redirect_stderr, redirect_stdout
+import time
 
 import numpy as np
 
 from Scripts.Common import Analytics
 from Scripts.Common.tools import Paralleliser
 import VLconfig
+
+def _time_fn(fn,*args,**kwargs):
+    st = time.time()
+    err = fn(*args,**kwargs)
+    end = time.time()
+    walltime = time.strftime("%H:%M:%S",time.gmtime(end-st))
+    print("\n################################\n\n"\
+          "Wall time for analysis: {}\n\n"\
+          "################################".format(walltime))
+    return err
 
 def PoolWrap(fn,VL,Dict,*args):
     # Try and get name & log file if standard convention has been followed
@@ -31,10 +42,10 @@ def PoolWrap(fn,VL,Dict,*args):
             os.makedirs(LogDir,exist_ok=True)
             with open(LogFile,'w') as f:
                 with redirect_stdout(f), redirect_stderr(f):
-                    err = fn(VL,Dict,*args)
+                    err = _time_fn(fn,VL,Dict,*args)
         else:
             print("Running {}.\n".format(Name),flush=True)
-            err = fn(VL,Dict,*args)
+            err = _time_fn(fn,VL,Dict,*args)
 
         if not err: mess = "{} completed successfully.\n".format(Name)
         else: mess = "{} finishes with errors.\n".format(Name)
@@ -96,6 +107,15 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
 
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
+
+    if Args:
+        assert len(Args)==len(Dicts)
+
+    PoolArgs = []
+    for i,_dict in enumerate(Dicts):
+        a = [fnc,VL,_dict]
+        if Args: a.extend(Args[i])
+        PoolArgs.append(a)
 
     try:
         if launcher == 'Sequential' or len(Dicts)==1:

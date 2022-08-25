@@ -1,220 +1,55 @@
 import os
 import sys
+import time
+import pandas as pd
+from types import SimpleNamespace as Namespace
+
 import numpy as np
 import torch
-import gpytorch
 import h5py
 from natsort import natsorted
 import time
 
-from .slsqp_multi import slsqp_multi
-
-class ExactGPmodel(gpytorch.models.ExactGP):
-    '''
-    Gaussian process regression model.
-    '''
-    def __init__(self, train_x, train_y, likelihood, kernel,options={},ard=True):
-        super(ExactGPmodel, self).__init__(train_x, train_y, likelihood)
-
-        self.mean_module = gpytorch.means.ConstantMean()
-
-        ard_num_dims = train_x.shape[1] if ard else None
-        if kernel.lower() in ('rbf'):
-            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=ard_num_dims))
-        if kernel.lower().startswith('matern'):
-            split = kernel.split('_')
-            nu = float(split[1]) if len(split)==2 else 2.5
-            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=nu,ard_num_dims=ard_num_dims))
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-    def Gradient(self, x):
-        x.requires_grad=True
-        with gpytorch.settings.fast_pred_var():
-            # pred = self.likelihood(self(x))
-            pred = self(x)
-            grads = torch.autograd.grad(pred.mean.sum(), x)[0]
-            return grads
-
-    def Gradient_mean(self, x):
-        x.requires_grad=True
-        # pred = self.likelihood(self(x))
-        mean = self(x).mean
-        dmean = torch.autograd.grad(mean.sum(), x)[0]
-        return dmean, mean
-
-    def Gradient_variance(self, x):
-        x.requires_grad=True
-        with gpytorch.settings.fast_pred_var():
-            # pred = self.likelihood(self(x))
-            var = self(x).variance
-            dvar = torch.autograd.grad(var.sum(), x)[0]
-        return dvar, var
-
-def Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
-    if TrainOut.ndim==1:
-        # single output
-        likelihood, model = _Create_GPR(TrainIn, TrainOut, Kernel, min_noise=min_noise)
-    else:
-        # multiple output
-        NbModel = TrainOut.shape[1]
-        # Change kernel and min_noise to a list
-        if type(Kernel) not in (list,tuple): Kernel = [Kernel]*NbModel
-        if type(min_noise) not in (list,tuple): min_noise = [min_noise]*NbModel
-        models,likelihoods = [], []
-        for i in range(NbModel):
-            likelihood, model = _Create_GPR(TrainIn, TrainOut[:,i], Kernel[i],
-                                            min_noise = min_noise[i])
-            models.append(model)
-            likelihoods.append(likelihood)
-
-        model = gpytorch.models.IndependentModelList(*models)
-        likelihood = gpytorch.likelihoods.LikelihoodList(*likelihoods)
-
-    if prev_state:
-        # Check that the file exists
-        if os.path.isfile(prev_state):
-            state_dict = torch.load(prev_state)
-            model.load_state_dict(state_dict)
-        else:
-            print('Warning\nPrevious state file doesnt exist\nNo previous model is loaded\n')
-
-    return likelihood, model
-
-def _Create_GPR(TrainIn,TrainOut,Kernel,prev_state=None,min_noise=None):
-    likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = ExactGPmodel(TrainIn, TrainOut, likelihood, Kernel)
-    if not prev_state:
-        if min_noise != None:
-            likelihood.noise_covar.register_constraint('raw_noise',gpytorch.constraints.GreaterThan(min_noise))
-
-        # Start noise at lower level to avoid bad optima, but ensure it isn't zero
-        noise_lower = likelihood.noise_covar.raw_noise_constraint.lower_bound
-        noise_init = max(5*noise_lower,1e-8)
-        hypers = {'likelihood.noise_covar.noise': noise_init}
-        model.initialize(**hypers)
-    else:
-        state_dict = torch.load(prev_state)
-        model.load_state_dict(state_dict)
-
-    return likelihood, model
+from Scripts.Common.Optimisation import slsqp_multi
+from Scripts.Common import VLFunctions as VLF
+from Scripts.Common.tools import Paralleliser
 
 # ==============================================================================
-# Train the GPR model
-def GPR_Train(model, Epochs=5000, lr=0.01, Print=50, ConvAvg=10, tol=1e-4,
-              Verbose=False, SumOutput=False):
+# Routine for storing data and scaling
+def DataspaceAdd(Dataspace,**kwargs):
+    for varname, data in kwargs.items():
+        data_in, data_out = data
+        scaled_in = DataScale(data_in,*Dataspace.InputScaler)
+        setattr(Dataspace,"{}In_scale".format(varname), torch.from_numpy(scaled_in))
+        scaled_out = DataScale(data_out,*Dataspace.OutputScaler)
+        setattr(Dataspace,"{}Out_scale".format(varname), torch.from_numpy(scaled_out))
 
-    likelihood = model.likelihood
-    model.train()
-    likelihood.train()
+def DataspaceTrain(TrainData, **kwargs):
 
-    MultiOutput = True if hasattr(model,'models') else False
-    # Create the necessary loss functions and optimisers
-    if MultiOutput and not SumOutput:
-        # Each output of the model is trained seperately
-        TrackLoss, Completed = 0, []
-        _mll = gpytorch.mlls.ExactMarginalLogLikelihood
-        LossFn,Losses, optimizer = [],[],[]
-        for mod in model.models:
-            LossFn.append(_mll(mod.likelihood,mod))
-            optimizer.append(torch.optim.Adam(mod.parameters(), lr=lr))
-            Losses.append([])
-    elif MultiOutput:
-        # Each output is trained together
-        Losses = [[]]
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        LossFn = gpytorch.mlls.SumMarginalLogLikelihood(likelihood, model)
-    else:
-        # Single output model
-        Losses = [[]]
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        LossFn = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood,model)
+    TrainIn,TrainOut = TrainData
 
-    # Start looping over training data
-    for i in range(Epochs):
-        if MultiOutput and not SumOutput:
-            TotalLoss = TrackLoss
-            for j,mod in enumerate(model.models):
-                if j in Completed: continue
+    # ==========================================================================
+    # Scale ranges for training data
+    InputScaler = ScaleValues(TrainIn)
+    OutputScaler = ScaleValues(TrainOut)
+    # scale training data
+    TrainIn_scale = DataScale(TrainIn,*InputScaler)
+    TrainOut_scale = DataScale(TrainOut,*OutputScaler)
+    # convert to tensors
+    TrainIn_scale = torch.from_numpy(TrainIn_scale)
+    TrainOut_scale = torch.from_numpy(TrainOut_scale)
 
-                _Losses = Losses[j]
-                _convergence = _Step(mod,optimizer[j],LossFn[j],_Losses,ConvAvg=ConvAvg,tol=tol)
-                TotalLoss+=_Losses[-1]
+    NbInput = TrainIn.shape[1] if TrainIn.ndim==2 else 1
+    NbOutput = TrainOut.shape[1] if TrainOut.ndim==2 else 1
 
-                if _convergence != None:
-                    Completed.append(j)
-                    TrackLoss+=_Losses[-1]
-                    print("Output {}: {}".format(j,_convergence))
+    Dataspace = Namespace(InputScaler=InputScaler,OutputScaler=OutputScaler,
+                    NbInput=NbInput, NbOutput=NbOutput,
+                    NbTrain=TrainIn.shape[0], TrainIn_scale=TrainIn_scale,
+                    TrainOut_scale=TrainOut_scale)
 
-            TotalLoss = TotalLoss/(j+1)
-            if len(Completed)==j+1:
-                break
-        else:
-            _Losses = Losses[0]
-            convergence = _Step(model,optimizer,LossFn,_Losses,ConvAvg=ConvAvg,tol=tol)
-            TotalLoss = _Losses[-1]
-            if convergence != None:
-                print(convergence)
-                break
+    DataspaceAdd(Dataspace,**kwargs)
 
-        if i==0 or (i+1) % Print == 0:
-            print("Iteration: {}, Loss: {}".format(i+1,TotalLoss))
-            if Verbose:
-                PrintParameters(model)
-
-    # Print out final information about training & model parameters
-    print('\n################################\n')
-    print("Iterations: {}\nLoss: {}".format(i+1,TotalLoss))
-    print("\nModel parameters:")
-    PrintParameters(model)
-    print('################################\n')
-
-    return Losses
-
-def _Step(model, optimizer, mll, loss_lst, ConvAvg=10, tol=1e-4):
-    optimizer.zero_grad() # set all gradients to zero
-    # Calculate loss & add to list
-    output = model(*model.train_inputs)
-    loss = -mll(output, model.train_targets)
-    loss_lst.append(loss.item())
-    # Check convergence using the loss list. If convergence, return
-    convergence = CheckConvergence(loss_lst,ConvAvg=ConvAvg,tol=tol)
-    if convergence != None:
-        return convergence
-
-    # Calculate gradients & update model parameters using the optimizer
-    loss.backward()
-    optimizer.step()
-
-def CheckConvergence(Loss, ConvAvg=10, tol=1e-4):
-    ''' Checks the list of loss values to decide whether or not convergence has been reached'''
-    if len(Loss) >= 2*ConvAvg:
-        mean_new = np.mean(Loss[-ConvAvg:])
-        mean_old = np.mean(Loss[-2*ConvAvg:-ConvAvg])
-        if mean_new > mean_old:
-            return "Convergence reached. Loss increasing"
-        elif np.abs(mean_new-mean_old)<tol:
-            return "Convergence reached. Loss change smaller than tolerance"
-
-def PrintParameters(model):
-    Modstr = "Length scales: {}\nOutput scale: {}\nNoise: {}\n\n"
-    if hasattr(model,'models'):
-        Rstr = ""
-        for i,mod in enumerate(model.models):
-            LS = mod.covar_module.base_kernel.lengthscale.detach().numpy()[0]
-            OS = mod.covar_module.outputscale.detach().numpy()
-            N = mod.likelihood.noise.detach().numpy()[0]
-            Rstr += ("Output {}\n"+Modstr).format(i,LS,OS,N)
-    else:
-            LS = model.covar_module.base_kernel.lengthscale.detach().numpy()[0]
-            OS = model.covar_module.outputscale.detach().numpy()
-            N = model.likelihood.noise.detach().numpy()[0]
-            Rstr = Modstr.format(LS,OS,N)
-
-    print(Rstr,end='')
+    return Dataspace
 
 # ==============================================================================
 # Data scaling and rescaling functions
@@ -260,27 +95,24 @@ def Rsq(Predicted,Target):
     MSE_val = ((Predicted - Target)**2).sum()
     return 1-(MSE_val/divisor)
 
-def GetMetrics(model,x,target):
-    with torch.no_grad():
-        pred = model(x).mean.numpy()
+def GetMetrics2(pred,target):
+
+    N = 1 if pred.ndim==1 else pred.shape[1]
+
     mse = MSE(pred,target)
     mae = MAE(pred,target)
     rmse = RMSE(pred,target)
     rsq = Rsq(pred,target)
-    return mse,mae,rmse,rsq
+
+
+    df=pd.DataFrame({"MSE":mse,"MAE":mae,"RMSE":rmse,"R^2":rsq},
+                    index=["Output_{}".format(i) for i in range(N)])
+    pd.options.display.float_format = '{:.3e}'.format
+    return df
+
 
 # ==============================================================================
 # Functions used for reading & writing data
-def GetResPaths(ResDir,DirOnly=True,Skip=['_']):
-    ''' This returns a naturally sorted list of the directories in ResDir'''
-    ResPaths = []
-    for _dir in natsorted(os.listdir(ResDir)):
-        if _dir.startswith(tuple(Skip)): continue
-        path = "{}/{}".format(ResDir,_dir)
-        if DirOnly and os.path.isdir(path):
-            ResPaths.append(path)
-
-    return ResPaths
 
 def Openhdf(File,style,timer=5):
     ''' Repeatedly attemps to open hdf file if it is held by another process for
@@ -294,70 +126,124 @@ def Openhdf(File,style,timer=5):
             if time.time() - st > timer:
                 sys.exit('Timeout on opening hdf file')
 
-def Writehdf(File, array, data_path):
+def Writehdf(File, data_path, array, attrs={}, group=None):
+    if group: data_path = "{}/{}".format(group,data_path)
+
     Database = Openhdf(File,'a')
     if data_path in Database:
         del Database[data_path]
-    Database.create_dataset(data_path,data=array)
+    dset = Database.create_dataset(data_path,data=array)
+    if attrs:
+        dset.attrs.update(**attrs)
     Database.close()
 
-def Readhdf(File, data_paths):
+def Readhdf(File, data_paths,group=None):
     Database = Openhdf(File,'r')
-
     if type(data_paths)==str: data_paths = [data_paths]
     data = []
     for data_path in data_paths:
+        # add prefix to pat
+        if group: data_path = "{}/{}".format(group,data_path)
+        # Check data is in file
+        if data_path not in Database:
+            print(VLF.ErrorMessage("data '{}' is not in file {}".format(data_path,File)))
+            sys.exit()
+        # Get data from file
         _data = Database[data_path][:]
+        # Reshape 1D data to 2D
+        if _data.ndim==1:
+            _data = _data.reshape((_data.size,1))
+
         data.append(_data)
+
     Database.close()
+
     return data
 
-def GetMLdata(DataFile_path,DataNames,InputName,OutputName,Nb=-1):
-    if type(DataNames)==str:DataNames = [DataNames]
-    N = len(DataNames)
+# ==============================================================================
+# Functions used for ML work
 
-    data_input, data_output = [],[]
-    for dataname in DataNames:
-        data_input.append("{}/{}".format(dataname,InputName))
-        data_output.append("{}/{}".format(dataname,OutputName))
+def GetData(DataFile,DataNames,group=None, Nb=-1):
+    data = Readhdf(DataFile,DataNames,group=group) # read DataNames for DataFile
 
-    Data = Readhdf(DataFile_path,data_input+data_output)
-    In,Out = Data[:N],Data[N:]
-
-    for i in range(N):
+    for i in range(len(data)):
         _Nb = Nb[i] if type(Nb)==list else Nb
-        if _Nb==-1:continue
+        if _Nb==-1:continue # -1 means we use all data
 
         if type(_Nb)==int:
-            In[i] = In[i][:_Nb]
-            Out[i] = Out[i][:_Nb]
+            data[i] = data[i][:_Nb]
         if type(_Nb) in (list,tuple):
             l,u = _Nb
-            In[i] = In[i][l:u]
-            Out[i] = Out[i][l:u]
-    In,Out = np.vstack(In),np.vstack(Out)
+            data[i] = data[i][l:u]
 
-    return In, Out
+    return np.vstack(data)
 
-def WriteMLdata(DataFile_path,DataNames,InputName,OutputName,InList,OutList):
-    for resname, _in, _out in zip(DataNames, InList, OutList):
-        InPath = "{}/{}".format(resname,InputName)
-        OutPath = "{}/{}".format(resname,OutputName)
-        Writehdf(DataFile_path,_in,InPath)
-        Writehdf(DataFile_path,_out,OutPath)
+def GetDataML(DataFile,InputNames,OutputNames,options={}):
+    ''' This function gets inputs and outputs for supervised ML. '''
+    in_data = GetData(DataFile,InputNames,**options)
+    out_data = GetData(DataFile,OutputNames,**options)
+    return in_data, out_data
 
-def CompileData(ResDirs,MapFnc,args=[]):
-    In,Out = [],[]
-    for ResDir in ResDirs:
-        ResPaths = GetResPaths(ResDir)
-        _In, _Out =[] ,[]
-        for ResPath in ResPaths:
-            _in, _out = MapFnc(ResPath,*args)
-            _In.append(_in)
-            _Out.append(_out)
-        In.append(_In)
-        Out.append(_Out)
-    return In, Out
+def GetResPaths(ResDir,DirOnly=True,Skip=['_']):
+    ''' This returns a naturally sorted list of the directories in ResDir'''
+    ResPaths = []
+    for _dir in natsorted(os.listdir(ResDir)):
+        if _dir.startswith(tuple(Skip)): continue
+        path = "{}/{}".format(ResDir,_dir)
+        if DirOnly and os.path.isdir(path):
+            ResPaths.append(path)
+
+    return ResPaths
+
+def ExtractData(ResPath,functions,args,kwargs):
+    ''' Function which extracts data from results directory ResPath using functions,
+        args and kwargs. '''
+    ret = []
+    for _function,_args,_kwargs in zip(functions,args,kwargs):
+        _ret = _function(ResPath,*_args,**_kwargs)
+        ret.append(_ret)
+    return ret
+
+def ExtractData_Dir(ResDir,functions,args,kwargs, parallel_options={}):
+    ''' Parallelised function which allows data to be extracted from all
+        results in a directory. M sets of data can be extracted using the M
+        functions, args and kwargs for the N results in ResDir. '''
+
+    # Get paths to all directories in ResDir
+    ResPaths = GetResPaths(ResDir)
+    # write args in format so that it can be passed to the paralleliser function
+    Args_parallel = [[p,functions,args,kwargs] for p in ResPaths]
+    # Pass function and arguments to paralleliser (default behaviour: no parallelisation)
+    Res = Paralleliser(ExtractData,Args_parallel,**parallel_options)
+    # re-order results Res from N lists of length M to M lists of length N
+    Res = list(zip(*Res))
+    return Res
+
+def GetInputs(Parameters,commands):
+    ''' Using exec allows us to get individual values from dictionaries or lists.
+    i.e. a command of 'DataList[1]' will get the value from index 1 of the lists
+    'DataList'
+    '''
+
+    inputs = []
+    for i,command in enumerate(commands):
+        exec("inputs.append(Parameters.{})".format(command))
+    return inputs
+
+def ModelSummary(NbInput,NbOutput,TrainNb,TestNb=None,Features=None,Labels=None):
+    ModelDesc = "Model Summary\n\n"\
+                "Nb.Inputs: {}\nNb.Outputs: {}\n"\
+                "Nb.Train data: {}\n".format(NbInput,NbOutput,TrainNb)
+    if TestNb is not None:
+        ModelDesc+="Nb.Test data: {}\n".format(TestNb)
+    if Features is not None:
+        if type(Features) != str: Features = ", ".join(Features)
+        ModelDesc += "Input features:\n{}\n".format(Features)
+    if Labels is not None:
+        if type(Labels) != str: Labels = ", ".join(Labels)
+        ModelDesc += "Output labels:\n{}\n".format(Labels)
+
+    print(ModelDesc)
 
 # ==============================================================================
 # ML model Optima
@@ -390,3 +276,84 @@ def _GPR_Opt(X,model):
     X = torch.tensor(X)
     dmean, mean = model.Gradient_mean(X)
     return mean.detach().numpy(), dmean.detach().numpy()
+
+# ==============================================================================
+# Constraint for ML model
+def LowerBound(model,bound):
+    constraint_dict = {'fun': _bound, 'jac':_dbound,
+                       'type': 'ineq', 'args':(model,bound)}
+    return constraint_dict
+
+def UpperBound(model,bound):
+    constraint_dict = {'fun': _bound, 'jac':_dbound,
+                       'type': 'ineq', 'args':(model,bound,-1)}
+    return constraint_dict
+
+def FixedBound(model,bound):
+    constraint_dict = {'fun': _bound, 'jac':_dbound,
+                       'type': 'eq', 'args':(model,bound)}
+    return constraint_dict
+
+def _bound(X, model, bound, sign=1):
+    X = torch.tensor(np.atleast_2d(X))
+    # Function value
+    Pred = model(X).mean.detach().numpy()
+    return sign*(Pred - bound)
+
+def _dbound(X, model, bound, sign=1):
+    X = torch.tensor(np.atleast_2d(X))
+    # Gradient
+    Grad = model.Gradient(X)
+    return sign*Grad
+
+def InputQuery(model, NbInput, base=0.5, Ndisc=50):
+
+    split = np.linspace(0,1,Ndisc+1)
+    a = np.ones((Ndisc+1,NbInput))*base
+    pred_mean,pred_std = [],[]
+    for i in range(NbInput):
+        _a = a.copy()
+        _a[:,i] = split
+        _a = torch.from_numpy(_a)
+        with torch.no_grad():
+            out = model.likelihood(model(_a))
+            mean = out.mean.numpy()
+            stdev = out.stddev.numpy()
+        pred_mean.append(mean);pred_std.append(stdev)
+    return pred_mean,pred_std
+
+# ==============================================================================
+# Data compression algorithms
+
+def PCA(Data, metric={}):
+    ''' Funtion which performs principal component analysis'''
+    U,s,VT = np.linalg.svd(Data,full_matrices=False)
+    nb_component = len(s)
+
+    # threshold of data variation to get above
+    if 'threshold' in metric:
+        s_sc = np.cumsum(s)
+        s_sc = s_sc/s_sc[-1]
+        threshold_ix = np.argmax( s_sc >= metric['threshold']) + 1
+    else: threshold_ix = 0
+
+    # error % to get below
+    if 'error' in metric:
+        for j in range(VT.shape[1]):
+            Datacompress = Data.dot(VT[:j+1,:].T)
+            Datauncompress = Datacompress.dot(VT[:j+1,:])
+            diff = np.abs(Data - Datauncompress)/Data
+            maxix = np.unravel_index(np.argmax(diff, axis=None), diff.shape)
+            if diff[maxix] < metric['error']:
+                error_ix = j
+                break
+    else: error_ix = 0
+
+    # number of principal components to keep
+    component_ix = int(metric['components'])if 'components' in metric else 0
+
+    ix = max(threshold_ix,error_ix,component_ix)
+    if ix==0: ix = nb_component
+
+    VT = VT[:ix,:] # only keep the first ix eigenvectors for compression
+    return VT

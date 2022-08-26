@@ -241,30 +241,24 @@ def MaterialProperty(matarr,Temperature):
     if len(matarr) in (1,2): return matarr[-1]
     else: return np.interp(Temperature, matarr[::2], matarr[1::2])
 
-class Sampling():
-    def __init__(self, method, dim=0, range=[], bounds=True, seed=None,options={}):
-        # Must have either a range or dimension
-        if range:
-            self.range = range
-            self.dim = len(range)
-        elif dim:
-            self.range = [(0,1)]*dim
-            self.dim = dim
-        else:
-            print('Error: Must provide either dimension or range')
-
 def Interp_2D(Coordinates,Connectivity,Query):
     Nodes = np.unique(Connectivity.flatten())
     _Ix = np.searchsorted(Nodes,Connectivity)
     a = Coordinates[_Ix]
 
-        if method.lower() == 'halton': self.sampler = self.Halton
-        elif method.lower() == 'random':
-            if seed: np.random.seed(seed)
-            self.sampler = self.Random
-        elif method.lower() == 'sobol': self.sampler = self.Sobol
-        elif method.lower() == 'grid': self.sampler = self.Grid
-        elif method.lower() == 'subspace': self.sampler = self.SubSpace
+    a1,a2 = a[:,:,0],a[:,:,1]
+    biareas = []
+    for ls in [[1,2],[2,0],[0,1]]:
+        _a1,_a2 = a1[:,ls], a2[:,ls]
+        _d = np.ones((len(_a1),1))
+        _a1 = np.concatenate((_a1,_d*Query[0]),axis=1)
+        _a2 = np.concatenate((_a2,_d*Query[1]),axis=1)
+        _c = np.stack((_a1,_a2,np.ones(_a1.shape)),axis=1)
+        _c = np.array(_c,dtype=np.float)
+        # print(_c.sum())
+        _area = 0.5*np.linalg.det(_c)
+        biareas.append(_area)
+    biareas = np.array(biareas).T
 
     sign_area = np.sign(biareas)
     sum_sign = np.abs(sign_area.sum(axis=1))
@@ -286,6 +280,7 @@ def Interp_2D(Coordinates,Connectivity,Query):
     nds = Connectivity[elemix,:]
 
     return nds, weighting
+
 
 
 def ParametersVar(arglist):

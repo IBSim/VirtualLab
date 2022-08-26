@@ -9,6 +9,7 @@ import copy
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
 import atexit
+import uuid
 
 import numpy as np
 
@@ -150,7 +151,7 @@ class VLSetup():
         if 'MaterialDir' in kwargs:
             self._SetMaterialDir(kwargs['MaterialDir'])
 
-    def Parameters(self, Parameters_Master, Parameters_Var=None,
+    def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
                     RunMesh=True, RunSim=True, RunDA=True,
                     RunVox=True, Import=False):
 
@@ -165,7 +166,8 @@ class VLSetup():
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
         VLNamespaces = ['Mesh','Sim','DA','Vox']
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
+        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces,
+                        ParameterArgs=ParameterArgs)
 
 
 
@@ -174,7 +176,7 @@ class VLSetup():
         DAFn.Setup(self,RunDA, Import)
         VoxFn.Setup(self,RunVox)
 
-    def ImportParameters(self, Rel_Parameters):
+    def ImportParameters(self, Rel_Parameters,ParameterArgs=None):
         '''
         Rel_Parameters is a file name relative to the Input directory
         '''
@@ -198,9 +200,13 @@ class VLSetup():
         Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
         sys.path.pop(0)
 
+        if ParameterArgs != None:
+            sys.argv.pop(-1)
+
+
         return Parameters
 
-    def GetParams(self, Master, Var, VLTypes):
+    def GetParams(self, Master, Var, VLTypes,ParameterArgs=None):
         '''Master & Var can be a module, namespace, string or None.
         A string references a file to import from within the input directory.
         '''
@@ -212,9 +218,9 @@ class VLSetup():
         # ======================================================================
         # If string, import files
         if type(Master)==str:
-            Master = self.ImportParameters(Master)
+            Master = self.ImportParameters(Master,ParameterArgs)
         if type(Var)==str:
-            Var = self.ImportParameters(Var)
+            Var = self.ImportParameters(Var,ParameterArgs)
 
         # ======================================================================
         # Check any of the attributes of NS are included
@@ -413,11 +419,9 @@ class VLSetup():
     def _Cleanup(self,Cleanup=True):
         # Report overview of VirtualLab usage
         if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
-            MeshNb = self._Analytics.get('Mesh',0)
-            SimNb = self._Analytics.get('Sim',0)
-            DANb = self._Analytics.get('DANb',0)
             Category = "{}_Overview".format(self.Simulation)
-            Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
+            list_AL = ["{}={}".format(key,value) for key,value in self._Analytics.items()]
+            Action = "_".join(list_AL)
             Analytics.Run(Category,Action,self._ID)
 
         exitstr = '\n#############################\n'\

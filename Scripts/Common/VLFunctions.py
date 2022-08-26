@@ -8,6 +8,23 @@ import numpy as np
 
 sys.dont_write_bytecode=True
 
+def WriteArgs(path,Args):
+    with open(path,'wb') as f:
+        pickle.dump(Args,f)
+
+def GetArgs(path):
+    with open(path,'rb') as f:
+        Args = pickle.load(f)
+    return Args
+
+def GetParameterArgs(name='ParameterArgs'):
+    ArgDict = {}
+    for parsed in sys.argv:
+        if parsed.startswith(name):
+            path = parsed.split('=')[1]
+            Args = GetArgs(path)
+    return Args
+
 def GetFunc(FilePath, funcname):
     path,ext = os.path.splitext(FilePath)
     dirname = os.path.dirname(path)
@@ -16,37 +33,33 @@ def GetFunc(FilePath, funcname):
     sys.path.insert(0,dirname)
     module = import_module(basename) #reload?
     sys.path.pop(0)
-    
+
     func = getattr(module, funcname, None)
     return func
 
-def CheckFile(FilePath,Attr=None):
-    FileExist = os.path.isfile(FilePath)
-    FuncExist = True
-    if not FileExist:
-        pass
-    elif Attr:
-        func = GetFunc(FilePath,Attr)
-        if func==None: FuncExist = False
-
-    return FileExist, FuncExist
-
-def FileFunc(DirName, FileName, ext = 'py', FuncName = 'Single'):
-    if type(FileName) in (list,tuple):
-        if len(FileName)==2:
-            FileName,FuncName = FileName
+def FileFuncSplit(FileInfo,default_func_name):
+    if type(FileInfo) in (list,tuple):
+        # Split up file name and function name (if given)
+        if len(FileInfo)==2:
+            file_name,func_name = FileInfo
         else:
-            print('Error: If FileName is a list it must have length 2')
-    FilePath = "{}/{}.{}".format(DirName,FileName,ext)
+            WarningMessage("If file name is not a tuple/list it must have 2 entries: First entry is the file name and the second is the function name.")
+            filename, func_name = FileInfo[0], default_func_name
+    else:
+        # set FuncName to default value
+        file_name, func_name = FileInfo, default_func_name
 
-    return FilePath,FuncName
+    return file_name, func_name
 
 def ImportUpdate(ParameterFile,ParaDict):
     Parameters = ReadParameters(ParameterFile)
+    NewDict = {}
     for Var, Value in Parameters.__dict__.items():
         if Var.startswith('__'): continue
-        if Var in ParaDict: continue
-        ParaDict[Var] = Value
+        NewDict[Var] = Value
+    for Var, Value in ParaDict.items():
+        NewDict[Var] = Value
+    return NewDict
 
 def ReadParameters(paramfile):
     paramdir = os.path.dirname(paramfile)
@@ -228,30 +241,24 @@ def MaterialProperty(matarr,Temperature):
     if len(matarr) in (1,2): return matarr[-1]
     else: return np.interp(Temperature, matarr[::2], matarr[1::2])
 
-class Sampling():
-    def __init__(self, method, dim=0, range=[], bounds=True, seed=None,options={}):
-        # Must have either a range or dimension
-        if range:
-            self.range = range
-            self.dim = len(range)
-        elif dim:
-            self.range = [(0,1)]*dim
-            self.dim = dim
-        else:
-            print('Error: Must provide either dimension or range')
-
 def Interp_2D(Coordinates,Connectivity,Query):
     Nodes = np.unique(Connectivity.flatten())
     _Ix = np.searchsorted(Nodes,Connectivity)
     a = Coordinates[_Ix]
 
-        if method.lower() == 'halton': self.sampler = self.Halton
-        elif method.lower() == 'random':
-            if seed: np.random.seed(seed)
-            self.sampler = self.Random
-        elif method.lower() == 'sobol': self.sampler = self.Sobol
-        elif method.lower() == 'grid': self.sampler = self.Grid
-        elif method.lower() == 'subspace': self.sampler = self.SubSpace
+    a1,a2 = a[:,:,0],a[:,:,1]
+    biareas = []
+    for ls in [[1,2],[2,0],[0,1]]:
+        _a1,_a2 = a1[:,ls], a2[:,ls]
+        _d = np.ones((len(_a1),1))
+        _a1 = np.concatenate((_a1,_d*Query[0]),axis=1)
+        _a2 = np.concatenate((_a2,_d*Query[1]),axis=1)
+        _c = np.stack((_a1,_a2,np.ones(_a1.shape)),axis=1)
+        _c = np.array(_c,dtype=np.float)
+        # print(_c.sum())
+        _area = 0.5*np.linalg.det(_c)
+        biareas.append(_area)
+    biareas = np.array(biareas).T
 
     sign_area = np.sign(biareas)
     sum_sign = np.abs(sign_area.sum(axis=1))
@@ -273,3 +280,8 @@ def Interp_2D(Coordinates,Connectivity,Query):
     nds = Connectivity[elemix,:]
 
     return nds, weighting
+
+
+
+def ParametersVar(arglist):
+    return iter(arglist)

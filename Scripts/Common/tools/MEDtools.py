@@ -182,18 +182,36 @@ class MeshInfo():
     def Close(self):
         self.g.close()
 
-def GroupData(ResFile,GroupName,ResName='Temperature'):
-    g = h5py.File(ResFile, 'r')
+def NodalResult(MEDFile, ResName, GroupName=None):
+    g = h5py.File(MEDFile, 'r')
     gRes = g['/CHA/{}'.format(ResName)]
     step = list(gRes.keys())[0]
     Result = gRes['{}/NOE/MED_NO_PROFILE_INTERNAL/CO'.format(step)][:]
     g.close()
 
-    meshdata = MeshInfo(ResFile)
-    GroupInfo = meshdata.GroupInfo(GroupName)
-    NodeIDs = GroupInfo.Nodes
-    GroupRes = Result[NodeIDs-1] # subtract 1 for 0 indexing
-    return GroupRes
+    if GroupName:
+        meshdata = MeshInfo(MEDFile)
+        GroupInfo = meshdata.GroupInfo(GroupName)
+        NodeIDs = GroupInfo.Nodes
+        Result = Result[NodeIDs-1] # subtract 1 for 0 indexing
+
+    return Result
+
+def ElementResult(MEDFile, ResName, GroupName=None):
+
+    g = h5py.File(MEDFile, 'r')
+    gRes = g['/CHA/{}'.format(ResName)]
+    step = list(gRes.keys())[0]
+    Result = gRes['{}/MAI.TE4/MED_NO_PROFILE_INTERNAL/CO'.format(step)][:]
+    g.close()
+
+    if GroupName:
+        meshdata = MeshInfo(MEDFile)
+        GroupInfo = meshdata.GroupInfo(GroupName)
+        NodeIDs = GroupInfo.Nodes
+        Result = Result[NodeIDs-1] # subtract 1 for 0 indexing
+
+    return Result
 
 def ASCIIname(names):
     # Convert name to numbers for writing MED files

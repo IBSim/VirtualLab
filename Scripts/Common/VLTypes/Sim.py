@@ -20,27 +20,13 @@ def Setup(VL,RunSim=True,Import=False):
 
     sys.path.insert(0,VL.SIM_SIM)
 
-    AsterFiles,PFiles,Meshes,Materials = [],[],[],[]
+    AsterFiles,PFiles,AsterFileInfo,PFileInfo = [],[],[],[]
+    AsterFileDict, PFileDict = {}, {}
+    Meshes,Materials = [],[]
     for SimName, ParaDict in SimDicts.items():
         CALC_DIR = "{}/{}".format(VL.PROJECT_DIR, SimName)
         if Import:
-            VLF.ImportUpdate("{}/Parameters.py".format(CALC_DIR), ParaDict)
-
-        # ======================================================================
-        # Collect information to check after
-        # Check files
-        AsterFile = ParaDict.get('AsterFile')
-        if AsterFile and AsterFile not in AsterFiles: AsterFiles.append(AsterFile)
-        PreFile,PostFile = ParaDict.get('PreAsterFile'),ParaDict.get('PostAsterFile')
-        if PreFile and PreFile not in PFiles: PFiles.append(PreFile)
-        if PostFile and PostFile not in PFiles: PFiles.append(PostFile)
-        # Check meshes
-        Mesh = ParaDict.get('Mesh')
-        if Mesh and Mesh not in Meshes: Meshes.append(Mesh)
-        # Check materials
-        Mat = ParaDict.get('Materials',[])
-        if type(Mat)==str: Materials.append(Mat)
-        elif type(Mat)==dict: Materials.extend(list(Mat.values()))
+            ParaDict = VLF.ImportUpdate("{}/Parameters.py".format(CALC_DIR), ParaDict)
 
         # ======================================================================
         # Create dictionary for each analysis
@@ -53,6 +39,45 @@ def Setup(VL,RunSim=True,Import=False):
                     'MeshFile':"{}/{}.med".format(VL.MESH_DIR, ParaDict['Mesh']),
                     'Parameters':Namespace(**ParaDict)
                     }
+
+        # ======================================================================
+        # get file path & perform checks
+        AsterFile = ParaDict.get('AsterFile')
+        if AsterFile:
+            if AsterFile not in AsterFileDict:
+                # Check file in directory & get path
+                AsterFilePath = VL.GetFilePath([VL.SIM_SIM], AsterFile,
+                                          file_ext='comm', exit_on_error=True)
+                AsterFileDict[AsterFile] = AsterFilePath
+            else:
+                AsterFilePath = AsterFileDict[AsterFile]
+            SimDict['AsterFile'] = AsterFilePath
+
+        PreFile,PostFile = ParaDict.get('PreAsterFile'),ParaDict.get('PostAsterFile')
+        if PreFile or PostFile:
+            for fname, name in zip([PreFile,PostFile],['PreFile','PostFile']):
+                if fname is None: continue
+                # default name is Single
+                file_name,func_name = VLF.FileFuncSplit(fname,'Single')
+                if (file_name,func_name) not in PFileDict:
+                    FilePath = VL.GetFilePath([VL.SIM_SIM,VL.VLRoutine_SCRIPTS], file_name,
+                                              file_ext='py', exit_on_error=True)
+                    # Check function func_name is in the file
+                    VL.GetFunction(FilePath,func_name,exit_on_error=True)
+                    File_func = [FilePath,func_name]
+                    PFileDict[(file_name,func_name)] = File_func
+                else:
+                    File_func = PFileDict[(file_name,func_name)]
+                SimDict[name] = File_func
+
+        # ======================================================================
+        # Check meshes
+        Mesh = ParaDict.get('Mesh')
+        if Mesh and Mesh not in Meshes: Meshes.append(Mesh)
+        # Check materials
+        Mat = ParaDict.get('Materials',[])
+        if type(Mat)==str: Materials.append(Mat)
+        elif type(Mat)==dict: Materials.extend(list(Mat.values()))
 
         # Important information can be added to Data during any stage of the
         # simulation, and this will be saved to the location specified by the
@@ -73,32 +98,12 @@ def Setup(VL,RunSim=True,Import=False):
         # Add SimDict to SimData dictionary
         VL.SimData[SimName] = SimDict.copy()
 
-    # ==========================================================================
-    # Perform checks
-    # Check Aster File exist
-    for File in AsterFiles:
-        FilePath = VLF.FileFunc(VL.SIM_SIM, File,ext='comm')[0]
-        FileExist = VLF.CheckFile(FilePath)[0]
-        if not FileExist:
-            VL.Exit(VLF.ErrorMessage("The file {} does not "\
-                                    "exist".format(FilePath)))
-    # Check Pre & Post files exist
-    for File in PFiles:
-        FilePath,FuncName = VLF.FileFunc(VL.SIM_SIM, File)
-        FileExist,FuncExist = VLF.CheckFile(FilePath,FuncName)
-        if not FileExist:
-            VL.Exit(VLF.ErrorMessage("The file {} does not "\
-                                    "exist".format(FilePath)))
-        if not FuncExist:
-            VL.Exit(VLF.ErrorMessage("The function {} does not "\
-                                    "exist in {}".format(FuncName,FilePath)))
     # Check mesh exists
     for MeshName in Meshes:
         MeshCreate = MeshName in VL.MeshData
         if not MeshCreate:
-            FilePath = VLF.FileFunc(VL.MESH_DIR, MeshName,'med')[0]
-            FileExist = VLF.CheckFile(FilePath)[0]
-            if not FileExist:
+            FilePath = VL.GetFilePath(VL.MESH_DIR, MeshName,file_ext='med',exit_on_error=False)
+            if FilePath is None:
                 VL.Exit(VLF.ErrorMessage("Mesh '{}' isn't being created and is "\
                 "not in the mesh directory {}".format(MeshName, VL.MESH_DIR)))
     # Check material
@@ -121,12 +126,11 @@ def PoolRun(VL, SimDict, Flags):
 
     # ==========================================================================
     # Run pre aster step
-    if RunPreAster and hasattr(Parameters,'PreAsterFile'):
+    if RunPreAster and 'PreFile' in SimDict:
         VL.Logger("Running PreAster for '{}'\n".format(Parameters.Name),Print=True)
         os.makedirs(SimDict['PREASTER'],exist_ok=True)
 
-        FilePath, FuncName = VLF.FileFunc(VL.SIM_SIM, Parameters.PreAsterFile)
-        PreAsterFnc = VLF.GetFunc(FilePath,FuncName)
+        PreAsterFnc = VLF.GetFunc(*SimDict['PreFile'])
         err = PreAsterFnc(VL,SimDict)
         if err:
             return 'PreAster Error: {}'.format(err)
@@ -141,7 +145,7 @@ def PoolRun(VL, SimDict, Flags):
         #=======================================================================
         # Create export file for CodeAster
         ExportFile = "{}/Export".format(SimDict['ASTER'])
-        CommFile = '{}/{}.comm'.format(VL.SIM_SIM, Parameters.AsterFile)
+        CommFile = SimDict['AsterFile']
         MessFile = '{}/AsterLog'.format(SimDict['ASTER'])
         AsterSettings = getattr(Parameters,'AsterSettings',{})
 
@@ -188,12 +192,11 @@ def PoolRun(VL, SimDict, Flags):
 
     # ==========================================================================
     # Run post aster step
-    if RunPostAster and hasattr(Parameters,'PostAsterFile'):
+    if RunPostAster and 'PostFile' in SimDict:
         VL.Logger("Running PostAster for '{}'\n".format(Parameters.Name),Print=True)
         os.makedirs(SimDict['POSTASTER'],exist_ok=True)
 
-        FilePath, FuncName = VLF.FileFunc(VL.SIM_SIM, Parameters.PostAsterFile)
-        PostAsterFnc = VLF.GetFunc(FilePath,FuncName)
+        PostAsterFnc = VLF.GetFunc(*SimDict['PostFile'])
 
         err = PostAsterFnc(VL,SimDict)
         if err:
@@ -214,7 +217,7 @@ def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
     NbSim = len(VL.SimData)
     SimDicts = list(VL.SimData.values())
     Flags = [RunPreAster,RunAster,RunPostAster]
-    AddArgs = [[Flags]*NbSim] #Additional arguments
+    AddArgs = [[Flags]]*NbSim #Additional arguments
 
     Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs)
     if Errorfnc:

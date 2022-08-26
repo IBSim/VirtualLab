@@ -6,12 +6,23 @@ from types import SimpleNamespace as Namespace
 import pickle
 import inspect
 from contextlib import redirect_stderr, redirect_stdout
+import time
 
 import numpy as np
 
 from Scripts.Common import Analytics
 from Scripts.Common.tools import Paralleliser
 import VLconfig
+
+def _time_fn(fn,*args,**kwargs):
+    st = time.time()
+    err = fn(*args,**kwargs)
+    end = time.time()
+    walltime = time.strftime("%H:%M:%S",time.gmtime(end-st))
+    print("\n################################\n\n"\
+          "Wall time for analysis: {}\n\n"\
+          "################################".format(walltime))
+    return err
 
 def PoolWrap(fn,VL,Dict,*args):
     # Try and get name & log file if standard convention has been followed
@@ -31,10 +42,10 @@ def PoolWrap(fn,VL,Dict,*args):
             os.makedirs(LogDir,exist_ok=True)
             with open(LogFile,'w') as f:
                 with redirect_stdout(f), redirect_stderr(f):
-                    err = fn(VL,Dict,*args)
+                    err = _time_fn(fn,VL,Dict,*args)
         else:
             print("Running {}.\n".format(Name),flush=True)
-            err = fn(VL,Dict,*args)
+            err = _time_fn(fn,VL,Dict,*args)
 
         if not err: mess = "{} completed successfully.\n".format(Name)
         else: mess = "{} finishes with errors.\n".format(Name)
@@ -97,35 +108,23 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
 
+    if Args:
+        assert len(Args)==len(Dicts)
+
+    PoolArgs = []
+    for i,_dict in enumerate(Dicts):
+        a = [fnc,VL,_dict]
+        if Args: a.extend(Args[i])
+        PoolArgs.append(a)
+
     try:
-        if launcher == 'Sequential' or len(Dicts)==1:
-            # Run studies one after the other
-            Res = []
-            for args in zip(*PoolArgs):
-                ret = PoolWrap(fnc,*args)
-                Res.append(ret)
-        elif launcher == 'Process':
-            # Run studies in parallel of N using pathos. Only works on single nodes.
-            # Reloading pathos ensures any new paths added to sys.path are included
-            pmp = reload(pathosmp)
-            pool = pmp.ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-            Res = pool.map(PoolWrap,fnclist, *PoolArgs)
-            Res=list(Res)
-            pool.terminate()
-        elif launcher in ('MPI','MPI_Worker'):
-            # Run studies in parallel of N using pyina. Works for multi-node clusters.
-            # onall specifies if there is a worker. True = no worker
-            if launcher == 'MPI' or N==1: onall = True # Cant have worker if N is 1
-            else: onall = False
-
-            # Ensure that sys.path is the same for pyinas MPI subprocess
-            PyPath_orig = os.environ.get('PYTHONPATH',"")
-            addpath = set(sys.path) - set(VL._pypath) # group subtraction
-            addpath = ":".join(addpath) # write in unix style
-            # Update PYTHONPATH is os
-            os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
-
-        Res = Paralleliser(PoolWrap,PoolArgs, method=launcher, nb_parallel=N, **kwargs)
+        if launcher.lower()=='process':
+            kwargs = {'workdir':VL.TEMP_DIR}
+        elif launcher.lower() in ('mpi','mpi_worker'):
+            kwargs = {'workdir':VL.TEMP_DIR,
+                      'addpath':set(sys.path)-set(VL._pypath)}
+        else: kwargs = {}
+        Res = Paralleliser(PoolWrap,PoolArgs, method=launcher, nb_parallel=N,**kwargs)
     except KeyboardInterrupt as e:
         VL.Cleanup()
 

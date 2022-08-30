@@ -48,7 +48,7 @@ def RunJob(Cont_id,Tool,Parameters_Master,Parameters_Var,Project,Simulation):
     data_string = json.dumps(data)
     sock = socket.socket()
     # send a signal to VL_server saying you want to run a CIL container
-    sock.connect(("127.0.0.1", 9999))
+    sock.connect(("0.0.0.0", 9999))
     sock.sendall(data_string.encode('utf-8'))
     data = sock.recv(1024).decode('utf-8') #wait to recive message saying the tool is finished before continuing
     sock.close()
@@ -59,7 +59,7 @@ def Cont_Started(Cont_id):
     data = {"msg":"started","Cont_id":Cont_id}
     data_string = json.dumps(data)
     sock = socket.socket()
-    sock.connect(("127.0.0.1", 9999))
+    sock.connect(("0.0.0.0", 9999))
     sock.sendall(data_string.encode('utf-8'))
     sock.close()
     return
@@ -69,7 +69,7 @@ def Cont_Finished(Cont_id):
     data = {"msg":"finished","Cont_id":Cont_id}
     data_string = json.dumps(data)
     sock = socket.socket()
-    sock.connect(("127.0.0.1", 9999))
+    sock.connect(("0.0.0.0", 9999))
     sock.sendall(data_string.encode('utf-8'))
     sock.close()
     return

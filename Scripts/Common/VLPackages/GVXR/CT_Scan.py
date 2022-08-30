@@ -137,7 +137,6 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     gvxr.resetBeamSpectrum()
     for energy, count in zip(Beam.Energy,Beam.Intensity):
         gvxr.addEnergyBinToSpectrum(energy, Beam.Energy_units, count);
-    
     # Set up the detector
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
@@ -196,7 +195,6 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     for i in range(num_projections):
         # Compute an X-ray image and add it to the list of projections
         projections.append(gvxr.computeXRayImage());
-
         # Update the 3D visualisation
         gvxr.displayScene();
         # Rotate the model by angular_step degrees
@@ -204,7 +202,6 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
             gvxr.rotateNode(label, angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
             total_rotation[2,i]+=angular_step
         theta.append(i * angular_step * math.pi / 180);
-
     # Convert the projections as a Numpy array
     projections = np.array(projections,'uint32');
     #return projections

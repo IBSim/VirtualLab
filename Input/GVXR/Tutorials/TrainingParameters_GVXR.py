@@ -28,7 +28,7 @@ GVXR.Tube_Angle = 12
 # of each region of the model. Can be any of Full name, Symbol
 # or Atomic number (Z). Cureently works for every element in the
 # peridic table up to Francium, that is elements 1-100
-GVXR.Material_list = ["Cu","W","Titanium"]
+GVXR.Material_list = ["H","H","H"]
 # Beam energy (default units are MeV)
 #GVXR.Energy = [0.08]
 # xray beam intensity (no. of x-ray photons) default = 1000
@@ -93,3 +93,4 @@ GVXR.image_format = 'tiff'
 # Inital rotation of cad model in degrees about the x,y and z axis
 GVXR.rotation = [90,0,0]
 GVXR.use_tetra = True
+GVXR.Vulkan=True

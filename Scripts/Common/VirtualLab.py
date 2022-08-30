@@ -67,7 +67,7 @@ class VLSetup():
             data = {"msg":"VirtualLab started","Cont_id":1}
             data_string = json.dumps(data)
             sock = socket.socket()
-            sock.connect(("127.0.0.1", 9999))
+            sock.connect(("0.0.0.0", 9999))
             sock.sendall(data_string.encode('utf-8'))
             sock.close()
             self.Logger('\n############################\n'\

@@ -52,7 +52,7 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation):
 def process(vlab_dir):
     lock = threading.Lock()
     sock = socket.socket()
-    sock.bind(("127.0.0.1", 9999))
+    sock.bind(("0.0.0.0", 9999))
     sock.listen(20)
 
     while True:

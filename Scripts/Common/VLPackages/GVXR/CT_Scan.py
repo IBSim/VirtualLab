@@ -204,7 +204,19 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         theta.append(i * angular_step * math.pi / 180);
     # Convert the projections as a Numpy array
     projections = np.array(projections,dtype='uint32')
-    #projections = normalise_8bituint(projections)
+
+    # Perform the flat-Field correction of raw data
+    dark = np.zeros(projections.shape);
+
+    # Retrieve the total energy
+    energy_bins = gvxr.getEnergyBins(Beam.Energy_units);
+    photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
+
+    total_energy = 0.0;
+    for energy, count in zip(energy_bins, photon_count_per_bin):
+        total_energy += energy * count;
+    flat = np.ones(projections.shape) * total_energy;
+    projections = flat_field_normalize(projections,flat,dark)
     #return projections
     write_image(output_file,projections,im_format=im_format);
 
@@ -235,3 +247,42 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         gvxr.renderLoop();
     gvxr.destroyAllWindows();
     return
+
+def flat_field_normalize(arr, flat, dark, cutoff=None):
+    """
+    Normalize raw projection data using the flat and dark field projections.
+    Agaion using numexpr to Speed up calculations over plain numpy.
+
+    Parameters
+    ----------
+    arr : ndarray
+        3D stack of projections.
+    flat : ndarray
+        3D flat field data.
+    dark : ndarray
+        3D dark field data.
+    cutoff : float, optional
+        Permitted maximum value for the normalized data.
+    
+    Returns
+    -------
+    ndarray
+        Normalized 3D tomographic data.
+    """
+    import numexpr as ne    
+    l = np.float32(1e-6)
+    flat = np.mean(flat, axis=0, dtype=np.float32)
+    dark = np.mean(dark, axis=0, dtype=np.float32)
+    #get range for normalization
+    denom = ne.evaluate('flat-dark')
+    #remove values less than threshold l to avoid divide by zero
+    ne.evaluate('where(denom<l,l,denom)', out=denom)
+    out = ne.evaluate('arr-dark')
+    out = ne.evaluate('out/denom', truediv=True)
+
+    if cutoff is not None:
+        cutoff = np.float32(cutoff)
+        out = ne.evaluate('where(out>cutoff,cutoff,out)')
+    #convert to 8bit int
+    out = (out *255).astype('uint8')
+    return out

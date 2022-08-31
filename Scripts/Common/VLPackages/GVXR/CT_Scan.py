@@ -203,7 +203,8 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
             total_rotation[2,i]+=angular_step
         theta.append(i * angular_step * math.pi / 180);
     # Convert the projections as a Numpy array
-    projections = np.array(projections,'uint32');
+    projections = np.array(projections,dtype='uint32')
+    #projections = normalise_8bituint(projections)
     #return projections
     write_image(output_file,projections,im_format=im_format);
 

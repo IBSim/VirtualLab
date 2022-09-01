@@ -1,20 +1,15 @@
 import numpy as np
-import argparse
-import SimpleITK as sitk
+#import SimpleITK as sitk
 from skimage import io
-from types import SimpleNamespace as Namespace
 import os
 from cil.framework import AcquisitionGeometry, AcquisitionData
-
 # CIL Processors
 from cil.processors import TransmissionAbsorptionConverter
-
 # CIL display tools
-from cil.utilities.display import show2D, show_geometry
+from cil.utilities.display import show_geometry
+from cil.recon import FDK
 
-# From CIL ASTRA plugin
-from cil.plugins.astra import FBP
-
+from Scripts.Common.VLPackages.GVXR.GVXR_utils import write_image
 class GPUError(Exception): 
     def __init__(self, value): 
         self.value = value
@@ -23,19 +18,6 @@ class GPUError(Exception):
         "{}\n\n"\
         "=========================\n\n".format(self.value)
         return Errmsg
-
-def write_image(output_file:str,vox:np.double,im_format:str=None):
-    from PIL import Image, ImageOps
-    import tifffile as tf
-    if (im_format):
-        for I in range(0,np.shape(vox)[2]):
-            im = Image.fromarray(vox[:,:,I])
-            im = ImageOps.grayscale(im)
-            im_output="{}_{}.{}".format(output_file,I,im_format)
-            im.save(im_output)
-    else:
-        im_output="{}.tiff".format(output_file)
-        tf.imwrite(im_output,vox,photometric='minisblack')
 
 def Check_GPU():
     ''' Function to check for working Nvidia-GPU '''
@@ -86,7 +68,19 @@ def rot_ax_dir(object_tilt_deg:float,object_roll_deg:float,GVXR:bool=True):
     rot_matrix = np.matmul(tilt_matrix,roll_matrix)
     rotation_axis_direction = rot_matrix.dot([0,0,-1])
     return rotation_axis_direction
-
+    
+def crop_array(an_array,A=10):
+    shape=np.shape(an_array)
+    B = (shape[0]-10,shape[1]-10,shape[2]-10)
+    an_array[0:A,:,:] = 0
+    an_array[:,0:A,:] = 0
+    an_array[:,:,0:A] = 0
+    an_array[B[0]:shape[0],:,:] = 0
+    an_array[:,B[1]:shape[1],:] = 0
+    an_array[:,:,B[2]:shape[2]] = 0
+    
+    return an_array
+    
 def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         rotation=[0,0,0],Headless=False, num_projections = 180,angular_step=1,
         im_format='tiff',Nikon=None):
@@ -109,22 +103,21 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         rotation_axis_direction=rotation_axis_direction)  \
         .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X/mag,Spacing_Y/mag]) \
         .set_angles(angles=np.arange(0,num_projections,angular_step))
-            
+        ig = ag.get_ImageGeometry()
+        im_data = AcquisitionData(array=im, geometry=ag, deep_copy=False)
+        
         #if not Headless:
         #    show_geometry(ag)
-
-        im_data = AcquisitionData(array=im, geometry=ag, deep_copy=False)
-        im_data.reorder('astra')
+	
         im_data = TransmissionAbsorptionConverter()(im_data)
-        ig = ag.get_ImageGeometry()
         Check_GPU()
-        fbp_recon = FBP(ig, ag,  device = 'gpu')(im_data)
-        recon = fbp_recon.as_array()
-        crop_recon=recon[10:240,10:190,10:190]
-        volume = sitk.GetImageFromArray(recon.astype('uint16'))
-        volume = sitk.GetImageFromArray(recon)
-        volume.SetSpacing([Spacing_X,Spacing_Y,0.5])
-        sitk.WriteImage(volume,f'{work_dir}/{Name}_recon.tiff')
+        im_data.reorder(order='tigre')
+        fdk =  FDK(im_data, ig)
+        recon = fdk.run()
+        recon = recon.as_array()
+        recon=crop_array(recon,A=30)
+        write_image(f'{work_dir}/{Name}_recon',recon);
+        
     except Exception as e:
         return 'Error occurred in CIL : ' + str(e)
     return

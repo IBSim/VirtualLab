@@ -204,7 +204,6 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         theta.append(i * angular_step * math.pi / 180);
     # Convert the projections as a Numpy array
     projections = np.array(projections,dtype='uint32')
-
     # Perform the flat-Field correction of raw data
     dark = np.zeros(projections.shape);
 
@@ -217,9 +216,9 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         total_energy += energy * count;
     flat = np.ones(projections.shape) * total_energy;
     projections = flat_field_normalize(projections,flat,dark)
-    #return projections
+    
     write_image(output_file,projections,im_format=im_format);
-
+    
     # Display the 3D scene (no event loop)
     # Run an interactive loop
     # (can rotate the 3D scene and zoom-in)
@@ -283,6 +282,4 @@ def flat_field_normalize(arr, flat, dark, cutoff=None):
     if cutoff is not None:
         cutoff = np.float32(cutoff)
         out = ne.evaluate('where(out>cutoff,cutoff,out)')
-    #convert to 8bit int
-    out = (out *255).astype('uint8')
     return out

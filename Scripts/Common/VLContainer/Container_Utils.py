@@ -50,7 +50,7 @@ def RunJob(Cont_id,Tool,Parameters_Master,Parameters_Var,Project,Simulation):
     # send a signal to VL_server saying you want to run a CIL container
     sock.connect(("0.0.0.0", 9999))
     sock.sendall(data_string.encode('utf-8'))
-    data = sock.recv(1024).decode('utf-8') #wait to recive message saying the tool is finished before continuing
+    data = sock.recv(1024).decode() #wait to recive message saying the tool is finished before continuing
     sock.close()
     return
 

@@ -28,7 +28,7 @@ GVXR.Tube_Angle = 12
 # of each region of the model. Can be any of Full name, Symbol
 # or Atomic number (Z). Cureently works for every element in the
 # peridic table up to Francium, that is elements 1-100
-GVXR.Material_list = ["H","H","H"]
+GVXR.Material_list = ["Ti","Ti","Ti"]
 # Beam energy (default units are MeV)
 #GVXR.Energy = [0.08]
 # xray beam intensity (no. of x-ray photons) default = 1000

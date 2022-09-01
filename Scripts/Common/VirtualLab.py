@@ -14,12 +14,19 @@ import json
 import VLconfig
 from . import Analytics
 from .VLFunctions import ErrorMessage, WarningMessage
-from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, \
-      Vox as VoxFn, GVXR as GVXRFn, CIL as CILFn
 from .VLContainer import Container_Utils as Utils
 class VLSetup():
     def __init__(self, Simulation, Project,Cont_id=1):
-
+        #######################################################################
+        # import run/setup functions for curently all but CIL
+        from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, \
+        Vox as VoxFn, GVXR as GVXRFn
+        self.MeshFn=MeshFn
+        self.SimFn=SimFn
+        self.DAFn=DAFn
+        self.VoxFn=VoxFn
+        self.GVXRFn=GVXRFn
+        ########################################################################
         # Get parsed args (achieved using the -k flag when launchign VirtualLab).
         self._GetParsedArgs()
         # Copy path at the start for MPI to match sys.path
@@ -183,14 +190,12 @@ class VLSetup():
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
 
+        self.MeshFn.Setup(self,RunMesh, Import)
+        self.SimFn.Setup(self,RunSim, Import)
+        self.DAFn.Setup(self,RunDA, Import)
+        self.VoxFn.Setup(self,RunVox)
+        self.GVXRFn.Setup(self,RunGVXR)
         
-        MeshFn.Setup(self,RunMesh, Import)
-        SimFn.Setup(self,RunSim, Import)
-        DAFn.Setup(self,RunDA, Import)
-        VoxFn.Setup(self,RunVox)
-        GVXRFn.Setup(self,RunGVXR)
-        CILFn.Setup(self,RunCIL)
-
     def ImportParameters(self, Rel_Parameters):
         '''
         Rel_Parameters is a file name relative to the Input directory
@@ -316,47 +321,41 @@ class VLSetup():
 
     def Mesh(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
-        return MeshFn.Run(self,**kwargs)
+        return self.MeshFn.Run(self,**kwargs)
 
     def devMesh(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
-        return MeshFn.Run(self,**kwargs)
+        return self.MeshFn.Run(self,**kwargs)
 
     def Sim(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
-        return SimFn.Run(self,**kwargs)
+        return self.SimFn.Run(self,**kwargs)
 
     def devSim(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
-        return SimFn.Run(self,**kwargs)
+        return self.SimFn.Run(self,**kwargs)
 
     def DA(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
-        return DAFn.Run(self,**kwargs)
+        return self.DAFn.Run(self,**kwargs)
 
 #hook in for cad2vox
     def Voxelise(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
-        return VoxFn.Run(self,**kwargs)
+        return self.VoxFn.Run(self,**kwargs)
 # Hook for GVXR
     def CT_Scan(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
-        return GVXRFn.Run(self,**kwargs)
- #Hook for CIL       
+        return self.GVXRFn.Run(self,**kwargs)
+     #Hook for CIL       
     def CT_Recon(self,**kwargs):
         # if in main contianer submit job request
-        if self.Container==1:
-            Utils.RunJob(Cont_id=1,Tool="CIL",
-            Parameters_Master=self.Parameters_Master_str,
-            Parameters_Var=self.Parameters_Var_str,
-            Project=self.Project,
-            Simulation=self.Simulation)
-            return
-        # if in secondary container try to run CIL
-        else:
-            kwargs = self._UpdateArgs(kwargs)
-            return CILFn.Run(self,**kwargs)
-
+        Utils.RunJob(Cont_id=1,Tool="CIL",
+        Parameters_Master=self.Parameters_Master_str,
+        Parameters_Var=self.Parameters_Var_str,
+        Project=self.Project,
+        Simulation=self.Simulation)
+        return
     def devDA(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return DAFn.Run(self,**kwargs)
@@ -442,3 +441,91 @@ class VLSetup():
         for key in Changes:
             ArgDict[key] = self._ParsedArgs[key]
         return ArgDict
+        
+class CIL_Setup(VLSetup):
+    def __init__(self, Simulation, Project,Cont_id=2):
+    	#######################################################################
+        # import run/setup functions for CIL
+        from .VLTypes import CIL as CILFn
+        self.CILFn = CILFn
+        ########################################################################
+    	 # Get parsed args (achieved using the -k flag when launchign VirtualLab).
+        self._GetParsedArgs()
+        # Copy path at the start for MPI to match sys.path
+        self._pypath = sys.path.copy()
+        self.Container=Cont_id
+        # ======================================================================
+        # Define variables
+        self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
+        self.Project = self._ParsedArgs.get('Project',Project)
+
+        # ======================================================================
+        # Specify default settings
+        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
+                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+
+        # ======================================================================
+        # Define path to scripts
+        self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
+        self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
+        # Add these to path
+        sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
+
+        #=======================================================================
+        # Define & create temporary directory for work to be saved to
+        self._TempDir = VLconfig.TEMP_DIR
+        # timestamp
+        self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
+        # Unique ID
+        stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
+        output = stream.readlines()
+        ver,branch = output[0].split()[0],output[1].strip()
+        self._ID ="{}_{}_{}".format(ver,branch,self._time)
+
+        self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
+        try:
+            os.makedirs(self.TEMP_DIR)
+        except FileExistsError:
+            # Unlikely this would happen. Suffix random number to direcory name
+            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
+            os.makedirs(self.TEMP_DIR)
+        
+    def Parameters(self, Parameters_Master, Parameters_Var=None, RunCIL=False):
+        # Update args with parsed args
+        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
+        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
+        RunCIL = self._ParsedArgs.get('RunCIL',RunCIL)
+        
+        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
+        VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR']
+        #Note: The call to GetParams converts params_master/var into Namespaces
+        # however we need to origional strings for passing into other containters.
+        # So we will ned to get them here.
+        self.Parameters_Master_str = Parameters_Master
+        self.Parameters_Var_str = Parameters_Var
+        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
+
+        CILFn.Setup(self,RunCIL)
+        
+    def _GetParsedArgs(self):
+        self._ParsedArgs = {}
+        for arg in sys.argv[1:]:
+            split=arg.split('=')
+            if len(split)!=2:
+                continue
+            var,value = split
+            if value=='False':value=False
+            elif value=='True':value=True
+            elif value=='None':value=None
+            elif value.isnumeric():value=int(value)
+            else:
+                try: value=float(value)
+                except: ValueError
+
+            self._ParsedArgs[var]=value
+
+     #Hook for CIL       
+    def CT_Recon(self,**kwargs):
+        kwargs = self._UpdateArgs(kwargs)
+        return CILFn.Run(self,**kwargs)

@@ -11,8 +11,8 @@ parser.add_argument("-s", "--Simulation", help = "Sub-Directory for simulation d
 args = parser.parse_args()
 Cont_id=2
 os.chdir('/home/ibsim/VirtualLab')
-from Scripts.Common.VirtualLab import VLSetup
-VirtualLab=VLSetup(
+from Scripts.Common.VirtualLab import CIL_Setup
+VirtualLab=CIL_Setup(
            args.Simulation,
            args.Project,
            Cont_id)
@@ -22,11 +22,6 @@ VirtualLab.Settings(Mode='Interactive')
 VirtualLab.Parameters(
            args.Parameters_Master,
            args.Parameters_Var,
-           RunMesh=False,
-           RunSim=False, 
-           RunDA=False,    
-           RunVox=False, 
-           RunGVXR=False,
            RunCIL=True)
 
 VirtualLab.CT_Recon()

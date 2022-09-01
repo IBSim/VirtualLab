@@ -52,6 +52,7 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation):
 def process(vlab_dir):
     lock = threading.Lock()
     sock = socket.socket()
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
     sock.bind(("0.0.0.0", 9999))
     sock.listen(20)
 
@@ -82,11 +83,12 @@ def process(vlab_dir):
                 proc = subprocess.check_call('singularity exec --contain --writable-tmpfs --nv {} {}'.format(call_string,command), shell=True)
             except Exception:
                 lock.release()
+                client_socket.shutdown(socket.SHUT_RDWR)
                 client_socket.close()
                 raise 
             waiting_cnt_sockets[str(target_id)] = {"socket": client_socket, "id": container_id}
             lock.release()
-            client_socket.close()
+            #client_socket.close()
 
         elif event == 'finished':
             lock.acquire()
@@ -96,10 +98,13 @@ def process(vlab_dir):
                       'notifying source container {}'.format(container_id, waiting_cnt_sockets[container_id]["id"]))
                 waiting_cnt_socket = waiting_cnt_sockets[container_id]["socket"]
                 waiting_cnt_socket.sendall('Success'.encode())
+                waiting_cnt_socket.shutdown(socket.SHUT_RDWR)
                 waiting_cnt_socket.close()
             lock.release()
+            client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
         else:
+            client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
             raise ValueError()
 

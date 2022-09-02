@@ -19,7 +19,7 @@ RUN apt-get install -y libgl1-mesa-glx libgl1-mesa-dev libglu1-mesa-dev  freeglu
 ENV PATH /opt/conda/bin:$PATH
 
 ENV CONDA_DEFAULT_ENV paramak_env
-RUN conda create --name paramak_env python=3.8
+RUN conda create --name paramak_env python=3.9
 
 ENV PATH /opt/conda/envs/paramak_env/bin:$PATH
 RUN conda init bash \

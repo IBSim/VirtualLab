@@ -93,4 +93,4 @@ GVXR.image_format = 'tiff'
 # Inital rotation of cad model in degrees about the x,y and z axis
 GVXR.rotation = [90,0,0]
 GVXR.use_tetra = True
-GVXR.Vulkan=True
+GVXR.Vulkan=False

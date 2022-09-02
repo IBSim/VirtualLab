@@ -11,6 +11,7 @@ import json
         Note: Current container ID's are:
         1 - Base VirtualLab
         2 - CIL
+        3 - GVXR
 
         If/when you want to add more containers you will need to give 
         them a unique id in the container_id's dict in VL_sever.py 
@@ -19,7 +20,7 @@ import json
 '''
 waiting_cnt_sockets = {}
 
-Container_IDs = {"VLab":1,"CIL":2}
+Container_IDs = {"VLab":1,"CIL":2,"GVXR":3}
 def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation):
     ''' Function to format string for bindpoints and container to call specified tool.'''
 ##### Format cmd argumants #########
@@ -42,7 +43,7 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation):
 
     elif Tool == "GVXR":
         call_string = '-B {}:/home/ibsim/VirtualLab VL_GVXR.sif'.format(vlab_dir)
-        command = 'python'
+        command = '/home/ibsim/VirtualLab/Run_GVXR.sh {} {} {} {}'.format(param_master,param_var,Project,Simulation)
         
     # Add others as need arises
     else:

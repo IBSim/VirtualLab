@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+sudo -k
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 #########################
@@ -19,10 +20,41 @@ sudo chown ${SUDO_USER} -R ${VL_DIR}
 # to add: make sure pip and conda ownership issues are fixed if needed.
 }
 ########################
+### Check if Conda is installed
+search_var=anaconda*
+conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+else
+  search_var=miniconda*
+  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+  if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+  fi
+fi
+### If conda found activate environment
+### If no conda, prerequisites are assumed installed in local python
+if hash conda 2>/dev/null; then
+  USE_CONDA=true
+  CONDAENV="$(basename -- $VL_DIR)"
+
+  if conda info --envs | grep -q $CONDAENV; then
+      echo "Found existing VirtualLab Conda environment"      
+  else
+      echo "VirtualLab conda environment not found so creating."
+      conda create -n $CONDAENV
+  fi
+  conda activate $CONDAENV
+
+else
+    USE_CONDA=false
+fi
+#################################################################
 export CC=/usr/bin/gcc
 export CXX=/usr/bin/g++
 source ${VL_DIR}/VLconfig.py 
 GVXR_DIR=${VL_DIR}/third_party/GVXR
+export GVXR_INSTALL_DIR=${GVXR_DIR}_Install
 mkdir -p ${GVXR_DIR}
 cd ${GVXR_DIR}
 #install apt packages
@@ -58,22 +90,28 @@ mv download swig.tar.gz
 tar -xzf swig.tar.gz
 cd swig-4.0.2
 sudo apt install libpcre3 libpcre3-dev -y
-./configure
+./configure --prefix=${GVXR_INSTALL_DIR}/swig
 make
 make install
+export SWIG_PATH=${GVXR_INSTALL_DIR}/swig
+sudo echo "export SWIG_PATH=${GVXR_INSTALL_DIR}/swig" >> $USER_HOME/.VLprofile
+export PATH=$SWIG_PATH:$PATH
+
 cd ${GVXR_DIR}
-#conda activate VirtualLab
 # install python packages
-#conda install matplotlib
-#pip install numexpr
+if ${USE_CONDA}; then
+    conda install matplotlib scikit-image pydantic numexpr
+else
+    sudo -u ${SUDO_USER:-$USER} pip3 install matplotlib scikit-image pydantic numexpr
+fi
 #conda install scikit-image
 #grab the GVXR Source
-svn checkout svn://zedbluffer@svn.code.sf.net/p/gvirtualxray/code/branches/use-xraylib gvirtualxray-code -r 2182
-cd gvirtualxray-code
+wget https://sourceforge.net/projects/gvirtualxray/files/1.1/gVirtualXRay-1.1.5-Source.zip/download
+mv download gVirtualXRay-1.1.5-Source.zip
+unzip gVirtualXRay-1.1.5-Source.zip
+cd gVirtualXRay-1.1.5
 mkdir -p bin-release
-export GVXR_INSTALL_DIR=${GVXR_DIR}_Install
 
-pwd
 cd bin-release
 ${GVXR_DIR}/cmake-3.23.1/bin/cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 -DCMAKE_INSTALL_PREFIX:STRING=$GVXR_INSTALL_DIR \
@@ -87,12 +125,19 @@ ${GVXR_DIR}/cmake-3.23.1/bin/cmake -DCMAKE_BUILD_TYPE:STRING=Release \
 -DBUILD_WRAPPER_RUBY:BOOL=OFF \
 -DBUILD_WRAPPER_TCL:BOOL=OFF \
 -DUSE_LIBTIFF:BOOL=OFF \
--S ${GVXR_DIR}/gvirtualxray-code -B $PWD
+-DCMAKE_POLICY_DEFAULT_CMP0072=NEW \
+-S .. -B $PWD
 
 # now one final make build GVXR.
 make -j6
 make install
 echo "Adding GVXR to PYTHONPATH"
-sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}/gvxrWrapper-1.0.6/python3:\${PYTHONPATH}" >> $USER_HOME/.VLprofile
-source $USER_HOME/.VLprofile
-cleanup()
+sudo echo "export PYTHONPATH=${GVXR_INSTALL_DIR}/gvxrWrapper-1.0.5/python3:\${PYTHONPATH}" >> $USER_HOME/.VLprofile
+source ${USER_HOME}/.VLprofile
+echo "Installing Speckpy"
+cd ${VL_DIR}/third_party
+git clone https://bitbucket.org/spekpy/spekpy_release.git
+cd spekpy_release
+pip install .
+cd ${VL_DIR}
+cleanup

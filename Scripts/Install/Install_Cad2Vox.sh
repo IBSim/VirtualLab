@@ -84,14 +84,13 @@ if ${USE_CONDA}; then
     conda install -y cmake numpy pybind11 tifffile pytest pillow pandas
     conda install -y -c conda-forge xtensor xtl meshio xtensor-python
 else
-    pip3 install --user -r requirements.txt
+    sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install --user -r requirements.txt
 fi
 
-pip install cad2vox
-
+sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install cad2vox
 # Run Test Suite
-if ${CAD2VOX_WITH_CUDA}; then
-pytest
-else
-pytest -K "not CUDA"
-fi
+#if ${CAD2VOX_WITH_CUDA}; then
+#pytest
+#else
+python3 -m pytest -k "not CUDA"
+#fi

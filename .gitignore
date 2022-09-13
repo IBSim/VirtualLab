@@ -29,7 +29,7 @@ Input/*/*
 !Input/*/.dev/
 !Input/Unit/*
 !tests/
-
+!Containers/
 # Ensure that only some Run files will be included in the RunFiles directory
 !RunFiles/
 

@@ -92,32 +92,43 @@ if __name__ == "__main__":
 # rerad in CMD arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--vlab", help = "Path to Directory on host containing VirtualLab (default is assumed to be curent working directory).", default=os.getcwd())
-    parser.add_argument("-i", "--Run_file", help = "Runfile to use (default is assumed to be curent working directory).", default="Run.py")
+    parser.add_argument("-f", "--Run_file", help = "Runfile to use (default is assumed to be curent working directory).", default="Run.py")
     parser.add_argument("-D", "--Docker", help="Flag to use docker on Linux host instead of defaulting to Singularity. \
                          This will be ignored on Mac/Windows as Docker is the default.",action='store_true')
+    parser.add_argument("-C", "--Container", help="Flag to use tools in Containers.",action='store_true')
 
     args = parser.parse_args()
     vlab_dir=os.path.abspath(args.vlab)
 # Set flag to allow cmd switch between singularity and docker when using linux host.
     use_singularity = check_platform() and not args.Docker
     Run_file = args.Run_file
-    # start server listening for incoming jobs on seperate thread
-    lock = threading.Lock()
-    thread = threading.Thread(target=process,args=(vlab_dir,use_singularity))
-    thread.daemon = True
+    Container = args.Container
+    if Container:
+        # start server listening for incoming jobs on seperate thread
+        lock = threading.Lock()
+        thread = threading.Thread(target=process,args=(vlab_dir,use_singularity))
+        thread.daemon = True
 
 
-    thread.start()
-    #start VirtualLab
-    lock.acquire()
-    if use_singularity:
-        proc=subprocess.Popen('singularity exec --no-home --writable-tmpfs --nv -B /usr/share/glvnd -B {}:/home/ibsim/VirtualLab VL_GVXR.sif '
-                        'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{}'.format(vlab_dir,Run_file), shell=True)
+        thread.start()
+        #start VirtualLab
+        lock.acquire()
+        if use_singularity:
+            proc=subprocess.Popen('singularity exec --no-home --writable-tmpfs --nv -B /usr/share/glvnd -B {}:/home/ibsim/VirtualLab VL_GVXR.sif '
+                            'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{}'.format(vlab_dir,Run_file), shell=True)
+        else:
+            # Assume using Docker
+            proc=subprocess.Popen('docker run -it -v {}:/home/ibsim/VirtualLab ibsim/base '
+                            'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{}'.format(vlab_dir,Run_file), shell=True)
+
+        lock.release()
+        # wait untill virtualLab is done before closing
+        proc.wait()
     else:
-        # Assume using Docker
-        proc=subprocess.Popen('docker run -it -v {}:/home/ibsim/VirtualLab ibsim/base '
-                        'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{}'.format(vlab_dir,Run_file), shell=True)
+        # use native version
+        print("Warning: VirtualLab is Running in native mode Some tools will be unavalible.\n"
+            " Since version 2.0 VirtualLab is being setup to run inside a container with \n "
+            " Docker/Singularity. To use this container functionality, and tools which depend \n"
+            " on it you will need to install docker or Singularity and pass in the -C option. \n")
 
-    lock.release()
-    # wait untill virtualLab is done before closing
-    proc.wait()
+        proc=subprocess.check_call('VirtualLab -f {}'.format(Run_file), shell=True)

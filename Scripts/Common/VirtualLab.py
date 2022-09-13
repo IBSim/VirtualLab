@@ -12,7 +12,6 @@ from importlib import import_module, reload
 import atexit
 import json
 import VLconfig
-from . import Analytics
 from .VLFunctions import ErrorMessage, WarningMessage
 from .VLContainer import Container_Utils as Utils
 
@@ -392,7 +391,7 @@ class VLSetup():
         sys.exit(mess)
 
     def _Cleanup(self,Cleanup=True):
-        
+        from . import Analytics
         # Running with base virtualLab so Report overview of VirtualLab usage
         if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
             MeshNb = self._Analytics.get('Mesh',0)

@@ -15,6 +15,7 @@ import VLconfig
 from . import Analytics
 from .VLFunctions import ErrorMessage, WarningMessage
 from .VLContainer import Container_Utils as Utils
+
 class VLSetup():
     def __init__(self, Simulation, Project,Cont_id=1):
         #######################################################################
@@ -180,7 +181,7 @@ class VLSetup():
         Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR']
+        VLNamespaces = ['Mesh','Sim','DA','Vox']
         #Note: The call to GetParams converts params_master/var into Namespaces
         # however we need to origional strings for passing into other containters.
         # So we will ned to get them here.
@@ -391,7 +392,8 @@ class VLSetup():
         sys.exit(mess)
 
     def _Cleanup(self,Cleanup=True):
-        # Report overview of VirtualLab usage
+        
+        # Running with base virtualLab so Report overview of VirtualLab usage
         if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
             MeshNb = self._Analytics.get('Mesh',0)
             SimNb = self._Analytics.get('Sim',0)
@@ -399,16 +401,10 @@ class VLSetup():
             Category = "{}_Overview".format(self.Simulation)
             Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
             Analytics.Run(Category,Action,self._ID)
-        if self.Container==1:    
-            exitstr = '\n#############################\n'\
-                        '### VirtualLab Terminated ###\n'\
-                        '#############################\n'\
-                        
-        else:
-            Utils.Cont_Finished(self.Container)
-            exitstr = '\n#############################\n'\
-                        '### Container Terminated ###\n'\
-                        '#############################\n'\
+            
+        exitstr = '\n#############################\n'\
+                    '### VirtualLab Terminated ###\n'\
+                    '#############################\n'\
         
         if not Cleanup:
             exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
@@ -445,6 +441,7 @@ class VLSetup():
         for key in Changes:
             ArgDict[key] = self._ParsedArgs[key]
         return ArgDict
+        
 ##############################     CIL     #######################################      
 class CIL_Setup(VLSetup):
     def __init__(self, Simulation, Project,Cont_id=2):
@@ -481,11 +478,6 @@ class CIL_Setup(VLSetup):
         self._TempDir = VLconfig.TEMP_DIR
         # timestamp
         self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
-        # Unique ID
-        stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
-        output = stream.readlines()
-        ver,branch = output[0].split()[0],output[1].strip()
-        self._ID ="{}_{}_{}".format(ver,branch,self._time)
 
         self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
         try:
@@ -502,7 +494,8 @@ class CIL_Setup(VLSetup):
         RunCIL = self._ParsedArgs.get('RunCIL',RunCIL)
         
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh','Sim','DA','Vox']
+        # Note: CIL uses the GVXR namespace since many of the settings overlap.
+        VLNamespaces = ['GVXR']
         #Note: The call to GetParams converts params_master/var into Namespaces
         # however we need to origional strings for passing into other containters.
         # So we will ned to get them here.
@@ -512,32 +505,29 @@ class CIL_Setup(VLSetup):
 
         self.CILFn.Setup(self,RunCIL)
         
-    def _GetParsedArgs(self):
-        self._ParsedArgs = {}
-        for arg in sys.argv[1:]:
-            split=arg.split('=')
-            if len(split)!=2:
-                continue
-            var,value = split
-            if value=='False':value=False
-            elif value=='True':value=True
-            elif value=='None':value=None
-            elif value.isnumeric():value=int(value)
-            else:
-                try: value=float(value)
-                except: ValueError
-
-            self._ParsedArgs[var]=value
-
      #Hook for CIL       
     def CT_Recon(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return self.CILFn.Run(self,**kwargs)
+
+    def _Cleanup(self,Cleanup=True):
+
+        exitstr = '\n#############################\n'\
+                    '####### CIL Terminated ######\n'\
+                    '#############################\n'\
+        
+        if not Cleanup:
+            exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
+        elif os.path.isdir(self.TEMP_DIR):
+            shutil.rmtree(self.TEMP_DIR)
+
+        print(exitstr)
+
 ################################     GVXR   ###################################
 class GVXR_Setup(VLSetup):
     def __init__(self, Simulation, Project,Cont_id=2):
     	#######################################################################
-        # import run/setup functions for CIL
+        # import run/setup functions for GVXR
         from .VLTypes import GVXR as GVXRFn
         self.GVXRFn = GVXRFn
         ########################################################################
@@ -569,11 +559,6 @@ class GVXR_Setup(VLSetup):
         self._TempDir = VLconfig.TEMP_DIR
         # timestamp
         self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
-        # Unique ID
-        stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
-        output = stream.readlines()
-        ver,branch = output[0].split()[0],output[1].strip()
-        self._ID ="{}_{}_{}".format(ver,branch,self._time)
 
         self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
         try:
@@ -587,10 +572,9 @@ class GVXR_Setup(VLSetup):
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
         Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
-        RunCIL = self._ParsedArgs.get('RunGVXR',RunGVXR)
+        RunGVXR = self._ParsedArgs.get('RunGVXR',RunGVXR)
         
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        #VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR']
         VLNamespaces = ['GVXR']
         #Note: The call to GetParams converts params_master/var into Namespaces
         # however we need to origional strings for passing into other containters.
@@ -599,26 +583,23 @@ class GVXR_Setup(VLSetup):
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
-        self.GVXRFn.Setup(self,RunCIL)
+        self.GVXRFn.Setup(self,RunGVXR)
         
-    def _GetParsedArgs(self):
-        self._ParsedArgs = {}
-        for arg in sys.argv[1:]:
-            split=arg.split('=')
-            if len(split)!=2:
-                continue
-            var,value = split
-            if value=='False':value=False
-            elif value=='True':value=True
-            elif value=='None':value=None
-            elif value.isnumeric():value=int(value)
-            else:
-                try: value=float(value)
-                except: ValueError
 
-            self._ParsedArgs[var]=value
-
-     #Hook for CIL       
+     #Hook for GVXR       
     def CT_Scan(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return self.GVXRFn.Run(self,**kwargs)
+
+    def _Cleanup(self,Cleanup=True):
+
+        exitstr = '\n#############################\n'\
+                    '###### GVXR Terminated ######\n'\
+                    '#############################\n'\
+        
+        if not Cleanup:
+            exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
+        elif os.path.isdir(self.TEMP_DIR):
+            shutil.rmtree(self.TEMP_DIR)
+
+            print(exitstr)

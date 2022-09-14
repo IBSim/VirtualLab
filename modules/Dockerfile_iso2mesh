@@ -1,0 +1,14 @@
+FROM ubuntu:22.04
+
+# Get Ubuntu updates and basic packages
+USER ROOT
+RUN apt-get update && \
+    apt-get upgrade -y --with-new-pkgs -o Dpkg::Options::="--force-confold" && \
+    apt-get install -y \
+    octave-iso2mesh \
+    liboctave-dev \
+    python3-pip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    
+RUN pip install meshio[all]

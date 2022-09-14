@@ -6,13 +6,14 @@ import math
 import meshio
 from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
 
-class GVXRError(Exception): 
+class GVXRError(Exception):
+    '''Custom error class to format error message in a pretty way.'''
     def __init__(self, value): 
         self.value = value
     def __str__(self):
         Errmsg = "\n========= Error =========\n\n"\
-        "{}\n\n"\
-        "=========================\n\n".format(self.value)
+        f"{self.value}\n\n"\
+        "=========================\n\n"
         return Errmsg
 
 def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_list,Headless=False,
@@ -34,8 +35,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     else:
     # or with window and OpenGL
         gvxr.createWindow();
-        gvxr.setWindowSize(512, 512);
-    
+        gvxr.setWindowSize(512, 512); 
 
     # Load the data
     print("Load the data");
@@ -191,7 +191,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     # calculate the rotation vector in model co-ordiantes that points
     # along the global axis
     # this is needed to alow us to rotate around the global axis rather than the cad model axis.
-    global_axis_vec = world_to_model_axis(total_rotation[:,0],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
+    global_axis_vec = world_to_model_axis(total_rotation[:,0],global_axis=[0,0,1])
     for i in range(num_projections):
         # Compute an X-ray image and add it to the list of projections
         projections.append(gvxr.computeXRayImage());
@@ -216,7 +216,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         total_energy += energy * count;
     flat = np.ones(projections.shape) * total_energy;
     projections = flat_field_normalize(projections,flat,dark)
-    
+    breakpoint()
     write_image(output_file,projections,im_format=im_format);
     
     # Display the 3D scene (no event loop)
@@ -268,7 +268,7 @@ def flat_field_normalize(arr, flat, dark, cutoff=None):
     ndarray
         Normalized 3D tomographic data.
     """
-    import numexpr as ne    
+    import numexpr as ne  
     l = np.float32(1e-6)
     flat = np.mean(flat, axis=0, dtype=np.float32)
     dark = np.mean(dark, axis=0, dtype=np.float32)

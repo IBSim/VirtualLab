@@ -1,30 +1,30 @@
-from ast import Raise
+'''
+        Script to enable comunication with and spawning of containers.
+        #######################################################################
+        Note: Current container ID's are:
+        1 - Base VirtualLab
+        2 - CIL
+        3 - GVXR
+        4 - Container tests
+
+        If/when you want to add more containers you will need to give 
+        them a unique id in the container_id's dict in this file 
+        and add it to this list as a courtesy so everyone is on the same page
+        #######################################################################
+'''
 import socket
-import sys
 import subprocess
 import threading
 import argparse
 import os
 import json
 from Scripts.Common.VLContainer.container_tools import check_platform,Format_Call_Str
-''' Script to enable comunication with and spawning of containers.
-        #######################################################################
-        Note: Current container ID's are:
-        1 - Base VirtualLab
-        2 - CIL
-        3 - GVXR
 
-        If/when you want to add more containers you will need to give 
-        them a unique id in the container_id's dict in VL_sever.py 
-        and add it to this list as a courtesy so everyone is on the same page
-        #######################################################################
-'''
 waiting_cnt_sockets = {}
 
-Container_IDs = {"VLab":1,"CIL":2,"GVXR":3}
-
+Container_IDs = {"VLab":1,"CIL":2,"GVXR":3,"Test":4}
 def process(vlab_dir,use_singularity):
-    lock = threading.Lock()
+    sock_lock = threading.Lock()
     sock = socket.socket()
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
     sock.bind(("0.0.0.0", 9999))
@@ -37,22 +37,23 @@ def process(vlab_dir,use_singularity):
         rec_dict = json.loads(data)
         event = rec_dict["msg"]
         container_id = rec_dict["Cont_id"]
-        print('Server - received "{}" event from container {} at {}'.format(event, container_id, client_address))
+        print('Server - received "{event}" event from container {container_id} at {client_address}')
 
         if event == 'VirtualLab started':
             client_socket.close()
         elif event == 'RunJob':
-            Tool = rec_dict["Tool"]
+            tool = rec_dict["Tool"]
             param_master = rec_dict["Parameters_Master"]
             param_var = rec_dict["Parameters_Var"]
-            Project = rec_dict["Project"]
-            Simulation = rec_dict["Simulation"]
+            project = rec_dict["Project"]
+            simulation = rec_dict["Simulation"]
 
-            lock.acquire()
-            options, command = Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_singularity)
-            target_id = Container_IDs[Tool]
-            print('Server - starting a new container with ID: {} '
-                  'as requested by container {}'.format(target_id, container_id))
+            sock_lock.acquire()
+            options, command = Format_Call_Str(tool,vlab_dir,param_master,
+            param_var,project,simulation,use_singularity)
+            target_id = Container_IDs[tool]
+            print(f'Server - starting a new container with ID: {target_id} '
+                  'as requested by container {container_id}')
             # setup comand to run docker or singularity
             if use_singularity:
                 container_cmd = 'singularity exec --contain --writable-tmpfs'
@@ -60,22 +61,23 @@ def process(vlab_dir,use_singularity):
                 container_cmd = 'docker run -it'
 
             try:
-                proc = subprocess.check_call('{} {} {}'.format(container_cmd,options,command), shell=True)
+                proc = subprocess.check_call(f'{container_cmd} {options} {command}',
+                     shell=True)
             except Exception:
                 lock.release()
                 client_socket.shutdown(socket.SHUT_RDWR)
                 client_socket.close()
-                raise 
+                raise
             waiting_cnt_sockets[str(target_id)] = {"socket": client_socket, "id": container_id}
             lock.release()
             #client_socket.close()
 
         elif event == 'finished':
-            lock.acquire()
+            sock_lock.acquire()
             container_id = str(container_id)
             if container_id in waiting_cnt_sockets:
-                print('Server - container {} finished working, '
-                      'notifying source container {}'.format(container_id, waiting_cnt_sockets[container_id]["id"]))
+                print(f'Server - container {container_id} finished working, '
+                      f'notifying source container {waiting_cnt_sockets[container_id]["id"]}')
                 waiting_cnt_socket = waiting_cnt_sockets[container_id]["socket"]
                 waiting_cnt_socket.sendall('Success'.encode())
                 waiting_cnt_socket.shutdown(socket.SHUT_RDWR)
@@ -91,11 +93,15 @@ def process(vlab_dir,use_singularity):
 if __name__ == "__main__":
 # rerad in CMD arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--vlab", help = "Path to Directory on host containing VirtualLab (default is assumed to be curent working directory).", default=os.getcwd())
-    parser.add_argument("-f", "--Run_file", help = "Runfile to use (default is assumed to be curent working directory).", default="Run.py")
-    parser.add_argument("-D", "--Docker", help="Flag to use docker on Linux host instead of defaulting to Singularity. \
-                         This will be ignored on Mac/Windows as Docker is the default.",action='store_true')
-    parser.add_argument("-C", "--Container", help="Flag to use tools in Containers.",action='store_true')
+    parser.add_argument("-d", "--vlab", help = "Path to Directory on host containing \
+     VirtualLab (default is assumed to be curent working directory).", default=os.getcwd())
+    parser.add_argument("-f", "--Run_file", help = "Runfile to use (default is assumed to \
+        be curent working directory).", default="Run.py")
+    parser.add_argument("-D", "--Docker", help="Flag to use docker on Linux host instead of \
+        defaulting to Singularity.This will be ignored on Mac/Windows as Docker is the default.",
+        action='store_true')
+    parser.add_argument("-C", "--Container", help="Flag to use tools in Containers.",
+                        action='store_true')
 
     args = parser.parse_args()
     vlab_dir=os.path.abspath(args.vlab)
@@ -114,12 +120,13 @@ if __name__ == "__main__":
         #start VirtualLab
         lock.acquire()
         if use_singularity:
-            proc=subprocess.Popen('singularity exec --no-home --writable-tmpfs --nv -B /usr/share/glvnd -B {}:/home/ibsim/VirtualLab VL_GVXR.sif '
-                            'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{}'.format(vlab_dir,Run_file), shell=True)
+            proc=subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B \
+                            /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab Containers/VL_GVXR.sif '
+                            'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
         else:
             # Assume using Docker
-            proc=subprocess.Popen('docker run -it -v {}:/home/ibsim/VirtualLab ibsim/base '
-                            'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{}'.format(vlab_dir,Run_file), shell=True)
+            proc=subprocess.Popen(f'docker run -it -v {vlab_dir}:/home/ibsim/VirtualLab ibsim/base '
+                            'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
 
         lock.release()
         # wait untill virtualLab is done before closing
@@ -131,4 +138,4 @@ if __name__ == "__main__":
             " Docker/Singularity. To use this container functionality, and tools which depend \n"
             " on it you will need to install docker or Singularity and pass in the -C option. \n")
 
-        proc=subprocess.check_call('VirtualLab -f {}'.format(Run_file), shell=True)
+        proc=subprocess.check_call(f'VirtualLab -f {Run_file}', shell=True)

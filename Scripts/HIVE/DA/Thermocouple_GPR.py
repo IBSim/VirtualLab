@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 from importlib import import_module
 import pathos.multiprocessing as pathosmp
+import random
 
 import VLFunctions as VLF
 from Scripts.Common.tools import MEDtools
@@ -21,230 +22,53 @@ dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
 torch.set_default_dtype(torch_dtype)
 
-def Fixed_TC(VL,DADict):
-    ''' Create model mapping inputs to thermocouple temperatures at fixed points'''
-    # np.random.seed(100)
+# ==============================================================================
+def Surrogate_FEA(VL,DADict):
+    ''' Plot FEA results alognside surogate results'''
     Parameters = DADict['Parameters']
 
-    if getattr(Parameters,'CompileData',None):
-        CompileData(VL,DADict)
+    # ==========================================================================
+    # Load temperature field model & test data
+    ModelDir = "{}/{}".format(VL.PROJECT_DIR,Parameters.ModelDir)
+    likelihood, model, Dataspace, ParametersMod = GPR.LoadModel(ModelDir)
+    VT = np.load("{}/VT.npy".format(ModelDir))
+
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.Data[0])
+    DataIn, DataOut = ML.GetDataML(DataFile_path, *Parameters.Data[1:])
+
+    DataOut_compress = DataOut.dot(VT.T)
+    ML.DataspaceAdd(Dataspace, Data=[DataIn,DataOut_compress])
 
     # ==========================================================================
-    # Get Train & test data from file DataFile_path
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
 
-    TrainIn,_TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
-                           Parameters.InputArray, Parameters.OutputArray,
-                           getattr(Parameters,'TrainNb',-1))
-    TestIn,_TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData,
-                          Parameters.InputArray, Parameters.OutputArray,
-                          getattr(Parameters,'TestNb',-1))
-
-    InputAttrs = ML.GetMLattrs(DataFile_path, Parameters.TrainData,Parameters.InputArray)
-    FeatureNames = InputAttrs.get('Parameters',None)
-
-
-    # Get temperature at points using surface temps
-    meshfile = "{}/SampleHIVE.med".format(VL.MESH_DIR)
-    NbTC = len(Parameters.TCLocations)
-    NbTrain,NbTest = TrainIn.shape[0],TestIn.shape[0]
-    TrainOut,TestOut = np.zeros((NbTrain,NbTC)), np.zeros((NbTest,NbTC))
-    for i,(SurfaceName,x1,x2) in enumerate(Parameters.TCLocations):
-        nds, weights = Get_Interp(meshfile,SurfaceName,x1,x2)
-        TrainOut[:,i] = (_TrainOut[:,nds]*weights).sum(axis=1)
-        TestOut[:,i] = (_TestOut[:,nds]*weights).sum(axis=1)
-
-    LabelNames = "Thermocouples placed at the following locations:\n{}".format(Parameters.TCLocations)
-
-
-    # ==========================================================================
-    # Model summary
-    TrainNb,TestNb = TrainIn.shape[0],TestIn.shape[0]
-    NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
-
-    ML.ModelSummary(NbInput,NbOutput,TrainNb,TestNb,FeatureNames,LabelNames)
-
-    # ==========================================================================
-    # Scale data
-    # Scale input to [0,1] (based on parameter space)
-    PS_bounds = np.array(Parameters.ParameterSpace).T
-    InputScaler = ML.ScaleValues(PS_bounds)
-    TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
-    TestIn_scale = ML.DataScale(TestIn,*InputScaler)
-    # Scale output to [0,1] (based on data)
-    OutputScaler = ML.ScaleValues(TrainOut)
-    TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
-    TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
-    # Convert to tensors
-    TrainIn_scale = torch.from_numpy(TrainIn_scale)
-    TrainOut_scale = torch.from_numpy(TrainOut_scale)
-    TestIn_scale = torch.from_numpy(TestIn_scale)
-    TestOut_scale = torch.from_numpy(TestOut_scale)
-
-    # ==========================================================================
-    # Train a new model or load an old one
-    ModelFile = '{}/Model.pth'.format(DADict["CALC_DIR"]) # Saved model location
-    if Parameters.Train:
-        # get model & likelihoods
-        min_noise = getattr(Parameters,'MinNoise',None)
-        prev_state = getattr(Parameters,'PrevState',None)
-        if prev_state==True: prev_state = ModelFile
-        likelihood, model = ML.Create_GPR(TrainIn_scale, TrainOut_scale, Parameters.Kernel,
-                                          prev_state=prev_state, min_noise=min_noise,
-                                          input_scale=InputScaler,output_scale=OutputScaler)
-
-        # Train model
-        TrainDict = getattr(Parameters,'TrainDict',{})
-        Conv = ML.GPR_Train(model, **TrainDict)
-
-        # Save model
-        torch.save(model.state_dict(), ModelFile)
-
-        # Plot convergence & save
-        plt.figure()
-        for j, _Conv in enumerate(Conv):
-            plt.plot(_Conv,label='Output_{}'.format(j))
-        plt.legend()
-        plt.savefig("{}/Convergence.eps".format(DADict["CALC_DIR"]),dpi=600)
-        plt.close()
-    else:
-        # Load previously trained model
-        likelihood, model = ML.Create_GPR(TrainIn_scale, TrainOut_scale,
-                                        Parameters.Kernel, prev_state=ModelFile,
-                                        input_scale=InputScaler,output_scale=OutputScaler)
-    model.eval(); likelihood.eval()
-
-    # =========================================================================
-    # Get error metrics for model
+    ixs = [Parameters.Compare] if type(Parameters.Compare)==int else Parameters.Compare
 
     with torch.no_grad():
-        train_pred = model(*[TrainIn_scale]*NbOutput)
-        test_pred = model(*[TestIn_scale]*NbOutput)
+        data_in = Dataspace.DataIn_scale[ixs]
+        preds = []
+        for mod in model.models:
+            pred = mod(data_in).mean.numpy()
+            preds.append(ML.DataRescale(pred,*mod.output_scale))
+    preds = np.transpose(preds).dot(VT) # Full temperature field
+    true_vals = DataOut[ixs]
 
-    train_pred_scale = np.transpose([p.mean.numpy() for p in train_pred])
-    test_pred_scale = np.transpose([p.mean.numpy() for p in test_pred])
-    train_pred = ML.DataRescale(train_pred_scale,*OutputScaler)
-    test_pred = ML.DataRescale(test_pred_scale,*OutputScaler)
+    meshfile = "{}/{}".format(VL.MESH_DIR,Parameters.MeshFile)
 
-    df_train = ML.GetMetrics2(train_pred,TrainOut)
-    df_test = ML.GetMetrics2(test_pred,TestOut)
-    print('\nTrain metrics')
-    print(df_train)
-    print('\nTest metrics')
-    print(df_test,'\n')
+    Compare_file = "{}/Comparison.rmed".format(DADict['CALC_DIR'])
+    shutil.copy2(meshfile,Compare_file) # copy mesh file
+    for i,ix in enumerate(ixs):
+        AddResult(Compare_file,true_vals[i],'FEA_{}'.format(ix))
+        AddResult(Compare_file,preds[i],'Surrogate_{}'.format(ix))
 
-    # ==========================================================================
-    # See impact of varying inputs
-    Plot1D = getattr(Parameters,'Plot1D',{})
-    if Plot1D:
-        base = Plot1D['Base']
-        ncol = Plot1D.get('NbCol',1)
-
-        for j, mod in enumerate(model.models):
-            mean,stdev = ML.InputQuery(mod,NbInput,base=0.5)
-            nrow = int(np.ceil(NbInput/ncol))
-            fig,ax = plt.subplots(nrow,ncol,figsize=(15,15))
-            axes = ax.flatten()
-
-            base_in = [base]*NbInput
-            with torch.no_grad():
-                base_val = mod(torch.tensor([base_in])).mean.numpy()
-
-            base_in = ML.DataRescale(np.array(base_in),*InputScaler)
-            base_val = ML.DataRescale(base_val,*OutputScaler[:,j])
-
-            for i, (val,std) in enumerate(zip(mean,stdev)):
-                val = ML.DataRescale(val,*OutputScaler[:,j])
-                std = ML.DataRescale(std,0,OutputScaler[1,j])
-                axes[i].title.set_text(FeatureNames[i])
-                _split = np.linspace(InputScaler[0,i],InputScaler[:,i].sum(),len(val))
-
-                axes[i].plot(_split,val)
-                axes[i].fill_between(_split, val-2*std, val+2*std, alpha=0.5)
-                axes[i].scatter(base_in[i],base_val)
-
-            fig.text(0.5, 0.04, 'Parameter range', ha='center')
-            fig.text(0.04, 0.5, OutputLabels[j], va='center', rotation='vertical')
-
-            plt.show()
-
-    # ==========================================================================
-    # Solve the inverse problem. Discover the combination of inputs which
-    # deliver the temperatures at the thermocouple locations.
-
-    # Test which shows the inverse results
-    if hasattr(Parameters,'InverseSolution'):
-        IS = Parameters.InverseSolution
-        NbInit = IS.get('NbInit',100)
-         # initial points for slsqp
-        true_inputs = TestIn_scale.detach().numpy()
-        target_outputs = TestOut
-        ix = IS['Index']
-        confidence = IS.get('Confidence',[1]*NbInput)
-        # ixs = np.where(true_inputs[:,-1]>=0.2)[0]
-        # ix = ixs[19]
-
-        fix = np.where(np.array(confidence)==1)[0]
-        args = [target_outputs[ix],model.models,fix]
-
-        init_points, bounds = ranger(NbInit,true_inputs[ix],confidence)
-        init_points = np.transpose(init_points)
-
-        inv_sol, error = InverseSolution(obj_fixed,init_points,bounds,args=args,tol=0.05)
-        with torch.no_grad():
-            _inv_sol = torch.from_numpy(inv_sol[:])
-            pred_inv = [mod(_inv_sol) for mod in model.models]
-            mean_inv = np.array([p.mean.numpy() for p in pred_inv]).T
-            stddev_inv = np.array([p.stddev.numpy() for p in pred_inv]).T
-            mean_inv = ML.DataRescale(mean_inv,*OutputScaler)
-            stddev_inv = ML.DataRescale(stddev_inv,0,OutputScaler[1])
-            mse_inv = ((mean_inv - target_outputs[ix])**2).mean(axis=1)
-
-            _true_Input = torch.from_numpy(true_inputs[ix:ix+1])
-            pred_sol = [mod(_true_Input) for mod in model.models]
-            mean_sol = np.array([p.mean.numpy() for p in pred_sol]).T
-            stddev_sol = np.array([p.stddev.numpy() for p in pred_sol]).T
-            mean_sol = ML.DataRescale(mean_sol,*OutputScaler)
-            stddev_sol = ML.DataRescale(stddev_sol,0,OutputScaler[1])
-            mse_sol = ((mean_sol - target_outputs[ix])**2).mean()
-
-        print('##############################################\n')
-        print("TC Temperatures")
-        print("Target:\n{}".format(target_outputs[ix]))
-        print("Best model:")
-        for mn,std,mse in zip(mean_inv,stddev_inv,mse_inv):
-            print("{} (Err:{}, Stddev:{})".format(mn, mse, stddev_inv.sum()))
-        print("True model:\n{} (Err:{}, Sum stddev:{})".format(mean_sol,mse_sol,stddev_sol.sum()))
-
-        print("\nInputs (Scaled)")
-        print("Target:\n{}".format(true_inputs[ix]))
-        print("Inverse:")
-        for sol in inv_sol:
-            print(sol)
-
-        print('\n##############################################\n')
-
-        for i in range(NbInput):
-            if confidence[i]==1: continue
-            # if i<=6: continue
-            fig, ax = plt.subplots(figsize=(8, 8))
-            ax.set_title(FeatureNames[i])
-            # ax.scatter(init_points[:,i],[0]*len(init_points),marker='x',label='Initial points')
-            ax.scatter(inv_sol[:,i],[0]*len(inv_sol), marker='x',label='Inverse solution')
-            ax.scatter([true_inputs[ix,i]], [0], marker='o',label='True solution')
-            ax.set_xlim([0,1]);ax.set_ylim([-0.5,1.5])
-            ax.get_yaxis().set_visible(False)
-            ax.legend()
-            plt.show()
-
-
-# ==============================================================================
 
 def Optimise_Field(VL,DADict):
-    ''' Create model mapping inputs to nodal temperatures.
-    This is used to optimise the thermocouple placements.'''
-
+    ''' Inverse solutions using surrogate.'''
     Parameters = DADict['Parameters']
+    seed = getattr(Parameters,'Seed',100)
+    if seed:
+        np.random.seed(seed)
+        random.seed(seed) # used by GA package
+
 
     # ==========================================================================
     # Load temperature field model & test data
@@ -263,86 +87,88 @@ def Optimise_Field(VL,DADict):
     model.VT = VT
     meshfile = "{}/{}".format(VL.MESH_DIR,Parameters.MeshFile)
 
-    # optimise the locations for the thermocouples
-    Optimise = Parameters.Optimise
-    CandidateSurfaces = Optimise['CandidateSurfaces']
 
-    OptDict = {'Confidence': Optimise['Confidence'],
-               'Nbslsqp': Optimise.get('Nbslsqp',100)
-               }
-    OptDict['Target_Temp'] = DataOut[-Optimise['NbTestCases']:]
-    OptDict['Target_Soln'] = Dataspace.DataIn_scale.detach().numpy()[-Optimise['NbTestCases']:]
+    if hasattr(Parameters,'Optimise'):
+        # optimise the locations for the thermocouples
+        Optimise = Parameters.Optimise
+        CandidateSurfaces = Optimise['CandidateSurfaces']
 
-    GA_func = ff_field(model, meshfile, CandidateSurfaces, OptDict)
+        OptDict = {'Confidence': Optimise['Confidence'],
+                   'Nbslsqp': Optimise.get('Nbslsqp',100)
+                   }
+        OptDict['Target_Temp'] = DataOut[-Optimise['NbTestCases']:]
+        OptDict['Target_Soln'] = Dataspace.DataIn_scale.detach().numpy()[-Optimise['NbTestCases']:]
 
-    TC_space = [range(len(CandidateSurfaces)), # discrete number for surface numbering
-                {'low':0,'high':1},{'low':0,'high':1}] # x1,x2 coordinate is scaled to [0,1] range
+        GA_func = ff_field(model, meshfile, CandidateSurfaces, OptDict)
+        TC_space = [range(len(CandidateSurfaces)), # discrete number for surface numbering
+                    {'low':0,'high':1},{'low':0,'high':1}] # x1,x2 coordinate is scaled to [0,1] range
 
-    NbTC = Optimise['NbTC']
+        NbTC = Optimise['NbTC']
+        # Get parallelised implementation of genetic algorithm
+        NbCore = Optimise.get('NbCore',1)
+        Parallel = Optimise.get('Parallel','process')
+        kwargs = {'workdir':VL.TEMP_DIR}
+        if Parallel.lower() in ('mpi','mpi_worker'):
+            kwargs['addpath'] = set(sys.path)-set(VL._pypath)
+            kwargs['source'] = False
+        GA = GA_Parallel(Parallel,NbCore,**kwargs)
 
-    # Get parallelised implementation of genetic algorithm
-    NbCore = Optimise.get('NbCore',1)
-    Parallel = Optimise.get('Parallel','process')
-    kwargs = {'workdir':VL.TEMP_DIR}
-    if Parallel.lower() in ('mpi','mpi_worker'):
-        kwargs['addpath'] = set(sys.path)-set(VL._pypath)
-        kwargs['source'] = False
-    GA = GA_Parallel(Parallel,NbCore,**kwargs)
+        # ======================================================================
 
-    # ======================================================================
+        NbGen = Optimise['NbGeneration']
+        NbPop = Optimise['NbPopulation']
+        MatingProb = Optimise.get('MatingProb',0.5)
+        # NbMating is how many solutions we want to keep & breed from
+        NbMating = max(2,int(NbPop*MatingProb))
+        MutationProb = Optimise.get('MutationProb',0.1)
 
-    NbGen = Optimise['NbGeneration']
-    NbPop = Optimise['NbPopulation']
-    MatingProb = Optimise.get('MatingProb',0.5)
-    # NbMating is how many solutions we want to keep & breed from
-    NbMating = max(2,int(NbPop*MatingProb))
-    MutationProb = Optimise.get('MutationProb',0.1)
+        # ======================================================================
+        # Stopping criterion
+        StopCriteria = ['reach_1']
 
-    # ======================================================================
-    # Stopping criterion
-    StopCriteria = ['reach_1']
+        ga_instance = GA(num_generations=NbGen,
+                         num_parents_mating=NbMating,
+                         gene_space=TC_space*NbTC,
+                         sol_per_pop=NbPop,
+                         num_genes=NbTC*3,
+                         fitness_func=GA_func,
+                         on_fitness=update,
+                         parent_selection_type='rank',
+                         crossover_probability=1,
+                         mutation_probability=MutationProb,
+                         save_best_solutions=True,
+                         stop_criteria=StopCriteria)
 
-    ga_instance = GA(num_generations=NbGen,
-                     num_parents_mating=NbMating,
-                     gene_space=TC_space*NbTC,
-                     sol_per_pop=NbPop,
-                     num_genes=NbTC*3,
-                     fitness_func=GA_func,
-                     on_fitness=update,
-                     parent_selection_type='rank',
-                     crossover_probability=1,
-                     mutation_probability=MutationProb,
-                     save_best_solutions=True,
-                     stop_criteria=StopCriteria)
+        ga_instance.run()
 
-    ga_instance.run()
+        # ======================================================================
+        # plot ga performance
+        plt.figure()
+        plt.plot(ga_instance.best_solutions_fitness, linewidth=2, color='b')
+        plt.xlabel('Generation',fontsize=14)
+        plt.ylabel('Fitness',fontsize=14)
+        plt.savefig("{}/GA_history.png".format(DADict['CALC_DIR']))
+        plt.ylim(0,1)
+        plt.close()
 
-    # ======================================================================
-    # plot ga performance
-    plt.figure()
-    plt.plot(ga_instance.best_solutions_fitness, linewidth=2, color='b')
-    plt.xlabel('Generation',fontsize=14)
-    plt.ylabel('Fitness',fontsize=14)
-    plt.savefig("{}/GA_history.png".format(DADict['CALC_DIR']))
-    plt.ylim(0,1)
-    plt.close()
+        # ======================================================================
+        # Returning the details of the best solution.
+        # solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
+        bestsol_ix = np.argmax(ga_instance.best_solutions_fitness)
+        solution = ga_instance.best_solutions[bestsol_ix]
+        solution_fitness = ga_instance.best_solutions_fitness[bestsol_ix]
 
-    # ======================================================================
-    # Returning the details of the best solution.
-    # solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
-    bestsol_ix = np.argmax(ga_instance.best_solutions_fitness)
-    solution = ga_instance.best_solutions[bestsol_ix]
-    solution_fitness = ga_instance.best_solutions_fitness[bestsol_ix]
-
-    print("\nOptimal thermocouple configuration")
-    TCLocations = []
-    for i in range(NbTC):
-        surf_ix = int(solution[i*3])
-        surf_name = CandidateSurfaces[surf_ix]
-        x1,x2 = solution[i*3+1], solution[i*3+2]
-        s = "TC {}: {}, {:.4f}, {:.4f}".format(i+1,surf_name,x1,x2)
-        print(s)
-        TCLocations.append([surf_name,x1,x2])
+        print("\nOptimal thermocouple configuration")
+        TCLocations = []
+        for i in range(NbTC):
+            surf_ix = int(solution[i*3])
+            surf_name = CandidateSurfaces[surf_ix]
+            x1,x2 = solution[i*3+1], solution[i*3+2]
+            s = "TC {}: {}, {:.4f}, {:.4f}".format(i+1,surf_name,x1,x2)
+            print(s)
+            TCLocations.append([surf_name,x1,x2])
+    else:
+        TCLocations = Parameters.TCLocations
 
     # ==========================================================================
     # Create images of component to show location of thermocouples
@@ -360,7 +186,37 @@ def Optimise_Field(VL,DADict):
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
         Script = "{}/PV_TCPlacement.py".format(dir_path)
-        Salome.Run(Script, GUI=True, DataDict=DataDict,tempdir=VL.TEMP_DIR)
+        Salome.Run(Script, GUI=False, DataDict=DataDict,tempdir=VL.TEMP_DIR)
+
+    if True:
+        NbSol = []
+        Nb=10
+        confidence = [0]*8
+        Nbslsqp = 100
+        for ix in list(range(Nb)):
+
+            TC_targets = []
+            TC_interp = Interpolate_TC(TCLocations,meshfile)
+            for nodes,weights in TC_interp:
+                TC_target = (DataOut[ix,nodes]*weights).sum()
+                TC_targets.append(TC_target)
+
+            true_input = Dataspace.DataIn_scale.detach().numpy()[ix]
+
+            fix = np.where(np.array(confidence)==1)[0]
+            init_points, bounds = ranger(Nbslsqp,true_input,confidence)
+            init_points = np.transpose(init_points)
+
+            inverse_sol,error = InverseSolution(obj_field, init_points, bounds,tol=0.05,
+                                          args=[TC_targets,TC_interp,model,fix])
+            inverse_sol = inverse_sol[error<10]
+            UniqueIS,UniquePred = UniqueSol(model,inverse_sol) # Filter out similar results
+            NbSol.append(len(UniqueIS))
+        print(NbSol)
+        NbSol_mean = np.mean(NbSol)
+        print("Mean number of solutions over {} cases: {:.3f}".format(Nb,NbSol_mean))
+
+
 
     # ==========================================================================
     # Make results file containing the true solution & inversely informed temperature fields
@@ -376,11 +232,11 @@ def Optimise_Field(VL,DADict):
         for ix in ixs:
             TC_targets = []
             for nodes,weights in TC_interp:
-                TC_target = (TestOut[ix,nodes]*weights).sum()
+                TC_target = (DataOut[ix,nodes]*weights).sum()
                 TC_targets.append(TC_target)
             print(TC_targets)
 
-            true_input = TestIn_scale.detach().numpy()[ix]
+            true_input = Dataspace.DataIn_scale.detach().numpy()[ix]
 
             fix = np.where(np.array(confidence)==1)[0]
             init_points, bounds = ranger(Nbslsqp,true_input,confidence)
@@ -391,23 +247,23 @@ def Optimise_Field(VL,DADict):
             inverse_sol = inverse_sol[error<10]
             # Filter out similar results
             UniqueIS,UniquePred = UniqueSol(model,inverse_sol)
-            UniqueIS = ML.DataRescale(UniqueIS,*InputScaler)
+            UniqueIS = ML.DataRescale(UniqueIS,*Dataspace.InputScaler)
             print("\nUnique inverse solutions")
             for IS in UniqueIS:
                 islst = ["{:.5f}".format(v) for v in IS]
                 print(", ".join(islst))
             print("True solution")
-            islst = ["{:.5f}".format(v) for v in TestIn[ix]]
+            islst = ["{:.5f}".format(v) for v in DataIn[ix]]
             print(", ".join(islst))
 
             # Make rmed results file containing inverse field & true field
-            ML_resfile = "{}/ML_res_{}.rmed".format(DADict['CALC_DIR'],ix)
+            ML_resfile = "{}/Inverse.rmed".format(DADict['CALC_DIR'])
             shutil.copy2(meshfile,ML_resfile) # copy mesh file
-            AddResult(ML_resfile,TestOut[ix],'TrueSol') # add true results
+            AddResult(ML_resfile,DataOut[ix],'TrueSol_{}'.format(ix)) # add true results
             ndigit = len(str(len(UniquePred)))
             # Add all potential inversely calculated results field
             for i,sol in enumerate(UniquePred):
-                AddResult(ML_resfile,sol,'InverseSol_{}'.format(str(i).zfill(ndigit)))
+                AddResult(ML_resfile,sol,'InverseSol_{}_{}'.format(ix,str(i).zfill(ndigit)))
 
 
 
@@ -417,7 +273,7 @@ def Optimise_Field(VL,DADict):
 def ff_field(model, meshfile, CandidateSurfaces, InverseDict):
     ''' Objective function used by pygad. aims to maximise the returned value. '''
     def fitness_function(solution, solution_idx):
-        print(solution,solution_idx)
+        # print(solution,solution_idx)
         # ======================================================================
         # Convert surface index to surface name
         TCData = []
@@ -740,3 +596,219 @@ def AddResult(file,array,resname):
     grp.create_dataset("CO",data=array.flatten(order='F'))
 
     h5py_file.close()
+
+def _Fixed_TC(VL,DADict):
+    ''' Create model mapping inputs to thermocouple temperatures at fixed points'''
+    # np.random.seed(100)
+    Parameters = DADict['Parameters']
+
+    if getattr(Parameters,'CompileData',None):
+        CompileData(VL,DADict)
+
+    # ==========================================================================
+    # Get Train & test data from file DataFile_path
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.DataFile)
+
+    TrainIn,_TrainOut = ML.GetMLdata(DataFile_path, Parameters.TrainData,
+                           Parameters.InputArray, Parameters.OutputArray,
+                           getattr(Parameters,'TrainNb',-1))
+    TestIn,_TestOut = ML.GetMLdata(DataFile_path, Parameters.TestData,
+                          Parameters.InputArray, Parameters.OutputArray,
+                          getattr(Parameters,'TestNb',-1))
+
+    InputAttrs = ML.GetMLattrs(DataFile_path, Parameters.TrainData,Parameters.InputArray)
+    FeatureNames = InputAttrs.get('Parameters',None)
+
+
+    # Get temperature at points using surface temps
+    meshfile = "{}/SampleHIVE.med".format(VL.MESH_DIR)
+    NbTC = len(Parameters.TCLocations)
+    NbTrain,NbTest = TrainIn.shape[0],TestIn.shape[0]
+    TrainOut,TestOut = np.zeros((NbTrain,NbTC)), np.zeros((NbTest,NbTC))
+    for i,(SurfaceName,x1,x2) in enumerate(Parameters.TCLocations):
+        nds, weights = Get_Interp(meshfile,SurfaceName,x1,x2)
+        TrainOut[:,i] = (_TrainOut[:,nds]*weights).sum(axis=1)
+        TestOut[:,i] = (_TestOut[:,nds]*weights).sum(axis=1)
+
+    LabelNames = "Thermocouples placed at the following locations:\n{}".format(Parameters.TCLocations)
+
+
+    # ==========================================================================
+    # Model summary
+    TrainNb,TestNb = TrainIn.shape[0],TestIn.shape[0]
+    NbInput,NbOutput = TrainIn.shape[1],TrainOut.shape[1]
+
+    ML.ModelSummary(NbInput,NbOutput,TrainNb,TestNb,FeatureNames,LabelNames)
+
+    # ==========================================================================
+    # Scale data
+    # Scale input to [0,1] (based on parameter space)
+    PS_bounds = np.array(Parameters.ParameterSpace).T
+    InputScaler = ML.ScaleValues(PS_bounds)
+    TrainIn_scale = ML.DataScale(TrainIn,*InputScaler)
+    TestIn_scale = ML.DataScale(TestIn,*InputScaler)
+    # Scale output to [0,1] (based on data)
+    OutputScaler = ML.ScaleValues(TrainOut)
+    TrainOut_scale = ML.DataScale(TrainOut,*OutputScaler)
+    TestOut_scale = ML.DataScale(TestOut,*OutputScaler)
+    # Convert to tensors
+    TrainIn_scale = torch.from_numpy(TrainIn_scale)
+    TrainOut_scale = torch.from_numpy(TrainOut_scale)
+    TestIn_scale = torch.from_numpy(TestIn_scale)
+    TestOut_scale = torch.from_numpy(TestOut_scale)
+
+    # ==========================================================================
+    # Train a new model or load an old one
+    ModelFile = '{}/Model.pth'.format(DADict["CALC_DIR"]) # Saved model location
+    if Parameters.Train:
+        # get model & likelihoods
+        min_noise = getattr(Parameters,'MinNoise',None)
+        prev_state = getattr(Parameters,'PrevState',None)
+        if prev_state==True: prev_state = ModelFile
+        likelihood, model = ML.Create_GPR(TrainIn_scale, TrainOut_scale, Parameters.Kernel,
+                                          prev_state=prev_state, min_noise=min_noise,
+                                          input_scale=InputScaler,output_scale=OutputScaler)
+
+        # Train model
+        TrainDict = getattr(Parameters,'TrainDict',{})
+        Conv = ML.GPR_Train(model, **TrainDict)
+
+        # Save model
+        torch.save(model.state_dict(), ModelFile)
+
+        # Plot convergence & save
+        plt.figure()
+        for j, _Conv in enumerate(Conv):
+            plt.plot(_Conv,label='Output_{}'.format(j))
+        plt.legend()
+        plt.savefig("{}/Convergence.eps".format(DADict["CALC_DIR"]),dpi=600)
+        plt.close()
+    else:
+        # Load previously trained model
+        likelihood, model = ML.Create_GPR(TrainIn_scale, TrainOut_scale,
+                                        Parameters.Kernel, prev_state=ModelFile,
+                                        input_scale=InputScaler,output_scale=OutputScaler)
+    model.eval(); likelihood.eval()
+
+    # =========================================================================
+    # Get error metrics for model
+
+    with torch.no_grad():
+        train_pred = model(*[TrainIn_scale]*NbOutput)
+        test_pred = model(*[TestIn_scale]*NbOutput)
+
+    train_pred_scale = np.transpose([p.mean.numpy() for p in train_pred])
+    test_pred_scale = np.transpose([p.mean.numpy() for p in test_pred])
+    train_pred = ML.DataRescale(train_pred_scale,*OutputScaler)
+    test_pred = ML.DataRescale(test_pred_scale,*OutputScaler)
+
+    df_train = ML.GetMetrics2(train_pred,TrainOut)
+    df_test = ML.GetMetrics2(test_pred,TestOut)
+    print('\nTrain metrics')
+    print(df_train)
+    print('\nTest metrics')
+    print(df_test,'\n')
+
+    # ==========================================================================
+    # See impact of varying inputs
+    Plot1D = getattr(Parameters,'Plot1D',{})
+    if Plot1D:
+        base = Plot1D['Base']
+        ncol = Plot1D.get('NbCol',1)
+
+        for j, mod in enumerate(model.models):
+            mean,stdev = ML.InputQuery(mod,NbInput,base=0.5)
+            nrow = int(np.ceil(NbInput/ncol))
+            fig,ax = plt.subplots(nrow,ncol,figsize=(15,15))
+            axes = ax.flatten()
+
+            base_in = [base]*NbInput
+            with torch.no_grad():
+                base_val = mod(torch.tensor([base_in])).mean.numpy()
+
+            base_in = ML.DataRescale(np.array(base_in),*InputScaler)
+            base_val = ML.DataRescale(base_val,*OutputScaler[:,j])
+
+            for i, (val,std) in enumerate(zip(mean,stdev)):
+                val = ML.DataRescale(val,*OutputScaler[:,j])
+                std = ML.DataRescale(std,0,OutputScaler[1,j])
+                axes[i].title.set_text(FeatureNames[i])
+                _split = np.linspace(InputScaler[0,i],InputScaler[:,i].sum(),len(val))
+
+                axes[i].plot(_split,val)
+                axes[i].fill_between(_split, val-2*std, val+2*std, alpha=0.5)
+                axes[i].scatter(base_in[i],base_val)
+
+            fig.text(0.5, 0.04, 'Parameter range', ha='center')
+            fig.text(0.04, 0.5, OutputLabels[j], va='center', rotation='vertical')
+
+            plt.show()
+
+    # ==========================================================================
+    # Solve the inverse problem. Discover the combination of inputs which
+    # deliver the temperatures at the thermocouple locations.
+
+    # Test which shows the inverse results
+    if hasattr(Parameters,'InverseSolution'):
+        IS = Parameters.InverseSolution
+        NbInit = IS.get('NbInit',100)
+         # initial points for slsqp
+        true_inputs = TestIn_scale.detach().numpy()
+        target_outputs = TestOut
+        ix = IS['Index']
+        confidence = IS.get('Confidence',[1]*NbInput)
+        # ixs = np.where(true_inputs[:,-1]>=0.2)[0]
+        # ix = ixs[19]
+
+        fix = np.where(np.array(confidence)==1)[0]
+        args = [target_outputs[ix],model.models,fix]
+
+        init_points, bounds = ranger(NbInit,true_inputs[ix],confidence)
+        init_points = np.transpose(init_points)
+
+        inv_sol, error = InverseSolution(obj_fixed,init_points,bounds,args=args,tol=0.05)
+        with torch.no_grad():
+            _inv_sol = torch.from_numpy(inv_sol[:])
+            pred_inv = [mod(_inv_sol) for mod in model.models]
+            mean_inv = np.array([p.mean.numpy() for p in pred_inv]).T
+            stddev_inv = np.array([p.stddev.numpy() for p in pred_inv]).T
+            mean_inv = ML.DataRescale(mean_inv,*OutputScaler)
+            stddev_inv = ML.DataRescale(stddev_inv,0,OutputScaler[1])
+            mse_inv = ((mean_inv - target_outputs[ix])**2).mean(axis=1)
+
+            _true_Input = torch.from_numpy(true_inputs[ix:ix+1])
+            pred_sol = [mod(_true_Input) for mod in model.models]
+            mean_sol = np.array([p.mean.numpy() for p in pred_sol]).T
+            stddev_sol = np.array([p.stddev.numpy() for p in pred_sol]).T
+            mean_sol = ML.DataRescale(mean_sol,*OutputScaler)
+            stddev_sol = ML.DataRescale(stddev_sol,0,OutputScaler[1])
+            mse_sol = ((mean_sol - target_outputs[ix])**2).mean()
+
+        print('##############################################\n')
+        print("TC Temperatures")
+        print("Target:\n{}".format(target_outputs[ix]))
+        print("Best model:")
+        for mn,std,mse in zip(mean_inv,stddev_inv,mse_inv):
+            print("{} (Err:{}, Stddev:{})".format(mn, mse, stddev_inv.sum()))
+        print("True model:\n{} (Err:{}, Sum stddev:{})".format(mean_sol,mse_sol,stddev_sol.sum()))
+
+        print("\nInputs (Scaled)")
+        print("Target:\n{}".format(true_inputs[ix]))
+        print("Inverse:")
+        for sol in inv_sol:
+            print(sol)
+
+        print('\n##############################################\n')
+
+        for i in range(NbInput):
+            if confidence[i]==1: continue
+            # if i<=6: continue
+            fig, ax = plt.subplots(figsize=(8, 8))
+            ax.set_title(FeatureNames[i])
+            # ax.scatter(init_points[:,i],[0]*len(init_points),marker='x',label='Initial points')
+            ax.scatter(inv_sol[:,i],[0]*len(inv_sol), marker='x',label='Inverse solution')
+            ax.scatter([true_inputs[ix,i]], [0], marker='o',label='True solution')
+            ax.set_xlim([0,1]);ax.set_ylim([-0.5,1.5])
+            ax.get_yaxis().set_visible(False)
+            ax.legend()
+            plt.show()

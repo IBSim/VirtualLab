@@ -222,6 +222,7 @@ def Optimise_Field(VL,DADict):
             inverse_sol = inverse_sol[error<10]
             # Filter out similar results
             UniqueIS,UniquePred = UniqueSol(model,inverse_sol)
+
             UniqueIS = ML.DataRescale(UniqueIS,*Dataspace.InputScaler)
             print("\nUnique inverse solutions")
             for IS in UniqueIS:
@@ -256,7 +257,7 @@ def ff_field(model, meshfile, CandidateSurfaces, InverseDict):
 
         score_list = field_inverse(TCData,model,meshfile,InverseDict)
         score = np.mean(score_list)
-        print(solution,score)
+        # print(solution,score)
         return 1/score # return reciprocal as this is being maximised
 
     return fitness_function
@@ -307,6 +308,7 @@ def field_inverse(TCData, model, meshfile, InvDict):
 
         inverse_sol,error = InverseSolution(obj_field, init_points, bounds,tol=0.05,
                                       args=[TC_targets[i],TC_interp,model,fix])
+        inverse_sol = inverse_sol[error<10]
         UniqueIS = UniqueSol(model,inverse_sol)[0]
         NbSol.append(len(UniqueIS)) # Get number of unqiue solutions & add to list
 

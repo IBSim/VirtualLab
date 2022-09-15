@@ -87,17 +87,18 @@ def Optimise_Field(VL,DADict):
     model.VT = VT
     meshfile = "{}/{}".format(VL.MESH_DIR,Parameters.MeshFile)
 
+    NbSLSQP = getattr(Parameters,'NbSLSQP',100)
+    Confidence = getattr(Parameters,'Confidence',[0]*Dataspace.NbInput)
 
     if hasattr(Parameters,'Optimise'):
         # optimise the locations for the thermocouples
         Optimise = Parameters.Optimise
         CandidateSurfaces = Optimise['CandidateSurfaces']
 
-        OptDict = {'Confidence': Optimise['Confidence'],
-                   'Nbslsqp': Optimise.get('Nbslsqp',100)
-                   }
-        OptDict['Target_Temp'] = DataOut[-Optimise['NbTestCases']:]
-        OptDict['Target_Soln'] = Dataspace.DataIn_scale.detach().numpy()[-Optimise['NbTestCases']:]
+        OptDict = {'Confidence': Confidence,'Nbslsqp': NbSLSQP}
+
+        OptDict['Target_Temp'] = DataOut[Optimise['TestCaseIx']]
+        OptDict['Target_Soln'] = Dataspace.DataIn_scale.detach().numpy()[Optimise['TestCaseIx']]
 
         GA_func = ff_field(model, meshfile, CandidateSurfaces, OptDict)
         TC_space = [range(len(CandidateSurfaces)), # discrete number for surface numbering
@@ -117,7 +118,7 @@ def Optimise_Field(VL,DADict):
 
         NbGen = Optimise['NbGeneration']
         NbPop = Optimise['NbPopulation']
-        MatingProb = Optimise.get('MatingProb',0.5)
+        MatingProb = Optimise.get('MatingProb',0.2)
         # NbMating is how many solutions we want to keep & breed from
         NbMating = max(2,int(NbPop*MatingProb))
         MutationProb = Optimise.get('MutationProb',0.1)
@@ -171,6 +172,15 @@ def Optimise_Field(VL,DADict):
         TCLocations = Parameters.TCLocations
 
     # ==========================================================================
+    # Get score for this set combination of TCs
+    InvDict = {'Confidence': Confidence,'Nbslsqp': NbSLSQP,
+                'Target_Temp':DataOut[:Parameters.NbCases],
+                'Target_Soln':Dataspace.DataIn_scale.detach().numpy()[:Parameters.NbCases]}
+
+    score_list = field_inverse(TCLocations, model, meshfile, InvDict)
+    print("Mean number of solutions for {} cases: {:.3f}".format(len(score_list),np.mean(score_list)))
+
+    # ==========================================================================
     # Create images of component to show location of thermocouples
     if getattr(Parameters,'TCImages',True):
         from Scripts.Common.VLPackages.Salome import Salome
@@ -188,48 +198,13 @@ def Optimise_Field(VL,DADict):
         Script = "{}/PV_TCPlacement.py".format(dir_path)
         Salome.Run(Script, GUI=False, DataDict=DataDict,tempdir=VL.TEMP_DIR)
 
-    if True:
-        NbSol = []
-        Nb=10
-        confidence = [0]*8
-        Nbslsqp = 100
-        for ix in list(range(Nb)):
-
-            TC_targets = []
-            TC_interp = Interpolate_TC(TCLocations,meshfile)
-            for nodes,weights in TC_interp:
-                TC_target = (DataOut[ix,nodes]*weights).sum()
-                TC_targets.append(TC_target)
-
-            true_input = Dataspace.DataIn_scale.detach().numpy()[ix]
-
-            fix = np.where(np.array(confidence)==1)[0]
-            init_points, bounds = ranger(Nbslsqp,true_input,confidence)
-            init_points = np.transpose(init_points)
-
-            inverse_sol,error = InverseSolution(obj_field, init_points, bounds,tol=0.05,
-                                          args=[TC_targets,TC_interp,model,fix])
-            inverse_sol = inverse_sol[error<10]
-            UniqueIS,UniquePred = UniqueSol(model,inverse_sol) # Filter out similar results
-            NbSol.append(len(UniqueIS))
-        print(NbSol)
-        NbSol_mean = np.mean(NbSol)
-        print("Mean number of solutions over {} cases: {:.3f}".format(Nb,NbSol_mean))
-
-
-
     # ==========================================================================
     # Make results file containing the true solution & inversely informed temperature fields
-    Compare = getattr(Parameters,'Compare',{})
+    Compare = getattr(Parameters,'Compare',[])
     if Compare:
-        confidence = Compare['Confidence']
-        Nbslsqp = Compare.get('Nbslsqp',100)
         TC_interp = Interpolate_TC(TCLocations,meshfile)
 
-        ixs = Compare['Ix']
-        if type(ixs)==int: ixs = [ixs]
-
-        for ix in ixs:
+        for ix in Compare:
             TC_targets = []
             for nodes,weights in TC_interp:
                 TC_target = (DataOut[ix,nodes]*weights).sum()
@@ -238,8 +213,8 @@ def Optimise_Field(VL,DADict):
 
             true_input = Dataspace.DataIn_scale.detach().numpy()[ix]
 
-            fix = np.where(np.array(confidence)==1)[0]
-            init_points, bounds = ranger(Nbslsqp,true_input,confidence)
+            fix = np.where(np.array(Confidence)==1)[0]
+            init_points, bounds = ranger(NbSLSQP,true_input,Confidence)
             init_points = np.transpose(init_points)
 
             inverse_sol,error = InverseSolution(obj_field, init_points, bounds,tol=0.05,
@@ -266,8 +241,6 @@ def Optimise_Field(VL,DADict):
                 AddResult(ML_resfile,sol,'InverseSol_{}_{}'.format(ix,str(i).zfill(ndigit)))
 
 
-
-
 # ==============================================================================
 # functions used by pyGAD to optimise TC placement
 def ff_field(model, meshfile, CandidateSurfaces, InverseDict):
@@ -281,7 +254,9 @@ def ff_field(model, meshfile, CandidateSurfaces, InverseDict):
             SurfName = CandidateSurfaces[int(solution[i])]
             TCData.append([SurfName,solution[i+1],solution[i+2]])
 
-        score = field_inverse(TCData,model,meshfile,InverseDict)
+        score_list = field_inverse(TCData,model,meshfile,InverseDict)
+        score = np.mean(score_list)
+        print(solution,score)
         return 1/score # return reciprocal as this is being maximised
 
     return fitness_function
@@ -322,15 +297,12 @@ def field_inverse(TCData, model, meshfile, InvDict):
     N_cases = len(TC_targets)
     torch.set_num_threads(1)
     err_sq_all = []
-    NbInit = InvDict.get('Nbslsqp',100)
 
-    confidence = InvDict.get('Confidence',None)
-    fix = np.where(np.array(confidence)==1)[0]
-
+    fix = np.where(np.array(InvDict['Confidence'])==1)[0]
     NbSol = []
     for i in range(N_cases):
         true_input = InvDict['Target_Soln'][i]
-        init_points, bounds = ranger(NbInit,true_input,confidence)
+        init_points, bounds = ranger(InvDict['Nbslsqp'],true_input,InvDict['Confidence'])
         init_points = np.transpose(init_points)
 
         inverse_sol,error = InverseSolution(obj_field, init_points, bounds,tol=0.05,
@@ -338,8 +310,7 @@ def field_inverse(TCData, model, meshfile, InvDict):
         UniqueIS = UniqueSol(model,inverse_sol)[0]
         NbSol.append(len(UniqueIS)) # Get number of unqiue solutions & add to list
 
-    score = np.mean(NbSol)
-    return score
+    return NbSol
 
 def UniqueSol(model,inverse_sol,diff_frac=0.025):
 
@@ -458,10 +429,13 @@ def _FieldTemperatures(ResDir, InputVariables, ResFileName, ResName='Temperature
 
 # ==============================================================================
 # Useful functions
-def ranger(Nb,expected_value,confidence=None,low=0,high=1):
+def ranger(Nb,expected_value,confidence=None,low=0,high=1,seed=100):
     ''' Get initial points for slsqp optimiser & bounds for the problem.
     These are calculated using the amount of confidence we have about the
     'true' value. '''
+
+    state = np.random.get_state() # get current random state
+    np.random.seed(seed) # set random state to seed value for reproducability
     if confidence==None:confidence = [0]*len(expected_value)
     bounds,points = [],[]
     for i, val in enumerate(expected_value):
@@ -483,6 +457,7 @@ def ranger(Nb,expected_value,confidence=None,low=0,high=1):
 
         bounds.append(_bounds)
         points.append(_points)
+    np.random.set_state(state) # set random back to previous state
     return points, bounds
 
 def GetNorm(MeshFile,SurfaceName):

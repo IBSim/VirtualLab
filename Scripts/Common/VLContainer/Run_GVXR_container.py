@@ -11,7 +11,7 @@ parser.add_argument("-s", "--Simulation", help = "Sub-Directory for simulation d
 args = parser.parse_args()
 Cont_id=3
 os.chdir('/home/ibsim/VirtualLab')
-from Scripts.Common.VirtualLab import GVXR_Setup
+from Scripts.Common.VLContainers import GVXR_Setup
 VirtualLab=GVXR_Setup(
            args.Simulation,
            args.Project,

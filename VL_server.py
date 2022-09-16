@@ -64,13 +64,13 @@ def process(vlab_dir,use_singularity):
                 proc = subprocess.check_call(f'{container_cmd} {options} {command}',
                      shell=True)
             except Exception:
-                lock.release()
+                sock_lock.release()
                 client_socket.shutdown(socket.SHUT_RDWR)
                 client_socket.close()
                 raise
             waiting_cnt_sockets[str(target_id)] = {"socket": client_socket, "id": container_id}
-            lock.release()
-            #client_socket.close()
+            sock_lock.release()
+            client_socket.close()
 
         elif event == 'finished':
             sock_lock.acquire()
@@ -82,7 +82,7 @@ def process(vlab_dir,use_singularity):
                 waiting_cnt_socket.sendall('Success'.encode())
                 waiting_cnt_socket.shutdown(socket.SHUT_RDWR)
                 waiting_cnt_socket.close()
-            lock.release()
+            sock_lock.release()
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
         else:
@@ -122,11 +122,11 @@ if __name__ == "__main__":
         if use_singularity:
             proc=subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B \
                             /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab Containers/VL_GVXR.sif '
-                            'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
+                            f'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
         else:
             # Assume using Docker
             proc=subprocess.Popen(f'docker run -it -v {vlab_dir}:/home/ibsim/VirtualLab ibsim/base '
-                            'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
+                            f'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
 
         lock.release()
         # wait untill virtualLab is done before closing

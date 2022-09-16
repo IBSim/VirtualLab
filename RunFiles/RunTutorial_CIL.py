@@ -9,7 +9,7 @@ from Scripts.Common.VirtualLab import VLSetup
 Simulation='GVXR'
 Project='Tutorials'
 Parameters_Master='TrainingParameters_GVXR'
-Parameters_Var=None
+Parameters_Var='TrainingParameters_GVXR_var'
 
 #===============================================================================
 # Environment
@@ -19,8 +19,8 @@ VirtualLab=VLSetup(
            Project)
 
 VirtualLab.Settings(
-           Mode='Interactive',
-           Launcher='Process',
+           Mode='Headless',
+           Launcher='Sequential',
            NbJobs=1)
 
 VirtualLab.Parameters(

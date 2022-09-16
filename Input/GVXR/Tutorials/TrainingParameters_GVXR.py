@@ -22,13 +22,13 @@ GVXR.Name = 'AMAZE'
 GVXR.mesh = 'AMAZE_Sample'
 # Flag to use specpy to gentrate a beam spectrum
 GVXR.use_spekpy = True
-GVXR.Tube_Voltage = 300
+GVXR.Tube_Voltage = 50
 GVXR.Tube_Angle = 12
 # chemical element corresponding to the material properties
 # of each region of the model. Can be any of Full name, Symbol
 # or Atomic number (Z). Cureently works for every element in the
 # peridic table up to Francium, that is elements 1-100
-GVXR.Material_list = ["Ti","Ti","Ti"]
+GVXR.Material_list = ["Cu","Cu","Cu"]
 # Beam energy (default units are MeV)
 #GVXR.Energy = [0.08]
 # xray beam intensity (no. of x-ray photons) default = 1000
@@ -85,9 +85,9 @@ GVXR.energy_units = 'MeV'
 
 # The number of angles you want projections
 # (i.e the number of output images) default=180
-GVXR.num_projections = 361
+GVXR.num_projections = 373
 # The rotation angle between each image in degrees default=1
-GVXR.angular_step = 1 
+GVXR.angular_step = 360/GVXR.num_projections
 # String for output image format defualt of None leads to tiff stack
 GVXR.image_format = 'tiff'
 # Inital rotation of cad model in degrees about the x,y and z axis

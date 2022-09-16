@@ -175,4 +175,4 @@ class GVXR_Setup(VLSetup):
         elif os.path.isdir(self.TEMP_DIR):
             shutil.rmtree(self.TEMP_DIR)
 
-            print(exitstr)
+        print(exitstr)

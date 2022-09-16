@@ -180,7 +180,7 @@ class VLSetup():
         Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh','Sim','DA','Vox']
+        VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR']
         #Note: The call to GetParams converts params_master/var into Namespaces
         # however we need to origional strings for passing into other containters.
         # So we will ned to get them here.

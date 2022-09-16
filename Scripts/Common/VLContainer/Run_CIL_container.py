@@ -11,7 +11,7 @@ parser.add_argument("-s", "--Simulation", help = "Sub-Directory for simulation d
 args = parser.parse_args()
 Cont_id=2
 os.chdir('/home/ibsim/VirtualLab')
-from Scripts.Common.VirtualLab import CIL_Setup
+from Scripts.Common.VLContainers import CIL_Setup
 VirtualLab=CIL_Setup(
            args.Simulation,
            args.Project,

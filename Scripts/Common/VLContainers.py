@@ -11,6 +11,7 @@ import atexit
 import json
 import VLconfig
 from .VirtualLab import VLSetup
+from .VLContainer import Cont_Finished
 ###############################################################################
 ##############################     CIL     ####################################
 ###############################################################################
@@ -55,7 +56,7 @@ class CIL_Setup(VLSetup):
             os.makedirs(self.TEMP_DIR)
         except FileExistsError:
             # Unlikely this would happen. Suffix random number to direcory name
-            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
+            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.randint(1000))
             os.makedirs(self.TEMP_DIR)
         
     def Parameters(self, Parameters_Master, Parameters_Var=None, RunCIL=False):
@@ -91,7 +92,7 @@ class CIL_Setup(VLSetup):
             exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
         elif os.path.isdir(self.TEMP_DIR):
             shutil.rmtree(self.TEMP_DIR)
-
+        #Cont_Finished(2)
         print(exitstr)
 
 ###############################################################################
@@ -138,7 +139,7 @@ class GVXR_Setup(VLSetup):
             os.makedirs(self.TEMP_DIR)
         except FileExistsError:
             # Unlikely this would happen. Suffix random number to direcory name
-            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
+            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.randint(1000))
             os.makedirs(self.TEMP_DIR)
         
     def Parameters(self, Parameters_Master, Parameters_Var=None, RunGVXR=False):
@@ -174,5 +175,5 @@ class GVXR_Setup(VLSetup):
             exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
         elif os.path.isdir(self.TEMP_DIR):
             shutil.rmtree(self.TEMP_DIR)
-
-            print(exitstr)
+        #Cont_Finished(3)
+        print(exitstr)

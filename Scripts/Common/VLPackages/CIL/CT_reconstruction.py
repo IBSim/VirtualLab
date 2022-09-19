@@ -2,13 +2,14 @@ import numpy as np
 #import SimpleITK as sitk
 from skimage import io
 import os
+import math
 from cil.framework import AcquisitionGeometry, AcquisitionData
 # CIL Processors
 from cil.processors import TransmissionAbsorptionConverter
 # CIL display tools
 from cil.utilities.display import show_geometry
 from cil.recon import FDK
-
+from cil.io import TIFFStackReader
 from Scripts.Common.VLPackages.GVXR.GVXR_utils import write_image
 class GPUError(Exception): 
     def __init__(self, value): 
@@ -85,9 +86,8 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         rotation=[0,0,0],Headless=False, num_projections = 180,angular_step=1,
         im_format='tiff',Nikon=None):
     try:
-        inputfile = f"{work_dir}/{Name}.{im_format}"
-        im = io.imread(inputfile)
-
+        inputfile = f"{work_dir}/{Name}"
+	
         if Nikon:
             print("help")
         
@@ -98,29 +98,60 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         # calculate geometrical magnification
         mag = (dist_source_center + dist_center_detector) / dist_source_center
 
+        angles_deg =np.arange(0,(num_projections+1)*angular_step,angular_step)
+        angles_rad = angles_deg *(math.pi / 180)
         ag = AcquisitionGeometry.create_Cone3D(source_position=Beam, detector_position=Detector, 
         detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
-        rotation_axis_direction=rotation_axis_direction)  \
-        .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X/mag,Spacing_Y/mag]) \
-        .set_angles(angles=np.arange(0,num_projections,angular_step))
+        rotation_axis_direction=[0,0,1])  \
+        .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
+        .set_angles(angles=angles_rad, angle_unit='radian')
+        file = open("inputs.txt", "w")
+        file.write(f"source_position = {Beam} \n " 
+                   f"detector_position= {Detector} \n"
+                   f"detector_direction_x = [1, 0, 0] \n"
+                   f"detector_direction_y = [0, 0, 1] \n"
+                   f"rotation_axis_position = {Model} \n"
+                   f"rotation_axis_direction=[0,0,1] \n"
+                   f"num_pixels = {Pix_X},{Pix_Y} \n"
+                   f"pixel_size = {Spacing_X},{Spacing_Y} \n"
+                   f"angles = {angles_rad} \n")
+        file.close()
+        
         ig = ag.get_ImageGeometry()
-        im_data = AcquisitionData(array=im, geometry=ag, deep_copy=False)
+        #im_data = AcquisitionData(array=im, geometry=ag, deep_copy=False)
         
         #if not Headless:
         #    show_geometry(ag)
 	
-        im_data = TransmissionAbsorptionConverter()(im_data)
+        
+        im = TIFFStackReader(file_name=inputfile)
+        im_data=im.read_as_AcquisitionData(ag)
+        im_data = TransmissionAbsorptionConverter(white_level=255.0)(im_data)
         Check_GPU()
         im_data.reorder(order='tigre')
         fdk =  FDK(im_data, ig)
         recon = fdk.run()
         recon = recon.as_array()
-        recon=crop_array(recon,A=30)
-        write_image(f'{work_dir}/{Name}_recon',recon);
+        os.makedirs(f'{work_dir}/../CIL_Images', exist_ok=True)
+        #normailse data between 0 and 245
+        norm = ((recon - np.min(recon))/np.ptp(recon))*245
+        write_recon_image(f'{work_dir}/../CIL_Images/{Name}',norm);
         
     except Exception as e:
         return 'Error occurred in CIL : ' + str(e)
     return
 
-
+def write_recon_image(output_dir:str,vox:np.double,im_format:str='tiff'):
+    from PIL import Image, ImageOps
+    import os
+    output_name = os.path.basename(os.path.normpath(output_dir))
+    os.makedirs(output_dir, exist_ok=True)
+    #calcualte number of digits in max number of images for name formating
+    import math
+    digits = int(math.log10(np.shape(vox)[0]))+1
+    for I in range(0,np.shape(vox)[0]):
+        im = Image.fromarray(vox[I,:,:])
+        im = ImageOps.grayscale(im)
+        im_output=f"{output_dir}/{output_name}_recon_{I:0{digits}d}.{im_format}"
+        im.save(im_output)
 

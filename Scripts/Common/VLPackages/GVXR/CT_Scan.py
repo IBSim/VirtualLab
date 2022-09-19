@@ -144,7 +144,6 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     gvxr.setDetectorUpVector(0, 0, -1);
     gvxr.setDetectorNumberOfPixels(Detector.Pix_X, Detector.Pix_Y);
     gvxr.setDetectorPixelSize(Detector.Spacing_X, Detector.Spacing_Y, Detector.Spacing_units);
-
     for i,mesh in enumerate(meshes):
         label = mesh_names[i];
     ### BLOCK #####
@@ -153,13 +152,11 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         mesh.flatten(),
         Model.Pos_units);
         # place mesh at the orgin then traslate it according to the defined ofset
-        #gvxr.moveToCentre(label);
+        gvxr.moveToCentre(label);
         gvxr.translateNode(label,Model.Model_PosX,Model.Model_PosY,Model.Model_PosZ,Model.Model_Pos_units)
         gvxr.setElement(label, Material_list[i]);
-        if i==0:
-            gvxr.addPolygonMeshAsOuterSurface(label)
-        else:
-            gvxr.addPolygonMeshAsInnerSurface(label)
+        gvxr.addPolygonMeshAsInnerSurface(label)
+        
     # set initial rotation
     # note GVXR uses OpenGL which perfoms rotations with object axes not global.
     # This makes rotaions around the gloabal axes very tricky.
@@ -177,9 +174,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
             # Global Z-axis Rotaion:
             global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
             gvxr.rotateNode(label, Model.rotation[2], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Z rotation axis
-            total_rotation[2,i] += Model.rotation[2]# track total rotation 
-    
-    
+            total_rotation[2,i] += Model.rotation[2]# track total rotation
     # Update the 3D visualisation
     gvxr.displayScene();       
     # Compute an X-ray image
@@ -187,36 +182,43 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
 
     projections = [];
     theta = [];
-
-    # calculate the rotation vector in model co-ordiantes that points
-    # along the global axis
-    # this is needed to alow us to rotate around the global axis rather than the cad model axis.
-    global_axis_vec = world_to_model_axis(total_rotation[:,0],global_axis=[0,0,1])
-    for i in range(num_projections):
+    # Compute the intial X-ray image (zeroth angle) and add it to the list of projections
+    projections.append(gvxr.computeXRayImage());
+    # Update the 3D visualisation
+    gvxr.displayScene();
+    theta.append(0.0);
+    for i in range(1,num_projections+1):
+        # Rotate the model by angular_step degrees
+        for n,label in enumerate(mesh_names):
+            gvxr.rotateNode(label, angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
+            total_rotation[2,n]+=angular_step
         # Compute an X-ray image and add it to the list of projections
         projections.append(gvxr.computeXRayImage());
         # Update the 3D visualisation
         gvxr.displayScene();
-        # Rotate the model by angular_step degrees
-        for i,label in enumerate(mesh_names):
-            gvxr.rotateNode(label, angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
-            total_rotation[2,i]+=angular_step
         theta.append(i * angular_step * math.pi / 180);
+      
+    file = open("GVXR_angles.txt", "w")
+    file.write(f"angles = {theta} \n")
+    file.close()
+       
     # Convert the projections as a Numpy array
-    projections = np.array(projections,dtype='uint32')
+    projections = np.array(projections)
+    
     # Perform the flat-Field correction of raw data
     dark = np.zeros(projections.shape);
 
     # Retrieve the total energy
-    energy_bins = gvxr.getEnergyBins(Beam.Energy_units);
+    energy_bins = gvxr.getEnergyBins("MeV") 
     photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
-
     total_energy = 0.0;
     for energy, count in zip(energy_bins, photon_count_per_bin):
         total_energy += energy * count;
     flat = np.ones(projections.shape) * total_energy;
     projections = flat_field_normalize(projections,flat,dark)
-    breakpoint()
+    #convert from transmission to absorbsion data.
+    #projections = - np.log(projections)
+    projections = normalise_8bituint(projections)
     write_image(output_file,projections,im_format=im_format);
     
     # Display the 3D scene (no event loop)

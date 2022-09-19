@@ -22,7 +22,7 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_
         else:
             call_string = f'-v /run:/run -v {vlab_dir}:/home/ibsim/VirtualLab --gpus all ibsim/CIL'
 
-        command = f'/home/ibsim/VirtualLab/Scripts/Common/VLContainer/Run_CIL.sh \
+        command = f'/home/ibsim/VirtualLab/Containers/Run_CIL.sh \
                    {param_master} {param_var} {Project} {Simulation}'
 
     elif Tool == "GVXR":
@@ -31,7 +31,7 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_
         else:
             call_string = f'-v {vlab_dir}:/home/ibsim/VirtualLab --gpus all ibsim/VL_GVXR'
 
-        command = f'/home/ibsim/VirtualLab/Scripts/Common/VLContainer/Run_GVXR.sh \
+        command = f'/home/ibsim/VirtualLab/Containers/Run_GVXR.sh \
                    {param_master} {param_var} {Project} {Simulation}'
     # Add other tools here as need arises
     else:

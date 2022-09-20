@@ -387,7 +387,7 @@ else
 fi
 #END
 
-sudo -u ${SUDO_USER:-$USER} git checkout BT-Cad2vox
+sudo -u ${SUDO_USER:-$USER} git checkout BT-Container
 ### Run initial VirtualLab setup
 echo
 

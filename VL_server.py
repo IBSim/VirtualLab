@@ -37,7 +37,7 @@ def process(vlab_dir,use_singularity):
         rec_dict = json.loads(data)
         event = rec_dict["msg"]
         container_id = rec_dict["Cont_id"]
-        print('Server - received "{event}" event from container {container_id} at {client_address}')
+        print(f'Server - received "{event}" event from container {container_id} at {client_address}')
 
         if event == 'VirtualLab started':
             client_socket.close()
@@ -53,7 +53,7 @@ def process(vlab_dir,use_singularity):
             param_var,project,simulation,use_singularity)
             target_id = Container_IDs[tool]
             print(f'Server - starting a new container with ID: {target_id} '
-                  'as requested by container {container_id}')
+                  f'as requested by container {container_id}')
             # setup comand to run docker or singularity
             if use_singularity:
                 container_cmd = 'singularity exec --contain --writable-tmpfs'

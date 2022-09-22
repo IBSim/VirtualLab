@@ -105,20 +105,8 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         rotation_axis_direction=[0,0,1])  \
         .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
         .set_angles(angles=angles_rad, angle_unit='radian')
-        file = open("inputs.txt", "w")
-        file.write(f"source_position = {Beam} \n " 
-                   f"detector_position= {Detector} \n"
-                   f"detector_direction_x = [1, 0, 0] \n"
-                   f"detector_direction_y = [0, 0, 1] \n"
-                   f"rotation_axis_position = {Model} \n"
-                   f"rotation_axis_direction=[0,0,1] \n"
-                   f"num_pixels = {Pix_X},{Pix_Y} \n"
-                   f"pixel_size = {Spacing_X},{Spacing_Y} \n"
-                   f"angles = {angles_rad} \n")
-        file.close()
         
         ig = ag.get_ImageGeometry()
-        #im_data = AcquisitionData(array=im, geometry=ag, deep_copy=False)
         
         #if not Headless:
         #    show_geometry(ag)
@@ -129,7 +117,7 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         im_data = TransmissionAbsorptionConverter(white_level=255.0)(im_data)
         Check_GPU()
         im_data.reorder(order='tigre')
-        fdk =  FDK(im_data, ig)
+        fdk =  FDK(im_data)
         recon = fdk.run()
         recon = recon.as_array()
         os.makedirs(f'{work_dir}/../CIL_Images', exist_ok=True)
@@ -151,7 +139,7 @@ def write_recon_image(output_dir:str,vox:np.double,im_format:str='tiff'):
     digits = int(math.log10(np.shape(vox)[0]))+1
     for I in range(0,np.shape(vox)[0]):
         im = Image.fromarray(vox[I,:,:])
-        im = ImageOps.grayscale(im)
+        im = im.convert("L")
         im_output=f"{output_dir}/{output_name}_recon_{I:0{digits}d}.{im_format}"
         im.save(im_output)
 

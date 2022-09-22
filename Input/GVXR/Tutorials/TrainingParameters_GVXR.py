@@ -87,10 +87,9 @@ GVXR.energy_units = 'MeV'
 # (i.e the number of output images) default=180
 GVXR.num_projections = 373
 # The rotation angle between each image in degrees default=1
-GVXR.angular_step = 360/GVXR.num_projections
+GVXR.angular_step = 359/GVXR.num_projections
 # String for output image format defualt of None leads to tiff stack
 GVXR.image_format = 'tiff'
 # Inital rotation of cad model in degrees about the x,y and z axis
 GVXR.rotation = [90,0,0]
 GVXR.use_tetra = True
-GVXR.Vulkan=False

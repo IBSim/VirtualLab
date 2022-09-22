@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pickletools import uint8
-import gvxrPython3 as gvxr
+from gvxrPython3 import gvxr
+#import gvxrPython3 as gvxr
 import numpy as np
 import math
 import meshio
@@ -28,13 +29,16 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     if Headless:
     #headless
         gvxr.createWindow(-1,0,"EGL");
-    elif Vulkan:
+    # Vulkan is Disabled in this version as there are bugs to be worked out
+    # however I have left it here as there is no point removing it to add 
+    # it back later.
+    #elif Vulkan:
         # or with Vulkan
-        gvxr.createWindow(-1,0,"VULKAN");
-        gvxr.setWindowSize(512, 512);
+        #gvxr.createWindow(-1,1,"VULKAN");
+        #gvxr.setWindowSize(512, 512);
     else:
     # or with window and OpenGL
-        gvxr.createWindow();
+        gvxr.createWindow(-1,1,"OPENGL",3,2);
         gvxr.setWindowSize(512, 512); 
 
     # Load the data
@@ -190,7 +194,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     for i in range(1,num_projections+1):
         # Rotate the model by angular_step degrees
         for n,label in enumerate(mesh_names):
-            gvxr.rotateNode(label, angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
+            gvxr.rotateNode(label, -1*angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
             total_rotation[2,n]+=angular_step
         # Compute an X-ray image and add it to the list of projections
         projections.append(gvxr.computeXRayImage());

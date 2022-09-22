@@ -113,7 +113,8 @@ def Check_Materials(Mat_list):
         the atomic number (which we are not actually using) and if not it will 
         throw an exception and print. "ERROR: Element (name:string) not found."
  """
-    import gvxrPython3 as gvxr
+    from gvxrPython3 import gvxr
+#    import gvxrPython3 as gvxr
     for Mat_value in Mat_list:
         atomic_number = gvxr.getElementAtomicNumber(Mat_value)
     return
@@ -133,7 +134,7 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff'):
     
     for I in range(0,np.shape(vox)[0]):
         im = Image.fromarray(vox[I,:,:])
-        im = ImageOps.grayscale(im)
+        im = im.convert("L")
         im_output=f"{output_dir}/{output_name}_{I:0{digits}d}.{im_format}"
         im.save(im_output)
 

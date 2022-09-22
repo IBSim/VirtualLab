@@ -27,9 +27,9 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_
 
     elif Tool == "GVXR":
         if use_singularity:
-            call_string = f'-B {vlab_dir}:/home/ibsim/VirtualLab --nv Containers/VL_GVXR.sif'
+            call_string = f'-B /run:/run -B {vlab_dir}:/home/ibsim/VirtualLab --nv Containers/VL_GVXR.sif'
         else:
-            call_string = f'-v {vlab_dir}:/home/ibsim/VirtualLab --gpus all ibsim/VL_GVXR'
+            call_string = f'-v /run:/run -v {vlab_dir}:/home/ibsim/VirtualLab -e QT_X11_NO_MITSHM=1 --gpus all ibsim/VL_GVXR'
 
         command = f'/home/ibsim/VirtualLab/Containers/Run_GVXR.sh \
                    {param_master} {param_var} {Project} {Simulation}'

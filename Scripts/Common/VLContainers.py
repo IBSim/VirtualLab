@@ -11,7 +11,7 @@ import atexit
 import json
 import VLconfig
 from .VirtualLab import VLSetup
-from .VLContainer import Cont_Finished
+from .VLContainer import Container_Utils as Utils
 ###############################################################################
 ##############################     CIL     ####################################
 ###############################################################################
@@ -92,7 +92,7 @@ class CIL_Setup(VLSetup):
             exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
         elif os.path.isdir(self.TEMP_DIR):
             shutil.rmtree(self.TEMP_DIR)
-        #Cont_Finished(2)
+        Utils.Cont_Finished(self.Container)
         print(exitstr)
 
 ###############################################################################
@@ -175,5 +175,5 @@ class GVXR_Setup(VLSetup):
             exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
         elif os.path.isdir(self.TEMP_DIR):
             shutil.rmtree(self.TEMP_DIR)
-        #Cont_Finished(3)
+        Utils.Cont_Finished(self.Container)
         print(exitstr)

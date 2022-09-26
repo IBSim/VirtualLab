@@ -5,7 +5,7 @@ GVXR = Namespace()
 #############
 #######################
 
-GVXR.Name = ['AMAZE_Al']
-GVXR.Tube_Voltage = [175]
+GVXR.Name = ['AMAZE_Al','AMAZE_Cu']
+#GVXR.Tube_Voltage = [175]
 
-GVXR.Material_list = [['Al','Al','Al']]
+GVXR.Material_list = [['Al','Al','Al'],['Cu','Cu','Cu']]

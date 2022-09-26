@@ -230,7 +230,6 @@ def Run(VL):
     from Scripts.Common.VLPackages.GVXR.CT_Scan import CT_scan
     if not VL.GVXRData: return
     VL.Logger('\n### Starting GVXR ###\n', Print=True)
-    
     for key in VL.GVXRData.keys():
         Errorfnc = CT_scan(**VL.GVXRData[key])
         if Errorfnc:

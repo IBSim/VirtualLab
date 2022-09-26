@@ -1,15 +1,11 @@
 '''
         Script to enable comunication with and spawning of containers.
         #######################################################################
-        Note: Current container ID's are:
+        Note: Current containers are:
         1 - Base VirtualLab
         2 - CIL
         3 - GVXR
         4 - Container tests
-
-        If/when you want to add more containers you will need to give 
-        them a unique id in the container_id's dict in this file 
-        and add it to this list as a courtesy so everyone is on the same page
         #######################################################################
 '''
 import socket
@@ -20,16 +16,48 @@ import os
 import json
 from Scripts.Common.VLContainer.container_tools import check_platform,Format_Call_Str
 
-waiting_cnt_sockets = {}
+class ContainerError(Exception):
+    '''Custom error class to format error message in a pretty way.'''
+    def __init__(self, value): 
+        self.value = value
+    def __str__(self):
+        Errmsg = "\n========= Error Occured in Container =========\n\n"\
+        f"{self.value}\n\n"\
+        "=========================\n\n"
+        return Errmsg
 
-Container_IDs = {"VLab":1,"CIL":2,"GVXR":3,"Test":4}
+def check_for_errors(process_list):
+    ''' 
+    Function to take in nested a dictionary of containg running processes and container id's.
+    Idealy any python erros will be handled and cleanup should print an error message to the screen
+    and send a success message to the main process. Thus avoiding hanging the aplication.
+    This function here is to catch any non-python errors. Its simply running proc.communicate()
+    to check each running process. From there if the return code is non zero it stops the server and
+    spits out the std_err from the process.
+     '''
+    
+    if not process_list:
+    # if list is empty return straightway and continue in while loop.
+        return
+    else:
+        for proc in process_list.values():
+            outs, errs = proc.communicate()
+            #communcatte sets retuncode inside proc
+            if proc.returncode != 0 :
+                msg = errs
+                raise Exception(ContainerError(msg))
+                
+    return
+
+waiting_cnt_sockets = {}
+running_processes={}
 def process(vlab_dir,use_singularity):
     sock_lock = threading.Lock()
     sock = socket.socket()
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
     sock.bind(("0.0.0.0", 9999))
     sock.listen(20)
-
+    next_cnt_id = 2
     while True:
         client_socket, client_address = sock.accept()
         data = client_socket.recv(1024).decode('utf-8')
@@ -47,41 +75,51 @@ def process(vlab_dir,use_singularity):
             param_var = rec_dict["Parameters_Var"]
             project = rec_dict["Project"]
             simulation = rec_dict["Simulation"]
-
             sock_lock.acquire()
+            target_id = next_cnt_id
+            next_cnt_id += 1
             options, command = Format_Call_Str(tool,vlab_dir,param_master,
-            param_var,project,simulation,use_singularity)
-            target_id = Container_IDs[tool]
+                param_var,project,simulation,use_singularity,target_id)
+
             print(f'Server - starting a new container with ID: {target_id} '
                   f'as requested by container {container_id}')
+
             # setup comand to run docker or singularity
             if use_singularity:
                 container_cmd = 'singularity exec --contain --writable-tmpfs'
             else:
                 container_cmd = 'docker run -it'
-
-            try:
-                proc = subprocess.check_call(f'{container_cmd} {options} {command}',
-                     shell=True)
-            except Exception:
-                sock_lock.release()
-                client_socket.shutdown(socket.SHUT_RDWR)
-                client_socket.close()
-                raise
+            #try:
+            container_process = subprocess.Popen(f'{container_cmd} {options} {command}',
+                 stderr = subprocess.PIPE, shell=True)
+            #except Exception:
+            #    sock_lock.release()
+            #    client_socket.shutdown(socket.SHUT_RDWR)
+            #    client_socket.close()
+            #    raise
             waiting_cnt_sockets[str(target_id)] = {"socket": client_socket, "id": container_id}
-            sock_lock.release()
-            client_socket.close()
 
-        elif event == 'finished':
+            running_processes[str(target_id)] = container_process
+            # send mesage to tell client continer what id the new container will have
+            data = {"msg":"Running","Cont_id":waiting_cnt_sockets[str(target_id)]["id"]}
+            data_string = json.dumps(data)
+            client_socket.sendall(data_string.encode('utf-8'))
+            sock_lock.release()
+            #client_socket.close()
+
+        elif event == 'Finished':
             sock_lock.acquire()
             container_id = str(container_id)
             if container_id in waiting_cnt_sockets:
                 print(f'Server - container {container_id} finished working, '
                       f'notifying source container {waiting_cnt_sockets[container_id]["id"]}')
                 waiting_cnt_socket = waiting_cnt_sockets[container_id]["socket"]
-                waiting_cnt_socket.sendall('Success'.encode())
+                data = {"msg":"Success","Cont_id":waiting_cnt_sockets[container_id]["id"]}
+                data_string = json.dumps(data)
+                waiting_cnt_socket.sendall(data_string.encode('utf-8'))
                 waiting_cnt_socket.shutdown(socket.SHUT_RDWR)
                 waiting_cnt_socket.close()
+                running_processes.pop(str(container_id))
             sock_lock.release()
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
@@ -89,7 +127,7 @@ def process(vlab_dir,use_singularity):
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
             raise ValueError()
-
+        check_for_errors(running_processes)
 if __name__ == "__main__":
 # rerad in CMD arguments
     parser = argparse.ArgumentParser()
@@ -139,3 +177,8 @@ if __name__ == "__main__":
             " on it you will need to install docker or Singularity and pass in the -C option. \n")
 
         proc=subprocess.check_call(f'VirtualLab -f {Run_file}', shell=True)
+
+
+
+
+

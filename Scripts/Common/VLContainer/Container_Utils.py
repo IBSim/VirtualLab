@@ -47,10 +47,30 @@ def RunJob(Cont_id,Tool,Parameters_Master,Parameters_Var,Project,Simulation):
     
     data_string = json.dumps(data)
     sock = socket.socket()
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
     # send a signal to VL_server saying you want to run a CIL container
     sock.connect(("0.0.0.0", 9999))
     sock.sendall(data_string.encode('utf-8'))
-    data = sock.recv(1024).decode() #wait to recive message saying the tool is finished before continuing
+    #wait to recive message saying the tool is finished before continuing on.
+    while True:
+        data = sock.recv(1024).decode('utf-8')
+        if data:
+            rec_dict = json.loads(data)
+            print("Recived some Data:")
+            print(rec_dict)
+        if rec_dict['msg'] == 'Running':
+            target_id = rec_dict['Cont_id']
+            break
+    
+    while True:
+        data = sock.recv(1024).decode('utf-8')
+        if data:
+            rec_dict = json.loads(data)
+            print("Recived some Data:")
+            print(rec_dict)
+            if rec_dict['msg'] == 'Success' and rec_dict['Cont_id']==target_id:
+                break
+            continue
     sock.close()
     return
 
@@ -66,7 +86,7 @@ def Cont_Started(Cont_id):
 
 def Cont_Finished(Cont_id):
     ''' Function to send a Message to the main script to say the container has Finished.'''
-    data = {"msg":"finished","Cont_id":Cont_id}
+    data = {"msg":"Finished","Cont_id":Cont_id}
     data_string = json.dumps(data)
     sock = socket.socket()
     sock.connect(("0.0.0.0", 9999))

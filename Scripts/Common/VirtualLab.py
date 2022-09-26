@@ -344,20 +344,28 @@ class VLSetup():
 # Call to Run a container for GVXR
     def CT_Scan(self,**kwargs):
         # if in main contianer submit job request
-        Utils.RunJob(Cont_id=1,Tool="GVXR",
+        return_value=Utils.RunJob(Cont_id=1,Tool="GVXR",
         Parameters_Master=self.Parameters_Master_str,
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,
         Simulation=self.Simulation)
+
+        if return_value != '0':
+            #an error ocured so exit VirtualLab
+            self.Exit(return_value)
         return
 # Call to Run a container for CIL       
     def CT_Recon(self,**kwargs):
         # if in main contianer submit job request
-        Utils.RunJob(Cont_id=1,Tool="CIL",
+        return_value=Utils.RunJob(Cont_id=1,Tool="CIL",
         Parameters_Master=self.Parameters_Master_str,
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,
         Simulation=self.Simulation)
+
+        if return_value != '0':
+            #an error ocured so exit VirtualLab
+            self.Exit(return_value)
         return
 
     def devDA(self,**kwargs):

@@ -15,23 +15,20 @@ import argparse
 import os
 import json
 from Scripts.Common.VLContainer.container_tools import check_platform,Format_Call_Str
+def ContainerError(out,err):
+    '''Custom function to format error message in a pretty way.'''
+    Errmsg = "\n========= Container returned non-zero exit code =========\n\n"\
+                f"std out: {out}\n\n"\
+                f"std err:{err}\n\n"\
+                "==================================\n\n"
+    return Errmsg
 
-class ContainerError(Exception):
-    '''Custom error class to format error message in a pretty way.'''
-    def __init__(self, value): 
-        self.value = value
-    def __str__(self):
-        Errmsg = "\n========= Error Occured in Container =========\n\n"\
-        f"{self.value}\n\n"\
-        "=========================\n\n"
-        return Errmsg
-
-def check_for_errors(process_list):
+def check_for_errors(process_list,client_socket,sock_lock):
     ''' 
-    Function to take in nested a dictionary of containg running processes and container id's.
-    Idealy any python erros will be handled and cleanup should print an error message to the screen
+    Function to take in nested a dictionary of containing running processes and container id's.
+    Idealy any python errors will be handled and cleanup should print an error message to the screen
     and send a success message to the main process. Thus avoiding hanging the aplication.
-    This function here is to catch any non-python errors. Its simply running proc.communicate()
+    This function here is to catch any non-python errors. By simply running proc.communicate()
     to check each running process. From there if the return code is non zero it stops the server and
     spits out the std_err from the process.
      '''
@@ -44,8 +41,15 @@ def check_for_errors(process_list):
             outs, errs = proc.communicate()
             #communcatte sets retuncode inside proc
             if proc.returncode != 0 :
-                msg = errs
-                raise Exception(ContainerError(msg))
+                err_mes = ContainerError(outs,errs)
+                sock_lock.acquire()
+                # send mesage to tell client continer what id the new container will have
+                data = {"msg":"Error","stderr":err_mes}
+                data_string = json.dumps(data)
+                client_socket.sendall(data_string.encode('utf-8'))
+                sock_lock.release()
+                client_socket.shutdown(socket.SHUT_RDWR)
+                client_socket.close()
                 
     return
 
@@ -127,7 +131,7 @@ def process(vlab_dir,use_singularity):
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
             raise ValueError()
-        check_for_errors(running_processes)
+        check_for_errors(running_processes,client_socket,sock_lock)
 if __name__ == "__main__":
 # rerad in CMD arguments
     parser = argparse.ArgumentParser()

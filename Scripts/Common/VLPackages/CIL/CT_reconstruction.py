@@ -9,7 +9,7 @@ from cil.processors import TransmissionAbsorptionConverter
 # CIL display tools
 from cil.utilities.display import show_geometry
 from cil.recon import FDK
-from cil.io import TIFFStackReader
+from cil.io import TIFFStackReader, NikonDataReader
 from Scripts.Common.VLPackages.GVXR.GVXR_utils import write_image
 class GPUError(Exception): 
     def __init__(self, value): 
@@ -89,27 +89,27 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         inputfile = f"{work_dir}/{Name}"
 	
         if Nikon:
-            print("help")
-        
-        dist_source_center = 0-Beam[1]
-        dist_center_detector = 0+Detector[1]
+            Nikondata = NikonDataReader(file_name=Nikon)
+            ag = Nikondata.get_geometry()
+        else:
+            dist_source_center = 0-Beam[1]
+            dist_center_detector = 0+Detector[1]
 
-        rotation_axis_direction = rot_ax_dir(rotation[0],rotation[2])
-        # calculate geometrical magnification
-        mag = (dist_source_center + dist_center_detector) / dist_source_center
+            rotation_axis_direction = rot_ax_dir(rotation[0],rotation[2])
+            # calculate geometrical magnification
+            mag = (dist_source_center + dist_center_detector) / dist_source_center
 
-        angles_deg =np.arange(0,(num_projections+1)*angular_step,angular_step)
-        angles_rad = angles_deg *(math.pi / 180)
-        ag = AcquisitionGeometry.create_Cone3D(source_position=Beam, detector_position=Detector, 
-        detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
-        rotation_axis_direction=[0,0,1])  \
-        .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
-        .set_angles(angles=angles_rad, angle_unit='radian')
+            angles_deg =np.arange(0,(num_projections+1)*angular_step,angular_step)
+            angles_rad = angles_deg *(math.pi / 180)
+            ag = AcquisitionGeometry.create_Cone3D(source_position=Beam, detector_position=Detector, 
+            detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
+            rotation_axis_direction=[0,0,1])  \
+            .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
+            .set_angles(angles=angles_rad, angle_unit='radian')
+            ig = ag.get_ImageGeometry()
         
-        ig = ag.get_ImageGeometry()
-        
-        #if not Headless:
-        #    show_geometry(ag)
+        if not Headless:
+            show_geometry(ag)
 	
         
         im = TIFFStackReader(file_name=inputfile)

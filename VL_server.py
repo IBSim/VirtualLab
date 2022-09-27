@@ -14,6 +14,7 @@ import threading
 import argparse
 import os
 import json
+import sys
 from Scripts.Common.VLContainer.container_tools import check_platform,Format_Call_Str
 def ContainerError(out,err):
     '''Custom function to format error message in a pretty way.'''
@@ -41,10 +42,20 @@ def check_for_errors(process_list,client_socket,sock_lock):
             outs, errs = proc.communicate()
             #communcatte sets retuncode inside proc
             if proc.returncode != 0 :
+                
+                #This convets the strings from bytes to utf-8 
+                # however, we need to check they exist because
+                # none objects can't be coverted to utf-8
+                if outs:
+                    outs = str(outs,'utf-8')
+                if errs:
+                    errs = str(errs,'utf-8')
+                
                 err_mes = ContainerError(outs,errs)
+                print(err_mes)
                 sock_lock.acquire()
-                # send mesage to tell client continer what id the new container will have
-                data = {"msg":"Error","stderr":err_mes}
+                # send mesage to tell main vlab thread to close because there was an error 
+                data = {"msg":"Error","stderr":'-1'}
                 data_string = json.dumps(data)
                 client_socket.sendall(data_string.encode('utf-8'))
                 sock_lock.release()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from pickletools import uint8
-#from gvxrPython3 import gvxr
-import gvxrPython3 as gvxr
+from gvxrPython3 import gvxr
+#import gvxrPython3 as gvxr
 import numpy as np
 import math
 import meshio
@@ -38,7 +38,8 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         #gvxr.setWindowSize(512, 512);
     else:
     # or with window and OpenGL
-        gvxr.createWindow(-1,1,"OPENGL",3,2);
+        #gvxr.createWindow(-1,1,"VULKAN");
+        gvxr.createWindow();
         #gvxr.setWindowSize(512, 512); 
 
     # Load the data

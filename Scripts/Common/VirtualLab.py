@@ -352,7 +352,7 @@ class VLSetup():
 
         if return_value != '0':
             #an error ocured so exit VirtualLab
-            self.Exit(return_value)
+            self.Exit("Error Occured with GVXR")
         return
 # Call to Run a container for CIL       
     def CT_Recon(self,**kwargs):
@@ -365,7 +365,7 @@ class VLSetup():
 
         if return_value != '0':
             #an error ocured so exit VirtualLab
-            self.Exit(return_value)
+            self.Exit("Error Occured with CIL")
         return
 
     def devDA(self,**kwargs):

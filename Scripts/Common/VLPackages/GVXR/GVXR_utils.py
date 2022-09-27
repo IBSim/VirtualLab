@@ -1,7 +1,6 @@
 import os
 import csv
 import errno
-import pandas as pd
 import numpy as np
 
 def FlipNormal(triangle_index_set):
@@ -113,8 +112,8 @@ def Check_Materials(Mat_list):
         the atomic number (which we are not actually using) and if not it will 
         throw an exception and print. "ERROR: Element (name:string) not found."
  """
-    #from gvxrPython3 import gvxr
-    import gvxrPython3 as gvxr
+    from gvxrPython3 import gvxr
+    #import gvxrPython3 as gvxr
     for Mat_value in Mat_list:
         atomic_number = gvxr.getElementAtomicNumber(Mat_value)
     return

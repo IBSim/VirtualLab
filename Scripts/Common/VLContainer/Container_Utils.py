@@ -57,8 +57,6 @@ def RunJob(Cont_id,Tool,Parameters_Master,Parameters_Var,Project,Simulation):
         data = sock.recv(1024).decode('utf-8')
         if data:
             rec_dict = json.loads(data)
-#            print("Recived some Data:")
-#            print(rec_dict)
         if rec_dict['msg'] == 'Running':
             target_id = rec_dict['Cont_id']
             break
@@ -67,13 +65,11 @@ def RunJob(Cont_id,Tool,Parameters_Master,Parameters_Var,Project,Simulation):
         data = sock.recv(1024).decode('utf-8')
         if data:
             rec_dict = json.loads(data)
-#            print("Recived some Data:")
-#            print(rec_dict)
             if rec_dict['msg'] == 'Success' and rec_dict['Cont_id']==target_id:
                 container_return = '0'
                 break
             if rec_dict['msg'] == 'Error':
-                container_return = rec_dict['stderr']
+                container_return = '-1'
                 break
             continue
     sock.close()

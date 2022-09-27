@@ -18,7 +18,7 @@ VirtualLab=GVXR_Setup(
            args.Project,
            Cont_id)
 
-VirtualLab.Settings(Mode='Interactive',Launcher='Sequential')
+VirtualLab.Settings(Mode='Interactive')
 
 VirtualLab.Parameters(
            args.Parameters_Master,

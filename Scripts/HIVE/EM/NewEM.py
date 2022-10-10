@@ -97,6 +97,8 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     geompy.addToStudy( CoilMesh.Geom, 'Coil_orig' )
     geompy.addToStudy(Reference,'RefVect')
 
+
+
     # Get coil and sample tight in z direction
     # This assumes coil is in x-y plane
     SampleBB = geompy.BoundingBox(SampleGeom)
@@ -106,6 +108,8 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     # Position coil in x-y plane using Reference
     CoilTrans = PipeMid - cV1
     CoilRot = geompy.GetAngleRadians(OX,Reference)
+
+
 
     if CoilRot:
         RotateVector = geompy.MakeTranslation(OZ, *cV1)
@@ -117,7 +121,7 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
         Coil = geompy.MakeRotation(Coil, PipeVect, Parameters.Rotation/180*np.pi)
     geompy.addToStudy( Coil, 'Coil' )
 
-    Common = geompy.MakeCommonList([SampleGeom,Coil], True)
+    Common = geompy.MakeCommonList([SampleGeom,Coil])
     Measure = np.array(geompy.BasicProperties(Common))
     Common.Destroy()
     if not all(Measure < 1e-9):
@@ -282,4 +286,6 @@ if __name__ == '__main__':
         SalomeFunc.MeshExport(ERMESmesh, DataDict['OutputFile'])
     # Check return vaue from EMCreate
     elif ERMESmesh == 2319:
-        sys.exit("\nImpossible configuration: Coil intersects sample\n")
+        print("\nImpossible configuration: Coil intersects sample\n")
+        if not salome.sg.hasDesktop():
+            sys.exit()

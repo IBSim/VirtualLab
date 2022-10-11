@@ -115,7 +115,7 @@ def Run(VL,MeshCheck=None,ShowMesh=False):
 
         AddArgs = [[True]]*len(MeshNames) # gui = true flags
 
-        Errorfnc = VLPool(VL,PoolRun,MeshDicts,Args=AddArgs)
+        Errorfnc = VLPool(VL,PoolRun,MeshDicts,args_list=AddArgs)
         VL.Exit('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
                 '~ Terminating after MeshCheck ~\n'\
                 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')

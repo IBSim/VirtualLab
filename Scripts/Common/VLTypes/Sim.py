@@ -11,6 +11,10 @@ import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 
 def Setup(VL,RunSim=True,Import=False):
+    '''
+    Default setup function for Sim routine.
+    '''
+
     VL.SIM_SIM = "{}/Sim".format(VL.SIM_SCRIPTS)
 
     VL.SimData = {}
@@ -115,8 +119,10 @@ def Setup(VL,RunSim=True,Import=False):
 
     # ==========================================================================
 
-def PoolRun(VL, SimDict, Flags):
-    RunPreAster,RunAster,RunPostAster = Flags
+def PoolRun(VL, SimDict, RunPreAster=True, RunAster=True, RunPostAster=True):
+    '''
+    Default run function for Sim routine.
+    '''
 
     Parameters = SimDict["Parameters"]
     # Create CALC_DIR where results for this sim will be stored
@@ -197,13 +203,12 @@ def PoolRun(VL, SimDict, Flags):
         os.makedirs(SimDict['POSTASTER'],exist_ok=True)
 
         PostAsterFnc = VLF.GetFunc(*SimDict['PostFile'])
-
         err = PostAsterFnc(VL,SimDict)
         if err:
              return 'PostAster Error: {}'.format(err)
 
 
-def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
+def Run(VL, ShowRes=False, **kwargs):
     if not VL.SimData: return
 
     # ==========================================================================
@@ -216,10 +221,9 @@ def Run(VL, RunPreAster=True, RunAster=True, RunPostAster=True, ShowRes=False):
     # Run high throughput part in parallel
     NbSim = len(VL.SimData)
     SimDicts = list(VL.SimData.values())
-    Flags = [RunPreAster,RunAster,RunPostAster]
-    AddArgs = [[Flags]]*NbSim #Additional arguments
+    kwargs_list = [kwargs]*NbSim # Duplicate kwargs in to list for parallelisation
 
-    Errorfnc = VLPool(VL,PoolRun,SimDicts,Args=AddArgs)
+    Errorfnc = VLPool(VL,PoolRun,SimDicts,kwargs_list=kwargs_list)
     if Errorfnc:
         VL.Exit(VLF.ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)),
                 Cleanup=False)

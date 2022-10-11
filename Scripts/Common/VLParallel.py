@@ -24,7 +24,7 @@ def _time_fn(fn,*args,**kwargs):
           "################################".format(walltime))
     return err
 
-def PoolWrap(fn,VL,Dict,*args):
+def PoolWrap(fn,VL,Dict,*args,**kwargs):
     # Try and get name & log file if standard convention has been followed
     if type(Dict)==dict:
         Name = Dict.get('Name',None)
@@ -42,10 +42,10 @@ def PoolWrap(fn,VL,Dict,*args):
             os.makedirs(LogDir,exist_ok=True)
             with open(LogFile,'w') as f:
                 with redirect_stdout(f), redirect_stderr(f):
-                    err = _time_fn(fn,VL,Dict,*args)
+                    err = _time_fn(fn,VL,Dict,*args,**kwargs)
         else:
             print("Running {}.\n".format(Name),flush=True)
-            err = _time_fn(fn,VL,Dict,*args)
+            err = _time_fn(fn,VL,Dict,*args,**kwargs)
 
         if not err: mess = "{} completed successfully.\n".format(Name)
         else: mess = "{} finishes with errors.\n".format(Name)
@@ -100,21 +100,25 @@ def PoolReturn(Dicts,Returners):
 
     return PlError
 
-def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
+def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
 
-    fnclist = [fnc]*len(Dicts)
-    PoolArgs = [[VL]*len(Dicts),Dicts] + Args
+    if args_list:
+        assert len(args_list)==len(Dicts)
+    if kwargs_list:
+        assert len(kwargs_list)==len(Dicts)
 
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
 
-    if Args:
-        assert len(Args)==len(Dicts)
-
+    # create list fof arguments
     PoolArgs = []
     for i,_dict in enumerate(Dicts):
         a = [fnc,VL,_dict]
-        if Args: a.extend(Args[i])
+        # add args_list info, if it exists
+        if args_list:
+            _arg = args_list[i]
+            if type(_arg) in (list,tuple): a.extend(_arg)
+            else: a.append(_arg)
         PoolArgs.append(a)
 
     try:
@@ -124,7 +128,7 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
             kwargs = {'workdir':VL.TEMP_DIR,
                       'addpath':set(sys.path)-set(VL._pypath)}
         else: kwargs = {}
-        Res = Paralleliser(PoolWrap,PoolArgs, method=launcher, nb_parallel=N,**kwargs)
+        Res = Paralleliser(PoolWrap,PoolArgs,kwargs_list=kwargs_list, method=launcher, nb_parallel=N,**kwargs)
     except KeyboardInterrupt as e:
         VL.Cleanup()
 

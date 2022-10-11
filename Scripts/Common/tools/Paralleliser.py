@@ -11,7 +11,7 @@ def _fn_wrap_kwargs(fn,*args):
     return fn(*args,**kwargs)
 
 
-def Paralleliser(fnc, args_list, kwargs_list=None, method='sequential', nb_parallel=1, **kwargs):
+def Paralleliser(fnc, args_list, kwargs_list=[], method='sequential', nb_parallel=1, **kwargs):
     '''
     Evaluate function 'fnc' for a range of agruments using a chosen method.
     Methods available are:
@@ -25,12 +25,11 @@ def Paralleliser(fnc, args_list, kwargs_list=None, method='sequential', nb_paral
     '''
 
     NbEval = len(args_list) # Number of function evaluations required
-    # checks
 
     if method.lower() == 'sequential' or NbEval==1:
         Res = []
         for i, arg in enumerate(args_list):
-            if kwargs_list is None:
+            if kwargs_list == []:
                 ret = fnc(*arg)
             else:
                 ret = fnc(*arg,**kwargs_list[i])
@@ -40,7 +39,7 @@ def Paralleliser(fnc, args_list, kwargs_list=None, method='sequential', nb_paral
         workdir = kwargs.get('workdir',None)
         pool = pmp.ProcessPool(nodes=nb_parallel, workdir=workdir)
         args_list = list(zip(*args_list)) # change format of args for this
-        if kwargs_list is None:
+        if kwargs_list == []:
             Res = pool.map(fnc, *args_list)
         else:
             # pass kwargs as additional args which is picked up by _fn_wrap_kwargs
@@ -69,7 +68,7 @@ def Paralleliser(fnc, args_list, kwargs_list=None, method='sequential', nb_paral
         pool = MpiPool(nodes=nb_parallel, source=source, workdir=workdir)
 
 
-        if kwargs_list is None:
+        if kwargs_list == []:
             Res = pool.map(fnc, *args_list,onall=onall)
         else:
             # pass kwargs as additional args which is picked up by _fn_wrap_kwargs

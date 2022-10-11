@@ -173,8 +173,8 @@ Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DY=0.0, GROUP_MA=('PipeIn','PipeOut')), #Pi
 # the tangent is computationally expsnive, therefore this is defaulted to 3.
 # MaxIter: Max. number of iterations of the newton algorithm
 Solver = getattr(Parameters,'Solver', 'MUMPS')
-NewtonUpdate = getattr(Parameters,'NewtonUpdate',3)
-_MaxIter = 50 if NewtonUpdate == 0 else 10*NewtonUpdate
+NewtonUpdate = getattr(Parameters,'NewtonUpdate',1)
+_MaxIter = 20 if NewtonUpdate == 0 else 20*NewtonUpdate
 MaxIter = getattr(Parameters,'MaxIter',_MaxIter)
 
 # Steady state analysis
@@ -216,9 +216,15 @@ ResMech = MECA_STATIQUE(CHAM_MATER=Mechmat,
                      MODELE=Mechmod,
                      SOLVEUR=_F(METHODE=Solver))
 
+    # Get stresses
+CALC_CHAMP(reuse=ResMech,
+               CRITERES=('SIEQ_ELGA'),
+               DEFORMATION=('EPSI_ELGA'),
+               RESULTAT=ResMech)
+
 IMPR_RESU(RESU=_F(RESULTAT=ResMech,
-                  NOM_CHAM=('DEPL','SIEF_ELGA','EPSI_ELGA'),
-                  NOM_CHAM_MED=('Displacement','Stress','Strain')),
+                  NOM_CHAM=('DEPL','SIEF_ELGA','EPSI_ELGA','SIEQ_ELGA'),
+                  NOM_CHAM_MED=('Displacement','Stress','Strain','Stress_Eq')),
           UNITE=80)
 
 FIN()

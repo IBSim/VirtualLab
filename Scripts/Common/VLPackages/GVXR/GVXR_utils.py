@@ -157,7 +157,7 @@ def normalise_uint(projections,bitrate=8):
         raise(ValueError("Unknown bitrate for image output, must be 8 or 16"))
     projections = np.array(projections)
     data = projections / np.max(projections) # normalize the data to 0 - 1
-    data = projections*maxint *  # Now scale by max int
+    data = projections*maxint  # Now scale by max int
     return(data)
 
 def InitSpectrum(Beam,Verbose:bool=True,Headless:bool=False):

@@ -26,7 +26,7 @@ class VLSetup():
         self.DAFn=DAFn
         self.VoxFn=VoxFn
         ########################################################################
-        # Get parsed args (achieved using the -k flag when launchign VirtualLab).
+        # Get parsed args (achieved using the -k flag when launching VirtualLab).
         self._GetParsedArgs()
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
@@ -258,10 +258,10 @@ class VLSetup():
         # ======================================================================
         # Check any of the attributes of NS are included
         if Master != None and not set(Master.__dict__).intersection(VLTypes):
-            message = "Parameters_Master contains none of the attrbutes {}".format(VLTypes)
+            message = "Parameters_Master contains none of the attributes {}".format(VLTypes)
             self.Exit(ErrorMessage(message))
         if Var != None and not set(Var.__dict__).intersection(VLTypes):
-            message = "Parameters_Var contains none of the attrbutes {}".format(VLTypes)
+            message = "Parameters_Var contains none of the attributes {}".format(VLTypes)
             self.Exit(ErrorMessage(message))
 
         # ======================================================================
@@ -368,6 +368,7 @@ class VLSetup():
         return self.VoxFn.Run(self,**kwargs)
 # Call to Run a container for GVXR
     def CT_Scan(self,**kwargs):
+        
         # if in main contianer submit job request
         return_value=Utils.RunJob(Cont_id=1,Tool="GVXR",
         Parameters_Master=self.Parameters_Master_str,

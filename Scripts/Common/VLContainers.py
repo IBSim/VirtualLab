@@ -7,11 +7,8 @@ import json
 import os
 import numpy as np
 import shutil
-import copy
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
-import atexit
-import json
 import VLconfig
 from .VirtualLab import VLSetup
 from .VLContainer import Container_Utils as Utils
@@ -26,7 +23,7 @@ class CIL_Setup(VLSetup):
         from .VLTypes import CIL as CILFn
         self.CILFn = CILFn
         ########################################################################
-    	 # Get parsed args (achieved using the -k flag when launchign VirtualLab).
+    	 # Get parsed args (achieved using the -k flag when launching VirtualLab).
         self._GetParsedArgs()
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
@@ -131,7 +128,7 @@ class CIL_Setup(VLSetup):
 ###############################################################################
 class GVXR_Setup(VLSetup):
     def __init__(self, Simulation, Project,Cont_id=2):
-    	#######################################################################
+    	#################################################################
         # import run/setup functions for GVXR
         from .VLTypes import GVXR as GVXRFn
         self.GVXRFn = GVXRFn

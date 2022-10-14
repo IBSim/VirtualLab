@@ -62,7 +62,7 @@ def Setup(VL, RunGVXR=True):
             raise ValueError('If using Tube Angle and/or Tube Voltage you must define both.')
             
     #########################################
-    # For reference in all cases our co-ordiantes 
+    # For reference in all cases our co-ordinates 
     # are defined as:
     #
     # x -> horizontal on the detector/output image
@@ -96,7 +96,7 @@ def Setup(VL, RunGVXR=True):
         Model_PosZ: float
         # inital rotation of model around each axis [x,y,z]
         # To keep things simple this defaults to [0,0,0]
-        # Nikon files define these as Tilt, InitalAngle, and Roll repectivley. 
+        # Nikon files define these as Tilt, InitalAngle, and Roll respectively. 
         rotation: float  = Field(default_factory=lambda:[0,0,0])
         Model_Pos_units: str = Field(default='mm')
 

@@ -21,17 +21,16 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_
             call_string = f'-B /run:/run -B {vlab_dir}:/home/ibsim/VirtualLab \
                             --nv Containers/CIL_sand'
         else:
-            call_string = f'-v /run:/run -v {vlab_dir}:/home/ibsim/VirtualLab --gpus all ibsim/CIL'
+            call_string = f'-v /run:/run -v {vlab_dir}:/home/ibsim/VirtualLab --gpus all ibsim/vl_cil'
 
         command = f'/home/ibsim/VirtualLab/Containers/Run_CIL.sh \
                    {param_master} {param_var} {Project} {Simulation} {ID}'
 
     elif Tool == "GVXR":
         if use_singularity:
-            #call_string = f'-B /run:/run -B {vlab_dir}:/home/ibsim/VirtualLab --nv Containers/VL_GVXR'
-            call_string = f'-B /run:/run -B {vlab_dir}:/home/ibsim/VirtualLab --nv Containers/GVXR.sif'
+            call_string = f'-B /run:/run -B /dev/dri:/dev/dri -B {vlab_dir}:/home/ibsim/VirtualLab --nv Containers/GVXR_test.sif'
         else:
-            call_string = f'-v /run:/run -v {vlab_dir}:/home/ibsim/VirtualLab -e QT_X11_NO_MITSHM=1 --gpus all ibsim/VL_GVXR'
+            call_string = f'-v /run:/run -v /dev:/dev -v {vlab_dir}:/home/ibsim/VirtualLab -e QT_X11_NO_MITSHM=1 --gpus all ibsim/vl_gvxr'
 
         command = f'/home/ibsim/VirtualLab/Containers/Run_GVXR.sh \
                    {param_master} {param_var} {Project} {Simulation} {ID}'
@@ -52,3 +51,4 @@ def check_platform():
     if platform.system()=='Linux':
         use_singularity=True
     return use_singularity
+    

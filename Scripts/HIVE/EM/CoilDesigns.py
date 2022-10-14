@@ -39,11 +39,11 @@ def Test():
     geompy.addToStudy( OZ, 'OZ' )
 
     CoilWidth = 0.005
-    Vertex_1 = geompy.MakeVertex(0.1, 0.01, 0.03)
-    Vertex_2 = geompy.MakeVertex(0.1, -0.01, 0.03)
-    Vertex_3 = geompy.MakeVertex(0, 0.01, 0.03)
-    Vertex_4 = geompy.MakeVertex(0, -0.01, 0.03)
-    Vertex_5 = geompy.MakeVertex(-0.01, 0, 0.03)
+    Vertex_1 = geompy.MakeVertex(0.1, 0.01, 0.00)
+    Vertex_2 = geompy.MakeVertex(0.1, -0.01, 0.00)
+    Vertex_3 = geompy.MakeVertex(0, 0.01, 0.00)
+    Vertex_4 = geompy.MakeVertex(0, -0.01, 0.00)
+    Vertex_5 = geompy.MakeVertex(-0.01, 0, 0.00)
     Line_1 = geompy.MakeLineTwoPnt(Vertex_3, Vertex_1)
     Line_2 = geompy.MakeLineTwoPnt(Vertex_2, Vertex_4)
     Arc_1 = geompy.MakeArc(Vertex_3, Vertex_5, Vertex_4)
@@ -100,11 +100,10 @@ def Test():
 
     # =========================================================================
     # Make refrence vector
-    V1 = geompy.MakeVertex(0.01, 0, 0)
-    V2 = geompy.MakeVertex(1.01, 0, 0)
-    RefVect = geompy.MakeVector(V1, V2)
+    Centre = geompy.MakeVertex(0.01, 0, 0)
+    Orientation = {'Centre':Centre,'System':[OX,OY,OZ]}
 
-    return CoilMesh, RefVect
+    return CoilMesh, Orientation
 
 def Test_Hollow():
     ### Geometry ###
@@ -183,11 +182,10 @@ def Test_Hollow():
 
     # =========================================================================
     # Make refrence vector
-    V1 = geompy.MakeVertex(0.01, 0, 0)
-    V2 = geompy.MakeVertex(1.01, 0, 0)
-    RefVect = geompy.MakeVector(V1, V2)
+    Centre = geompy.MakeVertex(0.01, 0, 0)
+    Orientation = {'Centre':Centre,'System':[OX,OY,OZ]}
 
-    return CoilMesh, RefVect
+    return CoilMesh, Orientation
 
 def HIVE(dirname=None):
     if not dirname:
@@ -246,11 +244,11 @@ def HIVE(dirname=None):
 
     # =========================================================================
     # Make refrence vector
-    V1 = geompy.MakeVertex(0, 0.005, 0)
-    V2 = geompy.MakeVertex(0, 1, 0)
-    RefVect = geompy.MakeVector(V1, V2)
+    Centre = geompy.MakeVertex(0, 0.005, 0)
+    OX_reverse = geompy.MakeVectorDXDYDZ(-1, 0, 0)
+    Orientation = {'Centre':Centre,'System':[OY,OX_reverse,OZ]}
 
-    return CoilMesh, RefVect
+    return CoilMesh, Orientation
 
 def HIVE_old(dirname=None):
     if not dirname:
@@ -305,11 +303,10 @@ def HIVE_old(dirname=None):
 
     # =========================================================================
     # Make refrence vector
-    V1 = geompy.MakeVertex(0, 0, 0)
-    V2 = geompy.MakeVertex(0, 1, 0)
-    RefVect = geompy.MakeVector(V1, V2)
+    OX_reverse = geompy.MakeVectorDXDYDZ(-1, 0, 0)
+    Orientation = {'Centre':O,'System':[OY,OX_reverse,OZ]}
 
-    return CoilMesh, RefVect
+    return CoilMesh, Orientation
 
 def Pancake(dirname=None):
     if not dirname:

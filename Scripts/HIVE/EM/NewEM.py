@@ -54,6 +54,63 @@ class GetMesh():
 
             self.Groups[GrpType][Name] = Ix
 
+class CoilFOR(object):
+    ''' Class for frame of reference for coil system'''
+    def __init__(self, coil, centre, system):
+        self.coil = coil
+        self.centre = centre
+        self.system = [geompy.MakeLine(centre,dir) for dir in system]
+        self.centre_coord()
+        self.system_coord()
+
+    def translation(self,DX,DY,DZ):
+        # Move coil geom
+        self.coil = geompy.MakeTranslation(self.coil,DX,DY,DZ )
+        # Move FOR
+        self.centre = geompy.MakeTranslation(self.centre,DX,DY,DZ)
+        for i in range(len(self.system)):
+            self.system[i] = geompy.MakeTranslation(self.system[i],DX,DY,DZ)
+
+        # update vale of centre (system not affected by translation)
+        self.centre_coord()
+
+
+    def rotation(self,axis,angle):
+        # rotate coil
+        self.coil = geompy.MakeRotation(self.coil,axis,angle)
+        # Rotate FOR
+        self.centre = geompy.MakeRotation(self.centre,axis,angle)
+        for i in range(len(self.system)):
+            self.system[i] = geompy.MakeRotation(self.system[i],axis,angle)
+
+        # updtae value of centre and system
+        self.centre_coord()
+        self.system_coord()
+
+    def centre_coord(self):
+        # get coordinate for centre point
+        self.centre_val = np.array(geompy.PointCoordinates(self.centre))
+
+    def system_coord(self):
+        # get direction of system
+        self.system_val = np.array([GetDirection(s) for s in self.system])
+
+def GetDirection(norm):
+    V1,V2 = geompy.SubShapeAll(norm,geompy.ShapeType['VERTEX'])
+    Crd_V1 = np.array(geompy.PointCoordinates(V1))
+    Crd_V2 = np.array(geompy.PointCoordinates(V2))
+    return Crd_V2 - Crd_V1
+
+def GetAngle(dir1,dir2):
+    product = np.dot(dir1,dir2)
+    mag1,mag2 = np.linalg.norm(dir1),np.linalg.norm(dir2)
+    theta_rad = np.arccos(product/(mag1*mag2))
+    return theta_rad
+
+
+
+
+
 def EMCreate(SampleMesh, SampleGeom, Parameters):
     # Default parameters
     VacuumRadius = getattr(Parameters,'VacuumRadius',0.2)
@@ -77,50 +134,89 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     # Create dictionary of groups to easily find
     GroupDict = {str(grp.GetName()):grp for grp in SampleGroups}
 
+    # ==========================================================================
+    # import coil design
+    from EM.CoilDesigns import Coils
+    CoilData, Orientation = Coils(Parameters.CoilType)
+    CoilMesh = GetMesh(CoilData)
+    geompy.addToStudy( CoilMesh.Geom, 'Coil_orig' )
+
+    # get orientation information and make a class containing this and the coil geometry
+    CoilCentre = Orientation.get('Centre',O) # assume coil centre is at origin
+    System = Orientation.get('System',[OX,OY,OZ])   # assume terminal is in OX direction,
+    CoilRef = CoilFOR(CoilMesh.Geom,CoilCentre,System)
+
+    # ==========================================================================
+    # Make frame of reference for coil displacement and rotation
+
+    # Get mid point along pipe
     cPipeIn = geompy.MakeCDG(GroupDict['PipeIn'])
     cPipeOut = geompy.MakeCDG(GroupDict['PipeOut'])
-
-    PipeVect = geompy.MakeVector(cPipeIn, cPipeOut)
-    CoilNorm = geompy.GetNormal(GroupDict['CoilFace'])
-
     CrdPipeIn = np.array(geompy.PointCoordinates(cPipeIn))
     CrdPipeOut = np.array(geompy.PointCoordinates(cPipeOut))
-    PipeMid = (CrdPipeIn + CrdPipeOut)/2
+    CrdPipeMid = (CrdPipeIn + CrdPipeOut)/2
+    cPipeMid = geompy.MakeVertex(*CrdPipeMid)
+    geompy.addToStudy(cPipeMid,'cPipeMid')
 
-    from EM.CoilDesigns import Coils
-    CoilData, Reference = Coils(Parameters.CoilType)
-    CoilMesh = GetMesh(CoilData)
+    # vector 1: Along pipe
+    PipeVect = CrdPipeOut - CrdPipeMid
+    Vect_1 = geompy.MakeVector(cPipeMid,cPipeOut)
 
-    V1,V2 = Reference.GetDependency()
-    cV1 = np.array(geompy.PointCoordinates(V1))
-
-    geompy.addToStudy( CoilMesh.Geom, 'Coil_orig' )
-    geompy.addToStudy(Reference,'RefVect')
-
+    # vector 2: in direction normal to the coil face
+    _norm = geompy.GetNormal(GroupDict['CoilFace'])
+    CoilVect = GetDirection(_norm)
+    Vect_2 = geompy.MakeLine(cPipeMid,_norm)
 
 
-    # Get coil and sample tight in z direction
-    # This assumes coil is in x-y plane
+    # Move coil so that it's centre point is as CrdPipeMid
+    CoilRef.translation(*(CrdPipeMid-CoilRef.centre_val))
+    geompy.addToStudy( CoilRef.coil, 'Coil' )
+
+    # Check angle between the coil normal and coil refrence
+    # third component of coil system must lin up with coil vector
+    coil_angle = GetAngle(CoilRef.system_val[2],CoilVect)
+    if np.mod(coil_angle,np.pi):
+        # get direction normal to both vectors
+        norm = np.cross(CoilRef.system_val[2],CoilVect)
+        RotateVector = geompy.MakeVector(cPipeMid,geompy.MakeVertex(*(CrdPipeMid + norm)))
+        CoilRef.rotation(RotateVector,coil_angle)
+        geompy.addToStudy(RotateVector,'RotateVector_2')
+
+    # Check angle between the pipe and coil refrence
+    # second component of coil system must line up with the pipe
+    pipe_angle = GetAngle(CoilRef.system_val[1],PipeVect)
+    if np.mod(pipe_angle,np.pi):
+        norm = np.cross(CoilRef.system_val[1],PipeVect) # get direction normal to both vectors
+        globals().update(locals())
+        RotateVector = geompy.MakeVector(cPipeMid,geompy.MakeVertex(*(CrdPipeMid + norm)))
+        CoilRef.rotation(RotateVector,pipe_angle)
+        geompy.addToStudy(RotateVector,'RotateVector_1')
+
+
+
+    # ==========================================================================
+    # Coil displacement
     SampleBB = geompy.BoundingBox(SampleGeom)
-    CoilBB = geompy.BoundingBox(geompy.MakeBoundingBox(CoilMesh.Geom,True))
-    Coil = geompy.MakeTranslation(CoilMesh.Geom, 0, 0, SampleBB[5] - CoilBB[4])
+    CoilBB = geompy.BoundingBox(geompy.MakeBoundingBox(CoilRef.coil,True))
+    translation = np.array([0,0,SampleBB[5] - CoilBB[4]])
+    CoilRef.translation(*translation)
+    CoilRef.translation(*Parameters.CoilDisplacement)
 
-    # Position coil in x-y plane using Reference
-    CoilTrans = PipeMid - cV1
-    CoilRot = geompy.GetAngleRadians(OX,Reference)
+    geompy.addToStudy(CoilRef.centre,'CoilCentre')
+    # Todo: sort this out when normal not in Z
 
+    if hasattr(Parameters,'CoilRotation'):
+        for r,d in zip(Parameters.CoilRotation,CoilRef.system):
+            if r==0: continue
+            CoilRef.rotation(d,np.deg2rad(r))
 
-
-    if CoilRot:
-        RotateVector = geompy.MakeTranslation(OZ, *cV1)
-        Coil = geompy.MakeRotation(Coil,RotateVector,-CoilRot)
-    Coil = geompy.MakeTranslation(Coil, *CoilTrans[:-1],0)
-
-    Coil = geompy.MakeTranslation(Coil, *Parameters.CoilDisplacement)
-    if getattr(Parameters,'Rotation',0):
-        Coil = geompy.MakeRotation(Coil, PipeVect, Parameters.Rotation/180*np.pi)
+    # ==========================================================================
+    # Coil manipulation complete
+    Coil = CoilRef.coil
     geompy.addToStudy( Coil, 'Coil' )
 
+    # ==========================================================================
+    # chekc for intersection of coil and sample
     Common = geompy.MakeCommonList([SampleGeom,Coil])
     Measure = np.array(geompy.BasicProperties(Common))
     Common.Destroy()
@@ -128,8 +224,7 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
         return 2319
 
     if True:
-        VertexPipeMid = geompy.MakeVertex(*PipeMid)
-        Vacuum_orig = geompy.MakeSpherePntR(VertexPipeMid, VacuumRadius)
+        Vacuum_orig = geompy.MakeSpherePntR(cPipeMid, VacuumRadius)
         gm = geompy.MakeShell(GroupDict["SampleSurface"])
         Solid_1 = geompy.MakeSolid([gm])
         Vacuum = geompy.MakeCutList(Vacuum_orig, [Solid_1], True)

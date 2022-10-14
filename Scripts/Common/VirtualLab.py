@@ -141,9 +141,34 @@ class VLSetup():
         else: atexit.unregister(self._Cleanup)
         atexit.register(self._Cleanup,Cleanup)
 
+    def SettingsToFile(self,settings_dict):
+        ''' 
+        Simple function to output parameters passed into Settings to file.
+        These can then be passed into subsequent calls to Settings in other
+        containers. Thus you can set these options once in the call to the
+        base container and they will be passed on.
+        '''
+        import json
+        with open(f'{VLconfig.VL_DIR}/Container_settings.json', 'w') as fp:
+            json.dump(settings_dict, fp)
+        fp.close()
+        return
+
+    def SettingsFromFile(self,filename):
+        ''' 
+        Companion function to SettingsToFile hopefully it is self-explanatory but
+        this does the reverse that is reads in and returns and dict from a json file.
+        This is used to carry settings across to containers. 
+        '''
+        import json
+        with open(filename, encoding='utf-8') as F:
+            json_data = json.loads(F.read())
+        F.close()
+        return json_data
+    
     def Settings(self,**kwargs):
 
-        Diff = set(kwargs).difference(['Mode','Launcher','NbJobs','InputDir',
+        self.SettingsToFile(kwargs)
                                     'OutputDir','MaterialDir','Cleanup'])
         if Diff:
             self.Exit("Error: {} are not option(s) for settings".format(list(Diff)))

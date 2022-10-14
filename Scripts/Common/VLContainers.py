@@ -77,6 +77,33 @@ class CIL_Setup(VLSetup):
 
         self.CILFn.Setup(self,RunCIL)
         
+    def Settings(self, **kwargs):
+        filename = f'{VLconfig.VL_DIR}/Container_settings.json'
+        base_settings = self.SettingsFromFile(filename)
+        
+        # Python merge operator (introduced in python 3.9)
+        # Note: this overwrites values in the left dictionary
+        # with the value of the keys of the right dictionary,
+        # if an overlap exists. This is intentional as it
+        # allows values that were passed in to the function to
+        # Overwrite the base setings.
+
+        settings = base_settings | kwargs 
+
+        if 'Mode' in settings:
+            self._SetMode(settings['Mode'])
+        if 'Launcher' in settings:
+            self._SetLauncher(settings['Launcher'])
+        if 'NbJobs' in settings:
+            self._SetNbJobs(settings['NbJobs'])
+        if 'Cleanup' in settings:
+            self._SetCleanup(settings['Cleanup'])
+        if 'InputDir' in settings:
+            self._SetInputDir(settings['InputDir'])
+        if 'OutputDir' in settings:
+            self._SetOutputDir(settings['OutputDir'])
+        if 'MaterialDir' in settings:
+            self._SetMaterialDir(settings['MaterialDir'])
      #Hook for CIL       
     def CT_Recon(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
@@ -159,6 +186,33 @@ class GVXR_Setup(VLSetup):
 
         self.GVXRFn.Setup(self,RunGVXR)
         
+    def Settings(self, **kwargs):
+        filename = f'{VLconfig.VL_DIR}/Container_settings.json'
+        print(filename)
+        base_settings = self.SettingsFromFile(filename)
+        
+        # Python merge operator (introduced in python 3.9)
+        # Note: this overwrites values in the left dictionary
+        # with the value of the keys of the right dictionary,
+        # if an overlap exists. This is intentional as it
+        # allows values that were passed in to the function to
+        # Overwrite the base setings.
+
+        settings = base_settings | kwargs 
+        if 'Mode' in settings:
+            self._SetMode(settings['Mode'])
+        if 'Launcher' in settings:
+            self._SetLauncher(settings['Launcher'])
+        if 'NbJobs' in settings:
+            self._SetNbJobs(settings['NbJobs'])
+        if 'Cleanup' in settings:
+            self._SetCleanup(settings['Cleanup'])
+        if 'InputDir' in settings:
+            self._SetInputDir(settings['InputDir'])
+        if 'OutputDir' in settings:
+            self._SetOutputDir(settings['OutputDir'])
+        if 'MaterialDir' in settings:
+            self._SetMaterialDir(settings['MaterialDir'])    
 
      #Hook for GVXR       
     def CT_Scan(self,**kwargs):

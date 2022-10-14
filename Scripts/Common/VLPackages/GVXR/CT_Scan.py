@@ -20,28 +20,7 @@ class GVXRError(Exception):
 def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_list,Headless=False,
 num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=False):
     ''' Main run function for GVXR'''
-    # Print the libraries' version
-    print (gvxr.getVersionOfSimpleGVXR())
-    print (gvxr.getVersionOfCoreGVXR())
-
-    # Create an OpenGL context
-    print("Create an OpenGL context")
-    if Headless:
-    #headless
-        gvxr.createWindow(-1,0,"EGL");
-    # Vulkan is Disabled in this version as there are bugs to be worked out
-    # however I have left it here as there is no point removing it to add 
-    # it back later.
-    #elif Vulkan:
-        # or with Vulkan
-        #gvxr.createWindow(-1,1,"VULKAN");
-        #gvxr.setWindowSize(512, 512);
-    else:
-    # or with window and OpenGL
-        #gvxr.createWindow(-1,1,"VULKAN");
-        gvxr.createWindow();
-        #gvxr.setWindowSize(512, 512); 
-
+    
     # Load the data
     print("Load the data");
     
@@ -156,15 +135,15 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         points.flatten(),
         mesh.flatten(),
         Model.Pos_units);
-        # place mesh at the orgin then traslate it according to the defined ofset
+        # place mesh at the origin then translate it according to the defined offset
         gvxr.moveToCentre(label);
         gvxr.translateNode(label,Model.Model_PosX,Model.Model_PosY,Model.Model_PosZ,Model.Model_Pos_units)
         gvxr.setElement(label, Material_list[i]);
         gvxr.addPolygonMeshAsInnerSurface(label)
         
     # set initial rotation
-    # note GVXR uses OpenGL which perfoms rotations with object axes not global.
-    # This makes rotaions around the gloabal axes very tricky.
+    # note GVXR uses OpenGL which performs rotations with object axes not global.
+    # This makes rotations around the global axes very tricky.
     M = len(mesh_names)
     total_rotation = np.zeros((3,M))
     for i,label in enumerate(mesh_names):
@@ -226,32 +205,24 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     projections = normalise_8bituint(projections)
     write_image(output_file,projections,im_format=im_format);
     
-    # Display the 3D scene (no event loop)
-    # Run an interactive loop
-    # (can rotate the 3D scene and zoom-in)
-    # Keys are:
-    # Q/Escape: to quit the event loop (does not close the window)
-    # B: display/hide the X-ray beam
-    # W: display the polygon meshes in solid or wireframe
-    # N: display the X-ray image in negative or positive
-    # H: display/hide the X-ray detector
     if (not Headless):
         controls_msg = ('### GVXR Window Controls ###\n'
-        'You are Running an interactive loop \n'
-        'You can rotate the 3D scene and zoom-in with the mouse\n'
-        'buttons and scroll wheel.\n'
-        ' \n'
-        'To continue either close the window or press Q/Esc \n'
-        ' \n'
-        'Useful Keys are:\n'
-        'Q/Escape: to quit the event loop\n'
-        'B: display/hide the X-ray beam\n'
-        'W: display the polygon meshes in solid or wireframe\n'
-        'N: display the X-ray image in negative or positive\n'
-        'H: display/hide the X-ray detector\n')
+         'You are Running an interactive loop \n'
+         'You can rotate the 3D scene and zoom-in with the mouse\n'
+         'buttons and scroll wheel.\n'
+         ' \n'
+         'To continue either close the window or press Q/Esc \n'
+         ' \n'
+         'Useful Keys are:\n'
+         'Q/Escape: to quit the event loop\n'
+         'B: display/hide the X-ray beam\n'
+         'W: display the polygon meshes in solid or wireframe\n'
+         'N: display the X-ray image in negative or positive\n'
+         'H: display/hide the X-ray detector\n')
         print(controls_msg)
-        gvxr.renderLoop();
-    gvxr.destroyAllWindows();
+        gvxr.renderLoop()
+    #clear the scene graph ready for the next render in the loop    
+    gvxr.removePolygonMeshesFromSceneGraph ()
     return
 
 def flat_field_normalize(arr, flat, dark, cutoff=None):

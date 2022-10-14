@@ -228,11 +228,24 @@ def Setup(VL, RunGVXR=True):
 
 def Run(VL):
     from Scripts.Common.VLPackages.GVXR.CT_Scan import CT_scan
+    from gvxrPython3 import gvxr
     if not VL.GVXRData: return
     VL.Logger('\n### Starting GVXR ###\n', Print=True)
-    for key in VL.GVXRData.keys():
+    print (gvxr.getVersionOfSimpleGVXR())
+    print (gvxr.getVersionOfCoreGVXR())
+    # Create an OpenGL context
+    print("Create an OpenGL context")
+    if VL.mode=='Headless':
+    #headless
+        gvxr.createWindow(-1,0,"EGL",4,5);
+    else:
+        gvxr.createWindow(-1,1,"OPENGL",4,5);
+        #gvxr.setWindowSize(512, 512); 
+    run_list = list(VL.GVXRData.keys())
+
+    for key in run_list:
         Errorfnc = CT_scan(**VL.GVXRData[key])
         if Errorfnc:
             VL.Exit("The following GVXR routine(s) finished with errors:\n{}".format(Errorfnc))
-
+    gvxr.destroyAllWindows()
     VL.Logger('\n### GVXR Complete ###',Print=True)

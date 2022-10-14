@@ -102,25 +102,50 @@ def Cont_Finished(Cont_id):
     sock.close()
     return
 
-def send_data(conn, payload):
+def send_data(conn, payload,bigPayload=False):
     '''
     Adapted from: https://github.com/vijendra1125/Python-Socket-Programming/blob/master/server.py
     @brief: send payload along with data size and data identifier to the connection
     @args[in]:
         conn: socket object for connection to which data is supposed to be sent
         payload: payload to be sent
+        bigFile: flag to suppress warning if payload is larger than the standard 2048 bytes. 
+        This is here because the dict is dynamically generated at runtime and may become larger 
+        than the default buffer without you necessarily knowing about. 
+        
+        There is no reason you cant send larger data than this (see payload_size argument 
+        for receive_data bellow).
+
+        The warning is merely here to save you from yourself and allow you to make 
+        adjustments to avoid errors caused by data overflows.
     '''
     # serialize payload
     serialized_payload = json.dumps(payload).encode('utf-8')
+    payload_size = len(serialized_payload)
+    if  payload_size > 2048 and not bigPayload:
+        print("###################################################\n"\
+            f"Warning: Payload has a size of {payload_size} bytes.\n"\
+        "This exceeds the standard buffer size of 2048 bytes.\n"\
+        "You will need to ensure you set the buffer on the rec to a large enough value\n" 
+        "or else data may be lost/corrupted.\n"\
+        "To suppress this message set the bigPayload flag.\n"\
+        "###################################################")
     conn.sendall(serialized_payload)
     
-def receive_data(conn,payload_size=1024):
+def receive_data(conn,payload_size=2048):
     '''
     @brief: receive data from the connection assuming that data is a json string
     @args[in]: 
         conn: socket object for connection from which data is supposed to be received
-        payload_size: max size in bytes of the object to be received. 
-        For now this is set to a sensible default of 1Kb
+        payload_size: size in bytes of the object buffer for the TCP protocol.  
+        Note this is not the size of the object itself, that can be much smaller. 
+        This number is the amount of memory allocated to hold the received object. It must
+        therefore be large enough to hold the object. For now this is set to an ample 
+        default of 2Kb. However, since the dicts are generated dynamically at run time 
+        you may need to send larger objects. If so just set this to a large enough number.
+
+        You may also want to set the bigPayload flag in send_data. 
+
     '''
     received_payload = conn.recv(payload_size).decode('utf-8')
     payload = json.loads(received_payload)

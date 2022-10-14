@@ -9,10 +9,6 @@ import pickle
 from importlib import reload
 import inspect
 from contextlib import redirect_stderr, redirect_stdout
-import pathos.multiprocessing as pathosmp
-from pyina.launchers import MpiPool
-
-from Scripts.Common import Analytics
 import VLconfig
 
 def PoolWrap(fn,VL,Dict,*args):
@@ -91,7 +87,6 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
 
     fnclist = [fnc]*len(Dicts)
     PoolArgs = [[VL]*len(Dicts),Dicts] + Args
-
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
 
@@ -105,12 +100,14 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
         elif launcher == 'Process':
             # Run studies in parallel of N using pathos. Only works on single nodes.
             # Reloading pathos ensures any new paths added to sys.path are included
+            import pathos.multiprocessing as pathosmp
             pmp = reload(pathosmp)
             pool = pmp.ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
             Res = pool.map(PoolWrap,fnclist, *PoolArgs)
             Res=list(Res)
             pool.terminate()
         elif launcher in ('MPI','MPI_Worker'):
+            from pyina.launchers import MpiPool
             # Run studies in parallel of N using pyina. Works for multi-node clusters.
             # onall specifies if there is a worker. True = no worker
             if launcher == 'MPI' or N==1: onall = True # Cant have worker if N is 1
@@ -147,6 +144,7 @@ def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
 	# use in future research grant applications. Can be turned off via
 	# VLconfig.py. See Scripts/Common/Analytics.py for more details.
     if VLconfig.VL_ANALYTICS=="True":
+        from Scripts.Common import Analytics
         frame = inspect.stack()[1]
         module = inspect.getmodule(frame[0])
         name = os.path.splitext(os.path.basename(module.__file__))[0]

@@ -1,11 +1,15 @@
 from email import message
 import socket
 import json
+import pickle
 from types import SimpleNamespace as Namespace
-def RunJob(Cont_id,Tool,Parameters_Master,Parameters_Var,Project,Simulation):
-    ''' Function to enable comunication with host script from container.
+from ast import Raise
+import struct
+
+def RunJob(Cont_id,Tool,Num_Cont,Parameters_Master,Parameters_Var,Project,Simulation):
+    ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
-        with another toll in seperate contianer. At the moment this 
+        with another toll in separate container. At the moment this 
         is only CIL but other tools can/will be added in time.
         #######################################################################
         Note: Current container ID's are:
@@ -19,52 +23,57 @@ def RunJob(Cont_id,Tool,Parameters_Master,Parameters_Var,Project,Simulation):
         Inputs:
         Cont_id (int): unique Id of the container that is calling the function.
                 For Now this should be set to 1 for Vlab. This has been
-                deliberatly left in to allow other containers to call 
+                deliberately left in to allow other containers to call 
                 tools should the need arise.
 
-        Tool (str): String containg name of the tool you want to run (curently just CIL).
+        Tool (str): String containing name of the tool you want to run.
 
-        Parameters_Master/Var (str): path INSIDE THE CONTAINER to the parmaeters file
+        Parameters_Master/Var (str): path INSIDE THE CONTAINER to the parameters file
         to be read in. Note you will need to setup directory binding carefully in VLsever.py.
-    '''
-        # setup networking to comunicate with host script whilst running in a continer
-    data = {"msg":"RunJob","Cont_id":Cont_id,"Tool":Tool,"Parameters_Master":Parameters_Master,
+
+        Cont_runs:  This is a list of tuples that maps runs to specific containers. 
+        The first index is a container number and the second is a list
+         of runs to be processed within said container.
+        ''' 
+
+        # setup networking to communicate with host script whilst running in a container
+    data = {"msg":"RunJob","Cont_id":Cont_id,"Tool":Tool,"Num_Cont":Num_Cont,"Parameters_Master":Parameters_Master,
             "Parameters_Var":Parameters_Var,"Project":Project,"Simulation":Simulation}
     # Long Note: we are fully expecting Parameters_Master and Parameters_Var to be strings 
     # pointing to Runfiles. However base VirtualLab supports passing in Namespaces.
     # (see virtualLab.py line 178 and GetParams for context). 
     # For the sake of my sanity we assume you are using normal RunFiles, which most users 
-    # likley are.
+    # likely are.
     #
     # Therefore this check is here to catch any determined soul and let you know if you 
     # want to pass in Namespaces for container tools you will need implement it yourself. 
-    # In principle this means convering Namespace to a dict with vars(Parameters_Master).
-    # Then sending it over as json string and convering it back on the otherside.
-    # In practrice you may run into issues with buffer sizes for sock.recv as the strings
+    # In principle this means converting Namespace to a dict with vars(Parameters_Master).
+    # Then sending it over as json string and converting it back on the other side.
+    # In practice you may run into issues with buffer sizes for sock.recv as the strings
     # can get very long indeed.
     if isinstance(Parameters_Master,Namespace):
         raise Exception("Passing in Namespaces is not currently supported for Container tools. \
         These must be strings pointing to a Runfile.")
     
-    data_string = json.dumps(data)
+    #data_string = json.dumps(data)
     sock = socket.socket()
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
     # send a signal to VL_server saying you want to run a CIL container
     sock.connect(("0.0.0.0", 9999))
-    sock.sendall(data_string.encode('utf-8'))
+    send_data(sock, data)
+
     #wait to recive message saying the tool is finished before continuing on.
     while True:
-        data = sock.recv(1024).decode('utf-8')
-        if data:
-            rec_dict = json.loads(data)
-        if rec_dict['msg'] == 'Running':
-            target_id = rec_dict['Cont_id']
-            break
+
+        rec_dict=receive_data(sock)
+        if rec_dict:
+            if rec_dict['msg'] == 'Running':
+                target_id = rec_dict['Cont_id']
+                break
     
     while True:
-        data = sock.recv(1024).decode('utf-8')
-        if data:
-            rec_dict = json.loads(data)
+        rec_dict = receive_data(sock)
+        if rec_dict:
             if rec_dict['msg'] == 'Success' and rec_dict['Cont_id']==target_id:
                 container_return = '0'
                 break
@@ -78,19 +87,94 @@ def RunJob(Cont_id,Tool,Parameters_Master,Parameters_Var,Project,Simulation):
 def Cont_Started(Cont_id):
     ''' Function to send a Message to the main script to say the container has started.'''
     data = {"msg":"started","Cont_id":Cont_id}
-    data_string = json.dumps(data)
     sock = socket.socket()
     sock.connect(("0.0.0.0", 9999))
-    sock.sendall(data_string.encode('utf-8'))
+    send_data(sock, data)
     sock.close()
     return
 
 def Cont_Finished(Cont_id):
     ''' Function to send a Message to the main script to say the container has Finished.'''
     data = {"msg":"Finished","Cont_id":Cont_id}
-    data_string = json.dumps(data)
     sock = socket.socket()
     sock.connect(("0.0.0.0", 9999))
-    sock.sendall(data_string.encode('utf-8'))
+    send_data(sock, data)
     sock.close()
     return
+
+def send_data(conn, payload):
+    '''
+    Adapted from: https://github.com/vijendra1125/Python-Socket-Programming/blob/master/server.py
+    @brief: send payload along with data size and data identifier to the connection
+    @args[in]:
+        conn: socket object for connection to which data is supposed to be sent
+        payload: payload to be sent
+    '''
+    # serialize payload
+    serialized_payload = json.dumps(payload).encode('utf-8')
+    conn.sendall(serialized_payload)
+    
+def receive_data(conn,payload_size=1024):
+    '''
+    @brief: receive data from the connection assuming that data is a json string
+    @args[in]: 
+        conn: socket object for connection from which data is supposed to be received
+        payload_size: max size in bytes of the object to be received. 
+        For now this is set to a sensible default of 1Kb
+    '''
+    received_payload = conn.recv(payload_size).decode('utf-8')
+    payload = json.loads(received_payload)
+    return (payload)
+
+def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_singularity,cont_id):
+    ''' Function to format string for bindpoints and container to call specified tool.'''
+##### Format cmd argumants #########
+    if param_var is None:
+        param_var = ''
+    else:
+        param_var = '-v ' + param_var
+
+    param_master = '-m '+ param_master
+    Simulation = '-s ' + Simulation
+    Project = '-p ' + Project
+    ID = '-I '+ str(cont_id)
+#########################################
+# Format run string and script to run   #
+# container based on tool used.         #
+#########################################
+# Setup command to run inside container and bind directories based on tool used    
+    if Tool == "CIL":
+        if use_singularity:
+            call_string = f'-B /run:/run -B {vlab_dir}:/home/ibsim/VirtualLab \
+                            --nv Containers/CIL_sand'
+        else:
+            call_string = f'-v /run:/run -v {vlab_dir}:/home/ibsim/VirtualLab --gpus all ibsim/vl_cil'
+
+        command = f'/home/ibsim/VirtualLab/Containers/Run_CIL.sh \
+                   {param_master} {param_var} {Project} {Simulation} {ID}'
+
+    elif Tool == "GVXR":
+        if use_singularity:
+            call_string = f'-B /run:/run -B /dev/dri:/dev/dri -B {vlab_dir}:/home/ibsim/VirtualLab --nv Containers/GVXR_test.sif'
+        else:
+            call_string = f'-v /run:/run -v /dev:/dev -v {vlab_dir}:/home/ibsim/VirtualLab -e QT_X11_NO_MITSHM=1 --gpus all ibsim/vl_gvxr'
+
+        command = f'/home/ibsim/VirtualLab/Containers/Run_GVXR.sh \
+                   {param_master} {param_var} {Project} {Simulation} {ID}'
+    # Add other tools here as need arises
+    else:
+        Raise(ValueError("Tool not recognised as callable in container."))
+    return call_string, command
+
+def check_platform():
+    '''Simple function to return True on Linux and false on Mac/Windows to
+    allow the use of singularity instead of Docker on Linux systems.
+    Singularity does not support Windows/Mac OS hence we need to check.
+    Note: Docker can be used on Linux with the --docker flag. This flag
+    however is ignored on both windows and Mac since they already
+    default to Docker.'''
+    import platform
+    use_singularity=False
+    if platform.system()=='Linux':
+        use_singularity=True
+    return use_singularity

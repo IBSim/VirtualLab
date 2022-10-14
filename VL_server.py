@@ -15,7 +15,7 @@ import argparse
 import os
 import json
 import sys
-from Scripts.Common.VLContainer.container_tools import check_platform,Format_Call_Str
+from Scripts.Common.VLContainer.Container_Utils import check_platform, Format_Call_Str, send_data, receive_data 
 def ContainerError(out,err):
     '''Custom function to format error message in a pretty way.'''
     Errmsg = "\n========= Container returned non-zero exit code =========\n\n"\
@@ -56,8 +56,7 @@ def check_for_errors(process_list,client_socket,sock_lock):
                 sock_lock.acquire()
                 # send mesage to tell main vlab thread to close because there was an error 
                 data = {"msg":"Error","stderr":'-1'}
-                data_string = json.dumps(data)
-                client_socket.sendall(data_string.encode('utf-8'))
+                send_data(client_socket,data)
                 sock_lock.release()
                 client_socket.shutdown(socket.SHUT_RDWR)
                 client_socket.close()
@@ -75,9 +74,7 @@ def process(vlab_dir,use_singularity):
     next_cnt_id = 2
     while True:
         client_socket, client_address = sock.accept()
-        data = client_socket.recv(1024).decode('utf-8')
-        #event, container_id, Tool = data.split(':')
-        rec_dict = json.loads(data)
+        rec_dict = receive_data(client_socket)
         event = rec_dict["msg"]
         container_id = rec_dict["Cont_id"]
         print(f'Server - received "{event}" event from container {container_id} at {client_address}')
@@ -86,6 +83,7 @@ def process(vlab_dir,use_singularity):
             client_socket.close()
         elif event == 'RunJob':
             tool = rec_dict["Tool"]
+            num_containers = rec_dict["Num_Cont"]
             param_master = rec_dict["Parameters_Master"]
             param_var = rec_dict["Parameters_Var"]
             project = rec_dict["Project"]
@@ -124,8 +122,7 @@ def process(vlab_dir,use_singularity):
             running_processes[str(target_id)] = container_process
             # send mesage to tell client continer what id the new container will have
             data = {"msg":"Running","Cont_id":waiting_cnt_sockets[str(target_id)]["id"]}
-            data_string = json.dumps(data)
-            client_socket.sendall(data_string.encode('utf-8'))
+            send_data(client_socket, data)
             sock_lock.release()
             #client_socket.close()
 
@@ -137,8 +134,7 @@ def process(vlab_dir,use_singularity):
                       f'notifying source container {waiting_cnt_sockets[container_id]["id"]}')
                 waiting_cnt_socket = waiting_cnt_sockets[container_id]["socket"]
                 data = {"msg":"Success","Cont_id":waiting_cnt_sockets[container_id]["id"]}
-                data_string = json.dumps(data)
-                waiting_cnt_socket.sendall(data_string.encode('utf-8'))
+                send_data(waiting_cnt_socket,data)
                 waiting_cnt_socket.shutdown(socket.SHUT_RDWR)
                 waiting_cnt_socket.close()
                 running_processes.pop(str(container_id))

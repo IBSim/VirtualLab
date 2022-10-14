@@ -226,7 +226,7 @@ def Setup(VL, RunGVXR=True):
         Json_file = "{}/{}_params.json".format(Param_dir,GVXRName)
         dump_to_json(VL.GVXRData[GVXRName],Json_file)
 
-def Run(VL):
+def Run(VL,run_ids=None):
     from Scripts.Common.VLPackages.GVXR.CT_Scan import CT_scan
     from gvxrPython3 import gvxr
     if not VL.GVXRData: return
@@ -241,7 +241,13 @@ def Run(VL):
     else:
         gvxr.createWindow(-1,1,"OPENGL",4,5);
         #gvxr.setWindowSize(512, 512); 
-    run_list = list(VL.GVXRData.keys())
+    
+    # if given a subset of runs extract only those runs
+    if run_ids:
+        all_runs = list(VL.GVXRData.keys())
+        run_list = [all_runs[i] for i in run_ids]
+    else:
+        run_list = list(VL.GVXRData.keys())
 
     for key in run_list:
         Errorfnc = CT_scan(**VL.GVXRData[key])

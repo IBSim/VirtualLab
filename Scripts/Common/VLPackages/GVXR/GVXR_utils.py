@@ -122,7 +122,7 @@ def find_the_key(dictionary:dict, target_keys:str):
     """Function to pull out the keys of a dictionary as a list."""
     return {key: dictionary[key] for key in target_keys}
 
-def write_image(output_dir:str,vox:np.double,im_format:str='tiff'):
+def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
     from PIL import Image, ImageOps
     import os
     output_name = os.path.basename(os.path.normpath(output_dir))
@@ -130,20 +130,34 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff'):
     #calcualte number of digits in max number of images for formating
     import math
     digits = int(math.log10(np.shape(vox)[0]))+1
-    
+    if bitrate == 8:
+        convert_opt='L'
+    elif bitrate == 16:
+        convert_opt='I;16'
+    else:
+        print("warning: bitrate not recognised assuming 8-bit greyscale")
+        convert_opt='L'
+
     for I in range(0,np.shape(vox)[0]):
         im = Image.fromarray(vox[I,:,:])
-        im = ImageOps.grayscale(im)
+        im = im.convert(convert_opt)
         im_output=f"{output_dir}/{output_name}_{I:0{digits}d}.{im_format}"
         im.save(im_output)
 
-def normalise_8bituint(projections):
+def normalise_uint(projections,bitrate=8):
+    ''' 
+    Normalise data as unsigned integer for image output
+    '''
     import numpy as np
-#    projections = np.array(projections)
-#    info = np.iinfo(projections.dtype) # Get the information of the incoming image type
-#    data = projections / info.max # normalize the data to 0 - 1
-    data = 255 * projections # Now scale by 255
-    #img = data.astype(np.uint8)
+    if bitrate == 8:
+        maxint = 255
+    elif bitrate == 16:
+        maxint = 65535
+    else:
+        raise(ValueError("Unknown bitrate for image output, must be 8 or 16"))
+    projections = np.array(projections)
+    data = projections / np.max(projections) # normalize the data to 0 - 1
+    data = projections*maxint *  # Now scale by max int
     return(data)
 
 def InitSpectrum(Beam,Verbose:bool=True,Headless:bool=False):

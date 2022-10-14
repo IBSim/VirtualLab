@@ -202,7 +202,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     projections = flat_field_normalize(projections,flat,dark)
     #convert from transmission to absorbsion data.
     #projections = - np.log(projections)
-    projections = normalise_8bituint(projections)
+    projections = normalise_uint(projections)
     write_image(output_file,projections,im_format=im_format);
     
     if (not Headless):
@@ -228,7 +228,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
 def flat_field_normalize(arr, flat, dark, cutoff=None):
     """
     Normalize raw projection data using the flat and dark field projections.
-    Agaion using numexpr to Speed up calculations over plain numpy.
+    Again using numexpr to Speed up calculations over plain numpy.
 
     Parameters
     ----------

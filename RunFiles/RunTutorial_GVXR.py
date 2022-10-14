@@ -21,7 +21,8 @@ VirtualLab=VLSetup(
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Sequential',
-           NbJobs=1)
+           NbJobs=1,
+           Max_Containers=3)
 
 VirtualLab.Parameters(
            Parameters_Master,

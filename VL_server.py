@@ -101,9 +101,16 @@ def process(vlab_dir,use_singularity):
 
             # setup comand to run docker or singularity
             if use_singularity:
-                container_cmd = 'singularity exec --contain --writable-tmpfs'
+                container_cmd = 'singularity exec --writable-tmpfs'
             else:
-                container_cmd = 'docker run -it'
+                # this monstrosity logs the user in as "themself" to allow safe access top x11 graphical apps"
+                #see http://wiki.ros.org/docker/Tutorials/GUI for more details
+                container_cmd = 'docker run --rm -it --user=$(id -u $USER):$(id -g $USER)'\
+                                '--env="DISPLAY" \--volume="/etc/group:/etc/group:ro"' \
+                                '--volume="/etc/passwd:/etc/passwd:ro"' \
+                                '--volume="/etc/shadow:/etc/shadow:ro"' \
+                                '--volume="/etc/sudoers.d:/etc/sudoers.d:ro"' \
+                                '--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw"'
             #try:
             container_process = subprocess.Popen(f'{container_cmd} {options} {command}',
                  stderr = subprocess.PIPE, shell=True)

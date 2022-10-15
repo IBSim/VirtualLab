@@ -53,6 +53,15 @@ def DataspaceTrain(TrainData, **kwargs):
 
 # ==============================================================================
 # Data scaling and rescaling functions
+
+def ScaleValues(data,scaling='unit'):
+    ''' '''
+    if scaling.lower()=='unit':
+        datamin,datamax = data.min(axis=0),data.max(axis=0)
+        scaler = np.array([datamin,datamax-datamin])
+    return scaler
+
+
 def DataScale(data,const,scale):
     '''
     This function scales n-dim data to a specific range.

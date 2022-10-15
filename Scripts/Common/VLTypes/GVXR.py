@@ -243,6 +243,7 @@ def Run(VL,run_ids=None):
         #gvxr.setWindowSize(512, 512); 
     
     # if given a subset of runs extract only those runs
+    print(run_ids)
     if run_ids:
         all_runs = list(VL.GVXRData.keys())
         run_list = [all_runs[i] for i in run_ids]

@@ -6,7 +6,7 @@ from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
 
-def RunJob(Cont_id,Tool,Num_Cont,Parameters_Master,Parameters_Var,Project,Simulation):
+def RunJob(Cont_id,Tool,Num_Cont,Cont_runs,Parameters_Master,Parameters_Var,Project,Simulation):
     ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
         with another toll in separate container. At the moment this 
@@ -37,8 +37,9 @@ def RunJob(Cont_id,Tool,Num_Cont,Parameters_Master,Parameters_Var,Project,Simula
         ''' 
 
         # setup networking to communicate with host script whilst running in a container
-    data = {"msg":"RunJob","Cont_id":Cont_id,"Tool":Tool,"Num_Cont":Num_Cont,"Parameters_Master":Parameters_Master,
-            "Parameters_Var":Parameters_Var,"Project":Project,"Simulation":Simulation}
+    data = {"msg":"RunJob","Cont_id":Cont_id,"Tool":Tool,"Num_Cont":Num_Cont,"Cont_runs":Cont_runs,
+            "Parameters_Master":Parameters_Master,"Parameters_Var":Parameters_Var,
+            "Project":Project,"Simulation":Simulation}
     # Long Note: we are fully expecting Parameters_Master and Parameters_Var to be strings 
     # pointing to Runfiles. However base VirtualLab supports passing in Namespaces.
     # (see virtualLab.py line 178 and GetParams for context). 
@@ -61,26 +62,30 @@ def RunJob(Cont_id,Tool,Num_Cont,Parameters_Master,Parameters_Var,Project,Simula
     # send a signal to VL_server saying you want to run a CIL container
     sock.connect(("0.0.0.0", 9999))
     send_data(sock, data)
-
+    target_ids = []
     #wait to recive message saying the tool is finished before continuing on.
     while True:
 
         rec_dict=receive_data(sock)
         if rec_dict:
             if rec_dict['msg'] == 'Running':
-                target_id = rec_dict['Cont_id']
+                target_ids.append(rec_dict['Cont_id'])
+        # wait until all containers have started
+            if len(target_ids) == Num_Cont:      
                 break
     
     while True:
         rec_dict = receive_data(sock)
         if rec_dict:
-            if rec_dict['msg'] == 'Success' and rec_dict['Cont_id']==target_id:
+            if rec_dict['msg'] == 'Success' and rec_dict['Cont_id'] == 1:
+                target_ids.remove(rec_dict['target_id'])
+            if len(target_ids) == 0:
                 container_return = '0'
                 break
             if rec_dict['msg'] == 'Error':
                 container_return = '-1'
                 break
-            continue
+            #continue
     sock.close()
     return container_return
 
@@ -110,8 +115,9 @@ def send_data(conn, payload,bigPayload=False):
         conn: socket object for connection to which data is supposed to be sent
         payload: payload to be sent
         bigFile: flag to suppress warning if payload is larger than the standard 2048 bytes. 
+
         This is here because the dict is dynamically generated at runtime and may become larger 
-        than the default buffer without you necessarily knowing about. 
+        than the default buffer without you necessarily knowing about it. 
         
         There is no reason you cant send larger data than this (see payload_size argument 
         for receive_data bellow).
@@ -126,8 +132,9 @@ def send_data(conn, payload,bigPayload=False):
         print("###################################################\n"\
             f"Warning: Payload has a size of {payload_size} bytes.\n"\
         "This exceeds the standard buffer size of 2048 bytes.\n"\
-        "You will need to ensure you set the buffer on the rec to a large enough value\n" 
-        "or else data may be lost/corrupted.\n"\
+        "You will need to ensure you set the buffer on the \n"\
+        "corresponding call to receive_data to a large \n"\
+        "enough value or else data may be lost/corrupted.\n"\
         "To suppress this message set the bigPayload flag.\n"\
         "###################################################")
     conn.sendall(serialized_payload)
@@ -137,12 +144,13 @@ def receive_data(conn,payload_size=2048):
     @brief: receive data from the connection assuming that data is a json string
     @args[in]: 
         conn: socket object for connection from which data is supposed to be received
-        payload_size: size in bytes of the object buffer for the TCP protocol.  
+        payload_size: size in bytes of the object buffer for the TCP protocol.
+
         Note this is not the size of the object itself, that can be much smaller. 
         This number is the amount of memory allocated to hold the received object. It must
         therefore be large enough to hold the object. For now this is set to an ample 
         default of 2Kb. However, since the dicts are generated dynamically at run time 
-        you may need to send larger objects. If so just set this to a large enough number.
+        they may become larger than this. If so just set this to a large enough number.
 
         You may also want to set the bigPayload flag in send_data. 
 
@@ -152,7 +160,7 @@ def receive_data(conn,payload_size=2048):
     return (payload)
 
 def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_singularity,cont_id):
-    ''' Function to format string for bindpoints and container to call specified tool.'''
+    ''' Function to format string for bind points and container to call specified tool.'''
 ##### Format cmd argumants #########
     if param_var is None:
         param_var = ''

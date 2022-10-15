@@ -24,6 +24,9 @@ def ContainerError(out,err):
                 "==================================\n\n"
     return Errmsg
 
+def runs_to_file(filename):
+    pass
+
 def check_for_errors(process_list,client_socket,sock_lock):
     ''' 
     Function to take in nested a dictionary of containing running processes and container id's.
@@ -33,19 +36,19 @@ def check_for_errors(process_list,client_socket,sock_lock):
     to check each running process. From there if the return code is non zero it stops the server and
     spits out the std_err from the process.
      '''
-    
     if not process_list:
-    # if list is empty return straightway and continue in while loop.
+    # if list is empty return straight away and continue in while loop.
         return
     else:
         for proc in process_list.values():
-            outs, errs = proc.communicate()
-            #communcatte sets retuncode inside proc
+            if proc.returncode==None:
+                outs, errs = proc.communicate()
+            #communicate sets returncode inside proc
             if proc.returncode != 0 :
                 
                 #This convets the strings from bytes to utf-8 
                 # however, we need to check they exist because
-                # none objects can't be coverted to utf-8
+                # none objects can't be converted to utf-8
                 if outs:
                     outs = str(outs,'utf-8')
                 if errs:
@@ -84,19 +87,11 @@ def process(vlab_dir,use_singularity):
         elif event == 'RunJob':
             tool = rec_dict["Tool"]
             num_containers = rec_dict["Num_Cont"]
+            Cont_runs = rec_dict["Cont_runs"]
             param_master = rec_dict["Parameters_Master"]
             param_var = rec_dict["Parameters_Var"]
             project = rec_dict["Project"]
             simulation = rec_dict["Simulation"]
-            sock_lock.acquire()
-            target_id = next_cnt_id
-            next_cnt_id += 1
-            options, command = Format_Call_Str(tool,vlab_dir,param_master,
-                param_var,project,simulation,use_singularity,target_id)
-
-            print(f'Server - starting a new container with ID: {target_id} '
-                  f'as requested by container {container_id}')
-
             # setup comand to run docker or singularity
             if use_singularity:
                 container_cmd = 'singularity exec --writable-tmpfs'
@@ -109,22 +104,43 @@ def process(vlab_dir,use_singularity):
                                 '--volume="/etc/shadow:/etc/shadow:ro"' \
                                 '--volume="/etc/sudoers.d:/etc/sudoers.d:ro"' \
                                 '--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw"'
-            #try:
-            container_process = subprocess.Popen(f'{container_cmd} {options} {command}',
-                 stderr = subprocess.PIPE, shell=True)
-            #except Exception:
-            #    sock_lock.release()
-            #    client_socket.shutdown(socket.SHUT_RDWR)
-            #    client_socket.close()
-            #    raise
-            waiting_cnt_sockets[str(target_id)] = {"socket": client_socket, "id": container_id}
 
-            running_processes[str(target_id)] = container_process
-            # send mesage to tell client continer what id the new container will have
-            data = {"msg":"Running","Cont_id":waiting_cnt_sockets[str(target_id)]["id"]}
-            send_data(client_socket, data)
+            sock_lock.acquire()
+            
+            target_ids = []
+            task_dict = {}
+            # loop over containers once to create a dict of final container ids
+            # and associated runs to output to file
+            for Container in Cont_runs:
+                target_ids.append(next_cnt_id)
+                list_of_runs = Container[1]
+                task_dict[str(next_cnt_id)] = list_of_runs
+                next_cnt_id += 1
+            with open("container_runs.json", "w") as i :
+                json.dump(task_dict, i)
+
+            # loop over containers again to spawn them this time
+            for n,Container in enumerate(Cont_runs):    
+                options, command = Format_Call_Str(tool,vlab_dir,param_master,
+                    param_var,project,simulation,use_singularity,target_ids[n])
+
+                print(f'Server - starting a new container with ID: {target_ids[n]} '
+                      f'as requested by container {container_id}')
+
+                # spawn the container
+                container_process = subprocess.Popen(f'{container_cmd} {options} {command}',
+                    stderr = subprocess.PIPE, shell=True)
+                
+                waiting_cnt_sockets[str(target_ids[n])] = {"socket": client_socket, "id": container_id}
+
+                running_processes[str(target_ids[n])] = container_process
+                
+
+                # send mesage to tell client continer what id the new container will have
+                data = {"msg":"Running","Cont_id":target_ids[n]}
+                send_data(client_socket, data)
             sock_lock.release()
-            #client_socket.close()
+            
 
         elif event == 'Finished':
             sock_lock.acquire()
@@ -133,14 +149,17 @@ def process(vlab_dir,use_singularity):
                 print(f'Server - container {container_id} finished working, '
                       f'notifying source container {waiting_cnt_sockets[container_id]["id"]}')
                 waiting_cnt_socket = waiting_cnt_sockets[container_id]["socket"]
-                data = {"msg":"Success","Cont_id":waiting_cnt_sockets[container_id]["id"]}
+                data = {"msg":"Success","Cont_id":waiting_cnt_sockets[container_id]["id"],"target_id":int(container_id)}
                 send_data(waiting_cnt_socket,data)
-                waiting_cnt_socket.shutdown(socket.SHUT_RDWR)
-                waiting_cnt_socket.close()
                 running_processes.pop(str(container_id))
+                if len(running_processes) == 0:
+                    #shutdown communication if all processes are done
+                    waiting_cnt_socket.shutdown(socket.SHUT_RDWR)
+                    waiting_cnt_socket.close()
             sock_lock.release()
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
+            
         else:
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()

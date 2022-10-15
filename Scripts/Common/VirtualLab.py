@@ -408,7 +408,7 @@ class VLSetup():
         container_ids = [*range(1,self._Max_Containers+1)]
         y=cycle(container_ids)
         for module in self.Num_runs.keys():
-            runs = list(range(1, self.Num_runs[module]+1))
+            runs = list(range(0, self.Num_runs[module]))
             temp = []
             for i in container_ids:
                 tmp =[]
@@ -454,6 +454,7 @@ class VLSetup():
         # if in main contianer submit job request
         return_value=Utils.RunJob(Cont_id=1,Tool="GVXR",
         Num_Cont=len(self.container_list['GVXR']),
+        Cont_runs=self.container_list['GVXR'],
         Parameters_Master=self.Parameters_Master_str,
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,

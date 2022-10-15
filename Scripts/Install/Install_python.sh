@@ -196,6 +196,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   sudo apt install -y python3-pip
 
   # install pyina (uses MPI)
+  conda install pip
   sudo apt install -y mpich
   sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install mpi4py dill pox
   sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install -U pyina

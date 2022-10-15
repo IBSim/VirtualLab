@@ -1,15 +1,14 @@
-import shutil
 import os
 import sys
+import shutil
 sys.dont_write_bytecode=True
+
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-import time
 from bisect import bisect_left as bl
-import shutil
 
-from Scripts.Common.VLFunctions import MeshInfo,ASCIIname
+from Scripts.Common.tools import MEDtools
 from Scripts.Common.VLPackages import SalomeRun, ERMESRun
 
 
@@ -97,7 +96,7 @@ def SetupERMES(VL, Parameters, ERMESMeshFile, tmpERMESdir, check=False):
     Temperatures = [20] ###TODO:sort this
 
     # Get mesh info using the MeshInfo class written using h5py
-    ERMESMesh = MeshInfo(ERMESMeshFile)
+    ERMESMesh = MEDtools.MeshInfo(ERMESMeshFile)
 
     # Define duplicate nodes for contact surfaces, which is on the SampleSurface and CoilSurface
     CoilSurface = ERMESMesh.GroupInfo('CoilSurface')
@@ -373,7 +372,7 @@ def ERMES_Conversion(VL, Parameters, ERMESMeshFile, ERMESResFile, tmpERMESdir, c
     '''
     shutil.copy2(ERMESMeshFile,ERMESResFile)
 
-    ERMESMesh = MeshInfo(ERMESMeshFile)
+    ERMESMesh = MEDtools.MeshInfo(ERMESMeshFile)
 
     # Take results from .post.res results file and create .rmed file to view in ParaVis
     # Todo -  a more efficient way of doign this without dictionary
@@ -419,7 +418,8 @@ def ERMES_Conversion(VL, Parameters, ERMESMeshFile, ERMESResFile, tmpERMESdir, c
     # Create rmed file with ERMES results
     ERMESrmed = h5py.File(ERMESResFile, 'a')
     # Some groups require specific formatting so take an empty group from format file
-    Formats = h5py.File("{}/MED_Format.med".format(VL.COM_SCRIPTS),'r')
+
+    Formats = h5py.File("{}/MED_Format.med".format(os.path.dirname(MEDtools.__file__)),'r')
 
     GrpFormat = Formats['ELEME']
     for ResName, Result in ResDict.items():
@@ -489,7 +489,7 @@ def RunERMES(VL, Parameters, ERMESMeshFile, ERMESResFile, tmpERMESdir, check=Fal
     shutil.copy("{}/ERMESLog".format(tmpERMESdir),os.path.dirname(ERMESResFile))
 
     # Calculate Joule heating for each volume element
-    ERMESMesh = MeshInfo(ERMESMeshFile)
+    ERMESMesh = MEDtools.MeshInfo(ERMESMeshFile)
     Coor = ERMESMesh.GetNodeXYZ(list(range(1,ERMESMesh.NbNodes+1)))
     Sample = ERMESMesh.GroupInfo('Sample')
     JH_Vol, Volumes = [], []
@@ -557,7 +557,7 @@ def ERMES(VL,MeshFile,ERMESresfile,Parameters,CalcDir,RunSim=True,GUI=False):
         ERMESres = h5py.File(ERMESresfile, 'r')
         attrs =  ERMESres["EM_Load"].attrs
 
-        NbVolumes = MeshInfo(MeshFile, meshname='Sample').NbVolumes
+        NbVolumes = MEDtools.MeshInfo(MeshFile, meshname='Sample').NbVolumes
         if attrs['NbEls'] != NbVolumes:
             sys.exit("ERMES.rmed file doesn't match with mesh used for {} simulation".format(Parameters.Name))
         if Parameters.Frequency != attrs['Frequency']:
@@ -603,13 +603,14 @@ def EMI(VL, SimDict):
     JH_Vol, Volumes, Elements, JH_Node = ERMES(VL,SimDict['MeshFile'],
                                         ERMESresfile,Parameters,
                                         ERMESdir,RunERMES, GUI=EM_GUI)
-
     shutil.rmtree(ERMESdir) #rm ERMES dir here as this can be quite large
 
     Watts = JH_Vol*Volumes
 
     CoilPower = Watts.sum()
     print("Power delivered by coil: {:.4f}W".format(CoilPower))
+
+
     GroupCreate = getattr(Parameters,'GroupCreate',True)
     if not GroupCreate: return
 
@@ -693,7 +694,6 @@ def EMI(VL, SimDict):
         EM_Groups = Elements
         EM_Loads = JH_Vol
 
-
     # Create mesh groups based on elements in EM_Groups
     tmpMeshFile = "{}/Mesh.med".format(SimDict["TMP_CALC_DIR"])
     GroupBy = getattr(Parameters,'GroupBy','H5PY')
@@ -722,13 +722,13 @@ def EMI(VL, SimDict):
                 GrpName[grpnum] = ElGrps[grpname]
         NewNum = MinNum-1 # Number which groping will start at
         # Formats file contains format needed to add group
-        Formats = h5py.File("{}/MED_Format.med".format(VL.COM_SCRIPTS),'r')
+        Formats = h5py.File("{}/MED_Format.med".format(os.path.dirname(MEDtools.__file__)),'r')
         for i,els in enumerate(EM_Groups):
             ElIxcl = np.searchsorted(ElList,els) # get indices of els in ElList
             ElFamcl = ElFam[ElIxcl] # get Family Ids associated with els
             for fam in np.unique(ElFamcl):
                 NameGrps = GrpName[fam]['GRO/NOM'][:] # group names already associated with this family id
-                EMnames = ASCIIname(['_EMgrp','_{}'.format(i)]) #ASCII name for 2 new groups; _EMgrp and M#
+                EMnames = MEDtools.ASCIIname(['_EMgrp','_{}'.format(i)]) #ASCII name for 2 new groups; _EMgrp and M#
                 NumGrps = NameGrps.shape[0]+2 # add 2 to NumGrps since we're creating 2 new groups
                 dsetFormat = Formats["Name{}".format(NumGrps)] # copy group format from Formats
 
@@ -749,11 +749,11 @@ def EMI(VL, SimDict):
 
         ElInfo["FAM"][:] = ElFam
         tmpMeshMed.close()
-    # elif GroupBy == 'SALOME':
-    #     ### May be broken so not reliable
-    #     ArgDict = {"MeshFile":SimDict["MeshFile"], "tmpMesh":tmpMeshFile,"EMLoadFile":EMLoadFile}
-    #     EMGroupFile = "{}/CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
-    #     VL.SalomeRun(EMGroupFile, ArgDict=ArgDict)
+    elif GroupBy == 'SALOME':
+        ### May be broken so not reliable
+        ArgDict = {"MeshFile":SimDict["MeshFile"], "tmpMesh":tmpMeshFile,"EM_Groups":EM_Groups}
+        EMGroupFile = "{}/_CreateEMGroups.py".format(os.path.dirname(os.path.abspath(__file__)))
+        SalomeRun(EMGroupFile, DataDict=ArgDict)
 
     # Change MeshFile to point to mesh file created in TMP_CALC_DIR containing groups for EM load
     SimDict['MeshFile'] = tmpMeshFile
@@ -764,6 +764,7 @@ def EMI(VL, SimDict):
 
 def Single(VL, SimDict):
     HTC(VL, SimDict)
+
     EMLoad = getattr(SimDict['Parameters'],'EMLoad', True)
     if EMLoad=='Uniform' or EMLoad==False: return
 

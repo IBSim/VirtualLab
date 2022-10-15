@@ -22,10 +22,9 @@ def DittusBoelter(T_wall,coolant, geometry):
     between 0.6 and 160.
     '''
     Re = coolant.Reynolds(geometry)
-    Pr = coolant.Pr
-    n = 0.4
+    Pr = coolant.Prandt
 
-    Nu = 0.023*Re**0.8*Pr**n # Nusselt number
+    Nu = 0.023*Re**0.8*Pr**0.4 # Nusselt number
 
     return Nu
 

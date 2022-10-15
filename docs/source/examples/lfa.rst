@@ -23,7 +23,7 @@ This example introduces some of the post-processing capabilities available in **
 
        VirtualLab.Settings(
                   Mode='Interactive',
-                  Launcher='Process',=
+                  Launcher='Process',
                   NbJobs=2)
 
        VirtualLab.Parameters(
@@ -260,7 +260,7 @@ Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` th
 
       Sim.Run = [True,False,False]
       Sim.LaserS = ['Uniform','Gauss','Uniform']
-      
+
    There is no need to change the value for *NbJobs*.
 
 

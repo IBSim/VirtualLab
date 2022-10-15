@@ -1,14 +1,16 @@
+import time
+
 import numpy as np
 from scipy.optimize.optimize import wrap_function, OptimizeResult, _check_unknown_options, MemoizeJac
 from scipy.optimize._slsqp import slsqp
 from scipy.optimize import minimize
 _epsilon = np.sqrt(np.finfo(float).eps)
 
-import time
 
-def _call_slsqp(*args):
-    r = slsqp(*args)
-    return args # return args for multiprocessing part
+
+'''
+Multi-start implementation of scipy's slsqp optimiser.
+'''
 
 def slsqp_min(func, x0, args=(), jac=None, bounds=None,
                     constraints=(),
@@ -16,10 +18,6 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
                     maxiter=100, ftol=1.0E-6, iprint=1, disp=False,
                     eps=_epsilon, callback=None,
                     **unknown_options):
-
-    '''
-    Implementation of scipy slsqp minimiser for multiple initial options.
-    '''
 
     if not callable(jac) and bool(jac):
         func = MemoizeJac(func)
@@ -316,13 +314,16 @@ def slsqp_min(func, x0, args=(), jac=None, bounds=None,
 
     return Resx,Resf,success
 
+def _call_slsqp(*args):
+    r = slsqp(*args)
+    return args # return args for multiprocessing part
+
 def _MinMax(X, fn, sign, *args):
     val,grad = fn(X,*args)
     return sign*val,sign*grad
 
-def slsqp_multi(fnc, init_points, find='max',order=None, tol=0.01, version='multi', success_only=True, **kwargs):
-    if find.lower()=='max':sign=-1
-    elif find.lower()=='min':sign=1
+def slsqp_multi(fnc, init_points, find='max',order=True, tol=0.01, version='multi', success_only=True, **kwargs):
+    sign = -1 if find.lower() in ('max','maximum') else 1
 
     kwargs['args'] = (fnc,sign,*kwargs.get('args',[]))
 
@@ -348,9 +349,10 @@ def slsqp_multi(fnc, init_points, find='max',order=None, tol=0.01, version='mult
     # Multiply by sign for min/max
     f = sign*f
 
+    # ==========================================================================
+    # order the results in decreasing order for max. and increasing for min.
     if order:
-        #Sort Optimas in increasing/decreasing order
-        ord = -1 if order.lower()=='decreasing' else 1
+        ord = 1 if sign==1 else -1
         sortIx = np.argsort(f,None)[::ord]
         f,x = f[sortIx],x[sortIx]
 

@@ -80,7 +80,7 @@ def ONB_BerglesRohsenow(T_wall,coolant,geometry):
     T_sat = coolant.T_sat
 
     n = 2.16 / (10*P)**0.0234
-    q = 1082 * (10*P**1.156) * ((1.8*(abs(T_wall-T_sat)))**n)
+    q = 1082 * ((10*P)**1.156) * ((1.8*(abs(T_wall-T_sat)))**n)
     return q
 
 
@@ -100,6 +100,7 @@ def PartSB(T,coolant,geometry,corrFC,corrSB,onbT=None):
     q_fc = FC(T, coolant, geometry, corrFC)
 
     q_sb = FullSB(T, coolant, geometry, corrSB)
+
     # print(T,q_fc,q_sb,q_sb_onbT)
     q = q_fc*(1 + (q_sb/q_fc*(1-q_sb_onbT/q_sb))**2)**0.5
 

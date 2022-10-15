@@ -4,16 +4,17 @@ import sys
 sys.dont_write_bytecode=True
 import datetime
 import os
-import numpy as np
 import shutil
 import copy
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
 import atexit
 import json
+import numpy as np
+import uuid
 import VLconfig
-from .VLFunctions import ErrorMessage, WarningMessage
 from .VLContainer import Container_Utils as Utils
+from . import VLFunctions as VLF
 
 class VLSetup():
     def __init__(self, Simulation, Project,Cont_id=1):
@@ -46,6 +47,7 @@ class VLSetup():
         # Define path to scripts
         self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
         self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
+        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
         # Add these to path
         sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 
@@ -89,7 +91,7 @@ class VLSetup():
         elif Mode.lower() in ('t','terminal'): self.mode = 'Terminal'
         elif Mode.lower() in ('c', 'continuous'): self.mode = 'Continuous'
         elif Mode.lower() in ('h', 'headless'): self.mode = 'Headless'
-        else : self.Exit(ErrorMessage("Mode must be one of; 'Interactive',\
+        else : self.Exit(VLF.ErrorMessage("Mode must be one of; 'Interactive',\
                                       'Terminal','Continuous', 'Headless'"))
 
     def _SetLauncher(self,Launcher='Process'):
@@ -98,7 +100,7 @@ class VLSetup():
         elif Launcher.lower() == 'process': self._Launcher = 'Process'
         elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
         elif Launcher.lower() == 'mpi_worker': self._Launcher = 'MPI_Worker'
-        else: self.Exit(ErrorMessage("Launcher must be one of; 'Sequential',\
+        else: self.Exit(VLF.ErrorMessage("Launcher must be one of; 'Sequential',\
                                      'Process', 'MPI'"))
 
     def _SetNbJobs(self,NbJobs=1):
@@ -109,19 +111,19 @@ class VLSetup():
             if NbJobs.is_integer():
                 _NbJobs = NbJobs
             else:
-                self.Exit(ErrorMessage("NbJobs must be an integer"))
+                self.Exit(VLF.ErrorMessage("NbJobs must be an integer"))
         else:
-            self.Exit(ErrorMessage("NbJobs must be an integer"))
+            self.Exit(VLF.ErrorMessage("NbJobs must be an integer"))
 
         if _NbJobs >= 1:
             self._NbJobs = _NbJobs
         else:
-            self.Exit(ErrorMessage("NbJobs must be positive"))
+            self.Exit(VLF.ErrorMessage("NbJobs must be positive"))
 
     def _SetInputDir(self,InputDir):
         InputDir = self._ParsedArgs.get('InputDir',InputDir)
         if not os.path.isdir(InputDir):
-            self.Exit(ErrorMessage("InputDir is not a valid directory"))
+            self.Exit(VLF.ErrorMessage("InputDir is not a valid directory"))
         self._InputDir = InputDir
         self.PARAMETERS_DIR = '{}/{}/{}'.format(self._InputDir, self.Simulation, self.Project)
 
@@ -132,7 +134,7 @@ class VLSetup():
 
     def _SetMaterialDir(self,MaterialDir):
         if not os.path.isdir(MaterialDir):
-            self.Exit(ErrorMessage("MaterialDir is not a valid directory"))
+            self.Exit(VLF.ErrorMessage("MaterialDir is not a valid directory"))
         MaterialDir = self._ParsedArgs.get('MaterialDir',MaterialDir)
         self.MATERIAL_DIR = MaterialDir
 
@@ -190,7 +192,7 @@ class VLSetup():
         Diff = set(kwargs).difference(['Mode','Launcher','NbJobs','Max_Containers','InputDir',
                                     'OutputDir','MaterialDir','Cleanup'])
         if Diff:
-            self.Exit("Error: {} are not option(s) for settings".format(list(Diff)))
+            self.Exit(VLF.ErrorMessage("The following are not valid options in Settings:\n{}".format("\n".join(Diff))))
 
         if 'Mode' in kwargs:
             self._SetMode(kwargs['Mode'])
@@ -209,10 +211,9 @@ class VLSetup():
         if 'MaterialDir' in kwargs:
             self._SetMaterialDir(kwargs['MaterialDir'])
 
-    def Parameters(self, Parameters_Master, Parameters_Var=None,
-                    RunMesh=True, RunSim=True, RunDA=True, 
-                    RunVox=True, RunGVXR=False, RunCIL=False,
-                    Import=False):
+    def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
+                    RunMesh=True, RunSim=True, RunDA=True,
+                    RunVox=True, Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -252,7 +253,7 @@ class VLSetup():
         # get a list of all the containers and the runs they will process for each module
         self.container_list = self._Spread_over_Containers()
 
-    def ImportParameters(self, Rel_Parameters):
+    def ImportParameters(self, Rel_Parameters,ParameterArgs=None):
         '''
         Rel_Parameters is a file name relative to the Input directory
         '''
@@ -264,38 +265,48 @@ class VLSetup():
         # Check File exists
         if not os.path.exists(Abs_Parameters):
             message = "The following Parameter file does not exist:\n{}".format(Abs_Parameters)
-            self.Exit(ErrorMessage(message))
+            self.Exit(VLF.ErrorMessage(message))
+
+        if ParameterArgs !=None:
+            # If arguments are provided then it's pickled to a file
+            arg_path = "{}/{}.pkl".format(self.TEMP_DIR,uuid.uuid4())
+            VLF.WriteArgs(arg_path,ParameterArgs)
+            sys.argv.append("ParameterArgs={}".format(arg_path))
 
         sys.path.insert(0, os.path.dirname(Abs_Parameters))
         Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
         sys.path.pop(0)
 
+        if ParameterArgs != None:
+            sys.argv.pop(-1)
+
+
         return Parameters
 
-    def GetParams(self, Master, Var, VLTypes):
+    def GetParams(self, Master, Var, VLTypes,ParameterArgs=None):
         '''Master & Var can be a module, namespace, string or None.
         A string references a file to import from within the input directory.
         '''
 
         if Master == None and Var == None:
             message = "Both Parameters_Master or Parameters_Var can't be None"
-            self.Exit(ErrorMessage(message))
+            self.Exit(VLF.ErrorMessage(message))
 
         # ======================================================================
         # If string, import files
         if type(Master)==str:
-            Master = self.ImportParameters(Master)
+            Master = self.ImportParameters(Master,ParameterArgs)
         if type(Var)==str:
-            Var = self.ImportParameters(Var)
+            Var = self.ImportParameters(Var,ParameterArgs)
 
         # ======================================================================
         # Check any of the attributes of NS are included
         if Master != None and not set(Master.__dict__).intersection(VLTypes):
-            message = "Parameters_Master contains none of the attributes {}".format(VLTypes)
-            self.Exit(ErrorMessage(message))
+            message = "Parameters_Master contains none of the attrbutes {}".format(VLTypes)
+            self.Exit(VLF.ErrorMessage(message))
         if Var != None and not set(Var.__dict__).intersection(VLTypes):
-            message = "Parameters_Var contains none of the attributes {}".format(VLTypes)
-            self.Exit(ErrorMessage(message))
+            message = "Parameters_Var contains none of the attrbutes {}".format(VLTypes)
+            self.Exit(VLF.ErrorMessage(message))
 
         # ======================================================================
         self.Parameters_Master = Namespace()
@@ -307,10 +318,10 @@ class VLSetup():
             # Check all in NS have the attribute 'Name'
             if master_nm != None and not hasattr(master_nm,'Name'):
                 message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(nm)
-                self.Exit(ErrorMessage(message))
+                self.Exit(VLF.ErrorMessage(message))
             if master_nm != None and not hasattr(master_nm,'Name'):
                 message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(nm)
-                self.Exit(ErrorMessage(message))
+                self.Exit(VLF.ErrorMessage(message))
 
             # ==================================================================
             setattr(self.Parameters_Master, nm, master_nm)
@@ -325,13 +336,38 @@ class VLSetup():
         Master = getattr(self.Parameters_Master, VLType, None)
         Var = getattr(self.Parameters_Var, VLType, None)
 
+        # Check VLType is an appropriate type
+        if type(Master) not in (type(None),type(Namespace())):
+            print(VLF.WarningMessage("Variable '{}' named in Master but is not a namespace. This may lead yo unexpected results".format(VLType)))
+        if type(Var) not in (type(None),type(Namespace())):
+            print(VLF.WarningMessage("Variable '{}' named in Var but is not a namespace. This may lead yo unexpected results".format(VLType)))
+
         # ======================================================================
         # VLType isn't in Master of Var
         if Master==None and Var==None: return {}
 
         # ======================================================================
         # VLType is in Master but not in Var
-        elif Var==None: return {Master.Name : Master.__dict__}
+        elif Var==None:
+            # Check if VLFunctions.Parameters_Var function has been used to create
+            # an iterator to vary parameters within master file.
+            typelist = [type(val) for val in Master.__dict__.values()]
+            if type(iter([])) in typelist:
+                # itertor found so we consider this as a varying parameter
+                Var = Namespace()
+                for key, val in Master.__dict__.items():
+                    if type(val) == type(iter([])):
+                        setattr(Var,key,list(val))
+                # Check that Name is also an iterator
+                if not hasattr(Var,'Name'):
+                    message = "{}.Name is not an iterable".format(VLType)
+                    self.Exit(VLF.ErrorMessage(message))
+                # Assign Var to class. Behaviour is the same as if _Parameters_Var
+                # file had been used.
+                setattr(self.Parameters_Var,VLType,Var)
+            else:
+                # No iterator, just a single study
+                return {Master.Name : Master.__dict__}
 
         # ======================================================================
         # VLType is in Var
@@ -349,7 +385,7 @@ class VLSetup():
             attrstr = "\n".join(["{}.{}".format(VLType,i) for i in errVar])
             message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
                 "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(VLType,attrstr)
-            self.Exit(ErrorMessage(message))
+            self.Exit(VLF.ErrorMessage(message))
 
         # VLType is in Master and Var
         if Master!=None and Var !=None:
@@ -359,7 +395,7 @@ class VLSetup():
                 attstr = "\n".join(["{}.{}".format(VLType,i) for i in dfattrs])
                 message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
                     "{}\n\nThis may lead to unexpected results.".format(attstr)
-                print(WarningMessage(message))
+                print(VLF.WarningMessage(message))
 
         # ======================================================================
         # Create dictionary for each entry in Parameters_Var
@@ -394,6 +430,18 @@ class VLSetup():
             else:
                 num_runs[module] = len(TMPDict)
         return (num_runs)
+    def GetFilePath(self, Dirs, file_name, file_ext='py', exit_on_error=True):
+        ''' This function will return either the file path if it exists or None.'''
+        # ==========================================================================
+        # Check file exists
+        if type(Dirs) == str: Dirs=[Dirs]
+        FilePath = None
+        for dir in Dirs:
+            _FilePath = "{}/{}.{}".format(dir,file_name,file_ext)
+            FileExist = os.path.isfile(_FilePath)
+            if FileExist:
+                FilePath = _FilePath
+                break
 
     def _Spread_over_Containers(self):
         '''
@@ -423,6 +471,21 @@ class VLSetup():
                 containers[module] = temp
         return containers
 
+
+        if exit_on_error and FilePath is None:
+            self.Exit(VLF.ErrorMessage("The file {}.{} is not in the following directories:\n"\
+                    "{}".format(file_name,file_ext,"\n".join(Dirs))))
+
+        return FilePath
+
+    def GetFunction(self, file_path, func_name, exit_on_error=True):
+        func = VLF.GetFunc(file_path,func_name)
+
+        if exit_on_error and func is None:
+            self.Exit(VLF.ErrorMessage("The function {} is not "\
+                    "in {}".format(func_name,file_path)))
+
+        return func
 
     def Mesh(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
@@ -513,11 +576,9 @@ class VLSetup():
         from . import Analytics
         # Running with base virtualLab so Report overview of VirtualLab usage
         if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
-            MeshNb = self._Analytics.get('Mesh',0)
-            SimNb = self._Analytics.get('Sim',0)
-            DANb = self._Analytics.get('DANb',0)
             Category = "{}_Overview".format(self.Simulation)
-            Action = "{}_{}_{}".format(MeshNb,SimNb,DANb)
+            list_AL = ["{}={}".format(key,value) for key,value in self._Analytics.items()]
+            Action = "_".join(list_AL)
             Analytics.Run(Category,Action,self._ID)
             
         exitstr = '\n#############################\n'\

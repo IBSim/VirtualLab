@@ -16,6 +16,7 @@ import  SMESH, SALOMEDS
 from salome.smesh import smeshBuilder
 
 import SalomeFunc
+from EM.CoilDesigns import Coils
 
 geompy = geomBuilder.New()
 smesh = smeshBuilder.New()
@@ -108,18 +109,10 @@ def GetAngle(dir1,dir2):
     return theta_rad
 
 
+def GEOM_Create(SampleSurface,SampleCentre,CoilVect,PipeVect,
+                CoilGeom, CoilCentre, CoilSystem, Parameters):
 
-
-
-def EMCreate(SampleMesh, SampleGeom, Parameters):
-    # Default parameters
-    VacuumRadius = getattr(Parameters,'VacuumRadius',0.2)
-    VacuumSegment = getattr(Parameters,'VacuumSegment', 25)
-
-
-    ###
-    ### GEOM component
-    ###
+    VacuumRadius = 0.2
 
     O = geompy.MakeVertex(0, 0, 0)
     OX = geompy.MakeVectorDXDYDZ(1, 0, 0)
@@ -130,55 +123,30 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     geompy.addToStudy( OY, 'OY' )
     geompy.addToStudy( OZ, 'OZ' )
 
-    SampleGroups = geompy.GetExistingSubObjects(SampleGeom,True)
-    # Create dictionary of groups to easily find
-    GroupDict = {str(grp.GetName()):grp for grp in SampleGroups}
+    print('\nCreating ERMES geometry\n')
 
     # ==========================================================================
-    # import coil design
-    from EM.CoilDesigns import Coils
-    CoilData, Orientation = Coils(Parameters.CoilType)
-    CoilMesh = GetMesh(CoilData)
-    geompy.addToStudy( CoilMesh.Geom, 'Coil_orig' )
-
     # get orientation information and make a class containing this and the coil geometry
-    CoilCentre = Orientation.get('Centre',O) # assume coil centre is at origin
-    System = Orientation.get('System',[OX,OY,OZ])   # assume terminal is in OX direction,
-    CoilRef = CoilFOR(CoilMesh.Geom,CoilCentre,System)
+    if CoilCentre is None: CoilCentre=O # assume coil centre is at origin
+    if CoilSystem is None: CoilSystem=[OX,OY,OZ] # assume terminal is in OX direction,
+    CoilRef = CoilFOR(CoilGeom,CoilCentre,CoilSystem)
 
     # ==========================================================================
-    # Make frame of reference for coil displacement and rotation
-
-    # Get mid point along pipe
-    cPipeIn = geompy.MakeCDG(GroupDict['PipeIn'])
-    cPipeOut = geompy.MakeCDG(GroupDict['PipeOut'])
-    CrdPipeIn = np.array(geompy.PointCoordinates(cPipeIn))
-    CrdPipeOut = np.array(geompy.PointCoordinates(cPipeOut))
-    CrdPipeMid = (CrdPipeIn + CrdPipeOut)/2
-    cPipeMid = geompy.MakeVertex(*CrdPipeMid)
-    geompy.addToStudy(cPipeMid,'cPipeMid')
-
-    # vector 1: Along pipe
-    PipeVect = CrdPipeOut - CrdPipeMid
-    Vect_1 = geompy.MakeVector(cPipeMid,cPipeOut)
-
-    # vector 2: in direction normal to the coil face
-    _norm = geompy.GetNormal(GroupDict['CoilFace'])
-    CoilVect = GetDirection(_norm)
-    Vect_2 = geompy.MakeLine(cPipeMid,_norm)
-
-
-    # Move coil so that it's centre point is as CrdPipeMid
-    CoilRef.translation(*(CrdPipeMid-CoilRef.centre_val))
+    # Move coil so that frames of reference line up
+    print('Lining up coil and component frame of reference')
+    # Move coil so that it's centre point is as SampleCentre
+    gSampleCentre = geompy.MakeVertex(*SampleCentre)
+    geompy.addToStudy(gSampleCentre,'SampleCentre')
+    CoilRef.translation(*(SampleCentre - CoilRef.centre_val))
     geompy.addToStudy( CoilRef.coil, 'Coil' )
 
     # Check angle between the coil normal and coil refrence
-    # third component of coil system must lin up with coil vector
+    # third component of coil system must line up with coil vector
     coil_angle = GetAngle(CoilRef.system_val[2],CoilVect)
     if np.mod(coil_angle,np.pi):
         # get direction normal to both vectors
         norm = np.cross(CoilRef.system_val[2],CoilVect)
-        RotateVector = geompy.MakeVector(cPipeMid,geompy.MakeVertex(*(CrdPipeMid + norm)))
+        RotateVector = geompy.MakeVector(gSampleCentre,geompy.MakeVertex(*(SampleCentre + norm)))
         CoilRef.rotation(RotateVector,coil_angle)
         geompy.addToStudy(RotateVector,'RotateVector_2')
 
@@ -187,23 +155,20 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     pipe_angle = GetAngle(CoilRef.system_val[1],PipeVect)
     if np.mod(pipe_angle,np.pi):
         norm = np.cross(CoilRef.system_val[1],PipeVect) # get direction normal to both vectors
-        globals().update(locals())
-        RotateVector = geompy.MakeVector(cPipeMid,geompy.MakeVertex(*(CrdPipeMid + norm)))
+        RotateVector = geompy.MakeVector(gSampleCentre,geompy.MakeVertex(*(SampleCentre + norm)))
         CoilRef.rotation(RotateVector,pipe_angle)
         geompy.addToStudy(RotateVector,'RotateVector_1')
 
-
-
-    # ==========================================================================
-    # Coil displacement
-    SampleBB = geompy.BoundingBox(SampleGeom)
+    # Get coil tight to top of sample
+    SampleBB = geompy.BoundingBox(SampleSurface)
     CoilBB = geompy.BoundingBox(geompy.MakeBoundingBox(CoilRef.coil,True))
     translation = np.array([0,0,SampleBB[5] - CoilBB[4]])
     CoilRef.translation(*translation)
-    CoilRef.translation(*Parameters.CoilDisplacement)
 
-    geompy.addToStudy(CoilRef.centre,'CoilCentre')
-    # Todo: sort this out when normal not in Z
+    # ==========================================================================
+    # Move and rotate coil to match experimental setup
+    print('Position coil using CoilDisplacement and CoilRotation')
+    CoilRef.translation(*Parameters.CoilDisplacement)
 
     if hasattr(Parameters,'CoilRotation'):
         for r,d in zip(Parameters.CoilRotation,CoilRef.system):
@@ -211,45 +176,63 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
             CoilRef.rotation(d,np.deg2rad(r))
 
     # ==========================================================================
-    # Coil manipulation complete
-    Coil = CoilRef.coil
+    # Coil manipulation complete.
+    Coil = CoilRef.coil # get final coil geometry from coilFOR
     geompy.addToStudy( Coil, 'Coil' )
+    geompy.addToStudy(CoilRef.centre,'CoilCentre')
 
-    # ==========================================================================
-    # chekc for intersection of coil and sample
-    Common = geompy.MakeCommonList([SampleGeom,Coil])
+    # Check for intersection of coil and sample
+    # Make samplesurface shell into solid object
+    gm = geompy.MakeShell(SampleSurface)
+    Sample_solid = geompy.MakeSolid([gm])
+    Common = geompy.MakeCommonList([Sample_solid,Coil])
     Measure = np.array(geompy.BasicProperties(Common))
     Common.Destroy()
     if not all(Measure < 1e-9):
+        # If there is an overlap these measurements will be non-zero
         return 2319
 
-    if True:
-        Vacuum_orig = geompy.MakeSpherePntR(cPipeMid, VacuumRadius)
-        gm = geompy.MakeShell(GroupDict["SampleSurface"])
-        Solid_1 = geompy.MakeSolid([gm])
-        Vacuum = geompy.MakeCutList(Vacuum_orig, [Solid_1], True)
-    else:
-        pass
-        #TODO
-        # move centre point of sphere to centre point of bounding box
-        # Compound = geompy.MakeCompound([Sample, Coil])
-        # CompoundBB = geompy.BoundingBox(Compound)
-
+    # ==========================================================================
+    # Make chamber which includes the sample, coil and vacuum between
+    # Make Vacuum around sample
+    print('Create Vacuum around coil and sample')
+    Vacuum_orig = geompy.MakeSpherePntR(gSampleCentre, VacuumRadius)
+    # cut sample geom from vacuum
+    Vacuum = geompy.MakeCutList(Vacuum_orig, [Sample_solid], True)
+    # partition vacuum with coil geometry
     Chamber = geompy.MakePartition([Vacuum], [Coil], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
     geompy.addToStudy( Chamber, 'Chamber' )
-
-    SampleSurfaceIx = GroupDict['SampleSurface'].GetSubShapeIndices()
-    Ix = SalomeFunc.ObjIndex(Chamber, SampleGeom, SampleSurfaceIx, Strict=True)[0]
+    # ==========================================================================
+    # add groups to Chamber
+    # Sample surface
+    SampleSurfaceIx = geompy.SubShapeAllIDs(SampleSurface,geompy.ShapeType['FACE'])
+    Ix = SalomeFunc.ObjIndex(Chamber, SampleSurface, SampleSurfaceIx, Strict=True)[0]
     geomSampleSurface = SalomeFunc.AddGroup(Chamber, 'SampleSurface', Ix)
-
+    # vacuum surface
     Ix = SalomeFunc.ObjIndex(Chamber, Vacuum_orig, [3])[0]
-
     geomVacuumSurface = SalomeFunc.AddGroup(Chamber, 'VacuumSurface', Ix)
-
+    # vacuum (solid)
     geomVacuum = SalomeFunc.AddGroup(Chamber, 'Vacuum', [2])
+    # coil
+    coil_ix = geompy.SubShapeAllIDs(CoilGeom, geompy.ShapeType["SOLID"])
+    Ix = SalomeFunc.ObjIndex(Chamber, Coil, coil_ix, Strict=False)[0]
+    geomCoil = SalomeFunc.AddGroup(Chamber, 'Coil', Ix)
 
-    #### MESH ####
+    # globals().update(locals())
+    print('\nERMES geometry created successfully\n')
+    return Chamber
 
+def MESH_Create(Chamber, SampleMesh, CoilMeshInfo, Parameters):
+
+    print('Creating ERMES Mesh\n')
+    VacuumRadius = 0.2
+    VacuumSegment = 25
+
+    # Create dictionary of groups to easily find
+    ChamberGroups = geompy.GetExistingSubObjects(Chamber,True)
+    GroupDict = {str(grp.GetName()):grp for grp in ChamberGroups}
+
+    # ==========================================================================
     ### Main Mesh
     # Mesh Parameters
     Vacuum1D = getattr(Parameters,'Vacuum1D',2*np.pi*VacuumRadius/VacuumSegment)
@@ -257,6 +240,7 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     Vacuum3D = getattr(Parameters,'Vacuum3D',Vacuum1D)
 
     # This will be a mesh only of the coil and vacuum
+    print('Adding mesh parameters for vacuum')
     ERMES = smesh.Mesh(Chamber)
     # 1D
     Vacuum_1D = ERMES.Segment()
@@ -286,26 +270,26 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
     smesh.SetName(Vacuum_3D_Parameters, 'Vacuum_3D_Parameters')
 
     # Add 'Vacuum' and 'VacuumSurface' groups to mesh
-    ERMES.GroupOnGeom(geomVacuumSurface, 'VacuumSurface', SMESH.FACE)
-    ERMES.GroupOnGeom(geomVacuum, 'Vacuum', SMESH.VOLUME)
+    ERMES.GroupOnGeom(GroupDict['VacuumSurface'], 'VacuumSurface', SMESH.FACE)
+    ERMES.GroupOnGeom(GroupDict['Vacuum'], 'Vacuum', SMESH.VOLUME)
 
+    # ==========================================================================
     # Ensure conformal mesh at sample surface
+    print('Adding component surface mesh')
     meshSampleSurface = SampleMesh.GetGroupByName('SampleSurface')
-    Import_1D2D = ERMES.UseExisting2DElements(geom=geomSampleSurface)
+    Import_1D2D = ERMES.UseExisting2DElements(geom=GroupDict['SampleSurface'])
     Source_Faces_1 = Import_1D2D.SourceFaces(meshSampleSurface,0,0)
 
     SampleSub = Import_1D2D.GetSubMesh()
     smesh.SetName(SampleSub, 'Sample')
 
-    ### Coil sub-mesh & related groups
-    # Coil Mesh parameters which will be added as a sub-mesh
-    Ix = SalomeFunc.ObjIndex(Chamber, Coil, CoilMesh.MainMesh['Ix'], Strict=False)[0]
-    Geom = geompy.GetSubShape(Chamber, Ix) # GEOM object of the coil
 
+    # ==========================================================================
+    print('Add coil mesh parameters')
     # Get hypothesis used in original coil mesh
-    Param1D = CoilMesh.MainMesh.get('Regular_1D', None)
-    Param2D = CoilMesh.MainMesh.get('NETGEN_2D_ONLY', None)
-    Param3D = CoilMesh.MainMesh.get('NETGEN_3D', None)
+    Param1D = CoilMeshInfo.MainMesh.get('Regular_1D', None)
+    Param2D = CoilMeshInfo.MainMesh.get('NETGEN_2D_ONLY', None)
+    Param3D = CoilMeshInfo.MainMesh.get('NETGEN_3D', None)
 
     # Update hypothesis with values from parameters (if provided)
     if hasattr(Parameters,'Coil1D'):
@@ -328,59 +312,132 @@ def EMCreate(SampleMesh, SampleGeom, Parameters):
         Param3D.SetMaxSize(Max3D)
 
     # Apply hypothesis to ERMES mesh
-    ERMES.AddHypothesis(Param1D, geom=Geom)
-    ERMES.AddHypothesis(Param2D, geom=Geom)
-    ERMES.AddHypothesis(Param3D, geom=Geom)
+    ERMES.AddHypothesis(Param1D, geom=GroupDict['Coil'])
+    ERMES.AddHypothesis(Param2D, geom=GroupDict['Coil'])
+    ERMES.AddHypothesis(Param3D, geom=GroupDict['Coil'])
 
-    CoilSub = ERMES.GetSubMesh(Geom,'')
+    CoilSub = ERMES.GetSubMesh(GroupDict['Coil'],'')
     smesh.SetName(CoilSub, 'Coil')
 
     # CoilOrder.append(CoilSub)
     # ERMES.SetMeshOrder([[SampleSub]])
-
-    # Add groups from original coil mesh
-    for grptype, grpdict in CoilMesh.Groups.items():
+    # Add groups from
+    for grptype, grpdict in CoilMeshInfo.Groups.items():
         for Name, Ix in grpdict.items():
-            NewIx = SalomeFunc.ObjIndex(Chamber, Coil, Ix,Strict=False)[0]
+            NewIx = SalomeFunc.ObjIndex(Chamber, GroupDict['Coil'], Ix,Strict=False)[0]
             grp = SalomeFunc.AddGroup(Chamber, Name, NewIx)
             ERMES.GroupOnGeom(grp, Name, getattr(SMESH, grptype))
 
+
     # Compute the mesh for the coil and vacuum
+    print('Compute mesh')
     ERMES.Compute()
 
     # Combine the mesh of the sample with the coil & vacuum. This is the mesh used by ERMES
     ERMESmesh = smesh.Concatenate([SampleMesh.GetMesh(),ERMES.GetMesh()], 1, 1, 1e-05, False, 'ERMES')
 
-    globals().update(locals()) # Useful for dev work
-
+    # globals().update(locals()) # Useful for dev work
+    print('\nERMES mesh created successfully\n')
     return ERMESmesh
 
+def Pipe_terminal(PipeIn,PipeOut):
+    cPipeIn = geompy.MakeCDG(PipeIn)
+    cPipeOut = geompy.MakeCDG(PipeOut)
+    CrdPipeIn = np.array(geompy.PointCoordinates(cPipeIn))
+    CrdPipeOut = np.array(geompy.PointCoordinates(cPipeOut))
+    return CrdPipeIn, CrdPipeOut
 
-
-
-if __name__ == '__main__':
-    #### TODO: Add in easy geometry & mesh for testing
-
+def main():
     DataDict = SalomeFunc.GetArgs()
+    Parameters = DataDict['Parameters']
+
+    # ==========================================================================
+    # Get mesh from file
     InputFile = DataDict['InputFile']
-    # Get sample mesh from .med file
     (SampleMesh, status) = smesh.CreateMeshesFromMED(InputFile)
     SampleMesh=SampleMesh[0]
+
+    # ==========================================================================
+    # Get reference frame and geometry of sample
+
+    # Potential solution for ibsim but too slow
+    # if SampleCentre is not None and CoilVector is not None and PipeVector is not None:
+    #     # Only need the external surface of the sample
+    #     tmp_file = "{}/surface.stl".format(os.path.dirname(DataDict['OutputFile']))
+    #     meshSampleSurface = SampleMesh.GetGroupByName('SampleSurface')[0]
+    #     # export and import
+    #     SampleMesh.ExportSTL( tmp_file, 1, meshSampleSurface)
+    #     SampleSurface = geompy.ImportSTL(tmp_file )
+    #     SampleSurface = geompy.UnionFaces(SampleSurface) # helps speed this up
+    #     geompy.addToStudy( SampleSurface, 'SampleSurface' )
+
     # Get the sample geometry from the .xao file saved alongside the .med file
     XAO = geompy.ImportXAO("{}.xao".format(os.path.splitext(InputFile)[0]))
-    SampleGeom, SampleGroups = XAO[1],XAO[3]
-    geompy.addToStudy( SampleGeom, 'SampleGeom' )
-    for grp in SampleGroups:
-        geompy.addToStudyInFather(SampleGeom, grp, str(grp.GetName()))
+    SampleGroups = XAO[3]
+    GroupDict = {str(grp.GetName()):grp for grp in SampleGroups}
 
-    # Create ERMES mesh using the sample mesh and geometry
-    ERMESmesh = EMCreate(SampleMesh, SampleGeom, DataDict['Parameters'])
+    if 'SampleSurface' in GroupDict:
+        SampleSurface = GroupDict['SampleSurface']
+        geompy.addToStudy( SampleSurface, 'SampleSurface' )
+    else:
+        print('SampleSurface is not a group in the geometry')
 
-    # Export ERMESmesh if mesh type
-    if type(ERMESmesh) == salome.smesh.smeshBuilder.Mesh:
-        SalomeFunc.MeshExport(ERMESmesh, DataDict['OutputFile'])
-    # Check return vaue from EMCreate
-    elif ERMESmesh == 2319:
+
+    # Calculate centre point as mid point along pipe, if its not provided
+    SampleCentre = getattr(Parameters,'SampleCentre',None)
+    if SampleCentre is None:
+        if 'PipeIn' not in GroupDict or 'PipeOut' not in GroupDict:
+            print('PipeIn and PipeOut must be defined in geometry of component')
+        else:
+            CrdPipeIn, CrdPipeOut = Pipe_terminal(GroupDict['PipeIn'],GroupDict['PipeOut'])
+            SampleCentre = (CrdPipeIn + CrdPipeOut)/2
+    else:
+        # Use given value of SampleCentre, set values for crdpipein and out for simplicity
+        CrdPipeIn,CrdPipeOut = None,None
+
+    # Calculate direction of coil location relative to sample
+    CoilVector = getattr(Parameters,'CoilVector',None)
+    if CoilVector is None:
+        if 'CoilFace' not in GroupDict:
+            print('CoilFace not defined in geometry. CoilVector is undefined')
+        else:
+            _norm = geompy.GetNormal(GroupDict['CoilFace'])
+            CoilVector = GetDirection(_norm)
+
+    # Calculate direction along pipe
+    PipeVector = getattr(Parameters,'PipeVector',None)
+    if PipeVector is None:
+        if CrdPipeIn is None and CrdPipeOut is None:
+            CrdPipeIn, CrdPipeOut = Pipe_terminal(GroupDict['PipeIn'],GroupDict['PipeOut'])
+        PipeVector = CrdPipeOut - CrdPipeIn
+
+    # ==========================================================================
+    # import coil design
+    CoilData, Orientation = Coils(Parameters.CoilType)
+    CoilMeshInfo = GetMesh(CoilData) # get information about mesh and geometry of coil
+
+    # ==========================================================================
+    # create geometry for ERMES
+    # information for geometric part
+    CoilGeom = CoilMeshInfo.Geom # get geometric component of coil
+    CoilCentre = Orientation.get('Centre',None)
+    CoilSystem = Orientation.get('System',None)
+
+    ERMESgeom = GEOM_Create(SampleSurface, SampleCentre, CoilVector, PipeVector,
+                            CoilGeom, CoilCentre, CoilSystem, Parameters)
+    if ERMESgeom == 2319:
         print("\nImpossible configuration: Coil intersects sample\n")
         if not salome.sg.hasDesktop():
             sys.exit()
+
+    # ==========================================================================
+    # create mesh from geometry
+    ERMESmesh = MESH_Create(ERMESgeom,SampleMesh,CoilMeshInfo,Parameters)
+    # export mesh
+    if type(ERMESmesh) == salome.smesh.smeshBuilder.Mesh:
+        SalomeFunc.MeshExport(ERMESmesh, DataDict['OutputFile'])
+
+
+if __name__ == '__main__':
+    main()
+    # TODO: Add in easy geometry & mesh for testing

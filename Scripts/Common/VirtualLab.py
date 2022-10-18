@@ -227,14 +227,9 @@ class VLSetup():
         Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR']
+        VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR','CIL']
 
-        # List of namespaces used by container modules 
-        # May want to ask Rhydian about combing this with VLNamespaces.
-        # Note: we have GVXR twice because CIL uses the GVXR 
-        # namespace since they share many parameters.
-        modules = ['GVXR','CIL','Vox']
-        bool_list = [RunGVXR,RunCIL,RunVox]
+        bool_list = [RunMesh,RunSim,RunDA,RunGVXR,RunCIL,RunVox]
 
         #Note: The call to GetParams converts params_master/var into Namespaces
         # however we need to original strings for passing into other containers.
@@ -243,15 +238,15 @@ class VLSetup():
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
-
         self.MeshFn.Setup(self,RunMesh, Import)
         self.SimFn.Setup(self,RunSim, Import)
         self.DAFn.Setup(self,RunDA, Import)
         self.VoxFn.Setup(self,RunVox)
-        # get the number of runs deined in params for each module
-        self.Num_runs=self._get_Num_Runs(bool_list,modules)
+        # get the number of runs defined in params for each module
+        self.Num_runs=self._get_Num_Runs(bool_list,VLNamespaces)
         # get a list of all the containers and the runs they will process for each module
         self.container_list = self._Spread_over_Containers()
+        print(f"container list = {self.container_list}")
 
     def ImportParameters(self, Rel_Parameters,ParameterArgs=None):
         '''
@@ -302,10 +297,10 @@ class VLSetup():
         # ======================================================================
         # Check any of the attributes of NS are included
         if Master != None and not set(Master.__dict__).intersection(VLTypes):
-            message = "Parameters_Master contains none of the attrbutes {}".format(VLTypes)
+            message = "Parameters_Master contains none of the attributes {}".format(VLTypes)
             self.Exit(VLF.ErrorMessage(message))
         if Var != None and not set(Var.__dict__).intersection(VLTypes):
-            message = "Parameters_Var contains none of the attrbutes {}".format(VLTypes)
+            message = "Parameters_Var contains none of the attributes {}".format(VLTypes)
             self.Exit(VLF.ErrorMessage(message))
 
         # ======================================================================
@@ -412,7 +407,7 @@ class VLSetup():
 
     def _get_Num_Runs(self,Runbools,Namespaces):
         '''
-        Function to get the number of runs defined in Parmas_master/Var for each Namespace.
+        Function to get the number of runs defined in Params_master/Var for each Namespace.
         this is used to help calculate how many containers to spawn for parallel runs.
         Inputs:
         Runbools - list of bool's  for namespaces to run 
@@ -423,7 +418,11 @@ class VLSetup():
         num_runs = {}
         
         for I,module in enumerate(Namespaces):
-            TMPDict = self.CreateParameters(self.Parameters_Master_str, self.Parameters_Var_str,module)
+            # special case for CIL since it shares the GVXR namespace
+            if module == 'CIL':
+                TMPDict = self.CreateParameters(self.Parameters_Master_str, self.Parameters_Var_str,'GVXR')
+            else:
+                TMPDict = self.CreateParameters(self.Parameters_Master_str, self.Parameters_Var_str,module)
             # if Run is False or Dict is empty add 0 to list 0 instead.
             if not(Runbools[I] and TMPDict):
                 num_runs[module] = 0
@@ -524,21 +523,22 @@ class VLSetup():
 
         if return_value != '0':
             #an error ocured so exit VirtualLab
-            self.Exit("Error Occured with GVXR")
+            self.Exit("Error Occurred with GVXR")
         return
 # Call to Run a container for CIL       
     def CT_Recon(self,**kwargs):
-        # if in main contianer submit job request
+        # if in main container submit job request
         return_value=Utils.RunJob(Cont_id=1,Tool="CIL",
-        Num_Cont=len(self.container_list['CIL']),
+        # Note CIL uses GVXR namespace
+        Num_Cont=len(self.container_list['GVXR']),
         Parameters_Master=self.Parameters_Master_str,
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,
         Simulation=self.Simulation)
 
         if return_value != '0':
-            #an error ocured so exit VirtualLab
-            self.Exit("Error Occured with CIL")
+            #an error occurred so exit VirtualLab
+            self.Exit("Error Occurred with CIL")
         return
 
     def devDA(self,**kwargs):

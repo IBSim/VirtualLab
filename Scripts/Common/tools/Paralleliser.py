@@ -1,8 +1,18 @@
 import os
 from importlib import reload
-
-import pathos.multiprocessing as pathosmp
-from pyina.launchers import MpiPool
+##############################################
+# block to check for pathos/mpi
+pathos_installed = True
+mpi_installed = True 
+try: 
+    import pathos.multiprocessing as pathosmp
+except ImportError:
+    pathos_installed = False
+try:  
+    from pyina.launchers import MpiPool
+except ImportError: 
+    mpi_installed = False
+##############################################
 
 def _fn_wrap_kwargs(fn,*args):
     ''' wrapper function which enables kwargs to be passed to pyina and pathos'''
@@ -26,7 +36,24 @@ def Paralleliser(VL,fnc, args_list, kwargs_list=None, method='sequential', nb_pa
 
     NbEval = len(args_list) # Number of function evaluations required
     # checks
-
+    ############################################################
+    # checks to see if mpi/pathos is requested but not installed
+    if method.lower() in ('mpi','mpi_worker') and not mpi_installed:
+        VL.Logger("********************************************\n",
+              "WARNING: mpi is not installed in container\n",
+              " Thus mpi can not be used. Runs will be\n",
+              " performed sequentially.\n.",
+              "********************************************", print=True)
+        method = 'sequential'
+    elif method.lower() == 'process' and not pathos_installed:
+        VL.Logger("********************************************\n",
+              "WARNING: pathos is not installed in container\n",
+              " Thus process cannot be used. Runs will be \n",
+              "performed sequentially.\n.",
+              "********************************************",print=True)
+        
+        method = 'sequential'
+    ###########################################################
     if method.lower() == 'sequential' or NbEval==1:
         Res = []
         for i, arg in enumerate(args_list):
@@ -35,7 +62,7 @@ def Paralleliser(VL,fnc, args_list, kwargs_list=None, method='sequential', nb_pa
             else:
                 ret = fnc(*arg,**kwargs_list[i])
             Res.append(ret)
-    elif method.lower() == 'process':
+    elif method.lower() == 'process' and pathos_installed:
         pmp = reload(pathosmp)
         workdir = kwargs.get('workdir',None)
         pool = pmp.ProcessPool(nodes=nb_parallel, workdir=workdir)
@@ -47,7 +74,7 @@ def Paralleliser(VL,fnc, args_list, kwargs_list=None, method='sequential', nb_pa
             Res = pool.map(_fn_wrap_kwargs,[fnc]*NbEval, *args_list, kwargs_list)
         Res = list(Res)
         pool.terminate()
-    elif method.lower() in ('mpi','mpi_worker'):
+    elif method.lower() in ('mpi','mpi_worker') and mpi_installed:
         # mpi_worker keeps one worker free to assign jobs.
         if method.lower() == 'mpi' or nb_parallel==1: # Cant have worker if N is 1
             onall = True

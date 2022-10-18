@@ -213,7 +213,7 @@ class VLSetup():
 
     def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
                     RunMesh=True, RunSim=True, RunDA=True,
-                    RunVox=True, Import=False):
+                    RunVox=True, RunGVXR=True, RunCIL=True, Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -430,6 +430,7 @@ class VLSetup():
             else:
                 num_runs[module] = len(TMPDict)
         return (num_runs)
+        
     def GetFilePath(self, Dirs, file_name, file_ext='py', exit_on_error=True):
         ''' This function will return either the file path if it exists or None.'''
         # ==========================================================================
@@ -442,6 +443,11 @@ class VLSetup():
             if FileExist:
                 FilePath = _FilePath
                 break
+        if exit_on_error and FilePath is None:
+            self.Exit(VLF.ErrorMessage("The file {}.{} is not in the following directories:\n"\
+                    "{}".format(file_name,file_ext,"\n".join(Dirs))))
+
+        return FilePath
 
     def _Spread_over_Containers(self):
         '''
@@ -472,15 +478,8 @@ class VLSetup():
         return containers
 
 
-        if exit_on_error and FilePath is None:
-            self.Exit(VLF.ErrorMessage("The file {}.{} is not in the following directories:\n"\
-                    "{}".format(file_name,file_ext,"\n".join(Dirs))))
-
-        return FilePath
-
     def GetFunction(self, file_path, func_name, exit_on_error=True):
         func = VLF.GetFunc(file_path,func_name)
-
         if exit_on_error and func is None:
             self.Exit(VLF.ErrorMessage("The function {} is not "\
                     "in {}".format(func_name,file_path)))

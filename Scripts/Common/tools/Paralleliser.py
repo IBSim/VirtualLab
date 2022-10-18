@@ -11,9 +11,9 @@ def _fn_wrap_kwargs(fn,*args):
     return fn(*args,**kwargs)
 
 
-def Paralleliser(fnc, args_list, kwargs_list=None, method='sequential', nb_parallel=1, **kwargs):
+def Paralleliser(VL,fnc, args_list, kwargs_list=None, method='sequential', nb_parallel=1, **kwargs):
     '''
-    Evaluate function 'fnc' for a range of agruments using a chosen method.
+    Evaluate function 'fnc' for a range of arguments using a chosen method.
     Methods available are:
     - sequential (no parallelisation)
     - pathos (single node parallelisation)

@@ -247,6 +247,7 @@ class VLSetup():
         # get a list of all the containers and the runs they will process for each module
         self.container_list = self._Spread_over_Containers()
         print(f"container list = {self.container_list}")
+        #self.do_Analytics(self,Num_runs) #disabled pending discussion with llion/Rhydian
 
     def ImportParameters(self, Rel_Parameters,ParameterArgs=None):
         '''
@@ -620,3 +621,34 @@ class VLSetup():
             ArgDict[key] = self._ParsedArgs[key]
         return ArgDict
         
+    def do_Analytics(VL,Dicts):
+        ''' 
+        Function to analyse usage of VirtualLab to evidence impact for
+        use in future research grant applications. Can be turned off via
+        VLconfig.py. See Scripts/Common/Analytics.py for more details.
+        '''
+        import os
+        import VLconfig
+        if not N: N = VL._NbJobs
+        if VLconfig.VL_ANALYTICS=="True":
+            from Scripts.Common import Analytics
+            # Create dictionary, if one isn't defined already  
+            if not hasattr(VL,'_Analytics'): VL._Analytics = {}
+
+            for vltype in Dicts.keys():
+                Category = "{}_{}".format(VL.Simulation,vltype)
+                Action = "NJob={}_NCore={}_NNode=1".format(Dicts[vltype],N) #send N_continers?
+                # ======================================================================
+                # Send information about current job
+                Analytics.Run(Category,Action,VL._ID)
+
+                # ======================================================================
+                # Update Analytics dictionary with new information
+                # Add information to dictionary
+                if vltype not in VL._Analytics:
+                    VL._Analytics[vltype] = Dicts[vltype]
+                else:
+                    VL._Analytics[vltype] += Dicts[vltype]
+            return
+        else:
+            return

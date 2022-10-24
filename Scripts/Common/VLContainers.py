@@ -70,13 +70,23 @@ class CIL_Setup(VLSetup):
         # Note: CIL uses the GVXR namespace since many of the settings overlap.
         VLNamespaces = ['GVXR']
         #Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to origional strings for passing into other containters.
+        # however we need to original strings for passing into other containers.
         # So we will ned to get them here.
         self.Parameters_Master_str = Parameters_Master
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-
-        self.CILFn.Setup(self,RunCIL)
+        #create a tcp socket and wait to receive runs to preform from the server 
+        tcp_sock = Utils.create_tcp_socket()
+        while True:
+            data = Utils.receive_data(tcp_sock)
+            if data:
+                if data['msg'] == 'Container_runs':
+                    self.Logger(f"CIL container {self.Container} received job list from server.",print=True)
+                    full_task_list = data['tasks']
+                    run_list =full_task_list[str(self.Container)] 
+                    break
+        
+        self.CILFn.Setup(self,RunCIL,run_list)
         
     def Settings(self, **kwargs):
         filename = f'{VLconfig.VL_DIR}/Container_settings.json'
@@ -179,17 +189,29 @@ class GVXR_Setup(VLSetup):
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
         VLNamespaces = ['GVXR']
         #Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to origional strings for passing into other containters.
+        # however we need to original strings for passing into other containers.
         # So we will ned to get them here.
         self.Parameters_Master_str = Parameters_Master
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
+        #create a tcp socket and wait to receive runs to perform from the server 
+        tcp_sock = Utils.create_tcp_socket()
+        ready_msg = {"msg":"Ready","Cont_id":self.Container}
+        Utils.send_data(tcp_sock, ready_msg)
+        while True:
+            data = Utils.receive_data(tcp_sock)
+            if data:
+                print(data)
+                if data['msg'] == 'Container_runs':
+                    self.Logger(f"GVXR container {self.Container} received job list from server.",print=True)
+                    full_task_list = data['tasks']
+                    run_list =full_task_list[str(self.Container)] 
+                    break
 
-        self.GVXRFn.Setup(self,RunGVXR)
+        self.GVXRFn.Setup(self,RunGVXR,run_list)
         
     def Settings(self, **kwargs):
         filename = f'{VLconfig.VL_DIR}/Container_settings.json'
-        print(filename)
         base_settings = self.SettingsFromFile(filename)
         
         # Python merge operator (introduced in python 3.9)

@@ -68,6 +68,8 @@ def check_for_errors(process_list,client_socket,sock_lock):
 
 waiting_cnt_sockets = {}
 running_processes={}
+target_ids = []
+task_dict = {}
 def process(vlab_dir,use_singularity):
     sock_lock = threading.Lock()
     sock = socket.socket()
@@ -107,8 +109,6 @@ def process(vlab_dir,use_singularity):
 
             sock_lock.acquire()
             
-            target_ids = []
-            task_dict = {}
             # loop over containers once to create a dict of final container ids
             # and associated runs to output to file
             for Container in Cont_runs:
@@ -116,8 +116,6 @@ def process(vlab_dir,use_singularity):
                 list_of_runs = Container[1]
                 task_dict[str(next_cnt_id)] = list_of_runs
                 next_cnt_id += 1
-            with open("container_runs.json", "w") as i :
-                json.dump(task_dict, i)
 
             # loop over containers again to spawn them this time
             for n,Container in enumerate(Cont_runs):    
@@ -135,12 +133,17 @@ def process(vlab_dir,use_singularity):
 
                 running_processes[str(target_ids[n])] = container_process
                 
-
-                # send mesage to tell client continer what id the new container will have
+                # send message to tell client container what id the new container will have
                 data = {"msg":"Running","Cont_id":target_ids[n]}
                 send_data(client_socket, data)
             sock_lock.release()
-            
+
+        elif event == 'Ready':
+            sock_lock.acquire()
+            # finally send the list of tasks and id's to the containers
+            data2 = {"msg":"Container_runs","tasks":task_dict}
+            send_data(client_socket, data2)
+            sock_lock.release()
 
         elif event == 'Finished':
             sock_lock.acquire()
@@ -185,7 +188,7 @@ if __name__ == "__main__":
     Run_file = args.Run_file
     Container = args.Container
     if Container:
-        # start server listening for incoming jobs on seperate thread
+        # start server listening for incoming jobs on separate thread
         lock = threading.Lock()
         thread = threading.Thread(target=process,args=(vlab_dir,use_singularity))
         thread.daemon = True
@@ -204,7 +207,7 @@ if __name__ == "__main__":
                             f'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
 
         lock.release()
-        # wait untill virtualLab is done before closing
+        # wait until virtualLab is done before closing
         proc.wait()
     else:
         # use native version

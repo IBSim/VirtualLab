@@ -13,11 +13,6 @@ parser.add_argument("-I", "--Container_ID", help = "unique integer id for contai
 args = parser.parse_args()
 Cont_id=args.Container_ID
 os.chdir('/home/ibsim/VirtualLab')
-# read in list of jobs for each container from file
-f = open('container_runs.json')
-container_runs = json.load(f)
-f.close()
-run_list = container_runs[str(Cont_id)]
 from Scripts.Common.VLContainers import GVXR_Setup
 VirtualLab=GVXR_Setup(
            args.Simulation,
@@ -30,4 +25,4 @@ VirtualLab.Parameters(
            args.Parameters_Master,
            args.Parameters_Var,
            RunGVXR=True)
-VirtualLab.CT_Scan(run_ids=run_list)
+VirtualLab.CT_Scan()

@@ -30,8 +30,8 @@ def runs_to_file(filename):
 def check_for_errors(process_list,client_socket,sock_lock):
     ''' 
     Function to take in nested a dictionary of containing running processes and container id's.
-    Idealy any python errors will be handled and cleanup should print an error message to the screen
-    and send a success message to the main process. Thus avoiding hanging the aplication.
+    Ideally any python errors will be handled and cleanup should print an error message to the screen
+    and send a success message to the main process. Thus avoiding hanging the application.
     This function here is to catch any non-python errors. By simply running proc.communicate()
     to check each running process. From there if the return code is non zero it stops the server and
     spits out the std_err from the process.
@@ -45,8 +45,7 @@ def check_for_errors(process_list,client_socket,sock_lock):
                 outs, errs = proc.communicate()
             #communicate sets returncode inside proc
             if proc.returncode != 0 :
-                
-                #This convets the strings from bytes to utf-8 
+                #This converts the strings from bytes to utf-8 
                 # however, we need to check they exist because
                 # none objects can't be converted to utf-8
                 if outs:

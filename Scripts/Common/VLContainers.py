@@ -97,7 +97,7 @@ class CIL_Setup(VLSetup):
         # with the value of the keys of the right dictionary,
         # if an overlap exists. This is intentional as it
         # allows values that were passed in to the function to
-        # Overwrite the base setings.
+        # Overwrite the base settings.
 
         settings = base_settings | kwargs 
 
@@ -143,7 +143,7 @@ class GVXR_Setup(VLSetup):
         from .VLTypes import GVXR as GVXRFn
         self.GVXRFn = GVXRFn
         ########################################################################
-    	 # Get parsed args (achieved using the -k flag when launchign VirtualLab).
+    	 # Get parsed args (achieved using the -k flag when launching VirtualLab).
         self._GetParsedArgs()
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()

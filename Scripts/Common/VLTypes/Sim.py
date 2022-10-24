@@ -10,12 +10,57 @@ from Scripts.Common.VLPackages.CodeAster import Aster
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 
-def Setup(VL,RunSim=True,Import=False):
-    '''
-    Default setup function for Sim routine.
-    '''
-
+def configuration(VL):
+    ''' Configuration function for the Sim class. '''
+    # folder where all scripts for Sim can be found
     VL.SIM_SIM = "{}/Sim".format(VL.SIM_SCRIPTS)
+    # configuration file for
+    VL.SIM_config = "{}/config.py".format(VL.SIM_SIM)
+
+
+def Setup(VL,*args,**kwargs):
+    ''' Function called for Setup of the Sim routine. If no setup function is
+    defined in the config file Setup_default will be used.'''
+
+    configuration(VL)
+
+    Setup_config = _config_func(VL.SIM_config,'Setup')
+    if Setup_config is None:
+        # Use default function
+        Setup_default(VL,*args,**kwargs)
+    else:
+        # Use setup function from config
+        Setup_config(VL,*args,**kwargs)
+
+def Run(VL,*args,**kwargs):
+    Run_config = _config_func(VL.SIM_config,'Run')
+    if Run_config is None:
+        # Use default function
+        Run_default(VL,*args,**kwargs)
+    else:
+        # Use Run function from config
+        Run_config(VL,*args,**kwargs)
+
+def PoolRun(VL, SimDict,*args,**kwargs):
+    PoolRun_config = _config_func(VL.SIM_config,'PoolRun')
+    if PoolRun_config is None:
+        # Use default function
+        PoolRun_default(VL,SimDict,*args,**kwargs)
+    else:
+        # Use PoolRun function from config
+        PoolRun_config(VL,SimDict,*args,**kwargs)
+
+def _config_func(file_path, func_name):
+    if os.path.isfile(file_path):
+        return VLF.GetFunc(file_path,func_name)
+
+
+def Setup_default(VL,RunSim=True,Import=False):
+    '''
+    Default setup function for Sim routine. Here paths are defined and checks are
+    made prior to performing analysis.
+    To create an alternative create a function 'Setup' in the config file.
+    '''
 
     VL.SimData = {}
     SimDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Sim')
@@ -119,9 +164,11 @@ def Setup(VL,RunSim=True,Import=False):
 
     # ==========================================================================
 
-def PoolRun(VL, SimDict, RunPreAster=True, RunAster=True, RunPostAster=True):
+def PoolRun_default(VL, SimDict, RunPreAster=True, RunAster=True, RunPostAster=True):
     '''
-    Default run function for Sim routine.
+    Default PoolRun function for Sim routine. This function is performed for each
+    different dictionary in SimDicts.
+    To create an alternative create a function 'PoolRun' in the config file.
     '''
 
     Parameters = SimDict["Parameters"]
@@ -208,7 +255,12 @@ def PoolRun(VL, SimDict, RunPreAster=True, RunAster=True, RunPostAster=True):
              return 'PostAster Error: {}'.format(err)
 
 
-def Run(VL, ShowRes=False, **kwargs):
+def Run_default(VL, ShowRes=False, **kwargs):
+    '''
+    Default Run function for Sim routine. This is the function run as the Sim
+    method to the VLSetup class.
+    To create an alternative create a function 'Run' in the config file.
+    '''
     if not VL.SimData: return
 
     # ==========================================================================
@@ -223,7 +275,15 @@ def Run(VL, ShowRes=False, **kwargs):
     SimDicts = list(VL.SimData.values())
     kwargs_list = [kwargs]*NbSim # Duplicate kwargs in to list for parallelisation
 
+    # if os.path.isfile("{}/config.py".format(VL.SIM_SIM)):
+    #     PoolRun_ext = VLF.GetFunc("{}/config.py".format(VL.SIM_SIM),'PoolRun')
+    #     # If alternative PoolRun found we use that
+    #     Errorfnc = VLPool(VL,PoolRun_ext,SimDicts,kwargs_list=kwargs_list)
+    # else:
+    #     Errorfnc = VLPool(VL,PoolRun,SimDicts,kwargs_list=kwargs_list)
+
     Errorfnc = VLPool(VL,PoolRun,SimDicts,kwargs_list=kwargs_list)
+
     if Errorfnc:
         VL.Exit(VLF.ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)),
                 Cleanup=False)

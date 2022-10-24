@@ -36,15 +36,27 @@ def check_for_errors(process_list,client_socket,sock_lock):
     to check each running process. From there if the return code is non zero it stops the server and
     spits out the std_err from the process.
      '''
+    from socket import timeout
+    from subprocess import TimeoutExpired
     if not process_list:
     # if list is empty return straight away and continue in while loop.
         return
     else:
         for proc in process_list.values():
-            if proc.returncode==None:
-                outs, errs = proc.communicate()
-            #communicate sets returncode inside proc
-            if proc.returncode != 0 :
+            # wait until the process has finished
+            # Note: it may be a good idea to add 
+            # a heartbeat check to guard against 
+            # processes that just hang.
+            test = proc.poll()
+            print(f'test = {test}')
+            if test == None:
+                continue
+            #    try:
+            #        outs, errs = proc.communicate(timeout=5)
+            #    except TimeoutExpired :
+            #        continue
+            #poll sets returncode inside proc if finished
+            if proc.returncode != 0 :      
                 #This converts the strings from bytes to utf-8 
                 # however, we need to check they exist because
                 # none objects can't be converted to utf-8
@@ -56,12 +68,29 @@ def check_for_errors(process_list,client_socket,sock_lock):
                 err_mes = ContainerError(outs,errs)
                 print(err_mes)
                 sock_lock.acquire()
-                # send mesage to tell main vlab thread to close because there was an error 
-                data = {"msg":"Error","stderr":'-1'}
-                send_data(client_socket,data)
+                #wait 5 seconds to see if error was caught in python
+                # If so we should receive a finished message
+                client_socket.settimeout(5)
+                conn_timeout = False
+                try:
+                    message = receive_data(client_socket)
+                except timeout:
+                    conn_timeout = True
+                if conn_timeout:
+                    # error was either not python or was not caught in python
+                    # send message to tell main vlab thread to close and 
+                    # thus end the program.
+                    data = {"msg":"Error","stderr":'-1'}
+                    send_data(client_socket,data)
+                elif message == 'Finished':
+                    # Python has finished so error must have been handled there
+                    # Thus no action needed from this end.
+                    continue
+                else:
+                    ValueError("unexpected message {message} recived on error.")
                 sock_lock.release()
-                client_socket.shutdown(socket.SHUT_RDWR)
-                client_socket.close()
+                #client_socket.shutdown(socket.SHUT_RDWR)
+                #client_socket.close()
                 
     return
 
@@ -69,14 +98,15 @@ waiting_cnt_sockets = {}
 running_processes={}
 target_ids = []
 task_dict = {}
+
 def process(vlab_dir,use_singularity):
     sock_lock = threading.Lock()
     sock = socket.socket()
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
     sock.bind(("0.0.0.0", 9999))
-    sock.listen(20)
     next_cnt_id = 2
     while True:
+        sock.listen(20)
         client_socket, client_address = sock.accept()
         rec_dict = receive_data(client_socket)
         event = rec_dict["msg"]
@@ -90,10 +120,13 @@ def process(vlab_dir,use_singularity):
             num_containers = rec_dict["Num_Cont"]
             Cont_runs = rec_dict["Cont_runs"]
             param_master = rec_dict["Parameters_Master"]
-            param_var = rec_dict["Parameters_Var"]
+            if rec_dict["Parameters_Var"] == 'None':
+                param_var = None
+            else:
+                param_var = rec_dict["Parameters_Var"]
             project = rec_dict["Project"]
             simulation = rec_dict["Simulation"]
-            # setup comand to run docker or singularity
+            # setup command to run docker or singularity
             if use_singularity:
                 container_cmd = 'singularity exec --writable-tmpfs'
             else:
@@ -135,7 +168,9 @@ def process(vlab_dir,use_singularity):
                 # send message to tell client container what id the new container will have
                 data = {"msg":"Running","Cont_id":target_ids[n]}
                 send_data(client_socket, data)
+            print('hit')
             sock_lock.release()
+            #continue
 
         elif event == 'Ready':
             sock_lock.acquire()
@@ -154,18 +189,13 @@ def process(vlab_dir,use_singularity):
                 data = {"msg":"Success","Cont_id":waiting_cnt_sockets[container_id]["id"],"target_id":int(container_id)}
                 send_data(waiting_cnt_socket,data)
                 running_processes.pop(str(container_id))
-                if len(running_processes) == 0:
-                    #shutdown communication if all processes are done
-                    waiting_cnt_socket.shutdown(socket.SHUT_RDWR)
-                    waiting_cnt_socket.close()
             sock_lock.release()
-            client_socket.shutdown(socket.SHUT_RDWR)
-            client_socket.close()
             
         else:
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
-            raise ValueError()
+            raise ValueError(f'Unknown message {event} received')
+        print("hit")
         check_for_errors(running_processes,client_socket,sock_lock)
 if __name__ == "__main__":
 # rerad in CMD arguments

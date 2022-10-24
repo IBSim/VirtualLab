@@ -35,7 +35,8 @@ def RunJob(Cont_id,Tool,Num_Cont,Cont_runs,Parameters_Master,Parameters_Var,Proj
         The first index is a container number and the second is a list
          of runs to be processed within said container.
         ''' 
-
+    if Parameters_Var == None:
+        Parameters_Var = 'None'
         # setup networking to communicate with host script whilst running in a container
     data = {"msg":"RunJob","Cont_id":Cont_id,"Tool":Tool,"Num_Cont":Num_Cont,"Cont_runs":Cont_runs,
             "Parameters_Master":Parameters_Master,"Parameters_Var":Parameters_Var,

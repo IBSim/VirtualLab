@@ -57,15 +57,12 @@ def RunJob(Cont_id,Tool,Num_Cont,Cont_runs,Parameters_Master,Parameters_Var,Proj
         These must be strings pointing to a Runfile.")
     
     #data_string = json.dumps(data)
-    sock = socket.socket()
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+    sock = create_tcp_socket()
     # send a signal to VL_server saying you want to run a CIL container
-    sock.connect(("0.0.0.0", 9999))
     send_data(sock, data)
     target_ids = []
     #wait to recive message saying the tool is finished before continuing on.
     while True:
-
         rec_dict=receive_data(sock)
         if rec_dict:
             if rec_dict['msg'] == 'Running':
@@ -89,11 +86,17 @@ def RunJob(Cont_id,Tool,Num_Cont,Cont_runs,Parameters_Master,Parameters_Var,Proj
     sock.close()
     return container_return
 
+def create_tcp_socket():
+    ''' function to create the tcp socket and connect to it.'''
+    sock = socket.socket()
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+    sock.connect(("0.0.0.0", 9999))
+    return sock
+
 def Cont_Started(Cont_id):
     ''' Function to send a Message to the main script to say the container has started.'''
     data = {"msg":"started","Cont_id":Cont_id}
-    sock = socket.socket()
-    sock.connect(("0.0.0.0", 9999))
+    sock = create_tcp_socket()
     send_data(sock, data)
     sock.close()
     return
@@ -101,8 +104,7 @@ def Cont_Started(Cont_id):
 def Cont_Finished(Cont_id):
     ''' Function to send a Message to the main script to say the container has Finished.'''
     data = {"msg":"Finished","Cont_id":Cont_id}
-    sock = socket.socket()
-    sock.connect(("0.0.0.0", 9999))
+    sock = create_tcp_socket()
     send_data(sock, data)
     sock.close()
     return

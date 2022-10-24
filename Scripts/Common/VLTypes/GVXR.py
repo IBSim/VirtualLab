@@ -1,10 +1,20 @@
-def Setup(VL, RunGVXR=True):
+def Setup(VL, RunGVXR=True,run_ids=None):
     '''
     GVXR - Simulation of X-ray CT scans 
     '''
     # if RunGVXR is False or GVXRDicts is empty dont perform Simulation and return instead.
     GVXRDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
     if not (RunGVXR and GVXRDicts): return
+
+    # if given a subset of runs extract only those runs
+    if run_ids:
+        all_runs = list(GVXRDicts.keys())
+        run_list = [all_runs[i] for i in run_ids]
+    else:
+        run_list = list(GVXRDicts.keys())
+    
+    GVXRDicts = {key: GVXRDicts[key] for key in GVXRDicts.keys() & run_list}
+    
     import os
     import sys
     sys.dont_write_bytecode=True

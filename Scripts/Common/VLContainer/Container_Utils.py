@@ -6,7 +6,7 @@ from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
 
-def RunJob(Cont_id,Tool,Num_Cont,Cont_runs,Parameters_Master,Parameters_Var,Project,Simulation):
+def RunJob(**kwargs):
     ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
         with another toll in separate container. At the moment this 
@@ -20,27 +20,23 @@ def RunJob(Cont_id,Tool,Num_Cont,Cont_runs,Parameters_Master,Parameters_Var,Proj
         them a unique id in the container_id's dict in VL_sever.py 
         and add it to this list as a courtesy so everyone is on the same page
         #######################################################################
-        Inputs:
-        Cont_id (int): unique Id of the container that is calling the function.
-                For Now this should be set to 1 for Vlab. This has been
-                deliberately left in to allow other containers to call 
-                tools should the need arise.
+        Inputs: 
+        a dict containing the following parameters to setup the job:
 
-        Tool (str): String containing name of the tool you want to run.
-
-        Parameters_Master/Var (str): path INSIDE THE CONTAINER to the parameters file
-        to be read in. Note you will need to setup directory binding carefully in VLsever.py.
-
-        Cont_runs:  This is a list of tuples that maps runs to specific containers. 
-        The first index is a container number and the second is a list
-         of runs to be processed within said container.
+        Cont_id: ID of the container requesting the job. This is usually but not
+                 necessarily VL_manager (i.e. container 1).
+        Tool: string to identify the module to spin up.
+        Num_Cont: maximum number of containers to run in parallel,
+        Parameters_Master: string pointing to appropriate Runfile
+        Parameters_Var: string pointing to appropriate Runfile or None
+        Project: Name of the project.
+        Simulation: Name of the Simulation
         ''' 
-    if Parameters_Var == None:
-        Parameters_Var = 'None'
-        # setup networking to communicate with host script whilst running in a container
-    data = {"msg":"RunJob","Cont_id":Cont_id,"Tool":Tool,"Num_Cont":Num_Cont,"Cont_runs":Cont_runs,
-            "Parameters_Master":Parameters_Master,"Parameters_Var":Parameters_Var,
-            "Project":Project,"Simulation":Simulation}
+    
+    if kwargs['Parameters_Var'] == None:
+        kwargs['Parameters_Var'] = 'None'
+
+    kwargs['msg'] = "RunJob"
     # Long Note: we are fully expecting Parameters_Master and Parameters_Var to be strings 
     # pointing to Runfiles. However base VirtualLab supports passing in Namespaces.
     # (see virtualLab.py line 178 and GetParams for context). 
@@ -53,14 +49,14 @@ def RunJob(Cont_id,Tool,Num_Cont,Cont_runs,Parameters_Master,Parameters_Var,Proj
     # Then sending it over as json string and converting it back on the other side.
     # In practice you may run into issues with buffer sizes for sock.recv as the strings
     # can get very long indeed.
-    if isinstance(Parameters_Master,Namespace):
+    if isinstance( kwargs['Parameters_Master'],Namespace):
         raise Exception("Passing in Namespaces is not currently supported for Container tools. \
         These must be strings pointing to a Runfile.")
     
     #data_string = json.dumps(data)
     sock = create_tcp_socket()
     # send a signal to VL_server saying you want to run a CIL container
-    send_data(sock, data)
+    send_data(sock, kwargs)
     target_ids = []
     #wait to recive message saying the tool is finished before continuing on.
     while True:
@@ -69,7 +65,7 @@ def RunJob(Cont_id,Tool,Num_Cont,Cont_runs,Parameters_Master,Parameters_Var,Proj
             if rec_dict['msg'] == 'Running':
                 target_ids.append(rec_dict['Cont_id'])
         # wait until all containers have started
-            if len(target_ids) == Num_Cont:      
+            if len(target_ids) == kwargs['Num_Cont']:      
                 break
     
     while True:

@@ -64,9 +64,8 @@ class CIL_Setup(VL_Module):
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
         
-        tcp_sock = Utils.create_tcp_socket()
         while True:
-            data = Utils.receive_data(tcp_sock)
+            data = Utils.receive_data(self.tcp_sock)
             if data:
                 if data['msg'] == 'Container_runs':
                     self.Logger(f"CIL container {self.Container} received job list from server.",print=True)
@@ -91,7 +90,7 @@ class CIL_Setup(VL_Module):
             exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
         elif os.path.isdir(self.TEMP_DIR):
             shutil.rmtree(self.TEMP_DIR)
-        #Utils.Cont_Finished(self.Container)
+        Utils.Cont_Finished(self.Container)
         print(exitstr)
 
 ###############################################################################

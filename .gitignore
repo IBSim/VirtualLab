@@ -32,4 +32,7 @@ Input/*/*
 !Containers/
 # Ensure that only some Run files will be included in the RunFiles directory
 !RunFiles/
+# ignore logfiles but not directory
+!.log
+.log/*.log
 

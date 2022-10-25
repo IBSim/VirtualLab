@@ -110,7 +110,7 @@ def Cont_Finished(Cont_id):
     sock.close()
     return
 
-def send_data(conn, payload,bigPayload=False):
+def send_data(conn, payload,bigPayload=False,debug=False):
     '''
     Adapted from: https://github.com/vijendra1125/Python-Socket-Programming/blob/master/server.py
     @brief: send payload along with data size and data identifier to the connection
@@ -129,6 +129,8 @@ def send_data(conn, payload,bigPayload=False):
         adjustments to avoid errors caused by data overflows.
     '''
     # serialize payload
+    if debug:
+        print(f'sent:{payload}')
     serialized_payload = json.dumps(payload).encode('utf-8')
     payload_size = len(serialized_payload)
     if  payload_size > 2048 and not bigPayload:
@@ -142,7 +144,7 @@ def send_data(conn, payload,bigPayload=False):
         "###################################################")
     conn.sendall(serialized_payload)
     
-def receive_data(conn,payload_size=2048):
+def receive_data(conn,payload_size=2048,debug=False):
     '''
     @brief: receive data from the connection assuming that data is a json string
     @args[in]: 
@@ -158,8 +160,14 @@ def receive_data(conn,payload_size=2048):
         You may also want to set the bigPayload flag in send_data. 
 
     '''
-    received_payload = conn.recv(payload_size).decode('utf-8')
-    payload = json.loads(received_payload)
+    received_payload = conn.recv(payload_size)
+    if not received_payload:
+        payload = None
+    else:
+        received_payload=received_payload.decode('utf-8')
+        payload = json.loads(received_payload)
+        if debug:
+            print(f'received:{payload}')
     return (payload)
 
 def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_singularity,cont_id):

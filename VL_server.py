@@ -43,16 +43,16 @@ def check_for_errors(process_list,client_socket,sock_lock):
         return
     else:
         for proc in process_list.values():
-            # wait until the process has finished
+            # check if the process has finished
             # Note: it may be a good idea to add 
             # a heartbeat check to guard against 
             # processes that just hang.
-            test = proc.poll()
-            print(f'test = {test}')
-            if test == None:
+            try:
+                outs, errs = proc.communicate(timeout=1)
+            except TimeoutExpired :
                 continue
-            #    try:
-            #        outs, errs = proc.communicate(timeout=5)
+            #communicate sets returncode inside proc if finished
+            if proc.returncode is not None and proc.returncode != 0 :      
             #    except TimeoutExpired :
             #        continue
             #poll sets returncode inside proc if finished
@@ -87,7 +87,7 @@ def check_for_errors(process_list,client_socket,sock_lock):
                     # Thus no action needed from this end.
                     continue
                 else:
-                    ValueError("unexpected message {message} recived on error.")
+                    ValueError("unexpected message {message} received on error.")
                 sock_lock.release()
                 #client_socket.shutdown(socket.SHUT_RDWR)
                 #client_socket.close()
@@ -106,7 +106,8 @@ def process(vlab_dir,use_singularity):
     sock.bind(("0.0.0.0", 9999))
     next_cnt_id = 2
     while True:
-        sock.listen(20)
+    sock.listen(20)
+    while True:
         client_socket, client_address = sock.accept()
         rec_dict = receive_data(client_socket)
         event = rec_dict["msg"]

@@ -47,12 +47,44 @@ class VLSetup():
         self.Logger('\n############################\n'\
                         '### Launching VirtualLab ###\n'\
                         '############################\n',Print=True)
+
+    def handle_except(self,*args):
+        ''' 
+        This function stops errors in containers from occurring silently by 
+        catching them with sys.excepthook and printing a traceback to the 
+        user via VL.Logger. When python errors are raised it normally only
+         prints the traceback to the the container not the host. 
+         Hence we need to be careful errors are handled appropriately.
+        
+        If this were not here Cleanup will get run Via AtExit. 
+        This sends the Finished message to the server to tell the main 
+        thread to close. This is what we want. However, AtExit does not
+        distinguish between errors and a normal exit. More annoyingly 
+        it returns 0. Thus the server assumes all is well.
+
+        This Function is a bit of a hack but at least it gives 
+        you a heads-up that all is not well.
+        ''' 
+        import traceback as tb
+        btrace = ''.join(tb.format_exception(None,None,args[2]))
+        errtype = str(args[1])
+        errormsg = '\n############################\n'\
+                     '###  Error Occurred   ######\n'\
+                     '###  in the container ######\n'\
+                        f'{errtype}\n'\
+                        f'{btrace}'\
+                     '############################\n'
+
+        self.Logger(errormsg,Print=True)
+        
+
     def _Common_init(self,Simulation, Project,Cont_id=1):
         '''
         init steps that are common between both VL_manger and VL_modules. 
         These are here since it makes sense to have them in one place and
         save duplicating work.
         '''
+        sys.excepthook= self.handle_except
         ########################################################################
     	 # Get parsed args (achieved using the -k flag when launching VirtualLab).
         self._GetParsedArgs()

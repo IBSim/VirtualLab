@@ -15,10 +15,15 @@ import uuid
 import VLconfig
 from .VLContainer import Container_Utils as Utils
 from . import VLFunctions as VLF
-
+#############################################################
+# Note: VLSetup is the VLManager in the V2.0 naming scheme. #
+#       However, changing it's name would break far to much #
+#       legacy code to be worthwhile. So it's easier to     #
+#       just live with it for now.                          #
+#############################################################
 class VLSetup():
     def __init__(self, Simulation, Project,Cont_id=1):
-        #######################################################################
+        #####################################################
         # import run/setup functions for curently all but CIL
         from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, \
         Vox as VoxFn

@@ -226,11 +226,11 @@ if __name__ == "__main__":
         if use_singularity:
             proc=subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B \
                             /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab Containers/VL_GVXR.sif '
-                            f'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
+                            f'VL_Manager -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
         else:
             # Assume using Docker
             proc=subprocess.Popen(f'docker run -it -v {vlab_dir}:/home/ibsim/VirtualLab ibsim/base '
-                            f'VirtualLab -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
+                            f'VL_Manager -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
 
         lock.release()
         # wait until virtualLab is done before closing
@@ -242,7 +242,7 @@ if __name__ == "__main__":
             " Docker/Singularity. To use this container functionality, and tools which depend \n"
             " on it you will need to install docker or Singularity and pass in the -C option. \n")
 
-        proc=subprocess.check_call(f'VirtualLab -f {Run_file}', shell=True)
+        proc=subprocess.check_call(f'VL_Manager -f {Run_file}', shell=True)
 
 
 

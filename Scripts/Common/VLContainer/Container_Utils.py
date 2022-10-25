@@ -193,7 +193,7 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_
         else:
             call_string = f'-v /run:/run -v {vlab_dir}:/home/ibsim/VirtualLab --gpus all ibsim/vl_cil'
 
-        command = f'/home/ibsim/VirtualLab/Containers/Run_CIL.sh \
+        command = f'/home/ibsim/VirtualLab/bin/VL_CIL.sh \
                    {param_master} {param_var} {Project} {Simulation} {ID}'
 
     elif Tool == "GVXR":
@@ -202,7 +202,7 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_
         else:
             call_string = f'-v /run:/run -v /dev:/dev -v {vlab_dir}:/home/ibsim/VirtualLab -e QT_X11_NO_MITSHM=1 --gpus all ibsim/vl_gvxr'
 
-        command = f'/home/ibsim/VirtualLab/Containers/Run_GVXR.sh \
+        command = f'/home/ibsim/VirtualLab/bin/VL_GVXR.sh \
                    {param_master} {param_var} {Project} {Simulation} {ID}'
     # Add other tools here as need arises
     else:

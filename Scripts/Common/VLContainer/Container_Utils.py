@@ -218,3 +218,57 @@ def check_platform():
     if platform.system()=='Linux':
         use_singularity=True
     return use_singularity
+
+def setup_networking_log(filename='.log/network_log'):
+    ''' 
+    Setup two loggers one for file and one for the screen.
+    The file logger is set to debug so it should catch 
+    anything sent for logging. The screen is set to Info
+    so it will display anything that is not marked debug.
+
+    For reference Log levels are:
+    DEBUG
+    INFO
+    WARNING
+    ERROR
+    CRITICAL
+    '''
+    import logging
+    from logging.handlers import TimedRotatingFileHandler
+    import datetime
+    now = datetime.datetime.now()
+    today = now.strftime('%Y-%m-%d')
+    filename=f'{filename}_{today}.log'
+    log = logging.getLogger('logger')
+    # Sets the base level for all logging.
+    # Setting this to debug ensures we log everything.
+    # Since default level is Warning if we didn't
+    # set this and used debug in one of our handlers
+    # it wouldn't log anything below warning. 
+    log.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter('%(message)s')
+
+    # Logger for file
+    fh = logging.FileHandler(filename, mode='a', encoding='utf-8')
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+    log.addHandler(fh)
+
+    # Logger for screen
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter)
+    log.addHandler(ch)
+
+    # print dat and time to log for starting virtualLab
+    
+    log.debug(f'started VirtualLab:{now}')
+    return log
+
+def log_net_info(logger,message,screen=False):
+    if screen:
+        logger.info(message)
+    else:
+        logger.debug(message)
+        

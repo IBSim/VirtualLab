@@ -15,7 +15,9 @@ import argparse
 import os
 import json
 import sys
-from Scripts.Common.VLContainer.Container_Utils import check_platform, Format_Call_Str, send_data, receive_data 
+from Scripts.Common.VLContainer.Container_Utils import check_platform, \
+    Format_Call_Str, send_data, receive_data, setup_networking_log,\
+    log_net_info
 def ContainerError(out,err):
     '''Custom function to format error message in a pretty way.'''
     Errmsg = "\n========= Container returned non-zero exit code =========\n\n"\
@@ -53,10 +55,6 @@ def check_for_errors(process_list,client_socket,sock_lock):
                 continue
             #communicate sets returncode inside proc if finished
             if proc.returncode is not None and proc.returncode != 0 :      
-            #    except TimeoutExpired :
-            #        continue
-            #poll sets returncode inside proc if finished
-            if proc.returncode != 0 :      
                 #This converts the strings from bytes to utf-8 
                 # however, we need to check they exist because
                 # none objects can't be converted to utf-8
@@ -100,19 +98,19 @@ target_ids = []
 task_dict = {}
 
 def process(vlab_dir,use_singularity):
+    net_logger = setup_networking_log()
     sock_lock = threading.Lock()
     sock = socket.socket()
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
     sock.bind(("0.0.0.0", 9999))
     next_cnt_id = 2
-    while True:
     sock.listen(20)
     while True:
         client_socket, client_address = sock.accept()
         rec_dict = receive_data(client_socket)
         event = rec_dict["msg"]
         container_id = rec_dict["Cont_id"]
-        print(f'Server - received "{event}" event from container {container_id} at {client_address}')
+        log_net_info(net_logger,f'Server - received "{event}" event from container {container_id} at {client_address}')
 
         if event == 'VirtualLab started':
             client_socket.close()
@@ -155,7 +153,7 @@ def process(vlab_dir,use_singularity):
                 options, command = Format_Call_Str(tool,vlab_dir,param_master,
                     param_var,project,simulation,use_singularity,target_ids[n])
 
-                print(f'Server - starting a new container with ID: {target_ids[n]} '
+                log_net_info(net_logger,f'Server - starting a new container with ID: {target_ids[n]} '
                       f'as requested by container {container_id}')
 
                 # spawn the container
@@ -184,7 +182,7 @@ def process(vlab_dir,use_singularity):
             sock_lock.acquire()
             container_id = str(container_id)
             if container_id in waiting_cnt_sockets:
-                print(f'Server - container {container_id} finished working, '
+                log_net_info(net_logger,f'Server - container {container_id} finished working, '
                       f'notifying source container {waiting_cnt_sockets[container_id]["id"]}')
                 waiting_cnt_socket = waiting_cnt_sockets[container_id]["socket"]
                 data = {"msg":"Success","Cont_id":waiting_cnt_sockets[container_id]["id"],"target_id":int(container_id)}
@@ -196,7 +194,6 @@ def process(vlab_dir,use_singularity):
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
             raise ValueError(f'Unknown message {event} received')
-        print("hit")
         check_for_errors(running_processes,client_socket,sock_lock)
 if __name__ == "__main__":
 # rerad in CMD arguments

@@ -12,11 +12,30 @@ from importlib import import_module, reload
 import VLconfig
 from .VirtualLab import VLSetup
 from .VLContainer import Container_Utils as Utils
+###############################################################################
+######################     base module class     ##############################
+###############################################################################
+class VL_Module(VLSetup):
+    def start_module(self):
+        #create a tcp socket and wait to receive runs to perform from the server
+        ready_msg = {"msg":"Ready","Cont_id":self.Container}
+        Utils.send_data(self.tcp_sock, ready_msg)
+        while True:
+            data = Utils.receive_data(self.tcp_sock)
+            if data:
+                if data['msg'] == 'Container_runs':
+                    self.Logger(f"{data['tool']} container {self.Container} received job list from server.",print=True)
+                    full_task_list = data['tasks']
+                    self.run_list =full_task_list[str(self.Container)]
+                    self.settings_dict = data['settings']
+                    self.Settings(**self.settings_dict)
+                    break        
+        return
 
 ###############################################################################
 ##############################     CIL     ####################################
 ###############################################################################
-class CIL_Setup(VLSetup):
+class CIL_Setup(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=2):
     	#################################################################
         # import run/setup functions for CIL
@@ -44,7 +63,7 @@ class CIL_Setup(VLSetup):
         self.Parameters_Master_str = Parameters_Master
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-        #create a tcp socket and wait to receive runs to preform from the server 
+        
         tcp_sock = Utils.create_tcp_socket()
         while True:
             data = Utils.receive_data(tcp_sock)
@@ -78,7 +97,7 @@ class CIL_Setup(VLSetup):
 ###############################################################################
 ################################     GVXR   ###################################
 ###############################################################################
-class GVXR_Setup(VLSetup):
+class GVXR_Setup(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=2):
     	#################################################################
         # import run/setup functions for GVXR
@@ -105,7 +124,7 @@ class GVXR_Setup(VLSetup):
         self.Parameters_Master_str = Parameters_Master
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-        #create a tcp socket and wait to receive runs to perform from the server 
+        self.start_module()
         self.GVXRFn.Setup(self,RunGVXR,self.run_list)   
 
      #Hook for GVXR       

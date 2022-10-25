@@ -22,44 +22,13 @@ class CIL_Setup(VLSetup):
         # import run/setup functions for CIL
         from .VLTypes import CIL as CILFn
         self.CILFn = CILFn
-        ########################################################################
-    	 # Get parsed args (achieved using the -k flag when launching VirtualLab).
-        self._GetParsedArgs()
-        # Copy path at the start for MPI to match sys.path
-        self._pypath = sys.path.copy()
-        self.Container=Cont_id
-        # ======================================================================
-        # Define variables
-        self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
-        self.Project = self._ParsedArgs.get('Project',Project)
-
-        # ======================================================================
+        #perform setup steps that are common to both VL_modules and VL_manger
+        self._Common_init(Simulation, Project,Cont_id)
         # Specify default settings
         self.Settings(Mode='H',Launcher='Process',NbJobs=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
                       MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
 
-        # ======================================================================
-        # Define path to scripts
-        self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
-        self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
-        # Add these to path
-        sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
-
-        #=======================================================================
-        # Define & create temporary directory for work to be saved to
-        self._TempDir = VLconfig.TEMP_DIR
-        # timestamp
-        self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
-
-        self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
-        try:
-            os.makedirs(self.TEMP_DIR)
-        except FileExistsError:
-            # Unlikely this would happen. Suffix random number to direcory name
-            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.randint(1000))
-            os.makedirs(self.TEMP_DIR)
-        
     def Parameters(self, Parameters_Master, Parameters_Var=None, RunCIL=False):
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -115,43 +84,12 @@ class GVXR_Setup(VLSetup):
         # import run/setup functions for GVXR
         from .VLTypes import GVXR as GVXRFn
         self.GVXRFn = GVXRFn
-        ########################################################################
-    	 # Get parsed args (achieved using the -k flag when launching VirtualLab).
-        self._GetParsedArgs()
-        # Copy path at the start for MPI to match sys.path
-        self._pypath = sys.path.copy()
-        self.Container=Cont_id
-        # ======================================================================
-        # Define variables
-        self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
-        self.Project = self._ParsedArgs.get('Project',Project)
-
-        # ======================================================================
+        #perform setup steps that are common to both VL_modules and VL_manger
+        self._Common_init(Simulation, Project,Cont_id)
         # Specify default settings
         self.Settings(Mode='H',Launcher='Process',NbJobs=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
                       MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
-
-        # ======================================================================
-        # Define path to scripts
-        self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
-        self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
-        # Add these to path
-        sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
-
-        #=======================================================================
-        # Define & create temporary directory for work to be saved to
-        self._TempDir = VLconfig.TEMP_DIR
-        # timestamp
-        self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
-
-        self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
-        try:
-            os.makedirs(self.TEMP_DIR)
-        except FileExistsError:
-            # Unlikely this would happen. Suffix random number to direcory name
-            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.randint(1000))
-            os.makedirs(self.TEMP_DIR)
         
     def Parameters(self, Parameters_Master, Parameters_Var=None, RunGVXR=False):
         # Update args with parsed args
@@ -168,21 +106,7 @@ class GVXR_Setup(VLSetup):
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
         #create a tcp socket and wait to receive runs to perform from the server 
-        tcp_sock = Utils.create_tcp_socket()
-        ready_msg = {"msg":"Ready","Cont_id":self.Container}
-        Utils.send_data(tcp_sock, ready_msg)
-        while True:
-            data = Utils.receive_data(tcp_sock)
-            if data:
-                print(data)
-                if data['msg'] == 'Container_runs':
-                    self.Logger(f"GVXR container {self.Container} received job list from server.",print=True)
-                    full_task_list = data['tasks']
-                    run_list =full_task_list[str(self.Container)] 
-                    break
-
-        self.GVXRFn.Setup(self,RunGVXR,run_list)
-        
+        self.GVXRFn.Setup(self,RunGVXR,self.run_list)   
 
      #Hook for GVXR       
     def CT_Scan(self,**kwargs):

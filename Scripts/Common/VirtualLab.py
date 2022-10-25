@@ -26,8 +26,35 @@ class VLSetup():
         self.SimFn=SimFn
         self.DAFn=DAFn
         self.VoxFn=VoxFn
+        #perform setup steps that are common to both VL_modules and VL_manger
+        self._Common_init(Simulation, Project,Cont_id)
+        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
+
+        # Unique ID
+        stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
+        output = stream.readlines()
+        ver,branch = output[0].split()[0],output[1].strip()
+        self._ID ="{}_{}_{}".format(ver,branch,self._time)
+
+        # Specify default settings
+        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
+                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+            
+        data = {"msg":"VirtualLab started","Cont_id":1}
+        data_string = json.dumps(data)
+        Utils.send_data(self.tcp_sock,data)
+        self.Logger('\n############################\n'\
+                        '### Launching VirtualLab ###\n'\
+                        '############################\n',Print=True)
+    def _Common_init(self,Simulation, Project,Cont_id=1):
+        '''
+        init steps that are common between both VL_manger and VL_modules. 
+        These are here since it makes sense to have them in one place and
+        save duplicating work.
+        '''
         ########################################################################
-        # Get parsed args (achieved using the -k flag when launching VirtualLab).
+    	 # Get parsed args (achieved using the -k flag when launching VirtualLab).
         self._GetParsedArgs()
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
@@ -36,18 +63,14 @@ class VLSetup():
         # Define variables
         self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
         self.Project = self._ParsedArgs.get('Project',Project)
-
+        # create tcp socket for communication with the server
+        self.tcp_sock = Utils.create_tcp_socket()
         # ======================================================================
-        # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbJobs=1,Max_Containers=1,
-                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
 
         # ======================================================================
         # Define path to scripts
         self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
         self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
-        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
         # Add these to path
         sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 
@@ -56,31 +79,14 @@ class VLSetup():
         self._TempDir = VLconfig.TEMP_DIR
         # timestamp
         self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
-        # Unique ID
-        stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
-        output = stream.readlines()
-        ver,branch = output[0].split()[0],output[1].strip()
-        self._ID ="{}_{}_{}".format(ver,branch,self._time)
 
         self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
         try:
             os.makedirs(self.TEMP_DIR)
         except FileExistsError:
-            # Unlikely this would happen. Suffix random number to direcory name
-            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
+            # Unlikely this would happen. Suffix random number to directory name
+            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.randint(1000))
             os.makedirs(self.TEMP_DIR)
-        if self.Container==1:
-            # setup networking to comunicate with host script whilst running in a continer
-            import socket
-            data = {"msg":"VirtualLab started","Cont_id":1}
-            data_string = json.dumps(data)
-            sock = socket.socket()
-            sock.connect(("0.0.0.0", 9999))
-            sock.sendall(data_string.encode('utf-8'))
-            sock.close()
-            self.Logger('\n############################\n'\
-                        '### Launching VirtualLab ###\n'\
-                        '############################\n',Print=True)
 
 
     def _SetMode(self,Mode='H'):

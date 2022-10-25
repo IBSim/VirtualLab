@@ -1,10 +1,15 @@
 from types import SimpleNamespace as Namespace
 
-def Setup(VL, RunCIL=False):
-# if RunCIL is False or CILDicts is empty dont perform Simulation and return instead.
+def Setup(VL, RunCIL=False,run_ids=None):
+    ''' setup CT reconstruction with CIL'''
+# if RunCIL is False or CILdicts is empty dont perform Simulation and return instead.
 # Note: CIL shares the GVXR namespace because they share so many parameters in common.
     CILdicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
     if not (RunCIL and CILdicts): return
+
+# Filter CILdict for runs that are defined for this container.
+    CILdicts = VL.filter_runs(CILdicts,run_ids)
+
     VL.CILData = {}
     for CILName, CILParams in CILdicts.items():
         Parameters = Namespace(**CILParams)

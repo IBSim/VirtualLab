@@ -6,15 +6,9 @@ def Setup(VL, RunGVXR=True,run_ids=None):
     GVXRDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'GVXR')
     if not (RunGVXR and GVXRDicts): return
 
-    # if given a subset of runs extract only those runs
-    if run_ids:
-        all_runs = list(GVXRDicts.keys())
-        run_list = [all_runs[i] for i in run_ids]
-    else:
-        run_list = list(GVXRDicts.keys())
-    
-    GVXRDicts = {key: GVXRDicts[key] for key in GVXRDicts.keys() & run_list}
-    
+    # Filter GVXRdict for runs that are defined for this container.
+    GVXRDicts = VL.filter_runs(GVXRDicts,run_ids)
+
     import os
     import sys
     sys.dont_write_bytecode=True
@@ -23,7 +17,6 @@ def Setup(VL, RunGVXR=True,run_ids=None):
     import copy
     import Scripts.Common.VLFunctions as VLF
     import pydantic
-    #from pydantic import ValidationError
     from pydantic.dataclasses import dataclass, Field
     from typing import Optional, List
     from Scripts.Common.VLPackages.GVXR.Utils_IO import ReadNikonData

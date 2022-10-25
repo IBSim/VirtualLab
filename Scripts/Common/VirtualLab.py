@@ -160,35 +160,9 @@ class VLSetup():
         else:
             self.Exit(ErrorMessage("Max_Containers must be positive"))
 
-        
-    def SettingsToFile(self,settings_dict):
-        ''' 
-        Simple function to output parameters passed into Settings to file.
-        These can then be passed into subsequent calls to Settings in other
-        containers. Thus you can set these options once in the call to the
-        base container and they will be passed on.
-        '''
-        import json
-        with open(f'{VLconfig.VL_DIR}/Container_settings.json', 'w') as fp:
-            json.dump(settings_dict, fp)
-        fp.close()
-        return
-
-    def SettingsFromFile(self,filename):
-        ''' 
-        Companion function to SettingsToFile hopefully it is self-explanatory but
-        this does the reverse that is reads in and returns and dict from a json file.
-        This is used to carry settings across to containers. 
-        '''
-        import json
-        with open(filename, encoding='utf-8') as F:
-            json_data = json.loads(F.read())
-        F.close()
-        return json_data
     
     def Settings(self,**kwargs):
         
-        self.SettingsToFile(kwargs)
         Diff = set(kwargs).difference(['Mode','Launcher','NbJobs','Max_Containers','InputDir',
                                     'OutputDir','MaterialDir','Cleanup'])
         if Diff:
@@ -210,6 +184,9 @@ class VLSetup():
             self._SetOutputDir(kwargs['OutputDir'])
         if 'MaterialDir' in kwargs:
             self._SetMaterialDir(kwargs['MaterialDir'])
+        # save settings as a dict here ready to send to containers
+        # this saves us pointlessly recreating it later.
+        self.settings_dict = kwargs
 
     def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
                     RunMesh=True, RunSim=True, RunDA=True,
@@ -246,7 +223,6 @@ class VLSetup():
         self.Num_runs=self._get_Num_Runs(bool_list,VLNamespaces)
         # get a list of all the containers and the runs they will process for each module
         self.container_list = self._Spread_over_Containers()
-        print(f"container list = {self.container_list}")
         #self.do_Analytics(self,Num_runs) #disabled pending discussion with llion/Rhydian
 
     def ImportParameters(self, Rel_Parameters,ParameterArgs=None):
@@ -520,7 +496,8 @@ class VLSetup():
         Parameters_Master=self.Parameters_Master_str,
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,
-        Simulation=self.Simulation)
+        Simulation=self.Simulation,
+        Settings=self.settings_dict)
 
         if return_value != '0':
             #an error ocured so exit VirtualLab
@@ -535,7 +512,8 @@ class VLSetup():
         Parameters_Master=self.Parameters_Master_str,
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,
-        Simulation=self.Simulation)
+        Simulation=self.Simulation,
+        Settings=self.settings_dict)
 
         if return_value != '0':
             #an error occurred so exit VirtualLab

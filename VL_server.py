@@ -125,6 +125,7 @@ def process(vlab_dir,use_singularity):
                 param_var = rec_dict["Parameters_Var"]
             project = rec_dict["Project"]
             simulation = rec_dict["Simulation"]
+            settings_dict=rec_dict["Settings"]
             # setup command to run docker or singularity
             if use_singularity:
                 container_cmd = 'singularity exec --writable-tmpfs'
@@ -159,7 +160,6 @@ def process(vlab_dir,use_singularity):
                 # spawn the container
                 container_process = subprocess.Popen(f'{container_cmd} {options} {command}',
                     stderr = subprocess.PIPE, shell=True)
-                
                 waiting_cnt_sockets[str(target_ids[n])] = {"socket": client_socket, "id": container_id}
 
                 running_processes[str(target_ids[n])] = container_process
@@ -167,14 +167,13 @@ def process(vlab_dir,use_singularity):
                 # send message to tell client container what id the new container will have
                 data = {"msg":"Running","Cont_id":target_ids[n]}
                 send_data(client_socket, data)
-            print('hit')
             sock_lock.release()
             #continue
 
         elif event == 'Ready':
             sock_lock.acquire()
             # finally send the list of tasks and id's to the containers
-            data2 = {"msg":"Container_runs","tasks":task_dict}
+            data2 = {"msg":"Container_runs","tasks":task_dict,"tool":tool,"settings":settings_dict}
             send_data(client_socket, data2)
             sock_lock.release()
 

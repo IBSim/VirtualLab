@@ -19,10 +19,10 @@ VirtualLab=GVXR_Setup(
            args.Project,
            Cont_id)
 
-VirtualLab.Settings(Mode='Interactive')
 
 VirtualLab.Parameters(
            args.Parameters_Master,
            args.Parameters_Var,
            RunGVXR=True)
+           
 VirtualLab.CT_Scan()

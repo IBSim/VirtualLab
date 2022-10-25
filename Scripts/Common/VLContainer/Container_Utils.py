@@ -31,6 +31,9 @@ def RunJob(**kwargs):
         Parameters_Var: string pointing to appropriate Runfile or None
         Project: Name of the project.
         Simulation: Name of the Simulation
+        Settings: dict of settings that were passed into VL_Manger. 
+                  This ensures modules receive the same settings 
+                  (mode,Nbjobs ect.)
         ''' 
     
     if kwargs['Parameters_Var'] == None:

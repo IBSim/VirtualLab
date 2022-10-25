@@ -361,13 +361,10 @@ def Pancake(dirname=None):
     CoilMesh.GroupOnGeom(GrpCoilOut,'CoilOut',SMESH.FACE)
     CoilMesh.GroupOnGeom(GrpCoilSurface,'CoilSurface',SMESH.FACE)
 
-    # =========================================================================
-    # Make refrence vector
-    V1 = geompy.MakeVertex(0, 0, 0)
-    V2 = geompy.MakeVertex(0, 1, 0)
-    RefVect = geompy.MakeVector(V1, V2)
+    OX_reverse = geompy.MakeVectorDXDYDZ(-1, 0, 0)
+    Orientation = {'Centre':O,'System':[OY,OX_reverse,OZ]}
 
-    return CoilMesh, RefVect
+    return CoilMesh, Orientation
 
 def Coils(Name):
     if Name.lower()=='test':

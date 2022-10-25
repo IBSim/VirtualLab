@@ -241,10 +241,10 @@ def Run(VL,run_ids=None):
     from gvxrPython3 import gvxr
     if not VL.GVXRData: return
     VL.Logger('\n### Starting GVXR ###\n', Print=True)
-    print (gvxr.getVersionOfSimpleGVXR())
-    print (gvxr.getVersionOfCoreGVXR())
+    VL.Logger(gvxr.getVersionOfSimpleGVXR())
+    VL.Logger(gvxr.getVersionOfCoreGVXR())
     # Create an OpenGL context
-    print("Create an OpenGL context")
+    VL.Logger("Create an OpenGL context")
     if VL.mode=='Headless':
     #headless
         gvxr.createWindow(-1,0,"EGL",4,5);
@@ -254,14 +254,13 @@ def Run(VL,run_ids=None):
     
     launcher = VL._Launcher
     if launcher.lower() in ('mpi','mpi_worker','process'):
-        VL.Logger("********************************************\n",
-              "WARNING: GVXR does not work with pathos or mpi\n"
-              " Thus GVX runs will be performed sequentially.\n"
-              " To run experiments in parallel set\n"
-              " nb_containers to use multiple containers.\n",
+        VL.Logger("********************************************\n"\
+              "WARNING: GVXR does not work with pathos or mpi\n"\
+              " Thus GVX runs will be performed sequentially.\n"\
+              " To run experiments in parallel set\n"\
+              " nb_containers to use multiple containers.\n"\
               "********************************************")
     # if given a subset of runs extract only those runs
-    #print(run_ids)
     if run_ids:
         all_runs = list(VL.GVXRData.keys())
         run_list = [all_runs[i] for i in run_ids]

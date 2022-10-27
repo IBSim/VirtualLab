@@ -1,13 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#title           :menu.py
-#description     :This program displays an interactive menu on CLI
-#author          :
-#date            :
-#version         :0.1
-#usage           :python menu.py
-#notes           :
-#python_version  :2.7.6  
+# Script to install/update VirtualLab  
 #=======================================================================
 
 # Import the modules needed to run the script.
@@ -15,14 +7,12 @@ import sys, os
 from pathlib import Path
 import subprocess
 from zipfile import ZipFile
-# Main definition - constants
-menu_actions  = {}  
 
 # =======================
 #     MENUS FUNCTIONS
 # =======================
 
-# Main menu
+# Main menu (execution starts here)
 def main_menu():
     os.system('clear')
     
@@ -41,7 +31,7 @@ def exec_menu(choice):
     os.system('clear')
     ch = choice.lower()
     if ch == '':
-        menu_actions[menu_type]()
+        menu_actions['main_menu']()
     else:
         try:
             menu_actions[ch]()
@@ -82,7 +72,6 @@ def exit():
     
 
 def custom_dir():
-    #os.system('clear')
     print("Please enter full path for where Install VirtualLab to.\n")
     print("Or type 0 to go back.\n")
     choice = input(" >>  ")
@@ -99,16 +88,20 @@ def custom_dir():
         install_Vlab(choice)
     else:
         # path is valid but does not exist so create it.
-        print(f'installing VirtualLab to {choice}')
+        print(f'Installing VirtualLab to {choice}')
         print(f'creating new directory')
         os.makedirs(choice)
         install_Vlab(choice)
 
 def install_Vlab(install_path):
     os.chdir(install_path)
+    Docker = check_container_tool()
     print('Downloading VirtuaLab')
     get_latest_code()
-    get_latest_docker()
+    if Docker:
+        get_latest_docker()
+    else:
+        get_latest_Apptainer(install_path)
     print("Instalation Complete!!")
     sys.exit()
 
@@ -125,12 +118,28 @@ def get_latest_code():
     os.rename('virtuallab-master','VirtualLab')
 
 def get_latest_docker():
-    print("Pulling latest container from Dockerhub:\n")
+    print("Pulling latest VLManager container from Dockerhub:\n")
     try:
         subprocess.call('docker pull ibsim/virtuallab_main:Dev',shell=True)
     except:
         print('docker pull failed. please check docker is installed and working corectly.')
         sys.exit()
+
+def get_latest_Apptainer(install_path):
+    print("Pulling latest VLManager container from Dockerhub and converting to Apptainer:\n")
+    try:
+        subprocess.call(f'Apptainer build -F {install_path}/Containers/VirtualLab.sif docker://ibsim/virtuallab_main:Dev',shell=True)
+    except:
+        print('build failed. please check Apptainer is installed and working corectly.')
+        sys.exit()
+    print('******************************************************************************\n')
+    print(' Note: Unfortunately unlike Docker apptainer does not currently have a built in\n')
+    print(' tool to check for container updates. If you would like to ensure that you are\n')
+    print(' using the latest version of a particular module. You will need delete the\n')
+    print(' already downloaded .sif files for the module you wish to update. These can be\n')
+    print(f' found in {install_path}/Containers. You can then re-run VirtualLab which will\n')
+    print(' automatically download the newest version.\n')
+    print('******************************************************************************\n')
 
 def update_vlab():
     vlab_dir = f'{Path.home()}/VirtualLab'
@@ -151,13 +160,17 @@ def update_vlab():
         elif not os.path.exists(f'{vlab_dir}/bin/VirtualLab'):
             print(f"I couldn't find the VirtualLab executable in {vlab_dir}/bin")
             print('are you sure that is the correct path?')
-            print("**************************************")
+            print("************************************************************")
             update_vlab()
     # reame old dir to avoid acidental deletion
     os.rename(vlab_dir,f'{vlab_dir}-old')
     get_latest_code()
     os.rename('VirtualLab',vlab_dir)
-    get_latest_docker()
+    Docker = check_container_tool()
+    if Docker:
+        get_latest_docker()
+    else:
+        get_latest_Apptainer(vlab_dir)
     print("Update Complete!!")
     print(f"Note: your previous install has been saved to {vlab_dir}-old for safekeeping. \n you can delete this if you wish.")
     sys.exit()
@@ -172,7 +185,29 @@ def check_platform():
         print("Installer Cannot autmatically identify what OS you are running\n")
         print("Instalation failed\n")
         sys.exit()
-    
+
+def check_container_tool():
+    if Platform == 'Linux':
+        print('Are you using Docker or Apptainer?')
+        print('1: Docker')
+        print('2: Apptainer')
+        print('0: Back')
+        choice = input(" >>  ")
+        if choice == '0':
+            # return to install menu
+            menu_actions['1']()
+        elif choice == '1':
+            Docker = True
+            return Docker
+        elif choice == '2':
+            Docker = False
+            return Docker
+        else:
+            print('Invalid choice try again')
+            check_container_tool()
+    else:
+        #Windows/Mac only use Docker so no need to ask just return True.
+        return True
 # =======================
 #    MENUS DEFINITIONS
 # =======================
@@ -186,13 +221,6 @@ menu_actions = {
     '0': exit,
 }
 
-# install_menu_actions = {
-#     'install_menu': Install_menu,
-#     '1': ,
-#     '2': menu2,
-#     '9': back,
-#     '0': exit,
-# }
 
 
 # =======================
@@ -202,5 +230,6 @@ menu_actions = {
 # Main Program
 if __name__ == "__main__":
     # Launch main menu
+    Apptainer=False
     Platform = check_platform()
     main_menu()

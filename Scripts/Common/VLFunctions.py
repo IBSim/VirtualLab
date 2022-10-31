@@ -19,6 +19,7 @@ def GetArgs(path):
 
 def GetParameterArgs(name='ParameterArgs'):
     ArgDict = {}
+    Args=None
     for parsed in sys.argv:
         if parsed.startswith(name):
             path = parsed.split('=')[1]

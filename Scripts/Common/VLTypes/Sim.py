@@ -27,28 +27,28 @@ def Setup(VL,*args,**kwargs):
     Setup_config = _config_func(VL.SIM_config,'Setup')
     if Setup_config is None:
         # Use default function
-        Setup_default(VL,*args,**kwargs)
+        return Setup_default(VL,*args,**kwargs)
     else:
         # Use setup function from config
-        Setup_config(VL,*args,**kwargs)
+        return Setup_config(VL,*args,**kwargs)
 
 def Run(VL,*args,**kwargs):
     Run_config = _config_func(VL.SIM_config,'Run')
     if Run_config is None:
         # Use default function
-        Run_default(VL,*args,**kwargs)
+        return Run_default(VL,*args,**kwargs)
     else:
         # Use Run function from config
-        Run_config(VL,*args,**kwargs)
+        return Run_config(VL,*args,**kwargs)
 
 def PoolRun(VL, SimDict,*args,**kwargs):
     PoolRun_config = _config_func(VL.SIM_config,'PoolRun')
     if PoolRun_config is None:
         # Use default function
-        PoolRun_default(VL,SimDict,*args,**kwargs)
+        return PoolRun_default(VL,SimDict,*args,**kwargs)
     else:
         # Use PoolRun function from config
-        PoolRun_config(VL,SimDict,*args,**kwargs)
+        return PoolRun_config(VL,SimDict,*args,**kwargs)
 
 def _config_func(file_path, func_name):
     if os.path.isfile(file_path):

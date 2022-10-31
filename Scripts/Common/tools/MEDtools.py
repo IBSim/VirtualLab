@@ -185,8 +185,14 @@ class MeshInfo():
 def NodalResult(MEDFile, ResName, GroupName=None):
     g = h5py.File(MEDFile, 'r')
     gRes = g['/CHA/{}'.format(ResName)]
+    NbComponent = gRes.attrs['NCO']
     step = list(gRes.keys())[0]
     Result = gRes['{}/NOE/MED_NO_PROFILE_INTERNAL/CO'.format(step)][:]
+
+    if NbComponent>1:
+        # reshape results due to number of components, i.e. X,Y,Z, for example
+        shape = (int(Result.shape[0]/NbComponent),int(NbComponent))
+        Result = Result.reshape(shape,order='F')
     g.close()
 
     if GroupName:

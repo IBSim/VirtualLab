@@ -195,8 +195,7 @@ def Static(Parameters,ERMESMeshFile,tmpERMESdir):
 
     # Property used for CoilIn BC (100 is a nominal amount)
     StatMat += "// Special materials properties\n" + \
-    "PROPERTIES[17].COMPLEX_IBC = [0.000000000000000000,100.000000000000000000];\n" + \
-    "PROPERTIES[32].COMPLEX_IBC = [1.0,0.0];\n"
+    "PROPERTIES[17].COMPLEX_IBC = [0.0,100.0];\n"
 
     # BC at CoilOut terminal
     StatBC =["No[{}].V.Fix(0.0);\n".format(nd) for nd in ERMESMesh.GroupInfo('CoilOut').Nodes]
@@ -253,7 +252,7 @@ def Static(Parameters,ERMESMeshFile,tmpERMESdir):
     # Output file where currents calculated in the electrostatic simulation is saved to
     name = '1'
     with open('{}-9.dat'.format(analysis_name),'w+') as f:
-        f.write('{}\n0\n'.format(name))
+        f.write('{}'.format(name))
 
     ERMESMesh.Close()
 
@@ -316,7 +315,6 @@ def Wave(VL,Parameters,ERMESMeshFile,tmpERMESdir,ref_temp = 20, check=False):
         "PROPERTIES[{}].REAL_ELECTRIC_PERMITTIVITY = {};\n".format(i+1,ElPrm[0]) + \
         "PROPERTIES[{}].IMAG_ELECTRIC_PERMITTIVITY = {};\n".format(i+1,ElPrm[1])
     WaveMat += "// Special materials properties\n" + \
-    "PROPERTIES[17].COMPLEX_IBC = [0.000000000000000000,100.000000000000000000];\n" + \
     "PROPERTIES[32].COMPLEX_IBC = [1.0,0.0];\n"
 
     with open('{}/Nodes.dat'.format(tmpERMESdir),'r') as f:
@@ -383,6 +381,7 @@ def Wave(VL,Parameters,ERMESMeshFile,tmpERMESdir,ref_temp = 20, check=False):
             strSample = "".join(strSample)
         else: strSample=""
 
+        CoilInCnct = ERMESMesh.GroupInfo('CoilIn').Connect
         strFace = ["PSIE({},{},{},32);\n".format(FNodes[0],FNodes[1],FNodes[2]) for FNodes in CoilInCnct]
         strFace.insert(0,"// Field integration over a surface\n")
         strFace = "".join(strFace)
@@ -398,11 +397,13 @@ def Wave(VL,Parameters,ERMESMeshFile,tmpERMESdir,ref_temp = 20, check=False):
 
     return analysis_name
 
-def CalculateCurrent(ERMESResFile,resname='mod(J)',check=False):
+def CalculateCurrent(ERMESResFile,resname='Current_density_smoothed'):
     ''' Calculate current travelling through the coil at the input terminal'''
-    print(resname)
+
     # Get the results array for current
-    CurrentRes = MEDtools.NodalResult(ERMESResFile, resname)
+    CurrentRes_XYZ = MEDtools.NodalResult(ERMESResFile, resname)
+    # get magnitude of the current
+    CurrentRes = np.linalg.norm(CurrentRes_XYZ,axis=1)
 
     # Get mesh connectivity at the terminal
     ERMESMesh = MEDtools.MeshInfo(ERMESResFile)
@@ -632,9 +633,11 @@ def ERMES_linear(VL,SimDict):
     #==========================================================================
     # Create Mesh
     ERMESMeshFile = "{}/Mesh.med".format(ERMESdir)
+
     err = ERMES_Mesh(VL, SimDict['MeshFile'], ERMESMeshFile, Parameters,
                      tempdir=ERMESdir, AddPath=[VL.SIM_SCRIPTS])
     if err: return sys.exit('Issue creating mesh')
+
 
     # ==========================================================================
     # get mesh information in to ermes format
@@ -643,11 +646,29 @@ def ERMES_linear(VL,SimDict):
 
     # ==========================================================================
     # Create static files & run
+    # the static analysis gives the current density in the coil
     print('Static')
     static_name = Static(Parameters,ERMESMeshFile,ERMESdir)
     err = ERMESRun(static_name)
     static_resfile = "{}.post.res".format(static_name)
     static_res = ERMES_Conversion(static_resfile, ERMESMeshFile)
+
+    # calculate the current at the input terminal
+    area,coil_current,coil_currentsq = CalculateCurrent(ERMESMeshFile)
+
+    # scale resulting currents to ensure a current of 1 is recorded at input temrinal
+    scale_factor = 1/coil_current
+
+    JSource = np.loadtxt("{}/Exp_J_Sources/ExpJSource-1.dat".format(ERMESdir),skiprows=1)
+    sourcestring = '0\n'
+    for source in JSource:
+        elems = "{}  {}  {}  {}  ".format(*source[:4].astype('int'))
+        vals = "{:.4f}  {:.4f}  {:.4f}\n".format(*source[4:]*scale_factor)
+        newstr = elems+vals
+        sourcestring+=newstr
+
+    with open("{}/Exp_J_Sources/ExpJSource-1.dat".format(ERMESdir),'w+') as f:
+        f.write(sourcestring)
 
     # ==========================================================================
     # Create wave files & run
@@ -657,20 +678,6 @@ def ERMES_linear(VL,SimDict):
     wave_resfile = "{}.post.res".format(wave_name)
     wave_res = ERMES_Conversion(wave_resfile, ERMESMeshFile)
 
-    # ==========================================================================
-    # Calculate current values in the coil input terminal
-    area,current,currentsq = CalculateCurrent(ERMESMeshFile,'mod(J)',True)
-    if False:
-        print('These values should match up with those on the output from ERMES:')
-        print('Surface [1]: {:.6e} m^2'.format(CoilInArea))
-        print('intSurf(|J|): {:.6e}'.format(CoilInCurr))
-        print('intSurf(|J|^2): {:.6e}\n'.format(CoilInCurrsq))
-
-    # Scale results to match a current of 1 in the input
-    scale_factor = 1/current
-    factor_dict = {name:scale_factor for name in static_res+wave_res}
-    factor_dict['Joule_heating'] = scale_factor**2 # squared as this is E.J
-    ScaleResults(ERMESMeshFile,factor_dict)
     # ==========================================================================
     # Copy files
     shutil.copy2("{}/ERMESLog".format(ERMESdir), os.path.dirname(SimDict['ERMES_ResFile']))

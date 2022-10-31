@@ -76,13 +76,15 @@ def PoolRun(VL, SimDict, RunPreAster=True, RunCoolant=True, RunERMES=True,
         import EM_Analysis
         # file for JH results
         JH_file = "{}/EM_loads.npy".format(SimDict['ASTER'])
-        if True:
+        cluster = getattr(Parameters,'Cluster',True)
+        if os.path.isfile(JH_file) and not cluster:
+            JH_Vol = np.load(JH_file)
+        else:
             threshold = getattr(Parameters,'Threshold',1)
             nb_clusters = getattr(Parameters,'NbClusters',100)
             JH_Vol = EM_Analysis.ERMES2CA(ERMES_ResFile,threshold,nb_clusters)
             np.save(JH_file,JH_Vol)
-        else:
-            JH_Vol = np.load(JH_file)
+        # scale up results
         JH_Vol *= Parameters.Current**2
 
         # Create groups for the unique values in JH_Vol

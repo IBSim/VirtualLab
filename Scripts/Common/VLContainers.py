@@ -171,6 +171,96 @@ class GVXR_Setup(VL_Module):
         print(exitstr)
 
 ###############################################################################
+########################     Salome/ERMES   ###################################
+###############################################################################
+class VL_SIM(VL_Module):
+    def __init__(self, Simulation, Project,Cont_id=4):
+    	#################################################################
+        # import run/setup functions for Salome and ERMES
+        from .VLTypes import Sim as SimFn
+        self.SimFn = SimFn
+        #perform setup steps that are common to both VL_modules and VL_manger
+        self._Common_init(Simulation, Project,Cont_id)
+        # Specify default settings
+        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
+                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
+
+    def Parameters(self, Parameters_Master, Parameters_Var=None, RunSim=False, Import=False):
+        # Update args with parsed args
+        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
+        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
+        RunSim = self._ParsedArgs.get('RunSim',RunSim)
+        Import = self._ParsedArgs.get('Import',Import)
+
+        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
+        VLNamespaces = ['Sim']
+        #Note: The call to GetParams converts params_master/var into Namespaces
+        # however we need to original strings for passing into other containers.
+        # So we will ned to get them here.
+        self.Parameters_Master_str = Parameters_Master
+        self.Parameters_Var_str = Parameters_Var
+        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
+        self.start_module()
+        #self.SimFn.Setup(self,RunSim,self.run_list)
+        self.SimFn.Setup(self,RunSim, Import)
+
+     #Hook for Salome/Ermes       
+    def Sim(self,**kwargs):
+        kwargs = self._UpdateArgs(kwargs)
+        return self.SimFn.Run(self,**kwargs)
+
+    def devSim(self,**kwargs):
+        kwargs = self._UpdateArgs(kwargs)
+        return self.SimFn.Run(self,**kwargs)
+
+###############################################################################
+########################     Code Aster   ###################################
+###############################################################################
+class VL_Mesh(VL_Module):
+    def __init__(self, Simulation, Project,Cont_id=5):
+    	#################################################################
+        # import run/setup functions for Code Aster?
+        from .VLTypes import Mesh as MeshFn
+        self.MeshFn=MeshFn
+        #perform setup steps that are common to both VL_modules and VL_manger
+        self._Common_init(Simulation, Project,Cont_id)
+        # Specify default settings
+        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
+                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
+
+    def Parameters(self, Parameters_Master, Parameters_Var=None, RunMesh=False, Import=False):
+        # Update args with parsed args
+        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
+        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
+        RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
+        Import = self._ParsedArgs.get('Import',Import)
+
+        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
+        VLNamespaces = ['Mesh']
+        #Note: The call to GetParams converts params_master/var into Namespaces
+        # however we need to original strings for passing into other containers.
+        # So we will ned to get them here.
+        self.Parameters_Master_str = Parameters_Master
+        self.Parameters_Var_str = Parameters_Var
+        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
+        self.start_module()
+        #self.MeshFn.Setup(self,RunSim,self.run_list)
+        self.MeshFn.Setup(self,RunMesh, Import)
+
+    #Hooks for Salome/Ermes       
+    def Mesh(self,**kwargs):
+        kwargs = self._UpdateArgs(kwargs)
+        return self.MeshFn.Run(self,**kwargs)
+
+    def devMesh(self,**kwargs):
+        kwargs = self._UpdateArgs(kwargs)
+        return self.MeshFn.Run(self,**kwargs)
+
+###############################################################################
 #########################     Comms Test     ##################################
 ###############################################################################
 class VL_Comms_Test(VL_Module):

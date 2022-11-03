@@ -1,9 +1,9 @@
 import os
 from importlib import reload
 ##############################################
-# block to check for pathos/mpi
+# block to check for pathos/pyina
 pathos_installed = True
-mpi_installed = True 
+pyina_installed = True 
 try: 
     import pathos.multiprocessing as pathosmp
 except ImportError:
@@ -11,7 +11,7 @@ except ImportError:
 try:  
     from pyina.launchers import MpiPool
 except ImportError: 
-    mpi_installed = False
+    pyina_installed = False
 ##############################################
 
 def _fn_wrap_kwargs(fn,*args):
@@ -38,9 +38,9 @@ def Paralleliser(VL,fnc, args_list, kwargs_list=None, method='sequential', nb_pa
     # checks
     ############################################################
     # checks to see if mpi/pathos is requested but not installed
-    if method.lower() in ('mpi','mpi_worker') and not mpi_installed:
+    if method.lower() in ('mpi','mpi_worker') and not pyina_installed:
         VL.Logger("********************************************\n",
-              "WARNING: mpi is not installed in container\n",
+              "WARNING: pyina is not installed in container\n",
               " Thus mpi can not be used. Runs will be\n",
               " performed sequentially.\n.",
               "********************************************", print=True)
@@ -74,7 +74,7 @@ def Paralleliser(VL,fnc, args_list, kwargs_list=None, method='sequential', nb_pa
             Res = pool.map(_fn_wrap_kwargs,[fnc]*NbEval, *args_list, kwargs_list)
         Res = list(Res)
         pool.terminate()
-    elif method.lower() in ('mpi','mpi_worker') and mpi_installed:
+    elif method.lower() in ('mpi','mpi_worker') and pyina_installed:
         # mpi_worker keeps one worker free to assign jobs.
         if method.lower() == 'mpi' or nb_parallel==1: # Cant have worker if N is 1
             onall = True

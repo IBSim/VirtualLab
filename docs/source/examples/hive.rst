@@ -1,3 +1,6 @@
+.. role:: bash(code)
+   :language: bash
+
 Tutorial 3
 =================
 
@@ -280,3 +283,7 @@ This will overwrite the **Code_Aster** results copied across to 'ERMES_2' with n
 You should notice that with this scaling the power input is 900 W (some slight error may be due to rounding), which is printed to the terminal.
 
 Open the **Code_Aster** results from 'Uniform' in **ParaVis** alongside those from 'ERMES_2' in ``File/Open ParaView File``. The maximum temperature for the sample in 'ERMES_2' will be higher than that of 'Uniform' due to hotspots increased created by the coil design.
+
+.. bibliography:: refs.bib
+   :style: plain
+   :filter: docname in docnames

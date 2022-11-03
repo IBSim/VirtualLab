@@ -7,6 +7,7 @@ import sys, os
 from pathlib import Path
 import subprocess
 from zipfile import ZipFile
+import shutil
 
 # =======================
 #     MENUS FUNCTIONS
@@ -44,7 +45,10 @@ def exec_menu(choice):
 def Install_menu():
     print("Installing VirtualLab !\n")
     print("Please select where to Install VirtualLab to.\n")
-    install_path = str(Path.home())
+    if Platform == 'Windows':
+        install_path ='C:/Program Files/VirtualLab'
+    else:
+        install_path = f'{Path.home()}/VirtualLab'
     print(f"1. Default location: {install_path}")
     print("2. Custom location")
     print("9. Back")
@@ -70,6 +74,13 @@ def back():
 def exit():
     sys.exit()
     
+def yes_no():
+    print("Are you sure you want to Continue? y/n")
+    choice =  input('>>')
+    if choice.lower() != 'y':
+        print("Quiting")
+        sys.exit()
+    return
 
 def custom_dir():
     print("Please enter full path for where Install VirtualLab to.\n")
@@ -82,45 +93,63 @@ def custom_dir():
         # choice is not a valid path
         print("Invalid path, please try again.\n")
         custom_dir()
-    
-    if os.path.isdir(choice):
-        print(f'installing VirtualLab to {choice}')
-        install_Vlab(choice)
-    else:
-        # path is valid but does not exist so create it.
-        print(f'Installing VirtualLab to {choice}')
-        print(f'creating new directory')
-        os.makedirs(choice)
-        install_Vlab(choice)
+    install_Vlab(choice)
 
 def install_Vlab(install_path):
-    os.chdir(install_path)
+    os.system('clear')
+    print(f'Installing VirtualLab to {choice}')
+    if os.isdir(install_path):
+        # if it exists check if it is empty
+        dir_list = os.listdir(path)
+        # Checking if the list is empty or not
+        if len(dir) != 0:
+            print('******************************************\n')
+            print(f"The Directory {install_path} is not Empty\n")
+            print("Warning: contents will be overwriten.\n")
+            print('******************************************\n')
+    else:
+        print(f'New directory {install_path} will be created')
+        os.mkdirs(install_path)
+    yes_no()
     Docker = check_container_tool()
-    print('Downloading VirtuaLab')
-    get_latest_code()
+    print('Downloading VirtuaLab\n')
+    get_latest_code(install_path)
     if Docker:
         get_latest_docker()
     else:
         get_latest_Apptainer(install_path)
+    add_to_Path(install_dir)
     print("Instalation Complete!!")
     sys.exit()
 
-def get_latest_code():
+def get_latest_code(install_path):
+    # os.chdir(install_path)
     if Platform=='Windows':
         # use wget with powershell for windows
-        subprocess.call('powershell.exe wget https://gitlab.com/ibsim/virtuallab/-/archive/master/virtuallab-master.zip', shell=True)
+        subprocess.call(f'powershell.exe wget https://gitlab.com/ibsim/virtuallab/-/archive/master/virtuallab-master.zip -p {install_path}', shell=True)
     else:
         # Mac/Linux hopefully have Curl
-        subprocess.call('curl -O https://gitlab.com/ibsim/virtuallab/-/archive/master/virtuallab-master.zip', shell=True)
-    with ZipFile('virtuallab-master.zip', 'r') as zipObj:
+        subprocess.call(f'curl --output {install_path}/VirtualLab.zip -O https://gitlab.com/ibsim/virtuallab/-/archive/master/virtuallab-master.zip', shell=True)
+
+    with ZipFile(f'{install_path}/VirtualLab.zip', 'r') as zipObj:
    # Extract all the contents of zip file in current directory
-        zipObj.extractall()
-    os.rename('virtuallab-master','VirtualLab')
+        zipObj.extractall(path=install_path)
+
+    dest = install_path
+    source = f'{install_path}/virtuallab-master'
+
+    allfiles = os.listdir(source)
+    for f in allfiles:
+        src_path = os.path.join(source, f)
+        dst_path = os.path.join(dest, f)
+        shutil.move(src_path, dst_path)
+    os.remove(f'{install_path}/VirtualLab.zip')
+    os.rmdir(f'{install_path}/virtuallab-master')
 
 def get_latest_docker():
     print("Pulling latest VLManager container from Dockerhub:\n")
     try:
-        subprocess.call('docker pull ibsim/virtuallab_main:Dev',shell=True)
+        subprocess.run('docker pull ibsim/virtuallab_main:Dev',shell=True,check=True)
     except:
         print('docker pull failed. please check docker is installed and working corectly.')
         sys.exit()
@@ -128,10 +157,11 @@ def get_latest_docker():
 def get_latest_Apptainer(install_path):
     print("Pulling latest VLManager container from Dockerhub and converting to Apptainer:\n")
     try:
-        subprocess.call(f'Apptainer build -F {install_path}/Containers/VirtualLab.sif docker://ibsim/virtuallab_main:Dev',shell=True)
+        subprocess.run(f'Apptainer build -F {install_path}/Containers/VirtualLab.sif docker://ibsim/virtuallab_main:Dev',shell=True,check=True)
     except:
         print('build failed. please check Apptainer is installed and working corectly.')
         sys.exit()
+    
     print('******************************************************************************\n')
     print(' Note: Unfortunately unlike Docker apptainer does not currently have a built in\n')
     print(' tool to check for container updates. If you would like to ensure that you are\n')
@@ -142,10 +172,12 @@ def get_latest_Apptainer(install_path):
     print('******************************************************************************\n')
 
 def update_vlab():
-    vlab_dir = f'{Path.home()}/VirtualLab'
-    if os.path.isdir(vlab_dir):
-        print(f'Found VirtualLab install in {vlab_dir}')
+    if Platform == 'Windows':
+        vlab_dir ='C:/Program Files/VirtualLab'
     else:
+        vlab_dir = f'{Path.home()}/VirtualLab'
+    
+    if not os.path.isdir(vlab_dir):
         print("Installer could not automatically find VirtualLab\n")
         print('Please enter path to VirtualLab directory.\n')
         print('Or press 0 to exit')
@@ -162,10 +194,13 @@ def update_vlab():
             print('are you sure that is the correct path?')
             print("************************************************************")
             update_vlab()
-    # reame old dir to avoid acidental deletion
+        
+    print(f'Found VirtualLab install in {vlab_dir}')
+    yes_no()
+    # reame old dir to avoid deletion
     os.rename(vlab_dir,f'{vlab_dir}-old')
-    get_latest_code()
-    os.rename('VirtualLab',vlab_dir)
+    os.mkdir(vlab_dir)
+    get_latest_code(vlab_dir)
     Docker = check_container_tool()
     if Docker:
         get_latest_docker()
@@ -208,6 +243,53 @@ def check_container_tool():
     else:
         #Windows/Mac only use Docker so no need to ask just return True.
         return True
+
+def add_to_Path(install_dir):
+    os.system('clear')
+    os.chdir(install_dir)
+    if Platform == 'Linux':
+        print('What Shell are you using?')
+        print('If you don\'t know just stick with the default (i.e. Bash).')
+        print('1: Bash (default)')
+        print('2: Zsh')
+        print('3: Other')
+        choice = input(" >>  ")
+        if choice ==2:
+            output = subprocess.run([f'{install_dir}/Scripts/Install/Set_VLProfile_zsh.sh', f'{install_dir}',f'{Path.home()}'],capture_output=True)
+            print(Output.stdout.decode('utf8'))
+        if choice ==3:
+            print("****************************************************************************")
+            print(" Auto setting of path variables is only offically supported with bash and zsh.\n")
+            print(" For other shells you will need to do this manualy (this is tedious I know).\n")
+            print(" Before launching VirtuaLab you will need to run:\n")
+            print(f" export VL_DIR={install_dir}")
+            print(f" then add {install_dir}/bin to your system path.")
+            print(" Note: you may want to automate this on login using whatever way your\n")
+            print(" shell handles such things.")
+            print("****************************************************************************")
+        else:
+            #default to bash
+            output = subprocess.run([f'{install_dir}/Scripts/Install/Set_VLProfile_bash.sh', f'{install_dir}',f'{Path.home()}'],capture_output=True)
+            print(test.stdout.decode('utf8'))
+        
+    if Platform == 'Darwin':
+        # MacOs uses zsh by default
+        output = subprocess.run([f'{install_dir}/Scripts/Install/Set_VLProfile_zsh.sh', f'{install_dir}',f'{Path.home()}'],capture_output=True)
+        print(output.stdout.decode('utf8'))
+    else:
+        # for windows VirtualLab expects to be instaled in 'C:/Program Files/VirtualLab' this should be easy to automate I just havent got the time right now. 
+        if install_dir!='C:/Program Files/VirtualLab':
+            print("****************************************************************************")
+            print(" You appear to have set VirtualLab to be installed in a non standard location.\n")
+            print(" i.e. NOT in C:/Program Files/VirtualLab'\n\n")
+            print(" Auto setting of path varaibles for Custom directories is currently only\n")
+            print(" supported with Linux and Mac.\n")
+            print(" For Windows you will need to do this manualy (this is tedious I know).\n")
+            print(" You will find instructions for doing this in the install guide in the Docs.")
+            print (" This step will hopefully be automated in a later version.\n")
+            print("****************************************************************************")
+    return
+
 # =======================
 #    MENUS DEFINITIONS
 # =======================

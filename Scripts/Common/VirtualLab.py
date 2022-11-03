@@ -260,8 +260,8 @@ class VLSetup():
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
-        self.MeshFn.Setup(self,RunMesh, Import)
-        self.SimFn.Setup(self,RunSim, Import)
+        #self.MeshFn.Setup(self,RunMesh, Import)
+        #self.SimFn.Setup(self,RunSim, Import)
         self.DAFn.Setup(self,RunDA, Import)
         self.VoxFn.Setup(self,RunVox)
         # get the number of runs defined in params for each module
@@ -506,22 +506,22 @@ class VLSetup():
                     "in {}".format(func_name,file_path)))
 
         return func
+# add calls to runjob
+    # def Mesh(self,**kwargs):
+    #     kwargs = self._UpdateArgs(kwargs)
+    #     return self.MeshFn.Run(self,**kwargs)
 
-    def Mesh(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.MeshFn.Run(self,**kwargs)
+    # def devMesh(self,**kwargs):
+    #     kwargs = self._UpdateArgs(kwargs)
+    #     return self.MeshFn.Run(self,**kwargs)
 
-    def devMesh(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.MeshFn.Run(self,**kwargs)
+    # def Sim(self,**kwargs):
+    #     kwargs = self._UpdateArgs(kwargs)
+    #     return self.SimFn.Run(self,**kwargs)
 
-    def Sim(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.SimFn.Run(self,**kwargs)
-
-    def devSim(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.SimFn.Run(self,**kwargs)
+    # def devSim(self,**kwargs):
+    #     kwargs = self._UpdateArgs(kwargs)
+    #     return self.SimFn.Run(self,**kwargs)
 
     def DA(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)

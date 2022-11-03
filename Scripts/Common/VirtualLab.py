@@ -233,7 +233,8 @@ class VLSetup():
 
     def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
                     RunMesh=True, RunSim=True, RunDA=True,
-                    RunVox=True, RunGVXR=True, RunCIL=True, Import=False):
+                    RunVox=True, RunGVXR=True, RunCIL=True,
+                    RunTest=False, Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -244,12 +245,13 @@ class VLSetup():
         RunVox = self._ParsedArgs.get('RunVox',RunVox)
         RunGVXR = self._ParsedArgs.get('RunGVXR',RunGVXR)
         RunCIL = self._ParsedArgs.get('RunCIL',RunCIL)
+        RunTest = self._ParsedArgs.get('RunTest',RunTest)
         Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR','CIL']
+        VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR','CIL','Test']
 
-        bool_list = [RunMesh,RunSim,RunDA,RunGVXR,RunCIL,RunVox]
+        bool_list = [RunMesh,RunSim,RunDA,RunGVXR,RunCIL,RunVox,RunTest]
 
         #Note: The call to GetParams converts params_master/var into Namespaces
         # however we need to original strings for passing into other containers.
@@ -566,6 +568,16 @@ class VLSetup():
     def devDA(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return self.DAFn.Run(self,**kwargs)
+# Call to spawn a minimal container for testing server communications and docker/apptainer
+    def Test_Coms(self,**kwargs):
+        # if in main container submit job request
+        return_value=Utils.RunJob(Cont_id=1,Tool="Test_Comms",
+        Num_Cont=1,
+        Parameters_Master=self.Parameters_Master_str,
+        Parameters_Var=self.Parameters_Var_str,
+        Project=self.Project,
+        Simulation=self.Simulation,
+        Settings=self.settings_dict)
 
     def Logger(self,Text='',**kwargs):
         Prnt = kwargs.get('Print',False)
@@ -658,7 +670,7 @@ class VLSetup():
 
             for vltype in Dicts.keys():
                 Category = "{}_{}".format(VL.Simulation,vltype)
-                Action = "NJob={}_NCore={}_NNode=1".format(Dicts[vltype],N) #send N_continers?
+                Action = "NJob={}_NCore={}_NNode=1".format(Dicts[vltype],N) #send N_containers?
                 # ======================================================================
                 # Send information about current job
                 Analytics.Run(Category,Action,VL._ID)

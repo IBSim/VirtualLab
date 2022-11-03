@@ -123,7 +123,7 @@ class CIL_Setup(VL_Module):
 ################################     GVXR   ###################################
 ###############################################################################
 class GVXR_Setup(VL_Module):
-    def __init__(self, Simulation, Project,Cont_id=2):
+    def __init__(self, Simulation, Project,Cont_id=3):
     	#################################################################
         # import run/setup functions for GVXR
         from .VLTypes import GVXR as GVXRFn
@@ -169,3 +169,51 @@ class GVXR_Setup(VL_Module):
             shutil.rmtree(self.TEMP_DIR)
         Utils.Cont_Finished(self.Container)
         print(exitstr)
+
+###############################################################################
+#########################     Comms Test     ##################################
+###############################################################################
+class VL_Comms_Test(VL_Module):
+    def __init__(self, Simulation, Project,Cont_id=6):
+    	#################################################################
+        # import run/setup functions for tests
+        from .VLTypes import Comms as TestFn
+        self.TestFn = TestFn
+        #perform setup steps that are common to both VL_modules and VL_manger
+        self._Common_init(Simulation, Project,Cont_id)
+        # Specify default settings
+        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
+                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+
+    def Parameters(self, Parameters_Master, Parameters_Var=None, RunCIL=False):
+        # Update args with parsed args
+        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
+        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
+        RunTest = self._ParsedArgs.get('RunTest',RunTest)
+        
+        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
+        # Note: CIL uses the GVXR namespace since many of the settings overlap.
+        VLNamespaces = ['Test']
+        #Note: The call to GetParams converts params_master/var into Namespaces
+        # however we need to original strings for passing into other containers.
+        # So we will ned to get them here.
+        self.Parameters_Master_str = Parameters_Master
+        self.Parameters_Var_str = Parameters_Var
+        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
+        
+        while True:
+            data = Utils.receive_data(self.tcp_sock)
+            if data:
+                if data['msg'] == 'Container_runs':
+                    self.Logger(f"Test container {self.Container} received job list from server.",print=True)
+                    full_task_list = data['tasks']
+                    run_list =full_task_list[str(self.Container)] 
+                    break
+        
+        self.TestFn.Setup(self,RunTest)
+
+    #Hook for CIL       
+    def Test_Coms(self,**kwargs):
+        kwargs = self._UpdateArgs(kwargs)
+        return self.TestFn.Run(self)

@@ -264,7 +264,7 @@ def setup_networking_log(filename='.log/network_log'):
     ch.setFormatter(formatter)
     log.addHandler(ch)
 
-    # print dat and time to log for starting virtualLab
+    # print date and time to log for starting virtualLab
     
     log.debug(f'started VirtualLab:{now}')
     return log

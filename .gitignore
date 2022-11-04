@@ -35,4 +35,4 @@ Input/*/*
 # ignore logfiles but not directory
 !.log
 .log/*.log
-!VL_Modules.yml
+!VL_Modules.yaml

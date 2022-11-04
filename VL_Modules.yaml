@@ -1,0 +1,62 @@
+#################################################################
+# This file allows for configuration of all the containers 
+# used by VirtualLab. The outer keys are the module names 
+# and the inner keys are parameters.
+#
+# Note the following keys are required to define a module:
+#
+# Docker_url: The name of the image on DockerHub
+# Tag: The image tag
+# Apptainer_file: The name of the sif file used for Apptainer.
+# Run_script: Path to script to run at startup
+#
+#################################################################
+---
+Manager:
+      Docker_url: 'ibsim/base' 
+      Tag: 'latest' 
+      Apptainer_file: 'VL_Manager.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VLManager'
+ 
+Cad2Vox:
+      Docker_url: 'ibsim/cad2vox'
+      Tag: 'latest'
+      Apptainer_file: 'VL_Vox.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VL_Vox.sh'
+
+GVXR: 
+      Docker_url: 'ibsim/gvxr'
+      Tag: 'latest'
+      Apptainer_file: 'VL_GVXR.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VL_GVXR.sh'
+
+CIL: 
+      Docker_url: 'ibsim/cil'
+      Tag: 'latest'
+      Apptainer_file: 'VL_CIL.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VL_CIL.sh'
+
+Salome: 
+      Docker_url: 'ibsim/salmoe'
+      Tag: 'latest'
+      Apptainer_file: 'VL_Salome.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VL_Salome.sh'
+
+Aster:
+      Docker_url: 'ibsim/aster'
+      Tag: 'latest'
+      Apptainer_file: 'VL_Aster.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VL_Aster.sh'
+
+Test_Comms: 
+      Docker_url: 'localhost:5000/coms_test'
+      Tag: 'latest'
+      Apptainer_file: 'VL_Test.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VL_Test.sh'
+
+# Note: Not yet included on dockerhub but here in prep
+Aster_mpi: 
+      Docker_url: 'ibsim/aster_mpi'
+      Tag: 'latest'
+      Apptainer_file: 'VL_Aster_mpi.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VL_Aster_mpi.sh'

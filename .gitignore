@@ -9,6 +9,7 @@
 !.gitignore
 !README.md
 !Run.py
+!VLconfig.py
 !VLconfig_DEFAULT.sh
 !VL_server.py
 !SetupConfig.sh

@@ -15,6 +15,48 @@ import argparse
 import os
 import json
 import sys
+from pathlib import Path
+
+#import Scripts.Common.VLContainer.VL_Modules as VL_MOD
+import yaml
+from Scripts.Common.VLContainer.Container_Utils import check_platform, \
+    Format_Call_Str, send_data, receive_data, setup_networking_log,\
+    log_net_info
+def ContainerError(out,err):
+    '''Custom function to format error message in a pretty way.'''
+    Errmsg = "\n========= Container returned non-zero exit code =========\n\n"\
+                f"std out: {out}\n\n"\
+                f"std err:{err}\n\n"\
+                "==================================\n\n"
+    return Errmsg
+
+def get_vlab_dir(parsed_dir):
+    ''' 
+    Function to get path to vlab_dir from either:
+    input function parameters or os environment. in that order.
+    If nether is possible it defaults to the users home directory.
+    which will be either /home/{user}/VirtualLab 
+    or C:\Documents\VirtualLab depending upon the OS.
+
+    If the given directory does not exist it raises a value error.
+
+    '''
+    if parsed_dir:
+       vlab_dir = Path(parsed_dir)
+    else:
+    # get dir from OS environment which should be set during installation
+        vlab_dir = os.environ.get('VL_DIR',None)
+        if vlab_dir == None:
+            vlab_dir = Path.home() / 'VirtualLab'
+        else:
+            # here because you can't create a Path object from None
+            vlab_dir = Path(vlab_dir)
+        
+    if not vlab_dir.is_dir():
+        raise ValueError(f'Could not find VirtualLab install directory. The directory {str(vlab_dir)} does not appear to exist. \n' \
+        ' Please specify where to find the VirtualLab install directory using the -d option.')
+
+    return vlab_dir
 from Scripts.Common.VLContainer.Container_Utils import check_platform, \
     Format_Call_Str, send_data, receive_data, setup_networking_log,\
     log_net_info
@@ -87,9 +129,6 @@ def check_for_errors(process_list,client_socket,sock_lock):
                 else:
                     ValueError("unexpected message {message} received on error.")
                 sock_lock.release()
-                #client_socket.shutdown(socket.SHUT_RDWR)
-                #client_socket.close()
-                
     return
 
 waiting_cnt_sockets = {}
@@ -168,7 +207,6 @@ def process(vlab_dir,use_singularity):
                 data = {"msg":"Running","Cont_id":target_ids[n]}
                 send_data(client_socket, data)
             sock_lock.release()
-            #continue
 
         elif event == 'Ready':
             sock_lock.acquire()
@@ -194,11 +232,15 @@ def process(vlab_dir,use_singularity):
             client_socket.close()
             raise ValueError(f'Unknown message {event} received')
         check_for_errors(running_processes,client_socket,sock_lock)
+
+##########################################################################################
+####################  ACTUAL CODE STARTS HERE !!!! #######################################
+##########################################################################################
 if __name__ == "__main__":
 # rerad in CMD arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--vlab", help = "Path to Directory on host containing \
-     VirtualLab (default is assumed to be curent working directory).", default=os.getcwd())
+     VirtualLab (default is assumed to be curent working directory).", default=None)
     parser.add_argument("-f", "--Run_file", help = "Runfile to use (default is assumed to \
         be curent working directory).", default="Run.py")
     parser.add_argument("-D", "--Docker", help="Flag to use docker on Linux host instead of \
@@ -208,7 +250,8 @@ if __name__ == "__main__":
                         action='store_true')
 
     args = parser.parse_args()
-    vlab_dir=os.path.abspath(args.vlab)
+    # get vlab_dir either from cmd args or environment
+    vlab_dir= get_vlab_dir(args.vlab)
 # Set flag to allow cmd switch between singularity and docker when using linux host.
     use_singularity = check_platform() and not args.Docker
     Run_file = args.Run_file
@@ -229,15 +272,14 @@ if __name__ == "__main__":
                             f'VL_Manager -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
         else:
             # Assume using Docker
-            proc=subprocess.Popen(f'docker run -it -v {vlab_dir}:/home/ibsim/VirtualLab ibsim/base '
+            proc=subprocess.Popen(f'docker run --rm -it -v {vlab_dir}:/home/ibsim/VirtualLab ibsim/base '
                             f'VL_Manager -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
-
         lock.release()
         # wait until virtualLab is done before closing
         proc.wait()
     else:
         # use native version
-        print("Warning: VirtualLab is Running in native mode Some tools will be unavalible.\n"
+        print("Warning: VirtualLab is Running in native mode Some tools will be unavailable.\n"
             " Since version 2.0 VirtualLab is being setup to run inside a container with \n "
             " Docker/Singularity. To use this container functionality, and tools which depend \n"
             " on it you will need to install docker or Singularity and pass in the -C option. \n")

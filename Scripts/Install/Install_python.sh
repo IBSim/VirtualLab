@@ -217,7 +217,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   #   echo
   #   sudo -u ${SUDO_USER:-$USER} echo $VL_DIR >> $PATH_FILE
   #   export PYTHONPATH=$PYTHONPATH$VL_DIR
-  fi
+  #fi
   echo "If conda was not previously installed you will need to open a new"
   echo "terminal to activate it or run the following command in this terminal:"
   echo 'eval "$(${conda_dir}/bin/conda shell.bash hook)"'

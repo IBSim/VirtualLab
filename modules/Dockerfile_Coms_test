@@ -1,0 +1,31 @@
+FROM ubuntu:latest
+
+# Get Ubuntu updates and basic packages
+USER root
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt install -y \
+    python3 \
+    python3-dev \
+    nano \
+    git \
+    cowsay \
+    jq \
+    curl
+
+# Set locale environment
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    LANGUAGE=C.UTF-8 / 
+    PATH=${PATH}:/usr/games
+
+# Add a new user
+RUN adduser --disabled-password --gecos "" ibsim
+
+USER ibsim
+COPY jokes.sh /home/ibsim/jokes.sh
+WORKDIR /home/ibsim
+RUN git clone https://gitlab.com/ibsim/virtuallab.git && \
+cd virtuallab && git checkout BT-Container
+USER root
+

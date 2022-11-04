@@ -138,14 +138,15 @@ def load_module_config(vlab_dir):
 
 def process(vlab_dir,use_singularity):
     ''' Function that runs in a thread to handle communication ect. '''
-    VL_MOD = load_module_config(vlab_dir)
     net_logger = setup_networking_log()
     sock_lock = threading.Lock()
-    sock = socket.socket()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
-    sock.bind(("0.0.0.0", 9999))
+    host = "0.0.0.0"
+    sock.bind((host, 9999))
     next_cnt_id = 2
     sock.listen(20)
+    VL_MOD = load_module_config(vlab_dir)
     while True:
         client_socket, client_address = sock.accept()
         rec_dict = receive_data(client_socket)
@@ -173,7 +174,8 @@ def process(vlab_dir,use_singularity):
             else:
                 # this monstrosity logs the user in as "themself" to allow safe access top x11 graphical apps"
                 #see http://wiki.ros.org/docker/Tutorials/GUI for more details
-                container_cmd = 'docker run --rm -it --user=$(id -u $USER):$(id -g $USER)'\
+                container_cmd = 'docker run -p 9999:9999 \
+                                --rm -it --user=$(id -u $USER):$(id -g $USER)'\
                                 '--env="DISPLAY" \--volume="/etc/group:/etc/group:ro"' \
                                 '--volume="/etc/passwd:/etc/passwd:ro"' \
                                 '--volume="/etc/shadow:/etc/shadow:ro"' \
@@ -260,7 +262,7 @@ if __name__ == "__main__":
     use_singularity = check_platform() and not args.Docker
 # set flag to run tests instate of the normal runfile
     if args.test:
-        Run_file = f'{vlab_dir}/RunFiles/Run_ComsTest.py'
+        Run_file = f'Run_ComsTest.py'
     else:
         Run_file = args.Run_file
 
@@ -271,18 +273,19 @@ if __name__ == "__main__":
         thread = threading.Thread(target=process,args=(vlab_dir,use_singularity))
         thread.daemon = True
 
-
+        Modules = load_module_config(vlab_dir)
+        Manager = Modules["Manager"]
         thread.start()
         #start VirtualLab
         lock.acquire()
         if use_singularity:
             proc=subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B \
-                            /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab Containers/VL_GVXR.sif '
-                            f'VL_Manager -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
+                            /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
+                            f'{Manager["Run_script"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
         else:
             # Assume using Docker
-            proc=subprocess.Popen(f'docker run --rm -it -v {vlab_dir}:/home/ibsim/VirtualLab ibsim/base '
-                            f'VL_Manager -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
+            proc=subprocess.Popen(f'docker run --rm -it -p 9999:9999 -v {vlab_dir}:/home/ibsim/VirtualLab ' f'{Manager["Docker_url"]}:{Manager["Tag"]} ' \
+                            f'"{Manager["Run_script"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}"', shell=True)
         lock.release()
         # wait until virtualLab is done before closing
         proc.wait()

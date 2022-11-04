@@ -7,56 +7,57 @@
 #
 # Docker_url: The name of the image on DockerHub
 # Tag: The image tag
-# Apptainer_file: The name of the sif file used for Apptainer.
+# Apptainer_file: Path to the sif file used for Apptainer 
 # Run_script: Path to script to run at startup
 #
+# Note: All paths are relative to the container not the host.
 #################################################################
 ---
 Manager:
-      Docker_url: 'ibsim/base' 
+      Docker_url: 'localhost:5000/manager' 
       Tag: 'latest' 
-      Apptainer_file: 'VL_Manager.sif'
-      Run_script: '/home/ibsim/VirtualLab/bin/VLManager'
+      Apptainer_file: '/home/ibsim/VirtualLab/Containers/VL_Manager.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VL_Manager'
  
 Cad2Vox:
       Docker_url: 'ibsim/cad2vox'
       Tag: 'latest'
-      Apptainer_file: 'VL_Vox.sif'
+      Apptainer_file: '/home/ibsim/VirtualLab/Containers/VL_Vox.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Vox.sh'
 
 GVXR: 
       Docker_url: 'ibsim/gvxr'
       Tag: 'latest'
-      Apptainer_file: 'VL_GVXR.sif'
+      Apptainer_file: '/home/ibsim/VirtualLab/Containers/VL_GVXR.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_GVXR.sh'
 
 CIL: 
       Docker_url: 'ibsim/cil'
       Tag: 'latest'
-      Apptainer_file: 'VL_CIL.sif'
+      Apptainer_file: '/home/ibsim/VirtualLab/Containers/VL_CIL.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_CIL.sh'
 
 Salome: 
       Docker_url: 'ibsim/salmoe'
       Tag: 'latest'
-      Apptainer_file: 'VL_Salome.sif'
+      Apptainer_file: '/home/ibsim/VirtualLab/Containers/VL_Salome.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Salome.sh'
 
 Aster:
       Docker_url: 'ibsim/aster'
       Tag: 'latest'
-      Apptainer_file: 'VL_Aster.sif'
+      Apptainer_file: '/home/ibsim/VirtualLab/Containers/VL_Aster.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Aster.sh'
 
 Test_Comms: 
       Docker_url: 'localhost:5000/coms_test'
       Tag: 'latest'
-      Apptainer_file: 'VL_Test.sif'
+      Apptainer_file: '/home/ibsim/VirtualLab/Containers/VL_Test.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Test.sh'
 
 # Note: Not yet included on dockerhub but here in prep
 Aster_mpi: 
       Docker_url: 'ibsim/aster_mpi'
       Tag: 'latest'
-      Apptainer_file: 'VL_Aster_mpi.sif'
+      Apptainer_file: '/home/ibsim/VirtualLab/Containers/VL_Aster_mpi.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Aster_mpi.sh'

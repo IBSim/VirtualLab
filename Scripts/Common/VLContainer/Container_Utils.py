@@ -88,9 +88,10 @@ def RunJob(**kwargs):
 
 def create_tcp_socket():
     ''' function to create the tcp socket and connect to it.'''
-    sock = socket.socket()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
-    sock.connect(("0.0.0.0", 9999))
+    host = "0.0.0.0"
+    sock.connect((host, 9999))
     return sock
 
 def Cont_Started(Cont_id):

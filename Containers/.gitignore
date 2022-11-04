@@ -1,6 +1,0 @@
-# Blacklist all files and folders except .gitignore
-# This keeps this directory blank in the repo 
-*
-!.gitignore
-
-

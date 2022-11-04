@@ -441,7 +441,7 @@ fi
 ### Install GVXR if flagged
 if [ "$GVXR_INST" == "y" ]; then
   banner "Installing GVXR" "green" "*"
-  source $VL_DIR/Scripts/Install/Install_GVXR_brew.sh
+  source $VL_DIR/Scripts/Install/Install_GVXR.sh
 else
   banner "Skipping GVXR installation" "blue" "*"
 fi

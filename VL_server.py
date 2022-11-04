@@ -57,19 +57,6 @@ def get_vlab_dir(parsed_dir):
         ' Please specify where to find the VirtualLab install directory using the -d option.')
 
     return vlab_dir
-from Scripts.Common.VLContainer.Container_Utils import check_platform, \
-    Format_Call_Str, send_data, receive_data, setup_networking_log,\
-    log_net_info
-def ContainerError(out,err):
-    '''Custom function to format error message in a pretty way.'''
-    Errmsg = "\n========= Container returned non-zero exit code =========\n\n"\
-                f"std out: {out}\n\n"\
-                f"std err:{err}\n\n"\
-                "==================================\n\n"
-    return Errmsg
-
-def runs_to_file(filename):
-    pass
 
 def check_for_errors(process_list,client_socket,sock_lock):
     ''' 
@@ -248,13 +235,20 @@ if __name__ == "__main__":
         action='store_true')
     parser.add_argument("-C", "--Container", help="Flag to use tools in Containers.",
                         action='store_true')
+    parser.add_argument("-T", "--test", help="Flag to initiate comms testing.",
+                        action='store_true')
 
     args = parser.parse_args()
     # get vlab_dir either from cmd args or environment
     vlab_dir= get_vlab_dir(args.vlab)
 # Set flag to allow cmd switch between singularity and docker when using linux host.
     use_singularity = check_platform() and not args.Docker
-    Run_file = args.Run_file
+# set flag to run tests instate of the normal runfile
+    if args.test:
+        Run_file = f'{vlab_dir}/RunFiles/Run_ComsTest.py'
+    else:
+        Run_file = args.Run_file
+
     Container = args.Container
     if Container:
         # start server listening for incoming jobs on separate thread

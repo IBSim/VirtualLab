@@ -169,7 +169,7 @@ def receive_data(conn,payload_size=2048,debug=False):
             print(f'received:{payload}')
     return (payload)
 
-def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_singularity,cont_id):
+def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_singularity,cont_id):
     ''' Function to format string for bind points and container to call specified tool.'''
 ##### Format cmd argumants #########
     if param_var is None:
@@ -183,30 +183,18 @@ def Format_Call_Str(Tool,vlab_dir,param_master,param_var,Project,Simulation,use_
     ID = '-I '+ str(cont_id)
 #########################################
 # Format run string and script to run   #
-# container based on tool used.         #
+# container based on Module used.       #
 #########################################
-# Setup command to run inside container and bind directories based on tool used    
-    if Tool == "CIL":
-        if use_singularity:
-            call_string = f'-B /run:/run -B {vlab_dir}:/home/ibsim/VirtualLab \
-                            --nv Containers/CIL_sand'
-        else:
-            call_string = f'-v /run:/run -v {vlab_dir}:/home/ibsim/VirtualLab --gpus all ibsim/vl_cil'
-
-        command = f'/home/ibsim/VirtualLab/bin/VL_CIL.sh \
-                   {param_master} {param_var} {Project} {Simulation} {ID}'
-
-    elif Tool == "GVXR":
-        if use_singularity:
-            call_string = f'-B /run:/run -B /dev/dri:/dev/dri -B {vlab_dir}:/home/ibsim/VirtualLab --nv Containers/GVXR_test.sif'
-        else:
-            call_string = f'-v /run:/run -v /dev:/dev -v {vlab_dir}:/home/ibsim/VirtualLab -e QT_X11_NO_MITSHM=1 --gpus all ibsim/vl_gvxr'
-
-        command = f'/home/ibsim/VirtualLab/bin/VL_GVXR.sh \
-                   {param_master} {param_var} {Project} {Simulation} {ID}'
-    # Add other tools here as need arises
+    if use_singularity:
+        call_string = f'-B /run:/run -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
+                        --nv Containers/{Module["Apptainer_file"]}'
     else:
-        Raise(ValueError("Tool not recognised as callable in container."))
+        #docker
+        call_string = f'-v /run:/run -v {str(vlab_dir)}:/home/ibsim/VirtualLab --gpus all {Module["Docker_url"]}:{Module["Tag"]} '
+
+        command = f'{Module["Run_script"]} \
+                   {param_master} {param_var} {Project} {Simulation} {ID}'
+
     return call_string, command
 
 def check_platform():

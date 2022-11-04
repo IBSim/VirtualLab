@@ -123,7 +123,22 @@ running_processes={}
 target_ids = []
 task_dict = {}
 
+def load_module_config(vlab_dir):
+    ''' Function to get the config for the 
+    modules from VL_Modules.yaml file 
+    '''
+    #load module config from yaml_file
+    config_file = vlab_dir / 'VL_Modules.yaml'
+    with open(config_file)as file:
+        try:
+            config = yaml.safe_load(file)
+        except yaml.YAMLError as exception:
+            print(exception)
+    return config
+
 def process(vlab_dir,use_singularity):
+    ''' Function that runs in a thread to handle communication ect. '''
+    VL_MOD = load_module_config(vlab_dir)
     net_logger = setup_networking_log()
     sock_lock = threading.Lock()
     sock = socket.socket()
@@ -141,7 +156,7 @@ def process(vlab_dir,use_singularity):
         if event == 'VirtualLab started':
             client_socket.close()
         elif event == 'RunJob':
-            tool = rec_dict["Tool"]
+            Module = VL_MOD[rec_dict["Tool"]]
             num_containers = rec_dict["Num_Cont"]
             Cont_runs = rec_dict["Cont_runs"]
             param_master = rec_dict["Parameters_Master"]
@@ -177,7 +192,7 @@ def process(vlab_dir,use_singularity):
 
             # loop over containers again to spawn them this time
             for n,Container in enumerate(Cont_runs):    
-                options, command = Format_Call_Str(tool,vlab_dir,param_master,
+                options, command = Format_Call_Str(Module,vlab_dir,param_master,
                     param_var,project,simulation,use_singularity,target_ids[n])
 
                 log_net_info(net_logger,f'Server - starting a new container with ID: {target_ids[n]} '

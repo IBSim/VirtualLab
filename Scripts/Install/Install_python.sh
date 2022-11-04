@@ -209,14 +209,14 @@ elif [ "$PYTHON_INST" == "c" ]; then
   PYV2=${PYV#* }
   PYV=${PYV2%.*}
   PATH_FILE=${conda_dir}/envs/$CONDAENV/lib/python$PYV/site-packages/$CONDAENV.pth
-  if test -f "$PATH_FILE"; then
-    echo "VirtualLab PYTHONPATH found in Conda env."
-    echo
-  else
-    echo "Adding $VL_DIR to PYTHONPATH in Conda env."
-    echo
-    sudo -u ${SUDO_USER:-$USER} echo $VL_DIR >> $PATH_FILE
-    export PYTHONPATH=$PYTHONPATH$VL_DIR
+  # if test -f "$PATH_FILE"; then
+  #   echo "VirtualLab PYTHONPATH found in Conda env."
+  #   echo
+  # else
+  #   echo "Adding $VL_DIR to PYTHONPATH in Conda env."
+  #   echo
+  #   sudo -u ${SUDO_USER:-$USER} echo $VL_DIR >> $PATH_FILE
+  #   export PYTHONPATH=$PYTHONPATH$VL_DIR
   fi
   echo "If conda was not previously installed you will need to open a new"
   echo "terminal to activate it or run the following command in this terminal:"

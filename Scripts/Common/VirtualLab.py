@@ -15,7 +15,7 @@ import numpy as np
 import VLconfig
 from . import Analytics
 from . import VLFunctions as VLF
-from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, Vox as VoxFn
+from . import VLTypes
 
 class VLSetup():
     def __init__(self, Simulation, Project):
@@ -35,6 +35,20 @@ class VLSetup():
         self.Settings(Mode='H',Launcher='Process',NbJobs=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
                       MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+
+
+        # ======================================================================
+        # Get the available VLTypes
+        self.VLTypes = []
+        for attr_name in dir(VLTypes):
+            if attr_name.startswith('__'): continue
+            vltype_mod = getattr(VLTypes,attr_name)
+            self.VLTypes.append(attr_name)
+
+            # set attr_name to be run from the VLType
+            run_fn = getattr(vltype_mod,'Run')
+            setattr(self,attr_name,_Runner(self,run_fn))
+
 
         # ======================================================================
         # Define path to scripts
@@ -163,15 +177,15 @@ class VLSetup():
         RunVox = self._ParsedArgs.get('RunVox',RunVox)
         Import = self._ParsedArgs.get('Import',Import)
 
-        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh','Sim','DA','Vox']
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces,
-                        ParameterArgs=ParameterArgs)
+        self._SetParams(Parameters_Master, Parameters_Var,
+                       ParameterArgs=ParameterArgs)
 
-        MeshFn.Setup(self,RunMesh, Import)
-        SimFn.Setup(self,RunSim, Import)
-        DAFn.Setup(self,RunDA, Import)
-        VoxFn.Setup(self,RunVox)
+        # Run setup for each function
+        for vltype in self.VLTypes:
+            vltype_mod = getattr(VLTypes,vltype)
+            setup_fn = getattr(vltype_mod,'Setup')
+            Runflag = locals().get('Run{}'.format(vltype),True)
+            setup_fn(self,Runflag)
 
     def ImportParameters(self, Rel_Parameters,ParameterArgs=None):
         '''
@@ -200,7 +214,7 @@ class VLSetup():
 
         return Parameters
 
-    def GetParams(self, Master, Var, VLTypes,ParameterArgs=None):
+    def _SetParams(self, Master, Var, ParameterArgs=None):
         '''Master & Var can be a module, namespace, string or None.
         A string references a file to import from within the input directory.
         '''
@@ -218,8 +232,8 @@ class VLSetup():
 
         # ======================================================================
         # Perform checks of master and var and assign to self
-        self.Parameters_Master = self._CheckParams(Master,'Parameters_Master',VLTypes)
-        self.Parameters_Var = self._CheckParams(Var,'Parameters_Var',VLTypes)
+        self.Parameters_Master = self._CheckParams(Master,'Parameters_Master',self.VLTypes)
+        self.Parameters_Var = self._CheckParams(Var,'Parameters_Var',self.VLTypes)
 
     def _CheckParams(self,input,input_name,VLTypes):
         '''Perform checks on the input file and return namespace whose attributes
@@ -365,35 +379,6 @@ class VLSetup():
 
         return func
 
-    def Mesh(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return MeshFn.Run(self,**kwargs)
-
-    def devMesh(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return MeshFn.Run(self,**kwargs)
-
-    def Sim(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return SimFn.Run(self,**kwargs)
-
-    def devSim(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return SimFn.Run(self,**kwargs)
-
-    def DA(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return DAFn.Run(self,**kwargs)
-
-#hook in for cad2vox
-    def Voxelise(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return VoxFn.Run(self,**kwargs)
-
-    def devDA(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return DAFn.Run(self,**kwargs)
-
     def Logger(self,Text='',**kwargs):
         Prnt = kwargs.get('Print',False)
 
@@ -459,11 +444,10 @@ class VLSetup():
 
             self._ParsedArgs[var]=value
 
-    def _UpdateArgs(self,ArgDict):
-        Changes = set(ArgDict).intersection(self._ParsedArgs)
-        if not Changes: return ArgDict
 
-        # If some of the arguments have been parsed then they are updated
-        for key in Changes:
-            ArgDict[key] = self._ParsedArgs[key]
-        return ArgDict
+
+# function wrapper for vltypes
+def _Runner(VL,func):
+    def _Runner_wrapper(*args,**kwargs):
+        return func(VL,*args,**kwargs)
+    return _Runner_wrapper

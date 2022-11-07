@@ -6,8 +6,7 @@ import datetime
 import os
 import shutil
 import copy
-from types import SimpleNamespace as Namespace
-from importlib import import_module, reload
+from types import SimpleNamespace as Namespace, ModuleType
 import atexit
 import uuid
 
@@ -169,8 +168,6 @@ class VLSetup():
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces,
                         ParameterArgs=ParameterArgs)
 
-
-
         MeshFn.Setup(self,RunMesh, Import)
         SimFn.Setup(self,RunSim, Import)
         DAFn.Setup(self,RunDA, Import)
@@ -196,13 +193,10 @@ class VLSetup():
             VLF.WriteArgs(arg_path,ParameterArgs)
             sys.argv.append("ParameterArgs={}".format(arg_path))
 
-        sys.path.insert(0, os.path.dirname(Abs_Parameters))
-        Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
-        sys.path.pop(0)
+        Parameters = VLF.GetModule(Abs_Parameters)
 
         if ParameterArgs != None:
             sys.argv.pop(-1)
-
 
         return Parameters
 
@@ -223,32 +217,42 @@ class VLSetup():
             Var = self.ImportParameters(Var,ParameterArgs)
 
         # ======================================================================
-        # Check any of the attributes of NS are included
-        if Master != None and not set(Master.__dict__).intersection(VLTypes):
-            message = "Parameters_Master contains none of the attrbutes {}".format(VLTypes)
-            self.Exit(VLF.ErrorMessage(message))
-        if Var != None and not set(Var.__dict__).intersection(VLTypes):
-            message = "Parameters_Var contains none of the attrbutes {}".format(VLTypes)
+        # Perform checks of master and var and assign to self
+        self.Parameters_Master = self._CheckParams(Master,'Parameters_Master',VLTypes)
+        self.Parameters_Var = self._CheckParams(Var,'Parameters_Var',VLTypes)
+
+    def _CheckParams(self,input,input_name,VLTypes):
+        '''Perform checks on the input file and return namespace whose attributes
+           are the VLTypes'''
+        # if the input is None return empty namespace
+        NS = Namespace()
+        if input is None: return NS
+
+        # check some of the VLTypes are defined in the input
+        if not set(input.__dict__).intersection(VLTypes):
+            message = "{} contains none of the attrbutes {}".format(input_name,VLTypes)
             self.Exit(VLF.ErrorMessage(message))
 
-        # ======================================================================
-        self.Parameters_Master = Namespace()
-        self.Parameters_Var = Namespace()
         for nm in VLTypes:
-            master_nm = getattr(Master, nm, None)
-            var_nm = getattr(Var, nm, None)
-            # ==================================================================
-            # Check all in NS have the attribute 'Name'
-            if master_nm != None and not hasattr(master_nm,'Name'):
-                message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(nm)
-                self.Exit(VLF.ErrorMessage(message))
-            if master_nm != None and not hasattr(master_nm,'Name'):
-                message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(nm)
+            attr_ns = getattr(input,nm,None) # get attribute nm from input
+
+            # ignore if nm not an attribute
+            if attr_ns is None: continue
+
+            # give warning about it not being a module/namespace
+            if type(attr_ns) not in (Namespace,ModuleType):
+                message = "{} has attribute '{}' but it not a module or namespace.\nThis may lead to unexpected results".format(input_name,nm)
+                print(VLF.WarningMessage(message))
+                continue
+
+            # check it has a name associated with it
+            if not hasattr(attr_ns,'Name'):
+                message = "'{}' does not have the attribute 'Name' in {}".format(nm,input_name)
                 self.Exit(VLF.ErrorMessage(message))
 
-            # ==================================================================
-            setattr(self.Parameters_Master, nm, master_nm)
-            setattr(self.Parameters_Var, nm, var_nm)
+            setattr(NS,nm,attr_ns) # add the info to the namespace
+
+        return NS
 
     def CreateParameters(self, junk1, junk2, VLType):
         '''

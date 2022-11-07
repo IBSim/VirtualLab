@@ -26,15 +26,19 @@ def GetParameterArgs(name='ParameterArgs'):
             Args = GetArgs(path)
     return Args
 
-def GetFunc(FilePath, funcname):
+def GetModule(FilePath):
     path,ext = os.path.splitext(FilePath)
     dirname = os.path.dirname(path)
     basename = os.path.basename(path)
 
     sys.path.insert(0,dirname)
-    module = import_module(basename) #reload?
+    module = reload(import_module(basename))
     sys.path.pop(0)
 
+    return module
+
+def GetFunc(FilePath, funcname):
+    module = GetModule(FilePath)
     func = getattr(module, funcname, None)
     return func
 

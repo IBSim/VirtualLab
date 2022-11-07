@@ -141,7 +141,7 @@ def Setup_default(VL,RunSim=True,Import=False):
 
         # Create tmp directory & add blank file to import in CodeAster
         # so we known the location of TMP_CALC_DIR
-        os.makedirs(SimDict['TMP_CALC_DIR'])
+        os.makedirs(SimDict['TMP_CALC_DIR'],exist_ok=True)
         with open("{}/IDDirVL.py".format(SimDict['TMP_CALC_DIR']),'w') as f: pass
 
         # Add SimDict to SimData dictionary

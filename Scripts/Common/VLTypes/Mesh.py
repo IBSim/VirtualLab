@@ -66,7 +66,7 @@ def Setup(VL, RunMesh=True, Import=False):
             MeshDict['LogFile'] = "{}/{}.log".format(VL.MESH_DIR,MeshName)
         else : MeshDict['LogFile'] = None
 
-        os.makedirs(MeshDict['TMP_CALC_DIR'])
+        os.makedirs(MeshDict['TMP_CALC_DIR'],exist_ok=True)
 
         VL.MeshData[MeshName] = MeshDict.copy()
 

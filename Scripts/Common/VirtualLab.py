@@ -20,22 +20,21 @@ from . import VLTypes
 class VLSetup():
     def __init__(self, Simulation, Project):
 
-        # Get parsed args (achieved using the -k flag when launchign VirtualLab).
-        self._GetParsedArgs()
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
 
         # ======================================================================
         # Define variables
-        self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
-        self.Project = self._ParsedArgs.get('Project',Project)
+        # check for updated to Simulation and Project in parsed arguments
+        arg_dict = VLF.Parser_update(Simulation=Simulation,Project=Project)
+        self.Simulation = arg_dict['Simulation']
+        self.Project = arg_dict['Project']
 
         # ======================================================================
         # Specify default settings
         self.Settings(Mode='H',Launcher='Process',NbJobs=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
                       MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
-
 
         # ======================================================================
         # Get the available VLTypes
@@ -83,7 +82,6 @@ class VLSetup():
 
 
     def _SetMode(self,Mode='H'):
-        Mode = self._ParsedArgs.get('Mode',Mode)
         # ======================================================================
         # Update mode as shorthand version can be given
         if Mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
@@ -94,7 +92,6 @@ class VLSetup():
                                       'Terminal','Continuous', 'Headless'"))
 
     def _SetLauncher(self,Launcher='Process'):
-        Launcher = self._ParsedArgs.get('Launcher',Launcher)
         if Launcher.lower() == 'sequential': self._Launcher = 'Sequential'
         elif Launcher.lower() == 'process': self._Launcher = 'Process'
         elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
@@ -103,7 +100,6 @@ class VLSetup():
                                      'Process', 'MPI'"))
 
     def _SetNbJobs(self,NbJobs=1):
-        NbJobs = self._ParsedArgs.get('NbJobs',NbJobs)
         if type(NbJobs) == int:
             _NbJobs = NbJobs
         elif type(NbJobs) == float:
@@ -120,21 +116,18 @@ class VLSetup():
             self.Exit(VLF.ErrorMessage("NbJobs must be positive"))
 
     def _SetInputDir(self,InputDir):
-        InputDir = self._ParsedArgs.get('InputDir',InputDir)
         if not os.path.isdir(InputDir):
             self.Exit(VLF.ErrorMessage("InputDir is not a valid directory"))
         self._InputDir = InputDir
         self.PARAMETERS_DIR = '{}/{}/{}'.format(self._InputDir, self.Simulation, self.Project)
 
     def _SetOutputDir(self,OutputDir):
-        OutputDir = self._ParsedArgs.get('OutputDir',OutputDir)
         self._OutputDir = OutputDir
         self.PROJECT_DIR = '{}/{}/{}'.format(self._OutputDir, self.Simulation, self.Project)
 
     def _SetMaterialDir(self,MaterialDir):
         if not os.path.isdir(MaterialDir):
             self.Exit(VLF.ErrorMessage("MaterialDir is not a valid directory"))
-        MaterialDir = self._ParsedArgs.get('MaterialDir',MaterialDir)
         self.MATERIAL_DIR = MaterialDir
 
     def _SetCleanup(self,Cleanup=True):
@@ -142,8 +135,10 @@ class VLSetup():
         else: atexit.unregister(self._Cleanup)
         atexit.register(self._Cleanup,Cleanup)
 
+    @VLF.kwarg_update
     def Settings(self,**kwargs):
-
+        # Dont specify the kwarsg so that the efauls aren't overwritten if there
+        # are multiple calls to settings
         Diff = set(kwargs).difference(['Mode','Launcher','NbJobs','InputDir',
                                     'OutputDir','MaterialDir','Cleanup'])
         if Diff:
@@ -164,19 +159,16 @@ class VLSetup():
         if 'MaterialDir' in kwargs:
             self._SetMaterialDir(kwargs['MaterialDir'])
 
+    @VLF.kwarg_update
     def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
                     RunMesh=True, RunSim=True, RunDA=True,
-                    RunVox=True, Import=False):
+                    RunVoxelise=True, Import=False):
 
-        # Update args with parsed args
-        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
-        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
-        RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
-        RunSim = self._ParsedArgs.get('RunSim',RunSim)
-        RunDA = self._ParsedArgs.get('RunDA',RunDA)
-        RunVox = self._ParsedArgs.get('RunVox',RunVox)
-        Import = self._ParsedArgs.get('Import',Import)
+        # update Parameters_master with parser (not covered by decorator)
+        arg_dict = VLF.Parser_update(Parameters_Master=Parameters_Master)
+        Parameters_Master = arg_dict['Parameters_Master']
 
+        #
         self._SetParams(Parameters_Master, Parameters_Var,
                        ParameterArgs=ParameterArgs)
 
@@ -376,7 +368,6 @@ class VLSetup():
         if exit_on_error and func is None:
             self.Exit(VLF.ErrorMessage("The function {} is not "\
                     "in {}".format(func_name,file_path)))
-
         return func
 
     def Logger(self,Text='',**kwargs):
@@ -427,27 +418,9 @@ class VLSetup():
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
 
-    def _GetParsedArgs(self):
-        self._ParsedArgs = {}
-        for arg in sys.argv[1:]:
-            split=arg.split('=')
-            if len(split)!=2:
-                continue
-            var,value = split
-            if value=='False':value=False
-            elif value=='True':value=True
-            elif value=='None':value=None
-            elif value.isnumeric():value=int(value)
-            else:
-                try: value=float(value)
-                except: ValueError
-
-            self._ParsedArgs[var]=value
-
-
-
 # function wrapper for vltypes
 def _Runner(VL,func):
+    func = VLF.kwarg_update(func) # update kwargs
     def _Runner_wrapper(*args,**kwargs):
         return func(VL,*args,**kwargs)
     return _Runner_wrapper

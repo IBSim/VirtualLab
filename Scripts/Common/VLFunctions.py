@@ -8,6 +8,35 @@ import numpy as np
 
 sys.dont_write_bytecode=True
 
+def kwarg_update(func):
+    def wrapper_kwarg_update(*args,**kwargs):
+        kwargs = Parser_update(**kwargs) # update kwargs
+        return func(*args,**kwargs)
+    return wrapper_kwarg_update
+
+def Parser_update(**arg_dict):
+    # update a disctionary of arguments with any values from parser
+    for arg in sys.argv[1:]:
+        # get variable name and value from parsed arguments
+        split=arg.split('=')
+        if len(split)!=2:
+            continue
+        var_name, value = split
+
+        # skip if not in kwargs
+        if var_name not in arg_dict:continue
+
+        if value=='False':value=False
+        elif value=='True':value=True
+        elif value=='None':value=None
+        elif value.isnumeric():value=int(value)
+        else:
+            try: value=float(value)
+            except: ValueError
+        arg_dict[var_name] = value
+    return arg_dict
+
+
 def WriteArgs(path,Args):
     with open(path,'wb') as f:
         pickle.dump(Args,f)

@@ -296,13 +296,21 @@ def Run_default(VL, ShowRes=False, **kwargs):
     # Open up all results in ParaVis
 
     if ShowRes:
-    	print("\n### Opening results files in ParaVis ###\n")
-    	ResFiles = {}
-    	for SimName, SimDict in VL.SimData.items():
-    		for root, dirs, files in os.walk(SimDict['CALC_DIR']):
-    			for file in files:
-    				fname, ext = os.path.splitext(file)
-    				if ext == '.rmed':
-    					ResFiles["{}_{}".format(SimName,fname)] = "{}/{}".format(root, file)
-    	Script = "{}/ShowRes.py".format(Salome.Dir)
-    	Salome.Run(Script, GUI=True, DataDict=ResFiles,tempdir=VL.TEMP_DIR)
+        ResView(VL)
+
+def ResView(VL):
+    Directories = {SimName:SimDict['CALC_DIR'] for SimName, SimDict in VL.SimData.items()}
+    _ResView(Directories,tempdir=VL.TEMP_DIR)
+
+def _ResView(Dir_dict,tempdir='/tmp'):
+    ResFiles = {}
+    for Name,Dir in Dir_dict.items():
+        for root, dirs, files in os.walk(Dir):
+            for file in files:
+                fname, ext = os.path.splitext(file)
+                if ext in ['.rmed']:
+                    ResFiles["{}_{}".format(Name,fname)] = "{}/{}".format(root, file)
+    if ResFiles:
+        print("\n### Opening results files in ParaVis ###\n")
+        Script = "{}/ShowRes.py".format(Salome.Dir)
+        Salome.Run(Script, GUI=True, DataDict=ResFiles,tempdir=tempdir)

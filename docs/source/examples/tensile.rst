@@ -43,8 +43,6 @@ In this experiment a 'dog-bone' shaped sample is loaded either through constant 
 
         VirtualLab.DA()
 
-        VirtualLab.Cleanup()
-
 The setup above means that the path to the *Parameters_Master* file used is :file:`Inputs/Tensile/Tutorials/TrainingParameters.py`. Open this example python file in a text editor to browse its structure.
 
 Before any definitions are made, you will notice the import statement::

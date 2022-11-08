@@ -45,8 +45,6 @@ This example introduces some of the post-processing capabilities available in **
 
        VirtualLab.DA()
 
-       VirtualLab.Cleanup()
-
 In the *Parameters_Master* file :file:`Inputs/LFA/Tutorials/TrainingParameters.py` you will again find namespace ``Mesh`` and ``Sim`` along with *DA*.
 
 Sample

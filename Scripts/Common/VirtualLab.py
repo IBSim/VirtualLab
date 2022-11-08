@@ -19,16 +19,31 @@ from . import VLTypes
 
 class VLSetup():
     def __init__(self, Simulation, Project):
-
-        # Copy path at the start for MPI to match sys.path
-        self._pypath = sys.path.copy()
-
         # ======================================================================
-        # Define variables
-        # check for updated to Simulation and Project in parsed arguments
+        # Check for updates to Simulation and Project in parsed arguments
         arg_dict = VLF.Parser_update(Simulation=Simulation,Project=Project)
         self.Simulation = arg_dict['Simulation']
         self.Project = arg_dict['Project']
+
+        #=======================================================================
+        # Define & create temporary directory for work to be saved to
+        self._TempDir = VLconfig.TEMP_DIR
+        # timestamp
+        self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
+        self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
+        try:
+            os.makedirs(self.TEMP_DIR)
+        except FileExistsError:
+            # Unlikely this would happen. Suffix random number to direcory name
+            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
+            os.makedirs(self.TEMP_DIR)
+
+        # Unique ID
+        git_id = _git()
+        self._ID ="{}_{}".format(git_id,self._time)
+
+        # Copy path at the start for MPI to match sys.path
+        self._pypath = sys.path.copy()
 
         # ======================================================================
         # Specify default settings
@@ -48,38 +63,22 @@ class VLSetup():
             run_fn = getattr(vltype_mod,'Run')
             setattr(self,attr_name,_Runner(self,run_fn))
 
-
         # ======================================================================
         # Define path to scripts
-        self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
+        # check simulation type exists
         self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
+        if not os.path.isdir(self.SIM_SCRIPTS):
+            self.Exit(VLF.ErrorMessage("Simulation type doesn't exist"))
+
+        self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
+
         # Add these to path
         sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
-
-        #=======================================================================
-        # Define & create temporary directory for work to be saved to
-        self._TempDir = VLconfig.TEMP_DIR
-        # timestamp
-        self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
-        # Unique ID
-        stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
-        output = stream.readlines()
-        ver,branch = output[0].split()[0],output[1].strip()
-        self._ID ="{}_{}_{}".format(ver,branch,self._time)
-
-        self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
-        try:
-            os.makedirs(self.TEMP_DIR)
-        except FileExistsError:
-            # Unlikely this would happen. Suffix random number to direcory name
-            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
-            os.makedirs(self.TEMP_DIR)
 
         self.Logger('\n############################\n'\
                       '### Launching VirtualLab ###\n'\
                       '############################\n',Print=True)
-
 
     def _SetMode(self,Mode='H'):
         # ======================================================================
@@ -418,9 +417,25 @@ class VLSetup():
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
 
+
+
+
+
 # function wrapper for vltypes
 def _Runner(VL,func):
     func = VLF.kwarg_update(func) # update kwargs
     def _Runner_wrapper(*args,**kwargs):
         return func(VL,*args,**kwargs)
     return _Runner_wrapper
+
+def _git():
+    version,branch = '<version>','<branch>'
+    try:
+        from git import Repo
+        repo = Repo(VLconfig.VL_DIR)
+        sha = repo.head.commit.hexsha
+        version = repo.git.rev_parse(sha, short=7)
+        branch = repo.active_branch.name
+    except :
+        pass
+    return "{}_{}".format(version,branch)

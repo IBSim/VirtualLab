@@ -17,13 +17,17 @@ from . import Analytics
 from . import VLFunctions as VLF
 from . import VLTypes
 
+DefaultSettings = {'Mode':'H','Launcher':'Process','NbJobs':1,
+              'InputDir':VLconfig.InputDir, 'OutputDir':VLconfig.OutputDir,
+              'MaterialDir':VLconfig.MaterialsDir, 'Cleanup':True}
+
 class VLSetup():
     def __init__(self, Simulation, Project):
         # ======================================================================
         # Check for updates to Simulation and Project in parsed arguments
-        arg_dict = VLF.Parser_update(Simulation=Simulation,Project=Project)
-        self.Simulation = arg_dict['Simulation']
-        self.Project = arg_dict['Project']
+        arg_dict = VLF.Parser_update(['Simulation','Project'])
+        self.Simulation = arg_dict.get('Simulation',Simulation)
+        self.Project = arg_dict.get('Project',Project)
 
         #=======================================================================
         # Define & create temporary directory for work to be saved to
@@ -46,10 +50,8 @@ class VLSetup():
         self._pypath = sys.path.copy()
 
         # ======================================================================
-        # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
-                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+        # Setdefault settings
+        self.Settings(**DefaultSettings)
 
         # ======================================================================
         # Get the available VLTypes
@@ -62,6 +64,7 @@ class VLSetup():
             # set attr_name to be run from the VLType
             run_fn = getattr(vltype_mod,'Run')
             setattr(self,attr_name,_Runner(self,run_fn))
+
 
         # ======================================================================
         # Define path to scripts
@@ -79,6 +82,7 @@ class VLSetup():
         self.Logger('\n############################\n'\
                       '### Launching VirtualLab ###\n'\
                       '############################\n',Print=True)
+
 
     def _SetMode(self,Mode='H'):
         # ======================================================================
@@ -136,38 +140,54 @@ class VLSetup():
 
     @VLF.kwarg_update
     def Settings(self,**kwargs):
-        # Dont specify the kwarsg so that the efauls aren't overwritten if there
+        # Dont specify the kwarsg so that the defauls aren't overwritten if there
         # are multiple calls to settings
-        Diff = set(kwargs).difference(['Mode','Launcher','NbJobs','InputDir',
-                                    'OutputDir','MaterialDir','Cleanup'])
+
+        # dictionary of available kwargs and the function used to specify them
+        kwargs_fnc = {'Mode':self._SetMode,
+                      'Launcher':self._SetLauncher,
+                      'NbJobs':self._SetNbJobs,
+                      'InputDir':self._SetInputDir,
+                      'OutputDir':self._SetOutputDir,
+                      'MaterialDir':self._SetMaterialDir,
+                      'Cleanup':self._SetCleanup}
+
+        # check no incorrect kwargs given
+        Diff = set(kwargs).difference(kwargs_fnc.keys())
         if Diff:
             self.Exit(VLF.ErrorMessage("The following are not valid options in Settings:\n{}".format("\n".join(Diff))))
 
-        if 'Mode' in kwargs:
-            self._SetMode(kwargs['Mode'])
-        if 'Launcher' in kwargs:
-            self._SetLauncher(kwargs['Launcher'])
-        if 'NbJobs' in kwargs:
-            self._SetNbJobs(kwargs['NbJobs'])
-        if 'Cleanup' in kwargs:
-            self._SetCleanup(kwargs['Cleanup'])
-        if 'InputDir' in kwargs:
-            self._SetInputDir(kwargs['InputDir'])
-        if 'OutputDir' in kwargs:
-            self._SetOutputDir(kwargs['OutputDir'])
-        if 'MaterialDir' in kwargs:
-            self._SetMaterialDir(kwargs['MaterialDir'])
+        # pick up the kwargs passed in the parser
+        parsed_kwargs = VLF.Parser_update(kwargs_fnc.keys())
+        kwargs.update(parsed_kwargs)
+
+        for kw_name,kw_fnc in kwargs_fnc.items():
+            # if kw_name is in kwargs then we set it using kw_fnc
+            if kw_name in kwargs:
+                kw_fnc(kwargs[kw_name])
+
 
     @VLF.kwarg_update
     def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
-                    RunMesh=True, RunSim=True, RunDA=True,
-                    RunVoxelise=True, Import=False):
+                    Import=False,**run_flags):
+
+        flags = {"Run{}".format(name):True for name in self.VLTypes} # all defaulted to True
+
+        # check no incorrect kwargs given
+        Diff = set(run_flags).difference(flags.keys())
+        if Diff:
+            self.Exit(VLF.ErrorMessage("The following are not valid options in Parameters:\n{}".format("\n".join(Diff))))
+
+        # update run_flags keywords (not covered by decorator)
+        parsed_flags = VLF.Parser_update(flags.keys())
+        run_flags.update(parsed_flags)
+        # update default flags
+        flags.update(run_flags)
 
         # update Parameters_master with parser (not covered by decorator)
-        arg_dict = VLF.Parser_update(Parameters_Master=Parameters_Master)
-        Parameters_Master = arg_dict['Parameters_Master']
+        arg_dict = VLF.Parser_update(['Parameters_Master'])
+        Parameters_Master = arg_dict.get('Parameters_Master',Parameters_Master)
 
-        #
         self._SetParams(Parameters_Master, Parameters_Var,
                        ParameterArgs=ParameterArgs)
 
@@ -175,7 +195,7 @@ class VLSetup():
         for vltype in self.VLTypes:
             vltype_mod = getattr(VLTypes,vltype)
             setup_fn = getattr(vltype_mod,'Setup')
-            Runflag = locals().get('Run{}'.format(vltype),True)
+            Runflag = flags['Run{}'.format(vltype)]
             setup_fn(self,Runflag)
 
     def ImportParameters(self, Rel_Parameters,ParameterArgs=None):
@@ -418,12 +438,9 @@ class VLSetup():
         print('Cleanup() is depreciated. You can remove this from your script')
 
 
-
-
-
-# function wrapper for vltypes
 def _Runner(VL,func):
-    func = VLF.kwarg_update(func) # update kwargs
+    # function wrapper for vltypes. Passes the VL instance to them.
+    func = VLF.kwarg_update(func)
     def _Runner_wrapper(*args,**kwargs):
         return func(VL,*args,**kwargs)
     return _Runner_wrapper

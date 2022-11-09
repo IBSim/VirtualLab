@@ -3,6 +3,7 @@ import os
 from types import SimpleNamespace as Namespace
 import pickle
 from importlib import import_module, reload
+import inspect
 
 import numpy as np
 
@@ -10,12 +11,18 @@ sys.dont_write_bytecode=True
 
 def kwarg_update(func):
     def wrapper_kwarg_update(*args,**kwargs):
-        kwargs = Parser_update(**kwargs) # update kwargs
+        argspace = inspect.getargspec(func)
+        if argspace.defaults is not None:
+            nb = len(argspace.defaults)
+            fnc_kwargs = argspace.args[-nb:]
+            _kwargs = Parser_update(fnc_kwargs) # update kwargs
+            kwargs.update(_kwargs)
         return func(*args,**kwargs)
     return wrapper_kwarg_update
 
-def Parser_update(**arg_dict):
+def Parser_update(arg_names):
     # update a disctionary of arguments with any values from parser
+    arg_dict = {}
     for arg in sys.argv[1:]:
         # get variable name and value from parsed arguments
         split=arg.split('=')
@@ -24,7 +31,7 @@ def Parser_update(**arg_dict):
         var_name, value = split
 
         # skip if not in kwargs
-        if var_name not in arg_dict:continue
+        if var_name not in arg_names:continue
 
         if value=='False':value=False
         elif value=='True':value=True

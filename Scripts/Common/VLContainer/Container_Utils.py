@@ -188,13 +188,13 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
 #########################################
     if use_singularity:
         call_string = f'-B /run:/run -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
-                        --nv Containers/{Module["Apptainer_file"]}'
+                        --nv {Module["Apptainer_file"]}'
     else:
         #docker
         call_string = f'-v /run:/run -v {str(vlab_dir)}:/home/ibsim/VirtualLab --gpus all {Module["Docker_url"]}:{Module["Tag"]} '
 
-        command = f'{Module["Run_script"]} \
-                   {param_master} {param_var} {Project} {Simulation} {ID}'
+    command = f'{Module["Run_script"]} \
+               {param_master} {param_var} {Project} {Simulation} {ID}'
 
     return call_string, command
 

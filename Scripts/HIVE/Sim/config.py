@@ -52,9 +52,8 @@ def PoolRun(VL, SimDict, RunPreAster=True, RunCoolant=True, RunERMES=True,
     if RunERMES:
         VL.Logger("Running ERMES for '{}'\n".format(Parameters.Name),Print=True)
         os.makedirs(SimDict['PREASTER'],exist_ok=True)
-
+        SimDict['ERMES_ResFile'] = ERMES_ResFile
         ERMESFnc = VLF.GetFunc("{}/EM_Analysis.py".format(VL.SIM_SIM),'ERMES_linear')
-        SimDict['ERMES_ResFile'] = ERMES_ResFile # this allows this path to be found in ERMESFnc
         err = ERMESFnc(VL,SimDict)
         if err:
             return 'ERMES Error: {}'.format(err)
@@ -127,12 +126,12 @@ def PoolRun(VL, SimDict, RunPreAster=True, RunCoolant=True, RunERMES=True,
         # Run CodeAster
         if 'Interactive' in SimDict:
             # Run in x-term window
-            err = Aster.RunXterm(ExportFile, AddPath=[SimDict['TMP_CALC_DIR']],
+            err = Aster.RunXterm(ExportFile, AddPath=[VL.SIM_SIM,SimDict['TMP_CALC_DIR']],
                                      tempdir=SimDict['TMP_CALC_DIR'])
         elif NbMpi>1:
-            err = Aster.RunMPI(NbMpi, ExportFile, rep_trav, MessFile, SimDict['ASTER'], AddPath=[SimDict['TMP_CALC_DIR']])
+            err = Aster.RunMPI(NbMpi, ExportFile, rep_trav, MessFile, SimDict['ASTER'], AddPath=[VL.SIM_SIM,SimDict['TMP_CALC_DIR']])
         else:
-            err = Aster.Run(ExportFile, AddPath=[SimDict['TMP_CALC_DIR']])
+            err = Aster.Run(ExportFile, AddPath=[VL.SIM_SIM,SimDict['TMP_CALC_DIR']])
 
         if err:
             return "Aster Error: Code {} returned".format(err)

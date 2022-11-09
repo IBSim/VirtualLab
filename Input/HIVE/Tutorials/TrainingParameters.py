@@ -52,13 +52,12 @@ Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 #############
 Sim.CoilType = 'Test'
 Sim.CoilDisplacement = [0,0,0.0015]
-Sim.Rotation = [0,0,0]
 Sim.Frequency = 1e4
 
 #############
 ### Aster ###
 #############
-Sim.AsterFile = 'Steady' # This file must be in Scripts/$SIMULATION/Aster
+Sim.AsterFile = 'Monoblock_Steady' # This file must be in Scripts/$SIMULATION/Aster
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
 

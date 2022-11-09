@@ -164,6 +164,7 @@ def Setup_default(VL,RunSim=True,Import=False):
 
     # ==========================================================================
 
+@VLF.kwarg_update
 def PoolRun_default(VL, SimDict, RunPreAster=True, RunAster=True, RunPostAster=True):
     '''
     Default PoolRun function for Sim routine. This function is performed for each
@@ -254,8 +255,8 @@ def PoolRun_default(VL, SimDict, RunPreAster=True, RunAster=True, RunPostAster=T
         if err:
              return 'PostAster Error: {}'.format(err)
 
-
-def Run_default(VL, ShowRes=False, **kwargs):
+@VLF.kwarg_update
+def Run(VL, ShowRes=False, **kwargs):
     '''
     Default Run function for Sim routine. This is the function run as the Sim
     method to the VLSetup class.
@@ -274,13 +275,6 @@ def Run_default(VL, ShowRes=False, **kwargs):
     NbSim = len(VL.SimData)
     SimDicts = list(VL.SimData.values())
     kwargs_list = [kwargs]*NbSim # Duplicate kwargs in to list for parallelisation
-
-    # if os.path.isfile("{}/config.py".format(VL.SIM_SIM)):
-    #     PoolRun_ext = VLF.GetFunc("{}/config.py".format(VL.SIM_SIM),'PoolRun')
-    #     # If alternative PoolRun found we use that
-    #     Errorfnc = VLPool(VL,PoolRun_ext,SimDicts,kwargs_list=kwargs_list)
-    # else:
-    #     Errorfnc = VLPool(VL,PoolRun,SimDicts,kwargs_list=kwargs_list)
 
     Errorfnc = VLPool(VL,PoolRun,SimDicts,kwargs_list=kwargs_list)
 

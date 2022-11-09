@@ -136,7 +136,7 @@ The attribute *NbClusters* specifies the number of groups to cluster the data in
     Sim.Current = 1000
     Sim.NbClusters = 100
 
-As the loads are not time-dependent this can be treated as a stationary thermal problem, with the command file :file:`AMAZE_SS.comm` used (SS=Steady State). A transient version of this simulation is also available, :file:`AMAZE.comm`.
+As the loads are not time-dependent this can be treated as a steady state thermal problem, with the command file :file:`Monoblock_Steady.comm` used (Steady State). A transient version of this simulation is also available, :file:`Monoblock_Transient.comm`.
 
 Task 1: Running 1D Coolant
 ***************************

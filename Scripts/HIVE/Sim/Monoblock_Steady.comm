@@ -2,8 +2,6 @@ import sys
 sys.dont_write_bytecode=True
 import os
 import numpy as np
-import time
-from Utilitai import partition
 
 import AsterFunc
 
@@ -11,7 +9,7 @@ SimDict = AsterFunc.GetSimDict()
 Parameters = SimDict['Parameters']
 
 '''
-Steady state version of HIVE simulation for AMAZE component.
+Steady state analysis of monoblock component .
 '''
 
 DEBUT(PAR_LOT = 'NON',LANG='EN')
@@ -72,16 +70,12 @@ Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TileMat, GROUP_MA='Tile'),
 # ==============================================================================
 # Create coundary conditions
 
-# Thermal load. Either uniform or EM results from ERMES simulation
-if Parameters.EMLoad == 'Uniform':
-    EMI = AFFE_CHAR_THER(FLUX_REP=_F(FLUN=Parameters.Flux, GROUP_MA='CoilFace'),MODELE=Thermod)
-elif Parameters.EMLoad == 'ERMES':
-    # Read in ERMES file created during PreAster
-    ERMES = np.load('{}/ERMES.npy'.format(SimDict['TMP_CALC_DIR']))
-    Load_EM = []
-    for i,JH in enumerate(ERMES):
-        Load_EM.append((_F(GROUP_MA="_{}".format(i),SOUR=JH)))
-    EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
+# Thermal load (from ERMES)
+ERMES = np.load(SimDict['EMData'])
+Load_EM = []
+for i,JH in enumerate(ERMES):
+    Load_EM.append((_F(GROUP_MA="_{}".format(i),SOUR=JH)))
+EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
 
 # Cooling due to coolant. HTC data generated during PreAster
 HTdata = np.fromfile(SimDict['HTData'],dtype=float,count=-1,sep=" ")

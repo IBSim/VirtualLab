@@ -76,7 +76,7 @@ class VLSetup():
     def _AddMethod(self):
         ''' Add in the methods defined in Scripts/Methods to the VirtualLab class.'''
         MethodsDir = "{}/Methods".format(self.SCRIPTS_DIR)
-        self.VLTypes = []
+        self.Methods = []
         # Loop through directory contents
         for _method in os.listdir(MethodsDir):
             # skip directiories, files that start with '_' and those that aren't python
@@ -95,12 +95,13 @@ class VLSetup():
             else:
                 mod_path = "Methods.{}".format(method_name)
 
+            method_mod = import_module(mod_path)
             # Try and import the method
-            try:
-                method_mod = import_module(mod_path)
-            except :
-                print(VLF.WarningMessage("Error during import of method '{}'.\nThis method will be unavailable for analysis".format(method_name)))
-                continue
+            # try:
+            #     method_mod = import_module(mod_path)
+            # except :
+            #     print(VLF.WarningMessage("Error during import of method '{}'.\nThis method will be unavailable for analysis".format(method_name)))
+            #     continue
 
             # check the imported method has a class called Method
             if not hasattr(method_mod,'Method'):
@@ -108,12 +109,12 @@ class VLSetup():
 
             # initiate class and wrap key function
             method_inst = method_mod.Method()
-            method_inst.Setup = _Runner(self,method_inst.Setup)
-            method_inst.Run = _Runner(self,method_inst.Run)
+            method_inst.Setup = _VL_wrap(self,method_inst.Setup)
+            method_inst.Run = _VL_wrap(self,method_inst.Run)
 
             # add the method to self and add to list of methods
             setattr(self,method_name,method_inst)
-            self.VLTypes.append(method_name)
+            self.Methods.append(method_name)
 
 
     def _SetMode(self,Mode='H'):
@@ -203,7 +204,7 @@ class VLSetup():
     def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
                     Import=False,**run_flags):
 
-        flags = {"Run{}".format(name):True for name in self.VLTypes} # all defaulted to True
+        flags = {"Run{}".format(name):True for name in self.Methods} # all defaulted to True
 
         # check no incorrect kwargs given
         Diff = set(run_flags).difference(flags.keys())
@@ -223,9 +224,13 @@ class VLSetup():
         self._SetParams(Parameters_Master, Parameters_Var,
                        ParameterArgs=ParameterArgs)
 
-        for method in self.VLTypes:
-            method_cls = getattr(self,method)
-            method_cls.Setup(flags['Run{}'.format(method)])
+        for method_name in self.Methods:
+            # create dictionary of parameters associated with the method_name
+            # from the parameter file(s)
+            method_dicts = self._CreateParameters(method_name)
+            # get method_name instance & run Setup
+            method_cls = getattr(self,method_name)
+            method_cls.Setup(method_dicts, flags['Run{}'.format(method_name)])
 
 
 
@@ -274,8 +279,8 @@ class VLSetup():
 
         # ======================================================================
         # Perform checks of master and var and assign to self
-        self.Parameters_Master = self._CheckParams(Master,'Parameters_Master',self.VLTypes)
-        self.Parameters_Var = self._CheckParams(Var,'Parameters_Var',self.VLTypes)
+        self.Parameters_Master = self._CheckParams(Master,'Parameters_Master',self.Methods)
+        self.Parameters_Var = self._CheckParams(Var,'Parameters_Var',self.Methods)
 
     def _CheckParams(self,input,input_name,VLTypes):
         '''Perform checks on the input file and return namespace whose attributes
@@ -310,27 +315,27 @@ class VLSetup():
 
         return NS
 
-    def CreateParameters(self, junk1, junk2, VLType):
+    def _CreateParameters(self, method_name):
         '''
-        Create parameter dictionary of attribute VLType using Parameters_Master and Var.
+        Create parameter dictionary of attribute method_name using Parameters_Master and Var.
         '''
         # ======================================================================
-        # Get VLType from Parameters_Master and _Parameters_Var (if they are defined)
-        Master = getattr(self.Parameters_Master, VLType, None)
-        Var = getattr(self.Parameters_Var, VLType, None)
+        # Get method_name from Parameters_Master and _Parameters_Var (if they are defined)
+        Master = getattr(self.Parameters_Master, method_name, None)
+        Var = getattr(self.Parameters_Var, method_name, None)
 
-        # Check VLType is an appropriate type
+        # Check method_name is an appropriate type
         if type(Master) not in (type(None),type(Namespace())):
-            print(VLF.WarningMessage("Variable '{}' named in Master but is not a namespace. This may lead yo unexpected results".format(VLType)))
+            print(VLF.WarningMessage("Variable '{}' named in Master but is not a namespace. This may lead yo unexpected results".format(method_name)))
         if type(Var) not in (type(None),type(Namespace())):
-            print(VLF.WarningMessage("Variable '{}' named in Var but is not a namespace. This may lead yo unexpected results".format(VLType)))
+            print(VLF.WarningMessage("Variable '{}' named in Var but is not a namespace. This may lead yo unexpected results".format(method_name)))
 
         # ======================================================================
-        # VLType isn't in Master of Var
+        # method_name isn't in Master of Var
         if Master==None and Var==None: return {}
 
         # ======================================================================
-        # VLType is in Master but not in Var
+        # method_name is in Master but not in Var
         elif Var==None:
             # Check if VLFunctions.Parameters_Var function has been used to create
             # an iterator to vary parameters within master file.
@@ -343,17 +348,17 @@ class VLSetup():
                         setattr(Var,key,list(val))
                 # Check that Name is also an iterator
                 if not hasattr(Var,'Name'):
-                    message = "{}.Name is not an iterable".format(VLType)
+                    message = "{}.Name is not an iterable".format(method_name)
                     self.Exit(VLF.ErrorMessage(message))
                 # Assign Var to class. Behaviour is the same as if _Parameters_Var
                 # file had been used.
-                setattr(self.Parameters_Var,VLType,Var)
+                setattr(self.Parameters_Var,method_name,Var)
             else:
                 # No iterator, just a single study
                 return {Master.Name : Master.__dict__}
 
         # ======================================================================
-        # VLType is in Var
+        # method_name is in Var
 
         # Check all entires in Parameters_Var have the same length
         NbNames = len(Var.Name)
@@ -365,24 +370,24 @@ class VLSetup():
                 errVar.append(VariableName)
 
         if errVar:
-            attrstr = "\n".join(["{}.{}".format(VLType,i) for i in errVar])
+            attrstr = "\n".join(["{}.{}".format(method_name,i) for i in errVar])
             message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
-                "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(VLType,attrstr)
+                "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(method_name,attrstr)
             self.Exit(VLF.ErrorMessage(message))
 
-        # VLType is in Master and Var
+        # method_name is in Master and Var
         if Master!=None and Var !=None:
             # Check if there are attributes defined in Var which are not in Master
             dfattrs = set(Var.__dict__.keys()) - set(list(Master.__dict__.keys())+['Run'])
             if dfattrs:
-                attstr = "\n".join(["{}.{}".format(VLType,i) for i in dfattrs])
+                attstr = "\n".join(["{}.{}".format(method_name,i) for i in dfattrs])
                 message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
                     "{}\n\nThis may lead to unexpected results.".format(attstr)
                 print(VLF.WarningMessage(message))
 
         # ======================================================================
         # Create dictionary for each entry in Parameters_Var
-        VarRun = getattr(Var,'Run',[True]*NbNames) # create True list if Run not an attribute of VLType
+        VarRun = getattr(Var,'Run',[True]*NbNames) # create True list if Run not an attribute of method_name
         ParaDict = {}
         for Name, NewValues, Run in zip(Var.Name,zip(*NewVals),VarRun):
             if not Run: continue
@@ -469,19 +474,14 @@ class VLSetup():
         print('Cleanup() is depreciated. You can remove this from your script')
 
 
-def _Runner(VL,func):
-    # function wrapper for vltypes. Passes the VL instance to them.
-    func = VLF.kwarg_update(func)
-    def _Runner_wrapper(*args,**kwargs):
-        return func(VL,*args,**kwargs)
-    return _Runner_wrapper
 
-def _Runner2(VL,func):
-    # function wrapper for vltypes. Passes the VL instance to them.
-    func = VLF.kwarg_update(func)
-    def _Runner_wrapper(*args,**kwargs):
-        return func(args[0],VL,*args[1:],**kwargs)
-    return _Runner_wrapper
+
+def _VL_wrap(VL,func):
+    # Wrapper to include VL in Methods functions
+    def _VL_wrap_wrapper(*args,**kwargs):
+        return func(VL,*args,**kwargs)
+    return _VL_wrap_wrapper
+
 
 def _git():
     version,branch = '<version>','<branch>'

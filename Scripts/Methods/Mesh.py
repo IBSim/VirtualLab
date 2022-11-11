@@ -6,14 +6,11 @@ from types import SimpleNamespace as Namespace
 from Scripts.Common.VLPackages.Salome import Salome
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
-from Scripts.Common.VLTypes import Method_base
+from Scripts.Common.utils import Method_base
 
 class Method(Method_base):
-    def Setup(self, VL, RunMesh=True, Import=False):
+    def Setup(self, VL, MeshDicts,  RunMesh=True, Import=False):
         VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
-        # VL.SIM_MESH = "{}/Mesh".format(VL.SIM_SCRIPTS)
-
-        MeshDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Mesh')
 
         # if either MeshDicts is empty or RunMesh is False we will return
         if not (RunMesh and MeshDicts): return
@@ -92,6 +89,7 @@ class Method(Method_base):
         if err:
             return "Error in Salome run"
 
+    @VLF.kwarg_update
     def Run(self,VL,MeshCheck=None,ShowMesh=False):
         if not self.Data: return
 

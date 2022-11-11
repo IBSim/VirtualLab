@@ -5,7 +5,7 @@ from types import SimpleNamespace as Namespace
 from importlib import import_module
 import copy
 import Scripts.Common.VLFunctions as VLF
-from Scripts.Common.VLTypes import Method_base
+from Scripts.Common.utils import Method_base
 
 def Check_Threads(num_threads):
     """ Function to check the user defined Number of OpenMP threads are vaild"""
@@ -20,7 +20,7 @@ def Check_Threads(num_threads):
         raise ValueError("Invalid Number of threads for Cad2Vox. Must be greater than 0")
 
 class Method(Method_base):
-    def Setup(self,VL, RunVox=True):
+    def Setup(self, VL, VoxDicts, RunVoxelise=True):
         '''
         Vox - Mesh Voxelisation using Cuda or OpenMP
         '''
@@ -30,11 +30,9 @@ class Method(Method_base):
         if not os.path.exists(VL.OUT_DIR):
             os.makedirs(VL.OUT_DIR)
 
-        VL.VoxData = {}
-        VoxDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Vox')
 
         # if RunVox is False or VoxDicts is empty dont perform voxelisation and return instead.
-        if not (RunVox and VoxDicts): return
+        if not (RunVoxelise and VoxDicts): return
         for VoxName, VoxParams in VoxDicts.items():
             Parameters = Namespace(**VoxParams)
             #check mesh for file extension and if not present assume salome med
@@ -86,15 +84,15 @@ class Method(Method_base):
             if hasattr(Parameters,'image_format'):
                 VoxDict['im_format'] = Parameters.image_format
 
-            VL.VoxData[VoxName] = VoxDict.copy()
+            self.Data[VoxName] = VoxDict.copy()
 
     def Run(self,VL):
         import cad2vox
-        if not VL.VoxData: return
+        if not self.Data: return
         VL.Logger('\n### Starting Voxelisation ###\n', Print=True)
 
-        for key in VL.VoxData.keys():
-            Errorfnc = cad2vox.voxelise(**VL.VoxData[key])
+        for key in self.Data.keys():
+            Errorfnc = cad2vox.voxelise(**self.Data[key])
             if Errorfnc:
                 VL.Exit(VLF.ErrorMessage("The following Cad2Vox routine(s) finished with errors:\n{}".format(Errorfnc)))
 

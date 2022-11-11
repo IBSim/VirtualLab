@@ -5,13 +5,12 @@ from types import SimpleNamespace as Namespace
 
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
-from Scripts.Common.VLTypes import Method_base
+from Scripts.Common.utils import Method_base
 '''
 DA - Data Analysis
 '''
 class Method(Method_base):
-    def Setup(self, VL, RunDA=True, Import=False):
-        DADicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'DA')
+    def Setup(self, VL, DADicts, RunDA=True, Import=False):
 
         # if either DADicts is empty or RunDA is False we will return
         if not (RunDA and DADicts): return

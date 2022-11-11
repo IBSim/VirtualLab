@@ -9,25 +9,15 @@ from Scripts.Common.VLPackages.Salome import Salome
 from Scripts.Common.VLPackages.CodeAster import Aster
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
-from Scripts.Common.VLTypes import Method_base
-
-def configuration(VL):
-    ''' Configuration function for the Sim class. '''
-    # folder where all scripts for Sim can be found
-    # VL.SIM_SIM = "{}/Sim".format(VL.SIM_SCRIPTS)
-    # configuration file for
-    VL.SIM_config = "{}/config.py".format(VL.SIM_SIM)
+from Scripts.Common.utils import Method_base
 
 class Method(Method_base):
-    def Setup(self,VL,RunSim=True,Import=False):
+    def Setup(self,VL,SimDicts,RunSim=True,Import=False):
         '''
         Default setup function for Sim routine. Here paths are defined and checks are
         made prior to performing analysis.
         To create an alternative create a function 'Setup' in the config file.
         '''
-        configuration(VL)
-
-        SimDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Sim')
 
         if not (RunSim and SimDicts): return
 
@@ -129,6 +119,7 @@ class Method(Method_base):
         # ==========================================================================
 
     @staticmethod
+    @VLF.kwarg_update
     def PoolRun(VL, SimDict, RunPreAster=True, RunAster=True, RunPostAster=True):
         '''
         Default PoolRun function for Sim routine. This function is performed for each
@@ -219,7 +210,7 @@ class Method(Method_base):
             if err:
                  return 'PostAster Error: {}'.format(err)
 
-
+    @VLF.kwarg_update
     def Run(self, VL, ShowRes=False, **kwargs):
         '''
         Default Run function for Sim routine. This is the function run as the Sim

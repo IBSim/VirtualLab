@@ -9,13 +9,13 @@ import copy
 from types import SimpleNamespace as Namespace, ModuleType
 import atexit
 import uuid
+from importlib import import_module
 
 import numpy as np
 
 import VLconfig
 from . import Analytics
 from . import VLFunctions as VLF
-from . import VLTypes
 
 DefaultSettings = {'Mode':'H','Launcher':'Process','NbJobs':1,
               'InputDir':VLconfig.InputDir, 'OutputDir':VLconfig.OutputDir,
@@ -54,34 +54,66 @@ class VLSetup():
         self.Settings(**DefaultSettings)
 
         # ======================================================================
-        # Get the available VLTypes
-        self.VLTypes = []
-        for attr_name in dir(VLTypes):
-            if attr_name.startswith('__'): continue
-            vltype_mod = getattr(VLTypes,attr_name)
-            self.VLTypes.append(attr_name)
-
-            # set attr_name to be run from the VLType
-            run_fn = getattr(vltype_mod,'Run')
-            setattr(self,attr_name,_Runner(self,run_fn))
-
-
-        # ======================================================================
         # Define path to scripts
         # check simulation type exists
-        self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
+        self.SCRIPTS_DIR = "{}/Scripts".format(VLconfig.VL_DIR)
+        self.SIM_SCRIPTS = "{}/{}".format(self.SCRIPTS_DIR, self.Simulation)
         if not os.path.isdir(self.SIM_SCRIPTS):
             self.Exit(VLF.ErrorMessage("Simulation type doesn't exist"))
-
-        self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
+        self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
 
         # Add these to path
-        sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
+        sys.path = [self.SCRIPTS_DIR,self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
+
+        # ======================================================================
+        self._AddMethod()
 
         self.Logger('\n############################\n'\
                       '### Launching VirtualLab ###\n'\
                       '############################\n',Print=True)
+
+    def _AddMethod(self):
+        ''' Add in the methods defined in Scripts/Methods to the VirtualLab class.'''
+        MethodsDir = "{}/Methods".format(self.SCRIPTS_DIR)
+        self.VLTypes = []
+        # Loop through directory contents
+        for _method in os.listdir(MethodsDir):
+            # skip directiories, files that start with '_' and those that aren't python
+            if _method.startswith('_'): continue
+            if not os.path.isfile("{}/{}".format(MethodsDir,_method)):continue
+            method_name,ext = os.path.splitext(_method)
+            if ext != '.py':continue
+
+            # define the path to the scripts for a certain method & add to class
+            script_path = "{}/{}".format(self.SIM_SCRIPTS,method_name)
+            setattr(self,"SIM_{}".format(method_name.upper()),script_path)
+
+            # If there's a config.py file in the methods directory this is used instead
+            if os.path.isfile("{}/config.py".format(script_path)):
+                mod_path = "{}.config".format(method_name)
+            else:
+                mod_path = "Methods.{}".format(method_name)
+
+            # Try and import the method
+            try:
+                method_mod = import_module(mod_path)
+            except :
+                print(VLF.WarningMessage("Error during import of method '{}'.\nThis method will be unavailable for analysis".format(method_name)))
+                continue
+
+            # check the imported method has a class called Method
+            if not hasattr(method_mod,'Method'):
+                self.Exit(VLF.ErrorMessage("The method '{}' does not have the required class 'Method'".format(method_name)))
+
+            # initiate class and wrap key function
+            method_inst = method_mod.Method()
+            method_inst.Setup = _Runner(self,method_inst.Setup)
+            method_inst.Run = _Runner(self,method_inst.Run)
+
+            # add the method to self and add to list of methods
+            setattr(self,method_name,method_inst)
+            self.VLTypes.append(method_name)
 
 
     def _SetMode(self,Mode='H'):
@@ -191,12 +223,11 @@ class VLSetup():
         self._SetParams(Parameters_Master, Parameters_Var,
                        ParameterArgs=ParameterArgs)
 
-        # Run setup for each function
-        for vltype in self.VLTypes:
-            vltype_mod = getattr(VLTypes,vltype)
-            setup_fn = getattr(vltype_mod,'Setup')
-            Runflag = flags['Run{}'.format(vltype)]
-            setup_fn(self,Runflag)
+        for method in self.VLTypes:
+            method_cls = getattr(self,method)
+            method_cls.Setup(flags['Run{}'.format(method)])
+
+
 
     def ImportParameters(self, Rel_Parameters,ParameterArgs=None):
         '''
@@ -443,6 +474,13 @@ def _Runner(VL,func):
     func = VLF.kwarg_update(func)
     def _Runner_wrapper(*args,**kwargs):
         return func(VL,*args,**kwargs)
+    return _Runner_wrapper
+
+def _Runner2(VL,func):
+    # function wrapper for vltypes. Passes the VL instance to them.
+    func = VLF.kwarg_update(func)
+    def _Runner_wrapper(*args,**kwargs):
+        return func(args[0],VL,*args[1:],**kwargs)
     return _Runner_wrapper
 
 def _git():

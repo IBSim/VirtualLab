@@ -78,12 +78,7 @@ class Method(Method_base):
         # Write Parameters used to make the mesh to the mesh directory
         VLF.WriteData("{}.py".format(Meshfname), MeshDict['Parameters'])
 
-        # Use a user-made MeshRun file if it exists. If not use the default one.
-        if os.path.isfile('{}/MeshRun.py'.format(VL.SIM_MESH)):
-            script = '{}/MeshRun.py'.format(VL.SIM_MESH)
-        else:
-            script = '{}/MeshRun.py'.format(Salome.Dir)
-
+        script = '{}/MeshRun.py'.format(Salome.Dir)
         err = Salome.Run(script, DataDict = MeshDict, AddPath=[VL.SIM_SCRIPTS,VL.SIM_MESH],
                          tempdir=MeshDict['TMP_CALC_DIR'],GUI=GUI)
         if err:

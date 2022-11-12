@@ -23,6 +23,10 @@ DefaultSettings = {'Mode':'H','Launcher':'Process','NbJobs':1,
 
 class VLSetup():
     def __init__(self, Simulation, Project):
+        print('\n############################\n'\
+              '### Launching VirtualLab ###\n'\
+              '############################\n')
+
         # ======================================================================
         # Check for updates to Simulation and Project in parsed arguments
         arg_dict = VLF.Parser_update(['Simulation','Project'])
@@ -69,9 +73,7 @@ class VLSetup():
         # ======================================================================
         self._AddMethod()
 
-        self.Logger('\n############################\n'\
-                      '### Launching VirtualLab ###\n'\
-                      '############################\n',Print=True)
+
 
     def _AddMethod(self):
         ''' Add in the methods defined in Scripts/Methods to the VirtualLab class.'''
@@ -108,9 +110,7 @@ class VLSetup():
                 self.Exit(VLF.ErrorMessage("The method '{}' does not have the required class 'Method'".format(method_name)))
 
             # initiate class and wrap key function
-            method_inst = method_mod.Method()
-            method_inst.Setup = _VL_wrap(self,method_inst.Setup)
-            method_inst.Run = _VL_wrap(self,method_inst.Run)
+            method_inst = method_mod.Method(self)
 
             # add the method to self and add to list of methods
             setattr(self,method_name,method_inst)
@@ -225,12 +225,14 @@ class VLSetup():
                        ParameterArgs=ParameterArgs)
 
         for method_name in self.Methods:
+            # get method_name instance
+            method_cls = getattr(self,method_name)
             # create dictionary of parameters associated with the method_name
             # from the parameter file(s)
             method_dicts = self._CreateParameters(method_name)
-            # get method_name instance & run Setup
-            method_cls = getattr(self,method_name)
-            method_cls.Setup(method_dicts, flags['Run{}'.format(method_name)])
+            # add flag to the instance
+            method_cls.SetFlag(flags['Run{}'.format(method_name)])
+            method_cls._MethodSetup(method_dicts)
 
 
 
@@ -472,8 +474,6 @@ class VLSetup():
 
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
-
-
 
 
 def _VL_wrap(VL,func):

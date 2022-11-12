@@ -20,7 +20,7 @@ def Check_Threads(num_threads):
         raise ValueError("Invalid Number of threads for Cad2Vox. Must be greater than 0")
 
 class Method(Method_base):
-    def Setup(self, VL, VoxDicts, RunVoxelise=True):
+    def Setup(self, VL, VoxDicts, Import=False):
         '''
         Vox - Mesh Voxelisation using Cuda or OpenMP
         '''
@@ -32,7 +32,7 @@ class Method(Method_base):
 
 
         # if RunVox is False or VoxDicts is empty dont perform voxelisation and return instead.
-        if not (RunVoxelise and VoxDicts): return
+        if not (self.RunFlag and VoxDicts): return
         for VoxName, VoxParams in VoxDicts.items():
             Parameters = Namespace(**VoxParams)
             #check mesh for file extension and if not present assume salome med

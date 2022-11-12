@@ -10,10 +10,10 @@ from Scripts.Common.utils import Method_base
 DA - Data Analysis
 '''
 class Method(Method_base):
-    def Setup(self, VL, DADicts, RunDA=True, Import=False):
+    def Setup(self, VL, DADicts, Import=False):
 
         # if either DADicts is empty or RunDA is False we will return
-        if not (RunDA and DADicts): return
+        if not (self.RunFlag and DADicts): return
 
         VL.tmpDA_DIR = "{}/DA".format(VL.TEMP_DIR)
         os.makedirs(VL.tmpDA_DIR, exist_ok=True)
@@ -78,7 +78,6 @@ class Method(Method_base):
         return err
 
     def Run(self,VL):
-        if not self.Data: return
         sys.path.insert(0,VL.SIM_DA)
 
         VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
@@ -88,7 +87,7 @@ class Method(Method_base):
         NbDA = len(self.Data)
         DADicts = list(self.Data.values())
 
-        Errorfnc = VLPool(VL,self.PoolRun,DADicts)
+        Errorfnc = VLPool(VL,self.GetPoolRun(),DADicts)
         if Errorfnc:
             VL.Exit(VLF.ErrorMessage("The following DA routine(s) finished with errors:\n{}".format(Errorfnc)),
                     Cleanup=False)

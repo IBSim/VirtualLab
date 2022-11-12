@@ -9,11 +9,11 @@ from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
 
 class Method(Method_base):
-    def Setup(self, VL, MeshDicts,  RunMesh=True, Import=False):
+    def Setup(self, VL, MeshDicts,  Import=False):
         VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
         # if either MeshDicts is empty or RunMesh is False we will return
-        if not (RunMesh and MeshDicts): return
+        if not (self.RunFlag and MeshDicts): return
         sys.path.insert(0, VL.SIM_MESH)
 
         FileDict = {} # Something we want to keep track of
@@ -91,8 +91,6 @@ class Method(Method_base):
 
     @VLF.kwarg_update
     def Run(self,VL,MeshCheck=None,ShowMesh=False):
-        if not self.Data: return
-
         #===========================================================================
         # MeshCheck allows you to mesh in the GUI (for debugging).Currently only 1
         # mesh can be debugged at a time. VirtualLab terminates when GUI is closed.
@@ -128,8 +126,7 @@ class Method(Method_base):
                   '~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
         MeshDicts = list(self.Data.values())
-        # Errorfnc = VLPool(VL,PoolRun,MeshDicts)
-        Errorfnc = VLPool(VL,self.PoolRun, MeshDicts)
+        Errorfnc = VLPool(VL,self.GetPoolRun(), MeshDicts)
         if Errorfnc:
             VL.Exit(VLF.ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)),
                     Cleanup=False)

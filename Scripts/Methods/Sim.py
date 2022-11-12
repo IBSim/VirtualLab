@@ -12,14 +12,14 @@ from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
 
 class Method(Method_base):
-    def Setup(self,VL,SimDicts,RunSim=True,Import=False):
+    def Setup(self, VL, SimDicts, Import=False):
         '''
         Default setup function for Sim routine. Here paths are defined and checks are
         made prior to performing analysis.
         To create an alternative create a function 'Setup' in the config file.
         '''
 
-        if not (RunSim and SimDicts): return
+        if not (self.RunFlag and SimDicts): return
 
         sys.path.insert(0,VL.SIM_SIM)
 
@@ -217,7 +217,6 @@ class Method(Method_base):
         method to the VLSetup class.
         To create an alternative create a function 'Run' in the config file.
         '''
-        if not self.Data: return
 
         # ==========================================================================
         # Run Sim routine
@@ -231,7 +230,7 @@ class Method(Method_base):
         SimDicts = list(self.Data.values())
         kwargs_list = [kwargs]*NbSim # Duplicate kwargs in to list for parallelisation
 
-        Errorfnc = VLPool(VL,self.PoolRun,SimDicts,kwargs_list=kwargs_list)
+        Errorfnc = VLPool(VL,self.GetPoolRun(),SimDicts,kwargs_list=kwargs_list)
 
         if Errorfnc:
             VL.Exit(VLF.ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)),

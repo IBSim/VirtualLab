@@ -400,33 +400,6 @@ class VLSetup():
 
         return ParaDict
 
-    def GetFilePath(self, Dirs, file_name, file_ext='py', exit_on_error=True):
-        ''' This function will return either the file path if it exists or None.'''
-        # ==========================================================================
-        # Check file exists
-        if type(Dirs) == str: Dirs=[Dirs]
-        FilePath = None
-        for dir in Dirs:
-            _FilePath = "{}/{}.{}".format(dir,file_name,file_ext)
-            FileExist = os.path.isfile(_FilePath)
-            if FileExist:
-                FilePath = _FilePath
-                break
-
-        if exit_on_error and FilePath is None:
-            self.Exit(VLF.ErrorMessage("The file {}.{} is not in the following directories:\n"\
-                    "{}".format(file_name,file_ext,"\n".join(Dirs))))
-
-        return FilePath
-
-    def GetFunction(self, file_path, func_name, exit_on_error=True):
-        func = VLF.GetFunc(file_path,func_name)
-
-        if exit_on_error and func is None:
-            self.Exit(VLF.ErrorMessage("The function {} is not "\
-                    "in {}".format(func_name,file_path)))
-        return func
-
     def Logger(self,Text='',**kwargs):
         Prnt = kwargs.get('Print',False)
 
@@ -474,13 +447,6 @@ class VLSetup():
 
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
-
-
-def _VL_wrap(VL,func):
-    # Wrapper to include VL in Methods functions
-    def _VL_wrap_wrapper(*args,**kwargs):
-        return func(VL,*args,**kwargs)
-    return _VL_wrap_wrapper
 
 
 def _git():

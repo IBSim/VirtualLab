@@ -9,6 +9,37 @@ import numpy as np
 
 sys.dont_write_bytecode=True
 
+def GetFilePath(Dirs, file_name, file_ext='py', exit_on_error=True):
+    ''' This function will return either the file path if it exists or None.'''
+    # ==========================================================================
+    # Check file exists
+    if type(Dirs) == str: Dirs=[Dirs]
+    FilePath = None
+    for dir in Dirs:
+        _FilePath = "{}/{}.{}".format(dir,file_name,file_ext)
+        FileExist = os.path.isfile(_FilePath)
+        if FileExist:
+            FilePath = _FilePath
+            break
+
+    if FilePath is None:
+        print(ErrorMessage("The file {}.{} is not in the following directories:\n"\
+                "{}".format(file_name,file_ext,"\n".join(Dirs))))
+        if exit_on_error:
+            sys.exit()
+
+    return FilePath
+
+def GetFunction(file_path, func_name, exit_on_error=True):
+    func = GetFunc(file_path,func_name)
+
+    if func is None:
+        print(ErrorMessage("The function {} is not "\
+                "in {}".format(func_name,file_path)))
+        if exit_on_error:
+            sys.exit()
+    return func
+
 def kwarg_update(func):
     def wrapper_kwarg_update(*args,**kwargs):
         argspace = inspect.getargspec(func)

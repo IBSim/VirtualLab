@@ -49,7 +49,7 @@ class Method(Method_base):
             if AsterFile:
                 if AsterFile not in AsterFileDict:
                     # Check file in directory & get path
-                    AsterFilePath = VL.GetFilePath([VL.SIM_SIM], AsterFile,
+                    AsterFilePath = VLF.GetFilePath([VL.SIM_SIM], AsterFile,
                                               file_ext='comm', exit_on_error=True)
                     AsterFileDict[AsterFile] = AsterFilePath
                 else:
@@ -63,10 +63,10 @@ class Method(Method_base):
                     # default name is Single
                     file_name,func_name = VLF.FileFuncSplit(fname,'Single')
                     if (file_name,func_name) not in PFileDict:
-                        FilePath = VL.GetFilePath([VL.SIM_SIM,VL.VLRoutine_SCRIPTS], file_name,
+                        FilePath = VLF.GetFilePath([VL.SIM_SIM,VL.VLRoutine_SCRIPTS], file_name,
                                                   file_ext='py', exit_on_error=True)
                         # Check function func_name is in the file
-                        VL.GetFunction(FilePath,func_name,exit_on_error=True)
+                        VLF.GetFunction(FilePath,func_name,exit_on_error=True)
                         File_func = [FilePath,func_name]
                         PFileDict[(file_name,func_name)] = File_func
                     else:
@@ -105,7 +105,7 @@ class Method(Method_base):
         for MeshName in Meshes:
             MeshCreate = MeshName in VL.Mesh.Data
             if not MeshCreate:
-                FilePath = VL.GetFilePath(VL.MESH_DIR, MeshName,file_ext='med',exit_on_error=False)
+                FilePath = VLF.GetFilePath(VL.MESH_DIR, MeshName,file_ext='med',exit_on_error=False)
                 if FilePath is None:
                     VL.Exit(VLF.ErrorMessage("Mesh '{}' isn't being created and is "\
                     "not in the mesh directory {}".format(MeshName, VL.MESH_DIR)))

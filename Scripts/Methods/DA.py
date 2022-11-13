@@ -32,10 +32,10 @@ class Method(Method_base):
 
             if (file_name,func_name) not in FileDict:
                 # Check file in directory & get path
-                FilePath = VL.GetFilePath([VL.SIM_DA,VL.VLRoutine_SCRIPTS], file_name,
+                FilePath = VLF.GetFilePath([VL.SIM_DA,VL.VLRoutine_SCRIPTS], file_name,
                                           file_ext='py', exit_on_error=True)
                 # Check function func_name is in the file
-                VL.GetFunction(FilePath,func_name,exit_on_error=True)
+                VLF.GetFunction(FilePath,func_name,exit_on_error=True)
                 File_func = [FilePath,func_name]
                 FileDict[(file_name,func_name)] = File_func
             else:

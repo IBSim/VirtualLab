@@ -11,7 +11,7 @@ from Scripts.Common.utils import Method_base
 class Method(Method_base):
     def __init__(self,VL):
         super().__init__(VL) # rune __init__ of Mthod_base
-        # Add MESH_DIR to VL here as it's used by other methods (Sim,Vox) 
+        # Add MESH_DIR to VL here as it's used by other methods (Sim,Vox)
         VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
     def Setup(self, VL, MeshDicts,  Import=False):
@@ -34,10 +34,10 @@ class Method(Method_base):
 
             if (file_name,func_name) not in FileDict:
                 # Check file in directory & get path
-                FilePath = VL.GetFilePath([VL.SIM_MESH], file_name,
+                FilePath = VLF.GetFilePath([VL.SIM_MESH], file_name,
                                           file_ext='py', exit_on_error=True)
                 # Check function func_name is in the file
-                a = VL.GetFunction(FilePath,func_name,exit_on_error=True)
+                a = VLF.GetFunction(FilePath,func_name,exit_on_error=True)
                 File_func = [FilePath,func_name]
                 FileDict[(file_name,func_name)] = File_func
             else:

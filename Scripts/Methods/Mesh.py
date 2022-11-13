@@ -9,9 +9,12 @@ from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
 
 class Method(Method_base):
-    def Setup(self, VL, MeshDicts,  Import=False):
+    def __init__(self,VL):
+        super().__init__(VL) # rune __init__ of Mthod_base
+        # Add MESH_DIR to VL here as it's used by other methods (Sim,Vox) 
         VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
+    def Setup(self, VL, MeshDicts,  Import=False):
         # if either MeshDicts is empty or RunMesh is False we will return
         if not (self.RunFlag and MeshDicts): return
         sys.path.insert(0, VL.SIM_MESH)

@@ -62,8 +62,8 @@ In this first example we will use the same analysis performed in Tutorial 1 usin
         VirtualLab -f RunFiles/RunTutorials.py
 
 The main change to note in the *Runfile* is the call to ``VirtualLab.Voxelise()``. This is the function that initiates the Voxelisation using the parameters defined in ``Parameters_Master`` and ``Parameters_Var``.
-	
-Looking at the file ``Input/Tensile/Tutorials/TrainingParameters_Cad2Vox.py`` you will notice that the ``Namespaces`` ``Mesh``  and ``Sim`` are setup the same as the previous tutorial. That is they generate the cad geometry and mesh using ``Scripts/Tensile/Mesh/DogBone.py`` and then run two simulations first force controlled then displacement controlled. Also Since ``DA`` is not defined in ``Parameters_Master`` no data analysis will take place.
+
+Looking at the file ``Input/Tensile/Tutorials/TrainingParameters_Cad2Vox.py`` you will notice that the ``Namespaces`` ``Mesh``  and ``Sim`` are setup the same as the previous tutorial. That is they generate the cad geometry and mesh using ``Scripts/Experiments/Tensile/Mesh/DogBone.py`` and then run two simulations first force controlled then displacement controlled. Also Since ``DA`` is not defined in ``Parameters_Master`` no data analysis will take place.
 
 You will also notice the Parameters file has a new Namespace ``Vox``. This contains the parameters used to control the Voxelisation. The File is setup with some sensible default values.
 
@@ -71,20 +71,20 @@ The only values that are strictly required are:
 
 * ``Vox.Name``: Label for the Cad2Vox run(s), this can be anything you like. This doubles up as the name of the output file(s) so you probably want it to be something descriptive.
 * ``Vox.mesh``: The name of the mesh(es) you wish to voxelise. These are assumed to be in the simulation Meshes directory, in this case ``Output/Tensile/Tutorials/Meshes/``. The code also assumes a file extension of ``.med`` if none is given.
-* ``Vox.gridsize``: Number of voxels in each dim (currently assumes a cubic grid so only a single parameter is needed). 
+* ``Vox.gridsize``: Number of voxels in each dim (currently assumes a cubic grid so only a single parameter is needed).
 
 We have also included a few optional parameters:
 
-* ``Vox.cpu`` : The default behaviour is to first check for CUDA and a compatible GPU and If they cannot be found it will fallback to CPU. This flag allows us to skip the check and just use the CPU. 
+* ``Vox.cpu`` : The default behaviour is to first check for CUDA and a compatible GPU and If they cannot be found it will fallback to CPU. This flag allows us to skip the check and just use the CPU.
 * ``Vox.use_tetra``: This tells Cad2Vox we are using a mesh with Tetrahedron data instead of the default Triangles.
 
 
 There are also a number of options we have not used in this file. They are listed here for reference:
 
 * ``Vox.solid``: Auto fill interior volume when using triangle (surface) data.
-* ``Vox.unit_length``: You can use this instead of ``Vox.gridsize`` to define the length/width/height of a single cubic voxel in Mesh-space. Cad2Vox then automatically calculates the number of voxels in each dimention using the min and max of the mesh geometry. Hence you don't specify gridsize when using this option.  
+* ``Vox.unit_length``: You can use this instead of ``Vox.gridsize`` to define the length/width/height of a single cubic voxel in Mesh-space. Cad2Vox then automatically calculates the number of voxels in each dimention using the min and max of the mesh geometry. Hence you don't specify gridsize when using this option.
 * ``Vox.greyscale_file``: You can use this option to specify a custom name and path for the .csv file that contains materials and associated greyscale values. If the .csv file does not exist the code will automatically generate a new file and populate it with values read from the mesh file. If this is not set the code defaults to the filename ``greyscale_{Vox.Name}.csv`` and assumes it's in the simulation output directory (again automatically generating the .csv file if it does not exist).
-* ``Vox.Num_Threads``: This sets the Number of OMP Threads to use for Voxelisation (only needed for CPU). OpenMP by default automatically detects the number of CPUs on the system and uses the maximum it can. This setting allows you to change the number of threads if desired.  
+* ``Vox.Num_Threads``: This sets the Number of OMP Threads to use for Voxelisation (only needed for CPU). OpenMP by default automatically detects the number of CPUs on the system and uses the maximum it can. This setting allows you to change the number of threads if desired.
 * ``Vox.image_format``: This option alows you to select the image format for the final output. If it is omitted (or set to None) the output defaults to a tiff virtual stack. However, when this option is set the code outputs each slice in z as a separate image in any format supported by Pillow (see the `PILLOW docs <https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html>`_ for the full list). Simply specify the format you require as a sting e.g. ``Vox.image_format="png"``.
 
 .. admonition:: Advanced tip
@@ -103,11 +103,11 @@ In this folder you will also find the file ``greyscale_Notch1.csv``. This file c
 
 
 .. admonition:: Action
-	   
+
    We encourage you to have play around with the various parameters set in the ``Vox`` Namespace.
-   
+
    Here are some Specific things you could do:
-   
+
    * Try Increasing the value ``Vox.Gridsize`` from 200 to 500 or even 1000. How does this effect the quality of the image and the run-time?
 
    * Try swapping ``Vox.Gridsize`` with ``Vox.unit_length`` what effect does this have?
@@ -123,7 +123,7 @@ Example 2: Running Cad2Vox Standalone
 Cad2Vox can be run on an existing mesh file separate from any other analysis within VirtualLab. This may be useful if, for example you have previously performed some long running simulation and now wish to voxelise the cad mesh without having to needlessly repeat the work in Salome/Code Aster.
 
 Setup
-*****		
+*****
 For this example we will voxelise the `AMAZE <hive.html#sample>`_  mesh that was previously generated from the `HIVE <../virtual_exp.html#HIVE>`_ analysis in tutorial 3. If you have previously completed exercise 3 the mesh should be located in ``Output/HIVE/Tutorials/Meshes/AMAZE_Sample.med``. If you have not completed tutorial 3 you can either do so, or you can run the following command:
 
     ``VirtualLab -f RunFiles/Tutorials/Mesh_Voxelisation/Setup_Task2.py``
@@ -155,7 +155,7 @@ This performs the meshing and a bare bones simulation (in non-interactive mode) 
                    RunMesh=False,
                    RunSim=False,
                    RunDA=False)
-		   
+
 	VirtualLab.Voxelise()
         VirtualLab.Cleanup()
 
@@ -165,10 +165,10 @@ This performs the meshing and a bare bones simulation (in non-interactive mode) 
         VirtualLab -f RunFiles/RunTutorials.py
 
 In this example you can see that we have turned off Salome and CodeAster by setting ``RunMesh=False``, ``RunSim=False``, and ``RunDA=False`` so only the Voxelisation will now take place.
-     
+
 Once again the file ``Input/HIVE/Tutorials/TrainingParameters_Cad2Vox.py`` is  setup with some sensible default values using the ``Vox`` Namespace. The output from the Voxelisation can be found in ``Output/HIVE/Tutorials/Voxel-Images/AMAZE_Sample.tiff``.
 
-Unlike the previous example this mesh has 3 regions representing 2 different materials, tungsten and copper (see ``Sim.Materials`` in ``training_parameters.py``. In this case the regions are labelled as: ``Block Sample``, ``Pipe Sample``, and ``Sample Tile``. These have been automatically read in from the mesh by Cad2Vox and each region has different greyscale values applied to make them visually distinct from one another.  
+Unlike the previous example this mesh has 3 regions representing 2 different materials, tungsten and copper (see ``Sim.Materials`` in ``training_parameters.py``. In this case the regions are labelled as: ``Block Sample``, ``Pipe Sample``, and ``Sample Tile``. These have been automatically read in from the mesh by Cad2Vox and each region has different greyscale values applied to make them visually distinct from one another.
 
 The greyscale values used for each region can be seen in the file ``Output/HIVE/Tutorials/Voxel-Images/greyscale_AMAZE.csv``. This file contains a simple csv table with 3 columns of data separated by commas. First is the region name as read from the mesh file by CadVox, Second is the region index assigned by Salome and the third is the greyscale value used in the output.
 
@@ -177,8 +177,8 @@ When first generated the greyscale values are evenly spread from 1 to 255 across
 Unfortunately, Salome does not use the most descriptive names for each region of the mesh (it just uses the keys from ``Sim.Materials``). Also to make things slightly more annoying the mesh file may contain objects that Salome uses internally (e.g. planes for calculating force/displacment etc.) with no easy way of distinguishing them automatically from the material regions.  Therefore, you may need to play around with the greyscale values of small number of regions to work out what the labels refer to. You can then rename them to something more appropriate and set the greyscale for any region you don't want to see in the final output to 0.
 
 .. tip::
-   
-   If you wish to change where the greyscale file is located you can use the previously mentioned parameter ``Vox.greyscale_file`` to set a custom path, remembering to include the .csv extension. Also if you mess up the file and want to regenerate the greyscale file simply delete the ``greyscale_AMAZE.csv`` file (or move it to another location) and re-run Cad2Vox. 
+
+   If you wish to change where the greyscale file is located you can use the previously mentioned parameter ``Vox.greyscale_file`` to set a custom path, remembering to include the .csv extension. Also if you mess up the file and want to regenerate the greyscale file simply delete the ``greyscale_AMAZE.csv`` file (or move it to another location) and re-run Cad2Vox.
 
 
 .. tip::
@@ -187,7 +187,7 @@ Unfortunately, Salome does not use the most descriptive names for each region of
 .. admonition:: Action
 
    As mentioned the labels for the mesh regions are not the most useful. Therefore, here are some Specific things you could try to rectify this:
-   
+
    * rename each region in the greyscale file to better describe what it represents (e.g. changing "Pipe sample" to "Copper Pipe").
 
    * Set the greyscale values so the regions are distinct from one another.
@@ -202,11 +202,11 @@ There are however, 3 caveats to bear in mind:
 #. We have not tested every possible format. We know that ``.med``, ``.stl``, ``.ply``, and ``.obj`` all work as expected. You are welcome to try other formats as they should work however, your results may vary.
 
 #. Cad2Vox can only work on meshes containing Triangles or Tetrahedrons no other cell shapes are currently supported.
-   
+
 #. Greyscale values from material data are only officially supported with ``.med`` since ``.obj``, ``.ply`` and ``.stl`` meshes don't contain material data. As such for other mesh formats the greyscale is just set to white (255) for the entire mesh. You can change this value in ``greyscale_Welsh-Dragon.csv`` where you will find the "region" listed as "Undefined".
 
-With these in mind actually using a different mesh format through VirtualLab is as simple as setting ``Vox.mesh`` to a string containing the name of the file you wish to use including the file extension. You can then place the mesh in the same default directory as you would for a ``.med`` mesh. Or as discussed earlier you can use the absolute path to the file, again including the extension. 
- 
+With these in mind actually using a different mesh format through VirtualLab is as simple as setting ``Vox.mesh`` to a string containing the name of the file you wish to use including the file extension. You can then place the mesh in the same default directory as you would for a ``.med`` mesh. Or as discussed earlier you can use the absolute path to the file, again including the extension.
+
 For our example we will use the Welsh Dragon Model which was released by `Bangor university <http://vmg.cs.bangor.ac.uk/downloads>`_, UK, for Eurographics 2011. The model can be downloaded `from here <https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_. This file should be placed in ``Output/Dragon/Tutorials/Meshes`` (or again you can set ``Vox.mesh`` inside ``Input/Dragon/Tutorials/TrainingParameters_Dragon.py`` to the path of the mesh file).
 
 .. admonition:: Action
@@ -234,7 +234,7 @@ For our example we will use the Welsh Dragon Model which was released by `Bangor
                    RunMesh=False,
                    RunSim=False,
                    RunDA=False)
-		   
+
 	VirtualLab.Voxelise()
         VirtualLab.Cleanup()
 
@@ -242,7 +242,7 @@ For our example we will use the Welsh Dragon Model which was released by `Bangor
    We can then once again launch **VirtualLab** using the following command::
 
         VirtualLab -f RunFiles/RunTutorials.py
-	
+
 The output is located in ``Output/Dragon/Tutorials/Voxel-Images/Welsh-Dragon.Tiff``. You may notice that since this mesh only contains triangle data the resulting voxel image is only colours voxels on the surface of the model. You will also notice that much like the dog bone in example 1 the model surface defaults to white (greyscale value of 255). This is because ``.stl`` files contain no information on materials so as such the entire mesh is set to a single greyscale value. Once again you can change this value in ``greyscale_Welsh-Dragon.csv`` if desired.
 
 .. admonition:: Auto-filling surface meshes
@@ -250,8 +250,7 @@ The output is located in ``Output/Dragon/Tutorials/Voxel-Images/Welsh-Dragon.Tif
    Because this final example uses a triangle mesh one final thing you can try is changing the option ``Vox.solid`` to True. This will use a different algorithm to auto-fill the interior volume. This works well on this particular mesh. However, if you wish to use this on your own surface meshes you will need to be aware of a few caveats:
 
    #. The algorithm used is not robust so depending on the geometry it may work well but can sometimes leave holes in the mesh.
-      
-   #. The algorithm used is also much slower than the normal surface algorithm.
-      
-   #. In the current version of Cad2Vox materials are not implemented when using solid. This means that the voxels in the model will always have a greyscale value of 255. The code will also not generate a greyscale csv file and will simply ignore any that already exist. 
 
+   #. The algorithm used is also much slower than the normal surface algorithm.
+
+   #. In the current version of Cad2Vox materials are not implemented when using solid. This means that the voxels in the model will always have a greyscale value of 255. The code will also not generate a greyscale csv file and will simply ignore any that already exist.

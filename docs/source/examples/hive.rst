@@ -57,7 +57,7 @@ Sample
 
 The sample selected to use in this tutorial is an additive manufactured sample which was part of the EU FP7 project "Additive Manufacturing Aiming Towards Zero Waste & Efficient Production of High-Tech Metal Products" (AMAZE, grant agreement No. 313781). The sample is a copper block on a copper pipe with a tungsten tile on the top.
 
-The file used to generate the mesh is :file:`Scripts/HIVE/Mesh/Monoblock.py`. The geometrical parameters, referenced in :numref:`Fig. %s <AMAZE>`, are::
+The file used to generate the mesh is :file:`Scripts/Experiments/HIVE/Mesh/Monoblock.py`. The geometrical parameters, referenced in :numref:`Fig. %s <AMAZE>`, are::
 
     Mesh.BlockWidth = 0.03
     Mesh.BlockLength = 0.05
@@ -99,14 +99,14 @@ The attributes *Length1D*-*3D* again specify the global mesh sizes. The mesh on 
 Simulation
 ***********
 
-The coolant is accounted for through the script :file:`Scripts/HIVE/Sim/Coolant_1D.py`. This calculates the heat flux between the pipe and the coolant dependent on the temperature on the wall of the pipe. This is usually referred to as the boiling curve. ::
+The coolant is accounted for through the script :file:`Scripts/Experiments/HIVE/Sim/Coolant_1D.py`. This calculates the heat flux between the pipe and the coolant dependent on the temperature on the wall of the pipe. This is usually referred to as the boiling curve. ::
 
     Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
     Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
 
 The dictionary *Pipe* specifies information about the geometry of the pipe, while *Coolant* provides properties about the fluid in the pipe.
 
-To calculate the thermal loading arising from the induction coil the file :file:`Scripts/HIVE/Sim/EM_Analysis.py` is used which performs the necessary **ERMES** analysis::
+To calculate the thermal loading arising from the induction coil the file :file:`Scripts/Experiments/HIVE/Sim/EM_Analysis.py` is used which performs the necessary **ERMES** analysis::
 
     Sim.CoilType = 'Test'
     Sim.CoilDisplacement = [0,0,0.0015]

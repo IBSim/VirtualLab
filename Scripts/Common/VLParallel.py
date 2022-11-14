@@ -27,7 +27,7 @@ def _time_fn(fn,*args,**kwargs):
 def PoolWrap(fn,VL,Dict,*args,**kwargs):
     # Try and get name & log file if standard convention has been followed
     if type(Dict)==dict:
-        Name = Dict.get('Name',None)
+        Name = Dict.get('_Name',None)
         LogFile = Dict.get('LogFile',None)
     else : Name, LogFile = None, None
 
@@ -85,7 +85,7 @@ def PoolReturn(Dicts,Returners):
     cpDicts = copy.deepcopy(Dicts)
     PlError = []
     for i, (Dict,Returner) in enumerate(zip(cpDicts,Returners)):
-        Name = Dict['Name']
+        Name = Dict['_Name']
         if isinstance(Returner,Exception) or isinstance(Returner,SystemExit):
             # Exception thrown
             PlError.append(Name)
@@ -107,12 +107,18 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
     if kwargs_list:
         assert len(kwargs_list)==len(Dicts)
 
+    analysis_names = list(Dicts.keys())
+    analysis_data = []
+    for analysis_name in analysis_names:
+        Dicts[analysis_name]['_Name'] = analysis_name
+        analysis_data.append(Dicts[analysis_name])
+
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
 
     # create list fof arguments
     PoolArgs = []
-    for i,_dict in enumerate(Dicts):
+    for i,_dict in enumerate(analysis_data):
         a = [fnc,VL,_dict]
         # add args_list info, if it exists
         if args_list:
@@ -164,5 +170,6 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
 
 
     # Check if errors have been returned & update dictionaries
-    Errorfnc = PoolReturn(Dicts,Res)
+    Errorfnc = PoolReturn(analysis_data,Res)
+
     return Errorfnc

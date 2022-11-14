@@ -57,8 +57,7 @@ class Method(Method_base):
 
             # ======================================================================
             # Create dictionary for each analysis
-            MeshDict = {'Name':MeshName,
-                        'MESH_FILE':"{}.med".format(MeshPath),
+            MeshDict = {'MESH_FILE':"{}.med".format(MeshPath),
                         'TMP_CALC_DIR':"{}/Mesh/{}".format(VL.TEMP_DIR, MeshName),
                         'FileInfo':File_func,
                         'Parameters':Parameters
@@ -123,8 +122,7 @@ class Method(Method_base):
                   '~~~ Starting Meshing ~~~\n'\
                   '~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
-        MeshDicts = list(self.Data.values())
-        Errorfnc = VLPool(VL,self.GetPoolRun(), MeshDicts)
+        Errorfnc = VLPool(VL,self.GetPoolRun(), self.Data)
         if Errorfnc:
             VL.Exit(VLF.ErrorMessage("\nThe following meshes finished with errors:\n{}".format(Errorfnc)),
                     Cleanup=False)

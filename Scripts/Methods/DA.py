@@ -43,8 +43,7 @@ class Method(Method_base):
 
             # ==========================================================================
             # Create dictionary for each analysis
-            DADict = {'Name':DAName,
-                     'CALC_DIR':CALC_DIR,
+            DADict = {'CALC_DIR':CALC_DIR,
                      'TMP_CALC_DIR':"{}/{}".format(VL.tmpDA_DIR, DAName),
                      'Parameters':Namespace(**ParaDict),
                      'FileInfo':File_func,
@@ -84,10 +83,7 @@ class Method(Method_base):
                   '~~~ Starting Data Analysis ~~~\n'\
                   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n', Print=True)
 
-        NbDA = len(self.Data)
-        DADicts = list(self.Data.values())
-
-        Errorfnc = VLPool(VL,self.GetPoolRun(),DADicts)
+        Errorfnc = VLPool(VL,self.GetPoolRun(),self.Data)
         if Errorfnc:
             VL.Exit(VLF.ErrorMessage("The following DA routine(s) finished with errors:\n{}".format(Errorfnc)),
                     Cleanup=False)

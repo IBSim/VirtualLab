@@ -33,8 +33,7 @@ class Method(Method_base):
 
             # ======================================================================
             # Create dictionary for each analysis
-            SimDict = {'Name':SimName,
-                        'TMP_CALC_DIR':"{}/Sim/{}".format(VL.TEMP_DIR, SimName),
+            SimDict = { 'TMP_CALC_DIR':"{}/Sim/{}".format(VL.TEMP_DIR, SimName),
                         'CALC_DIR':CALC_DIR,
                         'PREASTER':"{}/PreAster".format(CALC_DIR),
                         'ASTER':"{}/Aster".format(CALC_DIR),
@@ -128,6 +127,7 @@ class Method(Method_base):
         '''
 
         Parameters = SimDict["Parameters"]
+
         # Create CALC_DIR where results for this sim will be stored
         os.makedirs(SimDict['CALC_DIR'],exist_ok=True)
         # Write Parameters used for this sim to CALC_DIR
@@ -227,10 +227,9 @@ class Method(Method_base):
 
         # Run high throughput part in parallel
         NbSim = len(self.Data)
-        SimDicts = list(self.Data.values())
         kwargs_list = [kwargs]*NbSim # Duplicate kwargs in to list for parallelisation
 
-        Errorfnc = VLPool(VL,self.GetPoolRun(),SimDicts,kwargs_list=kwargs_list)
+        Errorfnc = VLPool(VL,self.GetPoolRun(),self.Data,kwargs_list=kwargs_list)
 
         if Errorfnc:
             VL.Exit(VLF.ErrorMessage("The following Simulation routine(s) finished with errors:\n{}".format(Errorfnc)),

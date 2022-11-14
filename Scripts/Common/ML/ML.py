@@ -126,6 +126,9 @@ def GetMetrics2(pred,target):
 def Openhdf(File,style,timer=5):
     ''' Repeatedly attemps to open hdf file if it is held by another process for
     the time allocated by timer '''
+    if not os.path.isfile(File):
+        print(VLF.ErrorMessage("The following file does not exist:\n{}".format(File)))
+        sys.exit()
     st = time.time()
     while True:
         try:

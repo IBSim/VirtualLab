@@ -52,13 +52,13 @@ Name of the file which includes values for all the required variables for the se
 
 The variables in this file are assigned to different ``Namespaces``, which is essentially an empty class that variables can be assigned to.
 
-The ``Mesh`` namespace defines the parameters required by **SALOME** to construct a mesh, such as geometric dimensions or mesh fineness. The script :file:`$Mesh.File.py` is executed in **SALOME** using the attributes of ``Mesh`` to create the geometry and subsequent mesh. This script must be in directory :file:`Scripts/$SIMULATION/Mesh`. The meshes will be stored in ``MED`` format under the name ``Mesh.Name`` in the 'Meshes' directory of the `Project`_, i.e. :file:`Output/$SIMULATION/$PROJECT/Meshes`.
+The ``Mesh`` namespace defines the parameters required by **SALOME** to construct a mesh, such as geometric dimensions or mesh fineness. The script :file:`$Mesh.File.py` is executed in **SALOME** using the attributes of ``Mesh`` to create the geometry and subsequent mesh. This script must be in directory :file:`Scripts/Experiments/$SIMULATION/Mesh`. The meshes will be stored in ``MED`` format under the name ``Mesh.Name`` in the 'Meshes' directory of the `Project`_, i.e. :file:`Output/$SIMULATION/$PROJECT/Meshes`.
 
-The ``Sim`` namespace define the parameters needed by **Code_Aster** to perform a FE simulation. The command file :file:`$Sim.AsterFile.comm` is executed in **Code_Aster** using the attributes of ``Sim`` to initiate the simulation. This script must be in directory :file:`Scripts/$SIMULATION/Sim`. Optional pre and post-processing scripts can be run by specifying them in ``Sim.PreAsterFile`` and ``Sim.PostAsterFile`` respectively. These scripts, which are executed before and after the **Code_Aster** are also found in :file:`Scripts/$SIMULATION/Sim`. Simulation information and data will be stored in the sub-directory ``Sim.Name`` of the project directory, i.e. :file:`Output/$SIMULATION/$PROJECT/$Sim.Name`.
+The ``Sim`` namespace define the parameters needed by **Code_Aster** to perform a FE simulation. The command file :file:`$Sim.AsterFile.comm` is executed in **Code_Aster** using the attributes of ``Sim`` to initiate the simulation. This script must be in directory :file:`Scripts/Experiments/$SIMULATION/Sim`. Optional pre and post-processing scripts can be run by specifying them in ``Sim.PreAsterFile`` and ``Sim.PostAsterFile`` respectively. These scripts, which are executed before and after the **Code_Aster** are also found in :file:`Scripts/Experiments/$SIMULATION/Sim`. Simulation information and data will be stored in the sub-directory ``Sim.Name`` of the project directory, i.e. :file:`Output/$SIMULATION/$PROJECT/$Sim.Name`.
 
-The ``DA`` namespace define the parameters needed to perform data analysis (DA) on the data collected from simulations. These are generally python scripts. These files can be found in :file:`Scripts/$SIMULATION/DA`. Like with the simulations, results for the data analysis is saved to :file:`Output/$SIMULATION/$PROJECT/$DA.Name`.
+The ``DA`` namespace define the parameters needed to perform data analysis (DA) on the data collected from simulations. These are generally python scripts. These files can be found in :file:`Scripts/Experiments/$SIMULATION/DA`. Like with the simulations, results for the data analysis is saved to :file:`Output/$SIMULATION/$PROJECT/$DA.Name`.
 
-.. note:: ``Sim.Name`` and ``DA.Name`` can be written as paths to save in to sub folders of a project directory, i.e. ``Sim.Name`` = 'Test/Simulation' will create a sub-directory 'Test' in the project directory.
+.. note:: ``Mesh.Name``, ``Sim.Name`` and ``DA.Name`` can be written as paths to save in to sub folders of a project directory, i.e. ``Sim.Name`` = 'Test/Simulation' will create a sub-directory 'Test' in the project directory.
 
 
 Parameters_Var
@@ -215,4 +215,3 @@ This function is the data analysis routine. The analysis, defined using the name
 ***********************
 
 This function is the routine to call Cad2Vox. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images saved to Output/$SIMULATION/$PROJECT/Voxel-Images. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
-

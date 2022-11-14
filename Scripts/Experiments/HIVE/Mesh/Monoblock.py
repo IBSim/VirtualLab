@@ -5,6 +5,13 @@ sys.dont_write_bytecode=True
 from types import SimpleNamespace
 from Scripts.Common.VLFunctions import VerifyParameters
 
+# States the normal direction for each surface
+SurfaceNormals = np.array([['TileFront', 'NX'], ['TileBack', 'NX'], ['TileSideA', 'NY'],
+                          ['TileSideB', 'NY'], ['TileTop', 'NZ'],
+                          ['BlockFront', 'NX'], ['BlockBack', 'NX'], ['BlockSideA', 'NY'],
+                          ['BlockSideB', 'NY'],['BlockBottom', 'NZ'], ['BlockTop', 'NZ']])
+
+
 def Example():
     '''
     Example parameter values.
@@ -369,7 +376,7 @@ def Create(Parameters):
     # Fillet sub-mesh
     # Frac of 1/25 pus about 2 elements over the fillet. Increasing to 1/50 will
     # make 5 elements over the fillet
-    frac = 1/25
+    frac = getattr(Parameters,'Deflection',1/25)
     deflection = Parameters.Fillet*frac
     minl = frac*Parameters.Fillet*6*11**0.5
     maxl = 2*minl

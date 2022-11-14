@@ -45,14 +45,12 @@ This example introduces some of the post-processing capabilities available in **
 
        VirtualLab.DA()
 
-       VirtualLab.Cleanup()
-
 In the *Parameters_Master* file :file:`Inputs/LFA/Tutorials/TrainingParameters.py` you will again find namespace ``Mesh`` and ``Sim`` along with *DA*.
 
 Sample
 ******
 
-The file used by **SALOME** to create the geometry and generate the mesh is :file:`Scripts/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry, referenced in :numref:`Fig. %s <LFA_Disc>` are::
+The file used by **SALOME** to create the geometry and generate the mesh is :file:`Scripts/Experiments/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry, referenced in :numref:`Fig. %s <LFA_Disc>` are::
 
     Mesh.Radius = 0.0063
     Mesh.HeightB = 0.00125
@@ -140,7 +138,7 @@ The sample is set to initially have a uniform temperature profile of 20 |deg| C.
     Sim.LaserT= 'Trim'
     Sim.LaserS = 'Gauss'
 
-*Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/LFA/Laser`. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian'.
+*Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/Experiments/LFA/Laser`. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian'.
 
 A convective boundary condition (BC) is also applied by defining the heat transfer coefficient (HTC) and the external temperature::
 
@@ -159,7 +157,7 @@ As previously mentioned, this tutorial introduces post-processing in **VirtualLa
     Sim.PostAsterFile = 'ConductivityCalc'
     Sim.Rvalues = [0.1, 0.5]
 
-The script :file:`Scripts/LFA/PostAster/ConductivityCalc.py` is used to create plots of the temperature distribution over time, and calculate the thermal conductivity from the simulation data.
+The script :file:`Scripts/Experiments/LFA/Sim/ConductivityCalc.py` is used to create plots of the temperature distribution over time, and calculate the thermal conductivity from the simulation data.
 
 The variables associated with *DA* will be discussed shortly.
 
@@ -294,7 +292,7 @@ In the *Parameters_Master* file :file:`TrainingParameters.py` you will see the N
     DA.CaptureTime = 0.01
     # DA.PVGUI = True
 
-The data anlysis will be performed on the results in the directory specified by *DA.Name*. The file :file:`Scripts/LFA/DA/Images.py` captures images of the simulations at time *CaptureTime*.
+The data anlysis will be performed on the results in the directory specified by *DA.Name*. The file :file:`Scripts/Experiments/LFA/DA/Images.py` captures images of the simulations at time *CaptureTime*.
 
 Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using a Virtual Machine (VM). The attribute *PVGUI*, which is currently ignored due to the preceding '#', forces **ParaVis** to run the script in the GUI where the rendering works fine.
 

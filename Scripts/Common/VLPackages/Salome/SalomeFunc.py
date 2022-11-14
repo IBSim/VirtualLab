@@ -88,7 +88,7 @@ def ObjIndex(NewGeom, OldGeom, OldIndex, Tol=1e-9, Strict=True):
                 # Check the measurement of each shape with the original to see if they match. If they do
                 # make an intersection of both shapes to check if they are in the same place
                 if Check and Strict:
-                    intersect = geompy.MakeCommonList([obj, shape], True)
+                    intersect = geompy.MakeCommonList([obj, shape], False)
                     IntMeasure = geompy.BasicProperties(intersect)[CheckIx]
                     intersect.UnRegister()
 

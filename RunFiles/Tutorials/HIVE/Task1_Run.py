@@ -32,6 +32,6 @@ VirtualLab.Parameters(
 
 VirtualLab.Mesh()
 
-VirtualLab.Sim(ShowRes=True)
+VirtualLab.Sim(RunERMES=False,RunAster=False,ShowRes=True)
 
 VirtualLab.DA()

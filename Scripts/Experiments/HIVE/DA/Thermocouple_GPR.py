@@ -196,7 +196,7 @@ def Optimise_Field(VL,DADict):
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
         Script = "{}/PV_TCPlacement.py".format(dir_path)
-        Salome.Run(Script, GUI=False, DataDict=DataDict,tempdir=VL.TEMP_DIR)
+        Salome.Run(Script, GUI=True, DataDict=DataDict,tempdir=VL.TEMP_DIR)
 
     # ==========================================================================
     # Make results file containing the true solution & inversely informed temperature fields

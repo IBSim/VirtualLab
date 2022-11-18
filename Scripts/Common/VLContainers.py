@@ -5,7 +5,6 @@ import copy
 import datetime
 import json
 import os
-import numpy as np
 import shutil
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
@@ -16,8 +15,19 @@ from .VLContainer import Container_Utils as Utils
 ######################     base module class     ##############################
 ###############################################################################
 class VL_Module(VLSetup):
+    def __init__(self, Simulation, Project,Cont_id=2):
+        #perform setup steps that are common to both VL_modules and VL_manger
+        self._Common_init(Simulation, Project,Cont_id)
+        # create tcp socket for communication with the server
+        self.port = 9000 + int(Cont_id)
+        self.tcp_sock = Utils.create_tcp_socket(port=self.port)
+        # Specify default settings
+        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
+                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
+                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+
     def start_module(self):
-        #create a tcp socket and wait to receive runs to perform from the server
+        #send ready message then wait to receive runs to perform from the server
         ready_msg = {"msg":"Ready","Cont_id":self.Container}
         Utils.send_data(self.tcp_sock, ready_msg)
         while True:
@@ -63,16 +73,11 @@ class VL_Module(VLSetup):
 ###############################################################################
 class CIL_Setup(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=2):
+        super().__init__(Simulation, Project,Cont_id)
     	#################################################################
         # import run/setup functions for CIL
         from .VLTypes import CIL as CILFn
         self.CILFn = CILFn
-        #perform setup steps that are common to both VL_modules and VL_manger
-        self._Common_init(Simulation, Project,Cont_id)
-        # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
-                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
 
     def Parameters(self, Parameters_Master, Parameters_Var=None, RunCIL=False):
         # Update args with parsed args
@@ -89,16 +94,7 @@ class CIL_Setup(VL_Module):
         self.Parameters_Master_str = Parameters_Master
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-        
-        while True:
-            data = Utils.receive_data(self.tcp_sock)
-            if data:
-                if data['msg'] == 'Container_runs':
-                    self.Logger(f"CIL container {self.Container} received job list from server.",print=True)
-                    full_task_list = data['tasks']
-                    run_list =full_task_list[str(self.Container)] 
-                    break
-        
+        self.start_module()
         self.CILFn.Setup(self,RunCIL,run_list)
         
      #Hook for CIL       
@@ -124,16 +120,11 @@ class CIL_Setup(VL_Module):
 ###############################################################################
 class GVXR_Setup(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=3):
-    	#################################################################
+        super().__init__(Simulation, Project,Cont_id)
         # import run/setup functions for GVXR
         from .VLTypes import GVXR as GVXRFn
         self.GVXRFn = GVXRFn
-        #perform setup steps that are common to both VL_modules and VL_manger
-        self._Common_init(Simulation, Project,Cont_id)
-        # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
-                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+
         
     def Parameters(self, Parameters_Master, Parameters_Var=None, RunGVXR=False):
         # Update args with parsed args
@@ -175,16 +166,11 @@ class GVXR_Setup(VL_Module):
 ###############################################################################
 class VL_SIM(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=4):
+        super().__init__(Simulation, Project,Cont_id)
     	#################################################################
         # import run/setup functions for Salome and ERMES
         from .VLTypes import Sim as SimFn
         self.SimFn = SimFn
-        #perform setup steps that are common to both VL_modules and VL_manger
-        self._Common_init(Simulation, Project,Cont_id)
-        # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
-                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
 
     def Parameters(self, Parameters_Master, Parameters_Var=None, RunSim=False, Import=False):
@@ -220,16 +206,11 @@ class VL_SIM(VL_Module):
 ###############################################################################
 class VL_Mesh(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=5):
+        super().__init__(Simulation, Project,Cont_id)
     	#################################################################
         # import run/setup functions for Code Aster?
         from .VLTypes import Mesh as MeshFn
         self.MeshFn=MeshFn
-        #perform setup steps that are common to both VL_modules and VL_manger
-        self._Common_init(Simulation, Project,Cont_id)
-        # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
-                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
 
     def Parameters(self, Parameters_Master, Parameters_Var=None, RunMesh=False, Import=False):
@@ -265,16 +246,12 @@ class VL_Mesh(VL_Module):
 ###############################################################################
 class VL_Comms_Test(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=6):
+        super().__init__(Simulation, Project,Cont_id)
     	#################################################################
         # import run/setup functions for tests
         from .VLTypes import Comms as TestFn
         self.TestFn = TestFn
-        #perform setup steps that are common to both VL_modules and VL_manger
-        self._Common_init(Simulation, Project,Cont_id)
-        # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
-                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+
 
     def Parameters(self, Parameters_Master, Parameters_Var=None, RunCIL=False):
         # Update args with parsed args
@@ -291,16 +268,7 @@ class VL_Comms_Test(VL_Module):
         self.Parameters_Master_str = Parameters_Master
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-        
-        while True:
-            data = Utils.receive_data(self.tcp_sock)
-            if data:
-                if data['msg'] == 'Container_runs':
-                    self.Logger(f"Test container {self.Container} received job list from server.",print=True)
-                    full_task_list = data['tasks']
-                    run_list =full_task_list[str(self.Container)] 
-                    break
-        
+        self.start_module()
         self.TestFn.Setup(self,RunTest)
 
     #Hook for CIL       

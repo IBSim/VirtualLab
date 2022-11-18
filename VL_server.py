@@ -174,12 +174,12 @@ def process(vlab_dir,use_singularity):
             else:
                 # this monstrosity logs the user in as "themself" to allow safe access top x11 graphical apps"
                 #see http://wiki.ros.org/docker/Tutorials/GUI for more details
-                container_cmd = 'docker run -p 9999:9999 \
-                                --rm -it --user=$(id -u $USER):$(id -g $USER)'\
-                                '--env="DISPLAY" \--volume="/etc/group:/etc/group:ro"' \
-                                '--volume="/etc/passwd:/etc/passwd:ro"' \
-                                '--volume="/etc/shadow:/etc/shadow:ro"' \
-                                '--volume="/etc/sudoers.d:/etc/sudoers.d:ro"' \
+                
+                container_cmd = 'docker run '\
+                                 '--rm -it '\
+                                 '--env="DISPLAY" --env="QT_X11_NO_MITSHM=1" '\
+                                 '--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" '
+
                                 '--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw"'
 
             sock_lock.acquire()

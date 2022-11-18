@@ -86,12 +86,16 @@ def RunJob(**kwargs):
     sock.close()
     return container_return
 
-def create_tcp_socket():
-    ''' function to create the tcp socket and connect to it.'''
+def create_tcp_socket(port=9000):
+    ''' Function to create the tcp socket and connect to it. 
+        The default port is 9000 for coms with the containers. 
+        This however should be set to 5000 for coms 
+        with the host process. '''
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
     host = "0.0.0.0"
     sock.connect((host, 9999))
+    sock.connect((host, port))   
     return sock
 
 def Cont_Started(Cont_id):
@@ -191,7 +195,7 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
                         --nv {Module["Apptainer_file"]}'
     else:
         #docker
-        call_string = f'-v /run:/run -v {str(vlab_dir)}:/home/ibsim/VirtualLab --gpus all {Module["Docker_url"]}:{Module["Tag"]} '
+        call_string = f'-v /run:/run -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} '
 
     command = f'{Module["Run_script"]} \
                {param_master} {param_var} {Project} {Simulation} {ID}'

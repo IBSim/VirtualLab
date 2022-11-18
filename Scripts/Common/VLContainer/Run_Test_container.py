@@ -1,5 +1,4 @@
 # main function called from container to run Comms Test
-#!/usr/bin/env python3
 import argparse
 import os
 import json

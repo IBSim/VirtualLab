@@ -44,14 +44,16 @@ class VLSetup():
         # Specify default settings
         self.Settings(Mode='H',Launcher='Process',NbJobs=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+                      MaterialDir=VLconfig.MaterialsDir,Max_Containers=1,
+                      Cleanup=True)
             
+        self.tcp_sock = Utils.create_tcp_socket()
         data = {"msg":"VirtualLab started","Cont_id":1}
         data_string = json.dumps(data)
         Utils.send_data(self.tcp_sock,data)
-        self.Logger('\n############################\n'\
-                        '### Launching VirtualLab ###\n'\
-                        '############################\n',Print=True)
+        #self.Logger('\n############################\n'\
+        #                '### Launching VirtualLab ###\n'\
+        #                '############################\n',Print=True)
 
     def handle_except(self,*args):
         ''' 
@@ -234,7 +236,7 @@ class VLSetup():
     def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
                     RunMesh=True, RunSim=True, RunDA=True,
                     RunVox=True, RunGVXR=True, RunCIL=True,
-                    RunTest=False, Import=False):
+                    RunTest=True, Import=False):
 
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
@@ -554,6 +556,7 @@ class VLSetup():
         return_value=Utils.RunJob(Cont_id=1,Tool="CIL",
         # Note CIL uses GVXR namespace
         Num_Cont=len(self.container_list['GVXR']),
+        Cont_runs=self.container_list['GVXR'],
         Parameters_Master=self.Parameters_Master_str,
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,
@@ -572,7 +575,8 @@ class VLSetup():
     def Test_Coms(self,**kwargs):
         # if in main container submit job request
         return_value=Utils.RunJob(Cont_id=1,Tool="Test_Comms",
-        Num_Cont=1,
+        Num_Cont=len(self.container_list['Test']),
+        Cont_runs=self.container_list['Test'],
         Parameters_Master=self.Parameters_Master_str,
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,

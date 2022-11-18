@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash --login
 while getopts "m:v:p:s:I:" options; do
   case "${options}" in
       m)
@@ -19,6 +19,10 @@ while getopts "m:v:p:s:I:" options; do
 esac
 done
 cd /home/ibsim/VirtualLab
+source /etc/profile.d/conda.sh
+ls /home/ibsim/.conda
+whoami
+conda activate coms_test
 export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH
-python3 Scripts/Common/VLContainer/Run_Test_container.py $master $Var $Project $Simulation $ID
+python Scripts/Common/VLContainer/Run_Test_container.py $master $Var $Project $Simulation $ID
 exit $?

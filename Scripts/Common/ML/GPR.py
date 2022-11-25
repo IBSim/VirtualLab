@@ -100,7 +100,12 @@ def Create_GPR(TrainIn, TrainOut, prev_state=False, multitask=False, **kwargs):
         # Make list of kwargs dictionaries for each model
         # same input scale for all inputs
         input_scale = kwargs.pop('input_scale') if 'input_scale' in kwargs else None
+        output_scale = kwargs.pop('output_scale') if 'output_scale' in kwargs else None
         kwargs_list = [{'input_scale':input_scale} for _ in range(NbModel)]
+        if output_scale is not None:
+            for i,dict  in enumerate(kwargs_list):
+                dict['output_scale'] = output_scale[:,i]
+
         for key,val in kwargs.items():
             if type(val) in (list,tuple):
                 if len(val)!=NbModel:

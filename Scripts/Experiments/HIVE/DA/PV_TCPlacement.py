@@ -1,7 +1,9 @@
 import sys
 import os
+
 import salome
 import SalomeFunc
+import PVFunc
 
 import pvsimple
 pvsimple.ShowParaviewView()
@@ -18,7 +20,6 @@ pvsimple.SetActiveSource(Resrmed)
 
 # get active view
 renderView1 = pvsimple.GetActiveViewOrCreate('RenderView')
-
 mL_resrmedDisplay = pvsimple.Show(Resrmed, renderView1)
 mL_resrmedDisplay.Representation = 'Surface'
 
@@ -38,14 +39,27 @@ for c in DataDict['Centres']:
     sphere1Display.DiffuseColor = [0.6666666666666666, 0.3333333333333333, 0.0]
 
 #===============================================================================
+# Create images
+
+FocalPoint = [0.015, 0.015, 0.0]
+alpha1,alpha2,radius = 45,30,0.25
+renderView1 = PVFunc.Camera(FocalPoint,alpha1,alpha2,radius)
+pvsimple.SaveScreenshot('{}/image_1.png'.format(DataDict['OutputDir']),
+                        renderView1)
+
+alpha1= alpha1+180
+renderView1 = PVFunc.Camera(FocalPoint,alpha1,alpha2,radius)
+pvsimple.SaveScreenshot('{}/image_2.png'.format(DataDict['OutputDir']),
+                        renderView1)
+
 # Create orthogonal images of component to show thermocouple locations
-FP = list(cam.GetFocalPoint()) #focal point
-for i,comp in enumerate(['x','y','z']):
-    for direction,ext in zip([1,-1],['p','n']):
-        _fp = FP.copy()
-        _fp[i] = direction
-        # renderView1.CameraPosition = _fp
-        cam.SetPosition(_fp)
-        renderView1.ResetCamera()
-        pvsimple.SaveScreenshot('{}/image_{}{}.png'.format(DataDict['OutputDir'],comp,ext),
-                                renderView1)
+# FP = list(cam.GetFocalPoint()) #focal point
+# for i,comp in enumerate(['x','y','z']):
+#     for direction,ext in zip([1,-1],['p','n']):
+#         _fp = FP.copy()
+#         _fp[i] = direction
+#         # renderView1.CameraPosition = _fp
+#         cam.SetPosition(_fp)
+#         renderView1.ResetCamera()
+#         pvsimple.SaveScreenshot('{}/image_{}{}.png'.format(DataDict['OutputDir'],comp,ext),
+#                                 renderView1)

@@ -10,7 +10,7 @@ from Scripts.Common.VirtualLab import VLSetup
 
 Simulation='HIVE'
 Project='Tutorials'
-Parameters_Master='TrainingParameters_Task2'
+Parameters_Master='TrainingParameters'
 Parameters_Var=None
 
 #===============================================================================
@@ -28,12 +28,11 @@ VirtualLab.Settings(
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=False)
+           RunMesh=False
+           )
 
 VirtualLab.Mesh()
 
-VirtualLab.Sim(
-           RunAster=False,
-           ShowRes=True)
+VirtualLab.Sim(RunCoolant=False,RunERMES=True,RunAster=False,ShowRes=True)
 
 VirtualLab.DA()

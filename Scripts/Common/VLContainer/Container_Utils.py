@@ -55,13 +55,13 @@ def RunJob(**kwargs):
     if isinstance( kwargs['Parameters_Master'],Namespace):
         raise Exception("Passing in Namespaces is not currently supported for Container tools. \
         These must be strings pointing to a Runfile.")
-    
+    sock = kwargs['tcp_socket']
+    kwargs.pop('tcp_socket')
     #data_string = json.dumps(data)
-    sock = create_tcp_socket()
-    # send a signal to VL_server saying you want to run a CIL container
+    # send a signal to VL_server saying you want to spawn a container
     send_data(sock, kwargs)
     target_ids = []
-    #wait to recive message saying the tool is finished before continuing on.
+    #wait to receive message saying the tool is finished before continuing on.
     while True:
         rec_dict=receive_data(sock)
         if rec_dict:
@@ -74,7 +74,7 @@ def RunJob(**kwargs):
     while True:
         rec_dict = receive_data(sock)
         if rec_dict:
-            if rec_dict['msg'] == 'Success' and rec_dict['Cont_id'] == 1:
+            if rec_dict['msg'] == 'Success' and rec_dict['Cont_id'] == '1':
                 target_ids.remove(rec_dict['target_id'])
             if len(target_ids) == 0:
                 container_return = '0'
@@ -93,23 +93,21 @@ def create_tcp_socket(port=9000):
         with the host process. '''
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+    sock.setblocking(True)
     host = "0.0.0.0"
-    sock.connect((host, 9999))
     sock.connect((host, port))   
     return sock
 
-def Cont_Started(Cont_id):
+def Cont_Started(Cont_id,sock):
     ''' Function to send a Message to the main script to say the container has started.'''
     data = {"msg":"started","Cont_id":Cont_id}
-    sock = create_tcp_socket()
     send_data(sock, data)
     sock.close()
     return
 
-def Cont_Finished(Cont_id):
+def Cont_Finished(Cont_id,sock):
     ''' Function to send a Message to the main script to say the container has Finished.'''
     data = {"msg":"Finished","Cont_id":Cont_id}
-    sock = create_tcp_socket()
     send_data(sock, data)
     sock.close()
     return
@@ -165,6 +163,7 @@ def receive_data(conn,payload_size=2048,debug=False):
 
     '''
     received_payload = conn.recv(payload_size)
+
     if not received_payload:
         payload = None
     else:

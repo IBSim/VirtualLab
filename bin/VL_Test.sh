@@ -19,9 +19,7 @@ while getopts "m:v:p:s:I:" options; do
 esac
 done
 cd /home/ibsim/VirtualLab
-source /etc/profile.d/conda.sh
-ls /home/ibsim/.conda
-whoami
+source /opt/miniconda3/etc/profile.d/conda.sh
 conda activate coms_test
 export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH
 python Scripts/Common/VLContainer/Run_Test_container.py $master $Var $Project $Simulation $ID

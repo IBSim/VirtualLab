@@ -34,11 +34,13 @@ class VLSetup():
         #perform setup steps that are common to both VL_modules and VL_manger
         self._Common_init(Simulation, Project,Cont_id)
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
-
+        self.tcp_sock = Utils.create_tcp_socket()
         # Unique ID
-        stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
-        output = stream.readlines()
-        ver,branch = output[0].split()[0],output[1].strip()
+        #stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
+        #output = stream.readlines()
+        #ver,branch = output[0].split()[0],output[1].strip()
+        ver=1
+        branch=1
         self._ID ="{}_{}_{}".format(ver,branch,self._time)
 
         # Specify default settings
@@ -46,14 +48,13 @@ class VLSetup():
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
                       MaterialDir=VLconfig.MaterialsDir,Max_Containers=1,
                       Cleanup=True)
-            
-        self.tcp_sock = Utils.create_tcp_socket()
+
         data = {"msg":"VirtualLab started","Cont_id":1}
         data_string = json.dumps(data)
         Utils.send_data(self.tcp_sock,data)
-        #self.Logger('\n############################\n'\
-        #                '### Launching VirtualLab ###\n'\
-        #                '############################\n',Print=True)
+        self.Logger('\n############################\n'\
+                        '### Launching VirtualLab ###\n'\
+                        '############################\n',Print=True)
 
     def handle_except(self,*args):
         ''' 
@@ -102,8 +103,6 @@ class VLSetup():
         # Define variables
         self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
         self.Project = self._ParsedArgs.get('Project',Project)
-        # create tcp socket for communication with the server
-        self.tcp_sock = Utils.create_tcp_socket()
         # ======================================================================
 
         # ======================================================================
@@ -544,7 +543,8 @@ class VLSetup():
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,
         Simulation=self.Simulation,
-        Settings=self.settings_dict)
+        Settings=self.settings_dict,
+        tcp_socket=self.tcp_sock)
 
         if return_value != '0':
             #an error ocured so exit VirtualLab
@@ -561,7 +561,8 @@ class VLSetup():
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,
         Simulation=self.Simulation,
-        Settings=self.settings_dict)
+        Settings=self.settings_dict,
+        tcp_socket=self.tcp_sock)
 
         if return_value != '0':
             #an error occurred so exit VirtualLab
@@ -581,7 +582,8 @@ class VLSetup():
         Parameters_Var=self.Parameters_Var_str,
         Project=self.Project,
         Simulation=self.Simulation,
-        Settings=self.settings_dict)
+        Settings=self.settings_dict,
+        tcp_socket=self.tcp_sock)
 
     def Logger(self,Text='',**kwargs):
         Prnt = kwargs.get('Print',False)

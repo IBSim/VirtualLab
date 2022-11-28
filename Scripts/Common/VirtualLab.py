@@ -26,23 +26,14 @@ class VLSetup():
         #####################################################
         # import run/setup functions for curently all but CIL
         from .VLTypes import DA as DAFn
-        Vox as VoxFn
-        self.MeshFn=MeshFn
-        self.SimFn=SimFn
         self.DAFn=DAFn
-        self.VoxFn=VoxFn
         #perform setup steps that are common to both VL_modules and VL_manger
         self._Common_init(Simulation, Project,Cont_id)
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
         self.tcp_sock = Utils.create_tcp_socket()
         # Unique ID
-        #stream = os.popen("cd {};git show --oneline -s;git rev-parse --abbrev-ref HEAD".format(VLconfig.VL_DIR))
-        #output = stream.readlines()
-        #ver,branch = output[0].split()[0],output[1].strip()
-        ver=1
-        branch=1
-        self._ID ="{}_{}_{}".format(ver,branch,self._time)
-
+        git_id = self._git()
+        self._ID ="{}_{}".format(git_id,self._time)
         # Specify default settings
         self.Settings(Mode='H',Launcher='Process',NbJobs=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
@@ -731,3 +722,15 @@ class VLSetup():
             return
         else:
             return
+    
+    def _git(self):
+        version,branch = '<version>','<branch>'
+        try:
+            from git import Repo
+            repo = Repo(VLconfig.VL_DIR)
+            sha = repo.head.commit.hexsha
+            version = repo.git.rev_parse(sha, short=7)
+            branch = repo.active_branch.name
+        except :
+            pass
+        return "{}_{}".format(version,branch)

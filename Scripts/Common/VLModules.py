@@ -192,7 +192,7 @@ class GVXR_Setup(VL_Module):
         print(exitstr)
 
 ###############################################################################
-########################     Salome/ERMES   ###################################
+########################     Code Aster  ###################################
 ###############################################################################
 class VL_SIM(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=4):
@@ -219,7 +219,6 @@ class VL_SIM(VL_Module):
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
         self.start_module()
-        #self.SimFn.Setup(self,RunSim,self.run_list)
         self.SimFn.Setup(self,RunSim, Import)
 
      #Hook for Salome/Ermes       
@@ -232,7 +231,7 @@ class VL_SIM(VL_Module):
         return self.SimFn.Run(self,**kwargs)
 
 ###############################################################################
-########################     Code Aster   ###################################
+########################     Salome   ###################################
 ###############################################################################
 class VL_Mesh(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=5):
@@ -304,3 +303,38 @@ class VL_Comms_Test(VL_Module):
     def Test_Coms(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return self.TestFn.Run(self)
+
+###############################################################################
+#########################     Cad2Vox     ##################################
+###############################################################################
+class VL_Vox(VL_Module):
+    def __init__(self, Simulation, Project,Cont_id=6):
+        super().__init__(Simulation, Project,Cont_id)
+    	#################################################################
+        # import run/setup functions for Cad2Vox
+        from .VLTypes import Vox as VoxFn
+        self.VoxFn = VoxFn
+
+
+    def Parameters(self, Parameters_Master, Parameters_Var=None, RunVox=False):
+        # Update args with parsed args
+        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
+        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
+        RunVox = self._ParsedArgs.get('RunVox',RunVox)
+        
+        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
+        # Note: CIL uses the GVXR namespace since many of the settings overlap.
+        VLNamespaces = ['Vox']
+        #Note: The call to GetParams converts params_master/var into Namespaces
+        # however we need to original strings for passing into other containers.
+        # So we will ned to get them here.
+        self.Parameters_Master_str = Parameters_Master
+        self.Parameters_Var_str = Parameters_Var
+        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
+        self.start_module()
+        self.VoxFn.Setup(self,RunVox)
+
+#hook in for cad2vox
+    def Voxelise(self,**kwargs):
+        kwargs = self._UpdateArgs(kwargs)
+        return self.VoxFn.Run(self,**kwargs)

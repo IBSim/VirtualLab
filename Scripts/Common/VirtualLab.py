@@ -25,7 +25,7 @@ class VLSetup():
     def __init__(self, Simulation, Project,Cont_id=1):
         #####################################################
         # import run/setup functions for curently all but CIL
-        from .VLTypes import Mesh as MeshFn, Sim as SimFn, DA as DAFn, \
+        from .VLTypes import DA as DAFn
         Vox as VoxFn
         self.MeshFn=MeshFn
         self.SimFn=SimFn
@@ -261,10 +261,7 @@ class VLSetup():
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
-        #self.MeshFn.Setup(self,RunMesh, Import)
-        #self.SimFn.Setup(self,RunSim, Import)
         self.DAFn.Setup(self,RunDA, Import)
-        self.VoxFn.Setup(self,RunVox)
         # get the number of runs defined in params for each module
         self.Num_runs=self._get_Num_Runs(bool_list,VLNamespaces)
         # get a list of all the containers and the runs they will process for each module
@@ -507,18 +504,46 @@ class VLSetup():
                     "in {}".format(func_name,file_path)))
 
         return func
-# add calls to runjob
-    # def Mesh(self,**kwargs):
-    #     kwargs = self._UpdateArgs(kwargs)
-    #     return self.MeshFn.Run(self,**kwargs)
+# Call to Run a container
+    def Mesh(self,**kwargs):
+        
+        # if in main contianer submit job request
+        return_value=Utils.RunJob(Cont_id=1,Tool="Salome",
+        Num_Cont=len(self.container_list['Mesh']),
+        Cont_runs=self.container_list['Mesh'],
+        Parameters_Master=self.Parameters_Master_str,
+        Parameters_Var=self.Parameters_Var_str,
+        Project=self.Project,
+        Simulation=self.Simulation,
+        Settings=self.settings_dict,
+        tcp_socket=self.tcp_sock)
+
+        if return_value != '0':
+            #an error ocured so exit VirtualLab
+            self.Exit("Error Occurred with Mesh")
+        return
 
     # def devMesh(self,**kwargs):
     #     kwargs = self._UpdateArgs(kwargs)
     #     return self.MeshFn.Run(self,**kwargs)
+# Call to Run a container
+    def Sim(self,**kwargs):
+        
+        # if in main contianer submit job request
+        return_value=Utils.RunJob(Cont_id=1,Tool="Aster",
+        Num_Cont=len(self.container_list['Sim']),
+        Cont_runs=self.container_list['Sim'],
+        Parameters_Master=self.Parameters_Master_str,
+        Parameters_Var=self.Parameters_Var_str,
+        Project=self.Project,
+        Simulation=self.Simulation,
+        Settings=self.settings_dict,
+        tcp_socket=self.tcp_sock)
 
-    # def Sim(self,**kwargs):
-    #     kwargs = self._UpdateArgs(kwargs)
-    #     return self.SimFn.Run(self,**kwargs)
+        if return_value != '0':
+            #an error ocured so exit VirtualLab
+            self.Exit("Error Occurred with Sim")
+        return
 
     # def devSim(self,**kwargs):
     #     kwargs = self._UpdateArgs(kwargs)
@@ -528,10 +553,25 @@ class VLSetup():
         kwargs = self._UpdateArgs(kwargs)
         return self.DAFn.Run(self,**kwargs)
 
-#hook in for cad2vox
+# Call to Run a container
     def Voxelise(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.VoxFn.Run(self,**kwargs)
+        
+        # if in main contianer submit job request
+        return_value=Utils.RunJob(Cont_id=1,Tool="Vox",
+        Num_Cont=len(self.container_list['Vox']),
+        Cont_runs=self.container_list['Vox'],
+        Parameters_Master=self.Parameters_Master_str,
+        Parameters_Var=self.Parameters_Var_str,
+        Project=self.Project,
+        Simulation=self.Simulation,
+        Settings=self.settings_dict,
+        tcp_socket=self.tcp_sock)
+
+        if return_value != '0':
+            #an error ocured so exit VirtualLab
+            self.Exit("Error Occurred with Cad2Vox")
+        return
+
 # Call to Run a container for GVXR
     def CT_Scan(self,**kwargs):
         

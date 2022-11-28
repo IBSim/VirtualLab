@@ -6,7 +6,7 @@ from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
 
-def RunJob(**kwargs):
+def Spawn_Container(**kwargs):
     ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
         with another toll in separate container. At the moment this 
@@ -39,7 +39,7 @@ def RunJob(**kwargs):
     if kwargs['Parameters_Var'] == None:
         kwargs['Parameters_Var'] = 'None'
 
-    kwargs['msg'] = "RunJob"
+    kwargs['msg'] = "Spawn_Container"
     # Long Note: we are fully expecting Parameters_Master and Parameters_Var to be strings 
     # pointing to Runfiles. However base VirtualLab supports passing in Namespaces.
     # (see virtualLab.py line 178 and GetParams for context). 

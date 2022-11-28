@@ -150,7 +150,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
         event = rec_dict["msg"]
         container_id = rec_dict["Cont_id"]
         log_net_info(net_logger,f'Server - received "{event}" event from container {container_id}')
-        if event == 'RunJob':
+        if event == 'Spawn_Container':
             Module = VL_MOD[rec_dict["Tool"]]
             num_containers = rec_dict["Num_Cont"]
             Cont_runs = rec_dict["Cont_runs"]

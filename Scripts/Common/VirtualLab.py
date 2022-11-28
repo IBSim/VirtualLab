@@ -39,7 +39,11 @@ class VLSetup():
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
                       MaterialDir=VLconfig.MaterialsDir,Max_Containers=1,
                       Cleanup=True)
-
+        ############################################################
+        # dynamically create hook functions for all modules based on config file
+        ############################################################
+        #module_config = self.load_module_config(VLconfig.VL_DIR)
+        ############################################################
         data = {"msg":"VirtualLab started","Cont_id":1}
         data_string = json.dumps(data)
         Utils.send_data(self.tcp_sock,data)
@@ -76,6 +80,21 @@ class VLSetup():
 
         self.Logger(errormsg,Print=True)
         
+    def load_module_config(self,vlab_dir):
+        ''' Function to get the config for the 
+        modules from VL_Modules.yaml file 
+        '''
+        import yaml
+        from pathlib import Path
+        vlab_dir = Path(vlab_dir)
+        #load module config from yaml_file
+        config_file = vlab_dir/'VL_Modules.yaml'
+        with open(config_file)as file:
+            try:
+                config = yaml.safe_load(file)
+            except yaml.YAMLError as exception:
+                print(exception)
+        return config
 
     def _Common_init(self,Simulation, Project,Cont_id=1):
         '''
@@ -499,7 +518,7 @@ class VLSetup():
     def Mesh(self,**kwargs):
         
         # if in main contianer submit job request
-        return_value=Utils.RunJob(Cont_id=1,Tool="Salome",
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Salome",
         Num_Cont=len(self.container_list['Mesh']),
         Cont_runs=self.container_list['Mesh'],
         Parameters_Master=self.Parameters_Master_str,
@@ -521,7 +540,7 @@ class VLSetup():
     def Sim(self,**kwargs):
         
         # if in main contianer submit job request
-        return_value=Utils.RunJob(Cont_id=1,Tool="Aster",
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Aster",
         Num_Cont=len(self.container_list['Sim']),
         Cont_runs=self.container_list['Sim'],
         Parameters_Master=self.Parameters_Master_str,
@@ -548,7 +567,7 @@ class VLSetup():
     def Voxelise(self,**kwargs):
         
         # if in main contianer submit job request
-        return_value=Utils.RunJob(Cont_id=1,Tool="Vox",
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Vox",
         Num_Cont=len(self.container_list['Vox']),
         Cont_runs=self.container_list['Vox'],
         Parameters_Master=self.Parameters_Master_str,
@@ -567,7 +586,7 @@ class VLSetup():
     def CT_Scan(self,**kwargs):
         
         # if in main contianer submit job request
-        return_value=Utils.RunJob(Cont_id=1,Tool="GVXR",
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="GVXR",
         Num_Cont=len(self.container_list['GVXR']),
         Cont_runs=self.container_list['GVXR'],
         Parameters_Master=self.Parameters_Master_str,
@@ -584,7 +603,7 @@ class VLSetup():
 # Call to Run a container for CIL       
     def CT_Recon(self,**kwargs):
         # if in main container submit job request
-        return_value=Utils.RunJob(Cont_id=1,Tool="CIL",
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="CIL",
         # Note CIL uses GVXR namespace
         Num_Cont=len(self.container_list['GVXR']),
         Cont_runs=self.container_list['GVXR'],
@@ -606,7 +625,7 @@ class VLSetup():
 # Call to spawn a minimal container for testing server communications and docker/apptainer
     def Test_Coms(self,**kwargs):
         # if in main container submit job request
-        return_value=Utils.RunJob(Cont_id=1,Tool="Test_Comms",
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Test_Comms",
         Num_Cont=len(self.container_list['Test']),
         Cont_runs=self.container_list['Test'],
         Parameters_Master=self.Parameters_Master_str,

@@ -25,6 +25,7 @@ class VL_Module(VLSetup):
         self.tcp_sock = Utils.create_tcp_socket()
 
     def start_module(self):
+        import threading
         #send ready message then wait to receive runs to perform from the server
         ready_msg = {"msg":"Ready","Cont_id":self.Container}
         Utils.send_data(self.tcp_sock, ready_msg)
@@ -37,9 +38,27 @@ class VL_Module(VLSetup):
                     self.run_list = data['tasks']
                     self.settings_dict = data['settings']
                     self.Settings(**self.settings_dict)
-                    break        
+                    
+                    break
+        # Start heartbeat thread to message back to the server once every n seconds
+        thread = threading.Thread(target=self.heartbeat,args=())
+        thread.daemon = True 
+        thread.start()
         return
+    
+    def heartbeat(self,heart_rate=5):
+        ''' 
+        Function to send a message periodically to tell the server 
+        that the Module is still running. optional argument heart_rate
+        sets the number of seconds between each message. 
 
+        '''
+        import time
+        beat_msg = {"msg":"Beat","Cont_id":self.Container}
+        while True:
+            Utils.send_data(self.tcp_sock, beat_msg)
+            time.sleep(heart_rate)
+        
     def filter_runs(self,param_dict,run_ids=None):
         ''' 
         Function to extract subset of runs from a 
@@ -69,9 +88,13 @@ class VL_Module(VLSetup):
     def _Cleanup(self,Cleanup=True):
 
         exitstr = '\n#############################\n'\
-                    '####### Module Terminated ######\n'\
+                    '###  Container Terminated ###\n'\
                     '#############################\n'\
         
+        if not Cleanup:
+            exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
+        elif os.path.isdir(self.TEMP_DIR):
+            shutil.rmtree(self.TEMP_DIR)
         Utils.Cont_Finished(self.Container,self.tcp_sock)
         print(exitstr)
 
@@ -236,7 +259,6 @@ class VL_Mesh(VL_Module):
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
         self.start_module()
-        #self.MeshFn.Setup(self,RunSim,self.run_list)
         self.MeshFn.Setup(self,RunMesh, Import)
 
     #Hooks for Salome/Ermes       

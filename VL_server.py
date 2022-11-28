@@ -16,6 +16,7 @@ import os
 import json
 import sys
 from pathlib import Path
+import time
 
 #import Scripts.Common.VLContainer.VL_Modules as VL_MOD
 import yaml
@@ -73,8 +74,8 @@ def check_for_errors(process_list,client_socket,sock_lock):
     # if list is empty return straight away and continue in while loop.
         return
     else:
-        sock_lock.acquire()
         for proc in process_list.values():
+            proc.poll()
             # check if the process has finished
             #communicate sets returncode inside proc if finished
             if proc.returncode is not None and proc.returncode != 0 :      
@@ -108,7 +109,6 @@ def check_for_errors(process_list,client_socket,sock_lock):
                     continue
                 else:
                     ValueError("unexpected message {message} received on error.")
-        sock_lock.release()
     return
 #global variables for use in all threads
 waiting_cnt_sockets = {}
@@ -118,6 +118,7 @@ settings_dict = {}
 running_processes = {}
 next_cnt_id = 1
 manager_socket = None
+cont_ready = False
 
 def load_module_config(vlab_dir):
     ''' Function to get the config for the 
@@ -140,6 +141,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
     global running_processes
     global next_cnt_id
     global manager_socket
+    global cont_ready
     while True:
         rec_dict = receive_data(client_socket)
         if rec_dict == None:
@@ -171,8 +173,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
                                 '--env="DISPLAY" --env="QT_X11_NO_MITSHM=1" '\
                                 '--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" '
             sock_lock.acquire()
-                
-                    
+                 
             # loop over containers once to create a dict of final container ids
             # and associated runs to output to file
             for Container in Cont_runs:
@@ -192,7 +193,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
 
                 # spawn the container
                 container_process = subprocess.Popen(f'{container_cmd} {options} {command}',
-                    stderr = subprocess.PIPE, shell=True)
+                    shell=True)
                     #add it to the list of waiting sockets
                 waiting_cnt_sockets[str(target_ids[n])] = {"socket": client_socket, "id": str(target_ids[n])}
 
@@ -202,16 +203,77 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
                 data = {"msg":"Running","Cont_id":target_ids[n]}
                 send_data(manager_socket, data)
             sock_lock.release()
+            # cont_ready should be set by another thread when the container messages to say its ready to go.
+            # This loop essentially checks to see if the container started corrctly by waiting for 10 seconds
+            #  and if cont_ready is not set it will raise an error.
+            i = 0
+            while not cont_ready:
+                i += 1
+                time.sleep(1)
+                if i == 10:
+            # we've heard nothing from the container so we have 
+            # to assume it has hung. Thus send error to manger 
+            # to kill process. Note this should also kill the server.
+                    data = {"msg":"Error","stderr":'-1'}
+                    send_data(manager_socket,data)
+                    raise TimeoutError('The container appears to have have not started correctly.')
 
         elif event == 'Ready':
-            sock_lock.acquire()
+            cont_ready=True
+            log_net_info(net_logger,f'Server - Received message to say container {container_id} '
+                            f'is ready to start runs.')
             # containers are ready so send the list of tasks and id's to run
             data2 = {"msg":"Container_runs","tasks":task_dict[str(container_id)]
                     ,"settings":settings_dict[str(container_id)]}
             send_data(client_socket, data2)
-            sock_lock.release()
+            # This function will run until the server receives "finished"
+            #  or an error occurs in the container.
+            check_pulse(client_socket,sock_lock,net_logger)
+            client_socket.shutdown(socket.SHUT_RDWR)
+            client_socket.close()
+            break
 
-        elif event == 'Finished':
+        else:
+            client_socket.shutdown(socket.SHUT_RDWR)
+            client_socket.close()
+            raise ValueError(f'Unknown message {event} received')
+    
+def check_pulse(client_socket,sock_lock,net_logger):
+    ''' 
+    Function to check for periodic messages from the containers to say 
+    they are still running.
+    '''
+    global waiting_cnt_sockets
+    global target_ids
+    global task_dict
+    global settings_dict
+    global running_processes
+    global next_cnt_id
+    global manager_socket
+    from socket import timeout
+# wait up to 15 seconds to see if container has started or has heartbeat
+# If not raise an error.
+    client_socket.settimeout(15)
+                
+    while True:
+        # check_for_errors(running_processes, client_socket, sock_lock)
+        try:
+            rec_dict = receive_data(client_socket)
+        except timeout:
+            # we've heard nothing from the container so we have 
+            # to assume it has hung. Thus send error to manger 
+            # to kill process. Note this should also kill the server.
+            data = {"msg":"Error","stderr":'-1'}
+            send_data(client_socket,data)
+            raise TimeoutError('The container appears to have has hung')
+        
+        if rec_dict == None:
+            log_net_info(net_logger,'Socket has been closed')
+            return
+        event = rec_dict["msg"]
+        container_id = rec_dict["Cont_id"]
+        if event == 'Finished':
+            # Container is done so cleanup
             sock_lock.acquire()
             container_id = str(container_id)
             if container_id in waiting_cnt_sockets:
@@ -222,13 +284,16 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
                 send_data(manager_socket,data)
                 running_processes.pop(str(container_id))
             sock_lock.release()
-            break
+            return
+    
+        elif event == "Beat":
+            # got heartbeat to say container is still running
+            log_net_info(net_logger,f'Server - Got heartbeat message from container {container_id}.')
         else:
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
-            raise ValueError(f'Unknown message {event} received')
-        check_for_errors(running_processes,waiting_cnt_sockets["Manager"]["socket"],sock_lock)
-
+            raise ValueError(f'Unexpected message {event} received from container {container_id}')
+        
 def process(vlab_dir,use_singularity):
     ''' Function that runs in a thread to handle communication ect. '''
     global waiting_cnt_sockets

@@ -1,8 +1,8 @@
-.. role:: bash(code)
-   :language: bash
+03 Heat exchanger (Thermo-mechanical)
+=====================================
 
-Tutorial 3
-=================
+Introduction
+************
 
 Heat by Induction to Verify Extremes (HIVE) is an experimental facility at the UK Atomic Energy Authority (UKAEA) to expose plasma-facing components to the high thermal loads that they will experience in a fusion reactor. Samples are thermally loaded by induction heating whilst being actively cooled with pressurised water.
 

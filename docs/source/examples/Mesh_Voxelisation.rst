@@ -1,5 +1,8 @@
-Tutorial 5
+05 Mesh Voxelisation
 ====================================
+
+Introduction
+************
 
 3D polygon meshes are a common and memory efficient way to represent 3D objects for use in CAD software. However there exist other ways to represent objects in 3D space. One common method is known as voxelisation (commonly spelled voxelization). This involves representing the object as a grid of 3D pixels (voxels). These are usually coloured in some way (commonly using various shades of grey) to indicate different materials. The voxels are then stored as a series of 2D images (or a single virtual tiff stack in the case of Cad2Vox) with each image representing a slice in the *z* axis.
 

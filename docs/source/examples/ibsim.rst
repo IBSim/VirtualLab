@@ -1,5 +1,8 @@
-Tutorial 4
+04 Image-Based Simulation
 ====================================
+
+Introduction
+************
 
 Image-based simulation is a technique which enables more accurate geometries of components to be modelled. Imaging techniques, such as X-ray or computerised tomography (CT) scanning, enable the visualisation of internal parts of a component, from which a more accurate mesh of the component can be generated compared with an idealised CAD-based version. These methods are able to capture imperfections in a component, such as asymmetry or cracks, yielding more realistic results from the simulation.
 

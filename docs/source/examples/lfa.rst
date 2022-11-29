@@ -1,7 +1,10 @@
 .. include:: ../substitutions.rst
 
-Tutorial 2
+02 Laser Flash Analysis (Thermal)
 =================================
+
+Introduction
+************
 
 The `Laser flash analysis <../virtual_exp.html#laser-flash-analysis>`_ (LFA) experiment consists of a disc shaped sample exposed to a short laser pulse incident on one surface. During the pulse, and for a set time afterwards, the temperature change is tracked with respect to time on the opposing surface. This is used to measure thermal diffusivity, which is consequently used to calculate thermal conductivity.
 

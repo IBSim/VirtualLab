@@ -1,5 +1,8 @@
-Tutorial 1
-=============================
+01 Tensile Testing (Mechanical)
+===============================
+
+Introduction
+************
 
 A virtual experiment of the standard mechanical `tensile test <../virtual_exp.html#tensile-testing>`_ is performed using a linear elastic model.
 

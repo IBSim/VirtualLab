@@ -6,8 +6,7 @@ import datetime
 import os
 import shutil
 import copy
-from types import SimpleNamespace as Namespace
-from importlib import import_module, reload
+from types import SimpleNamespace as Namespace, ModuleType
 import atexit
 import json
 import numpy as np
@@ -138,7 +137,6 @@ class VLSetup():
 
 
     def _SetMode(self,Mode='H'):
-        Mode = self._ParsedArgs.get('Mode',Mode)
         # ======================================================================
         # Update mode as shorthand version can be given
         if Mode.lower() in ('i', 'interactive'): self.mode = 'Interactive'
@@ -149,7 +147,6 @@ class VLSetup():
                                       'Terminal','Continuous', 'Headless'"))
 
     def _SetLauncher(self,Launcher='Process'):
-        Launcher = self._ParsedArgs.get('Launcher',Launcher)
         if Launcher.lower() == 'sequential': self._Launcher = 'Sequential'
         elif Launcher.lower() == 'process': self._Launcher = 'Process'
         elif Launcher.lower() == 'mpi': self._Launcher = 'MPI'
@@ -158,7 +155,6 @@ class VLSetup():
                                      'Process', 'MPI'"))
 
     def _SetNbJobs(self,NbJobs=1):
-        NbJobs = self._ParsedArgs.get('NbJobs',NbJobs)
         if type(NbJobs) == int:
             _NbJobs = NbJobs
         elif type(NbJobs) == float:
@@ -175,21 +171,18 @@ class VLSetup():
             self.Exit(VLF.ErrorMessage("NbJobs must be positive"))
 
     def _SetInputDir(self,InputDir):
-        InputDir = self._ParsedArgs.get('InputDir',InputDir)
         if not os.path.isdir(InputDir):
             self.Exit(VLF.ErrorMessage("InputDir is not a valid directory"))
         self._InputDir = InputDir
         self.PARAMETERS_DIR = '{}/{}/{}'.format(self._InputDir, self.Simulation, self.Project)
 
     def _SetOutputDir(self,OutputDir):
-        OutputDir = self._ParsedArgs.get('OutputDir',OutputDir)
         self._OutputDir = OutputDir
         self.PROJECT_DIR = '{}/{}/{}'.format(self._OutputDir, self.Simulation, self.Project)
 
     def _SetMaterialDir(self,MaterialDir):
         if not os.path.isdir(MaterialDir):
             self.Exit(VLF.ErrorMessage("MaterialDir is not a valid directory"))
-        MaterialDir = self._ParsedArgs.get('MaterialDir',MaterialDir)
         self.MATERIAL_DIR = MaterialDir
 
     def _SetCleanup(self,Cleanup=True):
@@ -242,6 +235,13 @@ class VLSetup():
         # this saves us pointlessly recreating it later.
         self.settings_dict = kwargs
 
+        for kw_name,kw_fnc in kwargs_fnc.items():
+            # if kw_name is in kwargs then we set it using kw_fnc
+            if kw_name in kwargs:
+                kw_fnc(kwargs[kw_name])
+
+
+    @VLF.kwarg_update
     def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
                     RunMesh=True, RunSim=True, RunDA=True,
                     RunVox=True, RunGVXR=True, RunCIL=True,
@@ -278,6 +278,18 @@ class VLSetup():
         self.container_list = self._Spread_over_Containers()
         #self.do_Analytics(self,Num_runs) #disabled pending discussion with llion/Rhydian
 
+        for method_name in self.Methods:
+            # get method_name instance
+            method_cls = getattr(self,method_name)
+            # create dictionary of parameters associated with the method_name
+            # from the parameter file(s)
+            method_dicts = self._CreateParameters(method_name)
+            # add flag to the instance
+            method_cls.SetFlag(flags['Run{}'.format(method_name)])
+            method_cls._MethodSetup(method_dicts)
+
+
+
     def ImportParameters(self, Rel_Parameters,ParameterArgs=None):
         '''
         Rel_Parameters is a file name relative to the Input directory
@@ -298,17 +310,14 @@ class VLSetup():
             VLF.WriteArgs(arg_path,ParameterArgs)
             sys.argv.append("ParameterArgs={}".format(arg_path))
 
-        sys.path.insert(0, os.path.dirname(Abs_Parameters))
-        Parameters = reload(import_module(os.path.basename(Rel_Parameters)))
-        sys.path.pop(0)
+        Parameters = VLF.GetModule(Abs_Parameters)
 
         if ParameterArgs != None:
             sys.argv.pop(-1)
 
-
         return Parameters
 
-    def GetParams(self, Master, Var, VLTypes,ParameterArgs=None):
+    def _SetParams(self, Master, Var, ParameterArgs=None):
         '''Master & Var can be a module, namespace, string or None.
         A string references a file to import from within the input directory.
         '''
@@ -333,46 +342,48 @@ class VLSetup():
             message = "Parameters_Var contains none of the attributes {}".format(VLTypes)
             self.Exit(VLF.ErrorMessage(message))
 
-        # ======================================================================
-        self.Parameters_Master = Namespace()
-        self.Parameters_Var = Namespace()
         for nm in VLTypes:
-            master_nm = getattr(Master, nm, None)
-            var_nm = getattr(Var, nm, None)
-            # ==================================================================
-            # Check all in NS have the attribute 'Name'
-            if master_nm != None and not hasattr(master_nm,'Name'):
-                message = "'{}' does not have the attribute 'Name' in Parameters_Master".format(nm)
-                self.Exit(VLF.ErrorMessage(message))
-            if master_nm != None and not hasattr(master_nm,'Name'):
-                message = "'{}' does not have the attribute 'Name' in Parameters_Var".format(nm)
+            attr_ns = getattr(input,nm,None) # get attribute nm from input
+
+            # ignore if nm not an attribute
+            if attr_ns is None: continue
+
+            # give warning about it not being a module/namespace
+            if type(attr_ns) not in (Namespace,ModuleType):
+                message = "{} has attribute '{}' but it not a module or namespace.\nThis may lead to unexpected results".format(input_name,nm)
+                print(VLF.WarningMessage(message))
+                continue
+
+            # check it has a name associated with it
+            if not hasattr(attr_ns,'Name'):
+                message = "'{}' does not have the attribute 'Name' in {}".format(nm,input_name)
                 self.Exit(VLF.ErrorMessage(message))
 
-            # ==================================================================
-            setattr(self.Parameters_Master, nm, master_nm)
-            setattr(self.Parameters_Var, nm, var_nm)
+            setattr(NS,nm,attr_ns) # add the info to the namespace
 
-    def CreateParameters(self, junk1, junk2, VLType):
+        return NS
+
+    def _CreateParameters(self, method_name):
         '''
-        Create parameter dictionary of attribute VLType using Parameters_Master and Var.
+        Create parameter dictionary of attribute method_name using Parameters_Master and Var.
         '''
         # ======================================================================
-        # Get VLType from Parameters_Master and _Parameters_Var (if they are defined)
-        Master = getattr(self.Parameters_Master, VLType, None)
-        Var = getattr(self.Parameters_Var, VLType, None)
+        # Get method_name from Parameters_Master and _Parameters_Var (if they are defined)
+        Master = getattr(self.Parameters_Master, method_name, None)
+        Var = getattr(self.Parameters_Var, method_name, None)
 
-        # Check VLType is an appropriate type
+        # Check method_name is an appropriate type
         if type(Master) not in (type(None),type(Namespace())):
-            print(VLF.WarningMessage("Variable '{}' named in Master but is not a namespace. This may lead yo unexpected results".format(VLType)))
+            print(VLF.WarningMessage("Variable '{}' named in Master but is not a namespace. This may lead yo unexpected results".format(method_name)))
         if type(Var) not in (type(None),type(Namespace())):
-            print(VLF.WarningMessage("Variable '{}' named in Var but is not a namespace. This may lead yo unexpected results".format(VLType)))
+            print(VLF.WarningMessage("Variable '{}' named in Var but is not a namespace. This may lead yo unexpected results".format(method_name)))
 
         # ======================================================================
-        # VLType isn't in Master of Var
+        # method_name isn't in Master of Var
         if Master==None and Var==None: return {}
 
         # ======================================================================
-        # VLType is in Master but not in Var
+        # method_name is in Master but not in Var
         elif Var==None:
             # Check if VLFunctions.Parameters_Var function has been used to create
             # an iterator to vary parameters within master file.
@@ -385,17 +396,17 @@ class VLSetup():
                         setattr(Var,key,list(val))
                 # Check that Name is also an iterator
                 if not hasattr(Var,'Name'):
-                    message = "{}.Name is not an iterable".format(VLType)
+                    message = "{}.Name is not an iterable".format(method_name)
                     self.Exit(VLF.ErrorMessage(message))
                 # Assign Var to class. Behaviour is the same as if _Parameters_Var
                 # file had been used.
-                setattr(self.Parameters_Var,VLType,Var)
+                setattr(self.Parameters_Var,method_name,Var)
             else:
                 # No iterator, just a single study
                 return {Master.Name : Master.__dict__}
 
         # ======================================================================
-        # VLType is in Var
+        # method_name is in Var
 
         # Check all entires in Parameters_Var have the same length
         NbNames = len(Var.Name)
@@ -407,24 +418,24 @@ class VLSetup():
                 errVar.append(VariableName)
 
         if errVar:
-            attrstr = "\n".join(["{}.{}".format(VLType,i) for i in errVar])
+            attrstr = "\n".join(["{}.{}".format(method_name,i) for i in errVar])
             message = "The following attribute(s) have a different number of entries to {0}.Name in Parameters_Var:\n"\
-                "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(VLType,attrstr)
+                "{1}\n\nAll attributes of {0} in Parameters_Var must have the same length.".format(method_name,attrstr)
             self.Exit(VLF.ErrorMessage(message))
 
-        # VLType is in Master and Var
+        # method_name is in Master and Var
         if Master!=None and Var !=None:
             # Check if there are attributes defined in Var which are not in Master
             dfattrs = set(Var.__dict__.keys()) - set(list(Master.__dict__.keys())+['Run'])
             if dfattrs:
-                attstr = "\n".join(["{}.{}".format(VLType,i) for i in dfattrs])
+                attstr = "\n".join(["{}.{}".format(method_name,i) for i in dfattrs])
                 message = "The following attribute(s) are specified in Parameters_Var but not in Parameters_Master:\n"\
                     "{}\n\nThis may lead to unexpected results.".format(attstr)
                 print(VLF.WarningMessage(message))
 
         # ======================================================================
         # Create dictionary for each entry in Parameters_Var
-        VarRun = getattr(Var,'Run',[True]*NbNames) # create True list if Run not an attribute of VLType
+        VarRun = getattr(Var,'Run',[True]*NbNames) # create True list if Run not an attribute of method_name
         ParaDict = {}
         for Name, NewValues, Run in zip(Var.Name,zip(*NewVals),VarRun):
             if not Run: continue
@@ -689,22 +700,18 @@ class VLSetup():
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
 
-    def _GetParsedArgs(self):
-        self._ParsedArgs = {}
-        for arg in sys.argv[1:]:
-            split=arg.split('=')
-            if len(split)!=2:
-                continue
-            var,value = split
-            if value=='False':value=False
-            elif value=='True':value=True
-            elif value=='None':value=None
-            elif value.isnumeric():value=int(value)
-            else:
-                try: value=float(value)
-                except: ValueError
 
-            self._ParsedArgs[var]=value
+def _git():
+    version,branch = '<version>','<branch>'
+    try:
+        from git import Repo
+        repo = Repo(VLconfig.VL_DIR)
+        sha = repo.head.commit.hexsha
+        version = repo.git.rev_parse(sha, short=7)
+        branch = repo.active_branch.name
+    except :
+        pass
+    return "{}_{}".format(version,branch)
 
     def _UpdateArgs(self,ArgDict):
         Changes = set(ArgDict).intersection(self._ParsedArgs)

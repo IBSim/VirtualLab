@@ -182,18 +182,73 @@ class MeshInfo():
     def Close(self):
         self.g.close()
 
-def NodalResult(MEDFile, ResName, GroupName=None):
+def GetDataset(MEDFile,path):
+    # TODO: Check dataset exists
     g = h5py.File(MEDFile, 'r')
-    gRes = g['/CHA/{}'.format(ResName)]
-    step = list(gRes.keys())[0]
-    Result = gRes['{}/NOE/MED_NO_PROFILE_INTERNAL/CO'.format(step)][:]
+    Data = g[path][:]
     g.close()
+    return Data
 
+def ResultInfo(MEDFile,ResName):
+    ResInfo = Namespace()
+
+    g = h5py.File(MEDFile, 'r')
+    ResGroup = g['/CHA/{}'.format(ResName)]
+
+    # Add attributes associated with the result to ResInfo
+    # Number of components which make up the result, i.e. X,Y,Z
+    ResInfo.NbComponent = ResGroup.attrs['NCO']
+
+    # Get names and timesteps for all of the results in ResName
+    ResInfo.ResultIDs = list(ResGroup.keys())
+    ResInfo.Timesteps = []
+    for ResultID in ResInfo.ResultIDs:
+        SG_attrs = ResGroup[ResultID].attrs
+        ResInfo.Timesteps.append(SG_attrs['PDT'])
+
+    g.close()
+    return ResInfo
+
+def NodalResult(MEDFile, ResName, GroupName=None):
+    # Get useful information associated with the result ResName
+    ResInfo = ResultInfo(MEDFile,ResName)
+
+    # Iterate over the sub groups of results to get all available data
+    CA_path = "/CHA/{}/{}/NOE/MED_NO_PROFILE_INTERNAL/CO" # code aster path to nodal results
+    Data = []
+    for step in ResInfo.ResultIDs:
+        _Data = GetDataset(MEDFile,CA_path.format(ResName,step))
+
+        # Reshape results if more than 1 component, i.e. X,Y,Z
+        if ResInfo.NbComponent>1:
+            shape = (int(_Data.shape[0]/ResInfo.NbComponent),ResInfo.NbComponent)
+            _Data = _Data.reshape(shape,order='F')
+        Data.append(_Data)
+    Data = np.array(Data)
+
+    # If group name is provided only include these results
     if GroupName:
         meshdata = MeshInfo(MEDFile)
         GroupInfo = meshdata.GroupInfo(GroupName)
-        NodeIDs = GroupInfo.Nodes
-        Result = Result[NodeIDs-1] # subtract 1 for 0 indexing
+        # Subtract 1 from node numbers as they start from 1
+        NodeIDs = GroupInfo.Nodes - 1
+        Data = Data[:,NodeIDs]
+
+    # Only resturns timesteps if there are more than 1
+    if len(ResInfo.Timesteps) == 1: return Data[0]
+    else: return Data,ResInfo.Timesteps
+
+
+
+
+
+
+
+
+
+
+
+
 
     return Result
 

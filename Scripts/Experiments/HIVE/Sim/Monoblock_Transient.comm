@@ -2,8 +2,6 @@ import sys
 sys.dont_write_bytecode=True
 import os
 import numpy as np
-import time
-from Utilitai import partition
 
 import AsterFunc
 

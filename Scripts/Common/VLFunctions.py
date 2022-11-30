@@ -3,10 +3,77 @@ import os
 from types import SimpleNamespace as Namespace
 import pickle
 from importlib import import_module, reload
+import inspect
 
 import numpy as np
 
 sys.dont_write_bytecode=True
+
+def GetFilePath(Dirs, file_name, file_ext='py', exit_on_error=True):
+    ''' This function will return either the file path if it exists or None.'''
+    # ==========================================================================
+    # Check file exists
+    if type(Dirs) == str: Dirs=[Dirs]
+    FilePath = None
+    for dir in Dirs:
+        _FilePath = "{}/{}.{}".format(dir,file_name,file_ext)
+        FileExist = os.path.isfile(_FilePath)
+        if FileExist:
+            FilePath = _FilePath
+            break
+
+    if FilePath is None:
+        print(ErrorMessage("The file {}.{} is not in the following directories:\n"\
+                "{}".format(file_name,file_ext,"\n".join(Dirs))))
+        if exit_on_error:
+            sys.exit()
+
+    return FilePath
+
+def GetFunction(file_path, func_name, exit_on_error=True):
+    func = GetFunc(file_path,func_name)
+
+    if func is None:
+        print(ErrorMessage("The function {} is not "\
+                "in {}".format(func_name,file_path)))
+        if exit_on_error:
+            sys.exit()
+    return func
+
+def kwarg_update(func):
+    def wrapper_kwarg_update(*args,**kwargs):
+        argspace = inspect.getargspec(func)
+        if argspace.defaults is not None:
+            nb = len(argspace.defaults)
+            fnc_kwargs = argspace.args[-nb:]
+            _kwargs = Parser_update(fnc_kwargs) # update kwargs
+            kwargs.update(_kwargs)
+        return func(*args,**kwargs)
+    return wrapper_kwarg_update
+
+def Parser_update(arg_names):
+    # update a disctionary of arguments with any values from parser
+    arg_dict = {}
+    for arg in sys.argv[1:]:
+        # get variable name and value from parsed arguments
+        split=arg.split('=')
+        if len(split)!=2:
+            continue
+        var_name, value = split
+
+        # skip if not in kwargs
+        if var_name not in arg_names:continue
+
+        if value=='False':value=False
+        elif value=='True':value=True
+        elif value=='None':value=None
+        elif value.isnumeric():value=int(value)
+        else:
+            try: value=float(value)
+            except: ValueError
+        arg_dict[var_name] = value
+    return arg_dict
+
 
 def WriteArgs(path,Args):
     with open(path,'wb') as f:
@@ -19,21 +86,26 @@ def GetArgs(path):
 
 def GetParameterArgs(name='ParameterArgs'):
     ArgDict = {}
+    Args=None
     for parsed in sys.argv:
         if parsed.startswith(name):
             path = parsed.split('=')[1]
             Args = GetArgs(path)
     return Args
 
-def GetFunc(FilePath, funcname):
+def GetModule(FilePath):
     path,ext = os.path.splitext(FilePath)
     dirname = os.path.dirname(path)
     basename = os.path.basename(path)
 
     sys.path.insert(0,dirname)
-    module = import_module(basename) #reload?
+    module = reload(import_module(basename))
     sys.path.pop(0)
 
+    return module
+
+def GetFunc(FilePath, funcname):
+    module = GetModule(FilePath)
     func = getattr(module, funcname, None)
     return func
 

@@ -9,7 +9,7 @@ import torch
 import gpytorch
 
 from Scripts.Common.tools import MEDtools
-from Scripts.Common.ML import ML, GPR
+from Scripts.Common.ML import ML, GPR, Adaptive
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
@@ -75,6 +75,23 @@ def GPR_hdf5_Metrics(VL,DADict):
     Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
             'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
     Performance(model, Data, getattr(Parameters,'PrintParameters',False))
+
+def GPR_Adaptive(VL,DADict):
+    Parameters = DADict['Parameters']
+
+    # ==========================================================================
+    # Load model
+    ModelDir = "{}/{}".format(VL.PROJECT_DIR,Parameters.ModelDir)
+    likelihood, model, Dataspace, ParametersMod = GPR.LoadModel(ModelDir)
+
+    # ==========================================================================
+    # Get next points to collect data
+    bounds = [[0,1]]*Dataspace.NbInput
+
+    BestPoints = Adaptive.Adaptive(model, Parameters.Adaptive, bounds, Show=5)
+    BestPoints = ML.DataRescale(np.array(BestPoints),*Dataspace.InputScaler)
+    print(BestPoints)
+    # DADict['Data']['BestPoints'] = BestPoints
 
 def GPR_PCA_hdf5(VL,DADict):
 

@@ -31,7 +31,7 @@ ENV LC_ALL=C.UTF-8 \
 RUN adduser --disabled-password --gecos "" ibsim
 
 USER ibsim
-COPY jokes.sh /usr/bin/jokes.sh
+COPY misc/jokes.sh /usr/bin/jokes.sh
 WORKDIR /home/ibsim
 RUN git clone https://gitlab.com/ibsim/virtuallab.git && \
 cd virtuallab && git checkout BT-Container

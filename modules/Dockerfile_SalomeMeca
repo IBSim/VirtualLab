@@ -38,7 +38,7 @@ bash Miniconda3-latest-Linux-x86_64.sh -b && \
 sudo rm Miniconda3-latest-Linux-x86_64.sh
 
 # uncomment this line and lines to use local copy of slaome instead of downloading every time. 
-can be useful since the download is falky
+# Can be useful since the download is flaky
 #COPY misc/salome_meca-2019.0.3-1-universal.tgz /home/ibsim/salome_meca-2019.0.3-1-universal.tgz
 
 # Download and install VirtualLab and its requirements

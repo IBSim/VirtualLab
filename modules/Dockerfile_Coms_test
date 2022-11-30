@@ -1,31 +1,39 @@
 FROM ubuntu:latest
-
+ENV DEBIAN_FRONTEND=noninteractive
 # Get Ubuntu updates and basic packages
 USER root
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt install -y \
-    python3 \
-    python3-dev \
     nano \
     git \
     cowsay \
     jq \
-    curl
+    wget && \
+    rm -rf rm -rf /var/lib/apt/lists/* && \
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+    chmod +x Miniconda3-latest-Linux-x86_64.sh && \
+    ./Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 && \
+    ln -s /opt/miniconda3/bin/conda /usr/bin/conda && \
+    conda create --name coms_test python=3.10 h5py numpy && \
+    chmod --recursive a+rw /opt/miniconda3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm /Miniconda3-latest-Linux-x86_64.sh
 
 # Set locale environment
 ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
-    LANGUAGE=C.UTF-8 / 
+    LANGUAGE=C.UTF-8 \ 
     PATH=${PATH}:/usr/games
 
 # Add a new user
 RUN adduser --disabled-password --gecos "" ibsim
 
 USER ibsim
-COPY jokes.sh /home/ibsim/jokes.sh
+COPY jokes.sh /usr/bin/jokes.sh
 WORKDIR /home/ibsim
 RUN git clone https://gitlab.com/ibsim/virtuallab.git && \
 cd virtuallab && git checkout BT-Container
-USER root
+Expose 9000
 

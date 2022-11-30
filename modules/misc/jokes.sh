@@ -10,15 +10,14 @@ tput bold
 echo "********************"
 echo "Welcome to VirtuaLab"
 echo "********************"
-echo "${edge}"
-echo "${msg}"
-echo "${edge}"
+
+cowsay "${msg}"
+
 echo
 tput setaf 4
 echo "******************************"
 echo "Message recived and understood"
 echo "Test Sucessfull!!"
-echo "Here is a joke to celebrate"
 echo "******************************"
 tput sgr 0
 echo
@@ -32,14 +31,14 @@ DATA=`curl -s $CENSORED_ENDPT | tr '\r\n' ' '`
 
 TYPE=`echo $DATA | jq -r ".type" `
 
-ART=$(ls /usr/share/cowsay/cows/gnu.cow | shuf -n1)
+ART=$(ls /usr/share/cowsay/cows/ | shuf -n1)
 
 case $TYPE in
 
 	single)
 		JOKE=`echo $DATA | jq -r ".joke"`
 
-		cowsay -f $ART $JOKE
+		cowsay $JOKE
 
 		;;
 
@@ -59,6 +58,10 @@ case $TYPE in
 		;;
 
 	*)
-		cowsay Sorry I Failed to entertain you!
+		cowsay "Running simulation of 1000 monkeys pressing random buttons."
+		cowsay -f $ART "There’s no more faith in thee than in a stewed prune."
+		echo "< Henry IV Part 1 (Act 3, Scene 3) >"
+		cowsay "See, I told you it would work."
+		echo $DATA
 		;;
 esac

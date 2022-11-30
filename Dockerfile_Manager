@@ -25,7 +25,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-COPY misc/patch.sh /home/ibsim/patch.sh
+COPY patch.sh /home/ibsim/patch.sh
 
 USER ibsim
 WORKDIR /tmp

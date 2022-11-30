@@ -18,42 +18,56 @@ Manager:
       Tag: 'latest' 
       Apptainer_file: 'Containers/VL_Manager.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Manager'
+      Namespace: None
+      Method: None
  
 Cad2Vox:
       Docker_url: 'ibsim/cad2vox'
       Tag: 'latest'
       Apptainer_file: 'Containers/VL_Vox.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Vox.sh'
+      Namespace: 'Vox'
+      Method: 'Voxelise'    
 
 GVXR: 
       Docker_url: 'ibsim/gvxr'
       Tag: 'latest'
       Apptainer_file: 'Containers/VL_GVXR.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_GVXR.sh'
+      Namespace: 'GVXR'
+      Method: 'CT_Scan'    
 
 CIL: 
       Docker_url: 'ibsim/cil'
       Tag: 'latest'
       Apptainer_file: 'Containers/VL_CIL.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_CIL.sh'
+      Namespace: 'GVXR'
+      Method: 'CT_Recon'
 
 Salome: 
-      Docker_url: 'ibsim/salmoe'
+      Docker_url: 'localhost:5000/salome'
       Tag: 'latest'
       Apptainer_file: 'Containers/VL_Salome.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Salome.sh'
+      Namespace: 'Mesh'
+      Method: 'Mesh'
 
 Aster:
-      Docker_url: 'ibsim/aster'
+      Docker_url: 'localhost:5000/aster'
       Tag: 'latest'
       Apptainer_file: 'Containers/VL_Aster.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Aster.sh'
+      Namespace: 'Sim'
+      Method: 'Sim'
 
 Test_Comms: 
       Docker_url: 'localhost:5000/test'
       Tag: 'latest'
       Apptainer_file: 'Containers/VL_Test.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Test.sh'
+      Namespace: 'Test'
+      Method: 'Test_Coms'
 
 # Note: Not yet included on dockerhub but here in prep
 Aster_mpi: 

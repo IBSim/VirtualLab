@@ -12,7 +12,7 @@ from Scripts.Common.VLParallel import VLPool
 
 def Setup(VL,RunSim=True,Import=False):
     VL.SIM_SIM = "{}/Sim".format(VL.SIM_SCRIPTS)
-
+    
     VL.SimData = {}
     SimDicts = VL.CreateParameters(VL.Parameters_Master, VL.Parameters_Var,'Sim')
 

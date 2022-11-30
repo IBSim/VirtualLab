@@ -83,7 +83,7 @@ def Spawn_Container(**kwargs):
                 container_return = '-1'
                 break
             #continue
-    sock.close()
+    #sock.close()
     return container_return
 
 def create_tcp_socket(port=9000):
@@ -112,7 +112,7 @@ def Cont_Finished(Cont_id,sock):
     sock.close()
     return
 
-def send_data(conn, payload,bigPayload=False,debug=False):
+def send_data(conn, payload,bigPayload=False,debug=True):
     '''
     Adapted from: https://github.com/vijendra1125/Python-Socket-Programming/blob/master/server.py
     @brief: send payload along with data size and data identifier to the connection
@@ -146,7 +146,7 @@ def send_data(conn, payload,bigPayload=False,debug=False):
         "###################################################")
     conn.sendall(serialized_payload)
     
-def receive_data(conn,payload_size=2048,debug=False):
+def receive_data(conn,payload_size=2048,debug=True):
     '''
     @brief: receive data from the connection assuming that data is a json string
     @args[in]: 
@@ -175,6 +175,8 @@ def receive_data(conn,payload_size=2048,debug=False):
 
 def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_singularity,cont_id):
     ''' Function to format string for bind points and container to call specified tool.'''
+    import os
+    import subprocess
 ##### Format cmd argumants #########
     if param_var is None:
         param_var = ''
@@ -190,11 +192,18 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
 # container based on Module used.       #
 #########################################
     if use_singularity:
-        call_string = f'-B /run:/run -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
+        # check apptainer sif file exists and if not build from docker version
+        if not os.path.exists(Module["Apptainer_file"]):
+            try:
+                proc=subprocess.check_call(f'SINGULARITY_NOHTTPS=true singularity build {Module["Apptainer_file"]} docker://{Module["Docker_url"]}:{Module["Tag"]}', shell=True)
+            except subprocess.CalledProcessError as E:
+                print(E.stderr)
+                raise E
+        call_string = f' -B /run:/run -B /tmp:/tmp -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
                         --nv {Module["Apptainer_file"]}'
     else:
         #docker
-        call_string = f'-v /run:/run -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} '
+        call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} '
 
     command = f'{Module["Run_script"]} \
                {param_master} {param_var} {Project} {Simulation} {ID}'

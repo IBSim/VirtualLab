@@ -526,7 +526,8 @@ class VLSetup():
         Project=self.Project,
         Simulation=self.Simulation,
         Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock)
+        tcp_socket=self.tcp_sock,
+        run_args=kwargs)
 
         if return_value != '0':
             #an error ocured so exit VirtualLab
@@ -548,7 +549,8 @@ class VLSetup():
         Project=self.Project,
         Simulation=self.Simulation,
         Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock)
+        tcp_socket=self.tcp_sock,
+        run_args=kwargs)
 
         if return_value != '0':
             #an error ocured so exit VirtualLab
@@ -575,7 +577,8 @@ class VLSetup():
         Project=self.Project,
         Simulation=self.Simulation,
         Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock)
+        tcp_socket=self.tcp_sock,
+        run_args=kwargs)
 
         if return_value != '0':
             #an error ocured so exit VirtualLab
@@ -594,7 +597,8 @@ class VLSetup():
         Project=self.Project,
         Simulation=self.Simulation,
         Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock)
+        tcp_socket=self.tcp_sock,
+        run_args=kwargs)
 
         if return_value != '0':
             #an error ocured so exit VirtualLab
@@ -633,7 +637,8 @@ class VLSetup():
         Project=self.Project,
         Simulation=self.Simulation,
         Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock)
+        tcp_socket=self.tcp_sock,
+        run_args=kwargs)
 
     def Logger(self,Text='',**kwargs):
         Prnt = kwargs.get('Print',False)

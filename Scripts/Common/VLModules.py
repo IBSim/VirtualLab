@@ -21,7 +21,8 @@ class VL_Module(VLSetup):
         # Specify default settings
         self.Settings(Mode='H',Launcher='Process',NbJobs=1,
                       InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Cleanup=True)
+                      MaterialDir=VLconfig.MaterialsDir,Max_Containers=1,
+                      Cleanup=True)
         self.tcp_sock = Utils.create_tcp_socket()
 
     def start_module(self):
@@ -38,7 +39,8 @@ class VL_Module(VLSetup):
                     self.run_list = data['tasks']
                     self.settings_dict = data['settings']
                     self.Settings(**self.settings_dict)
-                    
+                    self.run_args = data['run_args']
+                    self.tool = data['Tool']
                     break
         # Start heartbeat thread to message back to the server once every n seconds
         thread = threading.Thread(target=self.heartbeat,args=())
@@ -200,14 +202,17 @@ class VL_SIM(VL_Module):
     	#################################################################
         # import run/setup functions for Salome and ERMES
         from .VLTypes import Sim as SimFn
+        from .VLTypes import Mesh as MeshFn
+        self.MeshFn=MeshFn
         self.SimFn = SimFn
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
 
-    def Parameters(self, Parameters_Master, Parameters_Var=None, RunSim=False, Import=False):
+    def Parameters(self, Parameters_Master, Parameters_Var=None, RunSim=False, RunMesh=False, Import=False):
         # Update args with parsed args
         Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
         Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
         RunSim = self._ParsedArgs.get('RunSim',RunSim)
+        RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
         Import = self._ParsedArgs.get('Import',Import)
 
         # Create variables based on the namespaces (NS) in the Parameters file(s) provided
@@ -219,9 +224,11 @@ class VL_SIM(VL_Module):
         self.Parameters_Var_str = Parameters_Var
         self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
         self.start_module()
+        self.MeshFn.Setup(self,RunMesh, Import)
         self.SimFn.Setup(self,RunSim, Import)
+        
 
-     #Hook for Salome/Ermes       
+     #Hook for Aster/Ermes       
     def Sim(self,**kwargs):
         kwargs = self._UpdateArgs(kwargs)
         return self.SimFn.Run(self,**kwargs)
@@ -237,7 +244,7 @@ class VL_Mesh(VL_Module):
     def __init__(self, Simulation, Project,Cont_id=5):
         super().__init__(Simulation, Project,Cont_id)
     	#################################################################
-        # import run/setup functions for Code Aster?
+        # import run/setup functions for Salome?
         from .VLTypes import Mesh as MeshFn
         self.MeshFn=MeshFn
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)

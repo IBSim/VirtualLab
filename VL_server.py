@@ -116,6 +116,8 @@ target_ids = []
 task_dict = {}
 settings_dict = {}
 running_processes = {}
+run_arg_dict = {}
+tool_dict = {}
 next_cnt_id = 1
 manager_socket = None
 cont_ready = False
@@ -142,6 +144,8 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
     global next_cnt_id
     global manager_socket
     global cont_ready
+    global run_arg_dict
+    global tool_dict
     while True:
         rec_dict = receive_data(client_socket)
         if rec_dict == None:
@@ -152,6 +156,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
         log_net_info(net_logger,f'Server - received "{event}" event from container {container_id}')
         if event == 'Spawn_Container':
             Module = VL_MOD[rec_dict["Tool"]]
+
             num_containers = rec_dict["Num_Cont"]
             Cont_runs = rec_dict["Cont_runs"]
             param_master = rec_dict["Parameters_Master"]
@@ -181,6 +186,8 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
                 list_of_runs = Container[1]
                 task_dict[str(next_cnt_id)] = list_of_runs
                 settings_dict[str(next_cnt_id)]=rec_dict["Settings"]
+                run_arg_dict[str(next_cnt_id)] = rec_dict["run_args"]
+                tool_dict[str(next_cnt_id)] = rec_dict["Tool"]
                 next_cnt_id += 1
 
             # loop over containers again to spawn them this time
@@ -224,13 +231,16 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
                             f'is ready to start runs.')
             # containers are ready so send the list of tasks and id's to run
             data2 = {"msg":"Container_runs","tasks":task_dict[str(container_id)]
-                    ,"settings":settings_dict[str(container_id)]}
-            send_data(client_socket, data2)
+                    ,"settings":settings_dict[str(container_id)],
+                    "run_args":run_arg_dict[str(container_id)],
+                    "Tool":tool_dict[str(container_id)]}
+            send_data(client_socket, data2
+            )
             # This function will run until the server receives "finished"
             #  or an error occurs in the container.
             check_pulse(client_socket,sock_lock,net_logger)
-            client_socket.shutdown(socket.SHUT_RDWR)
-            client_socket.close()
+            #client_socket.shutdown(socket.SHUT_RDWR)
+            #client_socket.close()
             break
 
         else:

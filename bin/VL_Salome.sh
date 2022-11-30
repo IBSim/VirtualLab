@@ -23,6 +23,5 @@ cd /home/ibsim/VirtualLab
 source /home/ibsim/miniconda3/etc/profile.d/conda.sh
 conda activate VirtualLab
 export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH
-conda config --set report_errors false
 python Scripts/Common/VLContainer/Run_Salome_container.py $master $Var $Project $Simulation $ID
 exit $?

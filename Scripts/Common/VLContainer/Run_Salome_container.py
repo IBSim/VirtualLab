@@ -1,4 +1,4 @@
-# main function called from container to run CIL
+# main function called from container to run Salome mecca
 #!/usr/bin/env python3
 import argparse
 import os
@@ -17,12 +17,11 @@ VirtualLab=VL_Mesh(
            args.Simulation,
            args.Project,
            Cont_id)
-
 VirtualLab.Settings(Mode='Interactive')
 
 VirtualLab.Parameters(
            args.Parameters_Master,
            args.Parameters_Var,
-           RunCIL=True)
+           RunMesh=True)
 
 VirtualLab.Mesh()

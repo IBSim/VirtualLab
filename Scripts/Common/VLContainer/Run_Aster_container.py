@@ -1,4 +1,4 @@
-# main function called from container to run CIL
+# main function called from container to run CodeAster/Ermes
 #!/usr/bin/env python3
 import argparse
 import os
@@ -13,7 +13,7 @@ args = parser.parse_args()
 Cont_id=args.Container_ID
 os.chdir('/home/ibsim/VirtualLab')
 from Scripts.Common.VLModules import VL_SIM
-VirtualLab=CIL_Setup(
+VirtualLab=VL_SIM(
            args.Simulation,
            args.Project,
            Cont_id)
@@ -23,6 +23,7 @@ VirtualLab.Settings(Mode='Interactive')
 VirtualLab.Parameters(
            args.Parameters_Master,
            args.Parameters_Var,
-           RunCIL=True)
+           RunSim=True,
+           RunMesh=True)
 
-VirtualLab.CT_Recon()
+VirtualLab.Sim()

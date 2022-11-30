@@ -78,7 +78,7 @@ ENV TERM=linux
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
 bash Miniconda3-latest-Linux-x86_64.sh -b && \
 sudo rm Miniconda3-latest-Linux-x86_64.sh
-COPY salome_meca-2019.0.3-1-universal.tgz /home/ibsim/salome_meca-2019.0.3-1-universal.tgz
+# COPY salome_meca-2019.0.3-1-universal.tgz /home/ibsim/salome_meca-2019.0.3-1-universal.tgz
 # Download and install VirtualLab and its requirements
 RUN sudo chmod 755 /home/ibsim/patch.sh && \
     wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/BT-Cad2vox/Scripts/Install/Install_VirtualLab.sh?inline=false && \

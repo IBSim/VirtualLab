@@ -81,7 +81,7 @@ sudo rm Miniconda3-latest-Linux-x86_64.sh
 # COPY salome_meca-2019.0.3-1-universal.tgz /home/ibsim/salome_meca-2019.0.3-1-universal.tgz
 # Download and install VirtualLab and its requirements
 RUN sudo chmod 755 /home/ibsim/patch.sh && \
-    wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_VirtualLab.sh?inline=false && \
+    wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Install_VirtualLab.sh?inline=false && \
     chmod 755 Install_VirtualLab.sh && \
     sudo ./Install_VirtualLab.sh -S y -E y -P c -y && \
     sudo rm /home/ibsim/salome_meca-2019.0.3-1-universal.run && \

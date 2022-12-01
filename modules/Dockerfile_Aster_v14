@@ -148,7 +148,7 @@ RUN . ${ASTER_ROOT}/${ASTER_VER}/share/aster/profile_mfront.sh && \
                      ${PUBLIC}/parmetis-${PARMETIS_VER}/include \
                      ${PUBLIC}/ptscotch-${SCOTCH_VER}/include \
                      ${PUBLIC}/mumps-${MUMPS_VER}_mpi/include \
-                     ${PUBLIC}/petsc-${PETSC_VER}/include \
+#                     ${PUBLIC}/petsc-${PETSC_VER}/include \
                      ${PUBLIC}/tfel-${MFRONT_VER}/include" && \
     export LIBPATH="${PUBLIC}/hdf5-${HDF5_VER}/lib \
                     ${PUBLIC}/med-${MED_VER}/lib \
@@ -157,7 +157,7 @@ RUN . ${ASTER_ROOT}/${ASTER_VER}/share/aster/profile_mfront.sh && \
                     ${PUBLIC}/ptscotch-${SCOTCH_VER}/lib \
                     ${PUBLIC}/scalapack-${SCALAPACK_VER}/lib \
                     ${PUBLIC}/mumps-${MUMPS_VER}_mpi/lib \
-                    ${PUBLIC}/petsc-${PETSC_VER}/lib \
+#                    ${PUBLIC}/petsc-${PETSC_VER}/lib \
                     ${PUBLIC}/tfel-${MFRONT_VER}/lib" && \
     export METISDIR=${PUBLIC}/metis-${METIS_VER} && \
     export TFELHOME=${PUBLIC}/tfel-${MFRONT_VER} && \

@@ -6,7 +6,7 @@ diff -ruN parmetis/metis/include/metis.h parmetis_aster/metis/include/metis.h
   modifications on other architectures.
  --------------------------------------------------------------------------*/
 +#ifdef INTSIZE32
-+#define IDXTYPEWIDTH 32
+ #define IDXTYPEWIDTH 32
 +#else
 +#define IDXTYPEWIDTH 64
 +#endif

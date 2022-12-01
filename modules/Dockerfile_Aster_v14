@@ -108,30 +108,8 @@ RUN mkdir mumps && tar xf ${MUMPS_SRC} -C mumps --strip-components 1 && \
 
 # Build parallel PETSc
 # Patch from https://hitoricae.com/2019/11/10/code_aster-14-4-with-petsc/
-COPY --chown=aster:aster modules/code_aster/petsc.patch /tmp/petsc.patch
-RUN wget --no-check-certificate --quiet ${PETSC_SRC} -O petsc.tar.gz && \
-    mkdir petsc && tar xf petsc.tar.gz -C petsc --strip-components 1 && \
-#    patch -s -p0 < petsc.patch && \
-    cd petsc && \
-    ./configure --COPTFLAGS="-O2" \
-                --CXXOPTFLAGS="-O2" \
-                --FOPTFLAGS="-O2" \
-                --with-debugging=0 \
-                --with-shared-libraries=1 \
-                --with-64-bit-indices=1 \
-                --with-scalapack-dir=${PUBLIC}/scalapack-${SCALAPACK_VER} \
-                --with-mumps-dir=${PUBLIC}/mumps-${MUMPS_VER}_mpi \
-                --with-metis-dir=${PUBLIC}/metis-${METIS_VER} \
-                --with-parmetis-dir=${PUBLIC}/parmetis-${PARMETIS_VER} \
-                --with-ptscotch-dir=${PUBLIC}/ptscotch-${SCOTCH_VER} \
-                --download-hypre \
-                --download-ml \
-                --LIBS="-lgomp" \
-                --prefix=${PUBLIC}/petsc-${PETSC_VER} && \
-    make all && \
-    make install && \
-    rm -rf /tmp/petsc.tar.gz /tmp/petsc
 #######
+#COPY --chown=aster:aster modules/code_aster/petsc.patch /tmp/petsc.patch
 #RUN wget --no-check-certificate --quiet ${PETSC_SRC} -O petsc.tar.gz && \
 #    mkdir petsc && tar xf petsc.tar.gz -C petsc --strip-components 1 && \
 #    patch -s -p0 < petsc.patch && \
@@ -141,6 +119,7 @@ RUN wget --no-check-certificate --quiet ${PETSC_SRC} -O petsc.tar.gz && \
 #                --FOPTFLAGS="-O2" \
 #                --with-debugging=0 \
 #                --with-shared-libraries=1 \
+##                --with-64-bit-indices=1 \
 #                --with-scalapack-dir=${PUBLIC}/scalapack-${SCALAPACK_VER} \
 #                --with-mumps-dir=${PUBLIC}/mumps-${MUMPS_VER}_mpi \
 #                --with-metis-dir=${PUBLIC}/metis-${METIS_VER} \

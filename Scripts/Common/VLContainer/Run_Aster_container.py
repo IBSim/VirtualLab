@@ -12,8 +12,8 @@ parser.add_argument("-I", "--Container_ID", help = "unique integer id for contai
 args = parser.parse_args()
 Cont_id=args.Container_ID
 os.chdir('/home/ibsim/VirtualLab')
-from Scripts.Common.VLModules import VL_SIM
-VirtualLab=VL_SIM(
+from Scripts.Common.VLModules import VL_Module
+VirtualLab=VL_Module(
            args.Simulation,
            args.Project,
            Cont_id)
@@ -26,4 +26,4 @@ VirtualLab.Parameters(
            RunSim=True,
            RunMesh=True)
 
-VirtualLab.Sim()
+VirtualLab.Sim(Module=True)

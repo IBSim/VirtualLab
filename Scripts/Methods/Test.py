@@ -14,46 +14,37 @@ _ are ignored.
 
 class Method(Method_base):
     def __init__(self,VL):
+        self.Data = {}
+        self.RunFlag = True
+        self._checks(VL.Exit)
+        self. _WrapVL(VL,['Setup','Run','Spawn'])
+        
+
+    def Setup(self, VL, TestDicts, Import=False):
         '''
-        Otional class initiation function. If this is used you will also need
-        initiate Method_base using 'super().__init__(VL)' (see Mesh method for
-        more details).
+        Setup for Tests of container communications
         '''
+        from types import SimpleNamespace as Namespace
+        # if RunTest is False or TestDicts is empty dont perform Simulation and return instead.
+        if not (self.RunFlag and TestDicts): return
 
-    def Setup(self, VL, MethodDicts, Import=False):
-        '''
-        Functions used for setting things up. Parameters associated with the method
-        name for the Parameters_Master and Var files are passed as the
-        'MethodDicts' argument.
+        VL.TestData = {}
+        
+        for TestName, TestParams in TestDicts.items():
+            Parameters = Namespace(**TestParams)
+            TestDict = {}
+    # Define flag to display visualisations
+            if (VL.mode=='Headless'):
+                TestDict['Headless'] = True
+            else:
+                TestDict['Headless'] = False
+    # 
+            if hasattr(Parameters,'msg'):
+                TestDict['Message'] = Parameters.msg
+            else:
+                raise ValueError('You must Specify a test message in the params file to display.')
 
-        Information is assigned to the dictionary self.Data for use in the self.Run
-        and self.PoolRun functions. See the other available methods for examples.
-
-        If the flag for running a method, set using Run#MethodName in VirtualLab.Parameters,
-        or #MethodName is not included in the parameters file(s) you will likely
-        want to skip this function. Add
-
-        'if not (self.RunFlag and MethodDicts): return'
-
-        at the top of this file to return immediately.
-
-
-        '''
-
-        if not (self.RunFlag and MethodDicts): return
-
-        for MethodName,MethodParameters in MethodDicts.items():
-            # Perform some checks on the info in MethodParams
-
-            '''
-            Create a dictionary containing the parameters and other useful
-            information for use by the PoolRun function. This information is
-            assigned to self.Data.
-            '''
-            AnalysisDict = { 'Parameters' : Namespace(**MethodParameters),
-                           # Add other useful info here also
-                         }
-            self.Data[MethodName] = AnalysisDict
+            self.Data[TestName] = TestDict.copy()
 
     @staticmethod
     def PoolRun(VL,AnalysisDict,**kwargs):
@@ -85,19 +76,20 @@ class Method(Method_base):
         Check for errors and exit if there are any.
         '''
         VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
-                  '~~~ Starting #MethodName ~~~\n'\
+                  '~~~ Starting Test ~~~\n'\
                   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n', Print=True)
+        import subprocess
+        if not self.Data: return
+        VL.Logger('\n### Starting Comms Test ###\n', Print=True)
 
-        AnalysisDicts = list(self.Data.values()) # Data assigned during Setup
-
-        Errorfnc = VLPool(VL,self.GetPoolRun(),AnalysisDicts)
-        if Errorfnc:
-            VL.Exit(VLF.ErrorMessage("The following #MethodName routine(s) finished with errors:\n{}".format(Errorfnc)),
-                    Cleanup=False)
-
+        for key in self.Data.keys():
+            data = self.Data[key]
+            msg = data['Message']
+            container_process = subprocess.run(f'bash /usr/bin/jokes.sh {msg}', \
+                check=True, stderr = subprocess.PIPE, shell=True)
 
         VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
-                  '~~~ #MethodName Complete ~~~\n'\
+                  '~~~ Test Complete ~~~\n'\
                   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
     def Spawn(self,VL,**kwargs):
@@ -112,9 +104,9 @@ class Method(Method_base):
         "#ContainerName". This refers to one of the Containers defined
         in VL_modules.yaml.
         '''
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="#ContainerName",
-            Num_Cont=len(VL.container_list['#MethodName']),
-            Cont_runs=VL.container_list['#MethodName'],
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Test_Comms",
+            Num_Cont=len(VL.container_list['Test']),
+            Cont_runs=VL.container_list['Test'],
             Parameters_Master=VL.Parameters_Master_str,
             Parameters_Var=VL.Parameters_Var_str,
             Project=VL.Project,
@@ -125,5 +117,5 @@ class Method(Method_base):
 
         if return_value != '0':
             #an error occurred so exit VirtualLab
-            VL.Exit("Error Occurred with #MethodName")
+            VL.Exit("Error Occurred with Test")
         return

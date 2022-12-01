@@ -6,24 +6,24 @@ import datetime
 import json
 import os
 import shutil
+from importlib import import_module
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
 import VLconfig
 from .VirtualLab import VLSetup
 from .VLContainer import Container_Utils as Utils
+from . import VLFunctions as VLF
+from importlib import import_module
 ###############################################################################
 ######################     base module class     ##############################
 ###############################################################################
+DefaultSettings = {'Mode':'I','Launcher':'Process','NbJobs':1,'Max_Containers':1,
+              'InputDir':VLconfig.InputDir, 'OutputDir':VLconfig.OutputDir,
+              'MaterialDir':VLconfig.MaterialsDir, 'Cleanup':True}
 class VL_Module(VLSetup):
     def __init__(self, Simulation, Project,Cont_id=2):
         #perform setup steps that are common to both VL_modules and VL_manger
-        self._Common_init(Simulation, Project,Cont_id)
-        # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
-                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Max_Containers=1,
-                      Cleanup=True)
-        self.tcp_sock = Utils.create_tcp_socket()
+        self._Common_init(Simulation, Project, DefaultSettings, Cont_id)
 
     def start_module(self):
         import threading
@@ -100,248 +100,9 @@ class VL_Module(VLSetup):
         Utils.Cont_Finished(self.Container,self.tcp_sock)
         print(exitstr)
 
-###############################################################################
-##############################     CIL     ####################################
-###############################################################################
-class CIL_Setup(VL_Module):
-    def __init__(self, Simulation, Project,Cont_id=2):
-        super().__init__(Simulation, Project,Cont_id)
-    	#################################################################
-        # import run/setup functions for CIL
-        from .VLTypes import CIL as CILFn
-        self.CILFn = CILFn
-
-    def Parameters(self, Parameters_Master, Parameters_Var=None, RunCIL=False):
-        # Update args with parsed args
-        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
-        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
-        RunCIL = self._ParsedArgs.get('RunCIL',RunCIL)
-        
-        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        # Note: CIL uses the GVXR namespace since many of the settings overlap.
-        VLNamespaces = ['GVXR']
-        #Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to original strings for passing into other containers.
-        # So we will ned to get them here.
-        self.Parameters_Master_str = Parameters_Master
-        self.Parameters_Var_str = Parameters_Var
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
+    def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
+                    Import=False,**run_flags):
+        flags = {"Run{}".format(name):True for name in self.Methods} # all defaulted to True
+        super().Parameters(Parameters_Master, Parameters_Var, ParameterArgs,
+                    Import,**run_flags)
         self.start_module()
-        self.CILFn.Setup(self,RunCIL,run_list)
-        
-     #Hook for CIL       
-    def CT_Recon(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.CILFn.Run(self,**kwargs)
-
-    def _Cleanup(self,Cleanup=True):
-
-        exitstr = '\n#############################\n'\
-                    '####### CIL Terminated ######\n'\
-                    '#############################\n'\
-        
-        if not Cleanup:
-            exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
-        elif os.path.isdir(self.TEMP_DIR):
-            shutil.rmtree(self.TEMP_DIR)
-        Utils.Cont_Finished(self.Container,self.tcp_sock)
-        print(exitstr)
-
-###############################################################################
-################################     GVXR   ###################################
-###############################################################################
-class GVXR_Setup(VL_Module):
-    def __init__(self, Simulation, Project,Cont_id=3):
-        super().__init__(Simulation, Project,Cont_id)
-        # import run/setup functions for GVXR
-        from .VLTypes import GVXR as GVXRFn
-        self.GVXRFn = GVXRFn
-
-        
-    def Parameters(self, Parameters_Master, Parameters_Var=None, RunGVXR=False):
-        # Update args with parsed args
-        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
-        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
-        RunGVXR = self._ParsedArgs.get('RunGVXR',RunGVXR)
-        
-        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['GVXR']
-        #Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to original strings for passing into other containers.
-        # So we will ned to get them here.
-        self.Parameters_Master_str = Parameters_Master
-        self.Parameters_Var_str = Parameters_Var
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-        self.start_module()
-        self.GVXRFn.Setup(self,RunGVXR,self.run_list)   
-
-     #Hook for GVXR       
-    def CT_Scan(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.GVXRFn.Run(self,**kwargs)
-
-    def _Cleanup(self,Cleanup=True):
-
-        exitstr = '\n#############################\n'\
-                    '###### GVXR Terminated ######\n'\
-                    '#############################\n'\
-        
-        if not Cleanup:
-            exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
-        elif os.path.isdir(self.TEMP_DIR):
-            shutil.rmtree(self.TEMP_DIR)
-        Utils.Cont_Finished(self.Container)
-        print(exitstr)
-
-###############################################################################
-########################     Code Aster  ###################################
-###############################################################################
-class VL_SIM(VL_Module):
-    def __init__(self, Simulation, Project,Cont_id=4):
-        super().__init__(Simulation, Project,Cont_id)
-    	#################################################################
-        # import run/setup functions for Salome and ERMES
-        from .VLTypes import Sim as SimFn
-        from .VLTypes import Mesh as MeshFn
-        self.MeshFn=MeshFn
-        self.SimFn = SimFn
-        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
-
-    def Parameters(self, Parameters_Master, Parameters_Var=None, RunSim=False, RunMesh=False, Import=False):
-        # Update args with parsed args
-        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
-        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
-        RunSim = self._ParsedArgs.get('RunSim',RunSim)
-        RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
-        Import = self._ParsedArgs.get('Import',Import)
-
-        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Sim']
-        #Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to original strings for passing into other containers.
-        # So we will ned to get them here.
-        self.Parameters_Master_str = Parameters_Master
-        self.Parameters_Var_str = Parameters_Var
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-        self.start_module()
-        self.MeshFn.Setup(self,RunMesh, Import)
-        self.SimFn.Setup(self,RunSim, Import)
-        
-
-     #Hook for Aster/Ermes       
-    def Sim(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.SimFn.Run(self,**kwargs)
-
-    def devSim(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.SimFn.Run(self,**kwargs)
-
-###############################################################################
-########################     Salome   ###################################
-###############################################################################
-class VL_Mesh(VL_Module):
-    def __init__(self, Simulation, Project,Cont_id=5):
-        super().__init__(Simulation, Project,Cont_id)
-    	#################################################################
-        # import run/setup functions for Salome?
-        from .VLTypes import Mesh as MeshFn
-        self.MeshFn=MeshFn
-        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
-
-    def Parameters(self, Parameters_Master, Parameters_Var=None, RunMesh=False, Import=False):
-        # Update args with parsed args
-        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
-        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
-        RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
-        Import = self._ParsedArgs.get('Import',Import)
-
-        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh']
-        #Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to original strings for passing into other containers.
-        # So we will ned to get them here.
-        self.Parameters_Master_str = Parameters_Master
-        self.Parameters_Var_str = Parameters_Var
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-        self.start_module()
-        self.MeshFn.Setup(self,RunMesh, Import)
-
-    #Hooks for Salome/Ermes       
-    def Mesh(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.MeshFn.Run(self,**kwargs)
-
-    def devMesh(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.MeshFn.Run(self,**kwargs)
-
-###############################################################################
-#########################     Comms Test     ##################################
-###############################################################################
-class VL_Comms_Test(VL_Module):
-    def __init__(self, Simulation, Project,Cont_id=6):
-        super().__init__(Simulation, Project,Cont_id)
-    	#################################################################
-        # import run/setup functions for tests
-        from .VLTypes import Comms as TestFn
-        self.TestFn = TestFn
-
-
-    def Parameters(self, Parameters_Master, Parameters_Var=None, RunTest=False):
-        # Update args with parsed args
-        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
-        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
-        RunTest = self._ParsedArgs.get('RunTest',RunTest)
-        
-        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        # Note: CIL uses the GVXR namespace since many of the settings overlap.
-        VLNamespaces = ['Test']
-        #Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to original strings for passing into other containers.
-        # So we will ned to get them here.
-        self.Parameters_Master_str = Parameters_Master
-        self.Parameters_Var_str = Parameters_Var
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-        self.start_module()
-        self.TestFn.Setup(self,RunTest)
-
-    #Hook for CIL       
-    def Test_Coms(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.TestFn.Run(self)
-
-###############################################################################
-#########################     Cad2Vox     ##################################
-###############################################################################
-class VL_Vox(VL_Module):
-    def __init__(self, Simulation, Project,Cont_id=6):
-        super().__init__(Simulation, Project,Cont_id)
-    	#################################################################
-        # import run/setup functions for Cad2Vox
-        from .VLTypes import Vox as VoxFn
-        self.VoxFn = VoxFn
-
-
-    def Parameters(self, Parameters_Master, Parameters_Var=None, RunVox=False):
-        # Update args with parsed args
-        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
-        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
-        RunVox = self._ParsedArgs.get('RunVox',RunVox)
-        
-        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        # Note: CIL uses the GVXR namespace since many of the settings overlap.
-        VLNamespaces = ['Vox']
-        #Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to original strings for passing into other containers.
-        # So we will ned to get them here.
-        self.Parameters_Master_str = Parameters_Master
-        self.Parameters_Var_str = Parameters_Var
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
-        self.start_module()
-        self.VoxFn.Setup(self,RunVox)
-
-#hook in for cad2vox
-    def Voxelise(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.VoxFn.Run(self,**kwargs)

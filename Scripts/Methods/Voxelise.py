@@ -6,6 +6,7 @@ from importlib import import_module
 import copy
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.utils import Method_base
+from Scripts.Common.VLContainer import Container_Utils as Utils
 
 def Check_Threads(num_threads):
     """ Function to check the user defined Number of OpenMP threads are vaild"""
@@ -97,3 +98,20 @@ class Method(Method_base):
                 VL.Exit(VLF.ErrorMessage("The following Cad2Vox routine(s) finished with errors:\n{}".format(Errorfnc)))
 
         VL.Logger('\n### Voxelisation Complete ###',Print=True)
+
+    def Spawn(self,**kwargs):
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Cad2Vox",
+            Num_Cont=len(VL.container_list['Voxelise']),
+            Cont_runs=VL.container_list['Voxelise'],
+            Parameters_Master=VL.Parameters_Master_str,
+            Parameters_Var=VL.Parameters_Var_str,
+            Project=VL.Project,
+            Simulation=VL.Simulation,
+            Settings=VL.settings_dict,
+            tcp_socket=VL.tcp_sock,
+            run_args=kwargs)
+
+        if return_value != '0':
+            #an error occurred so exit VirtualLab
+            VL.Exit("Error Occurred with Voxelise")
+        return

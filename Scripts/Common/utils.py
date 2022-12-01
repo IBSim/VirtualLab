@@ -5,16 +5,18 @@ class Method_base():
         self.Data = {}
         self.RunFlag = True
         self._checks(VL.Exit)
-        self. _WrapVL(VL,['Setup','Run'])
+        self. _WrapVL(VL,['Setup','Run','Spawn'])
 
-    def __call__(self,*args,**kwargs):
+    def __call__(self,*args,Module=False,**kwargs):
         if not self.Data: return
         elif not self.RunFlag: return
-        else: return self._MethodRun(*args,**kwargs)
+        #check for flag to see if calling from module or manger, This should be set if calling from module
+        if not Module: self._MethodSpawn(*args,**kwargs) # spawn container
+        else: return self._MethodRun(*args,**kwargs) # run the method
 
     def _checks(self,exitfunc):
         # Check Setup and Run are definec correctly
-        for funcname in ['Setup','Run']:
+        for funcname in ['Setup','Run','Spawn']:
             if (not hasattr(self,'_Method{}'.format(funcname))) and hasattr(self,funcname):
                 func = getattr(self,'Set{}'.format(funcname))
                 func(funcname)
@@ -48,6 +50,9 @@ class Method_base():
 
     def SetRun(self,funcname):
         self._MethodRun = getattr(self,funcname)
+    
+    def SetSpawn(self,funcname):
+        self._MethodSpawn = getattr(self,funcname)
 
     def SetPoolRun(self,funcname):
         self._MethodPoolRun = getattr(self,funcname)

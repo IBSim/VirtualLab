@@ -112,7 +112,7 @@ def Cont_Finished(Cont_id,sock):
     sock.close()
     return
 
-def send_data(conn, payload,bigPayload=False,debug=True):
+def send_data(conn, payload,bigPayload=False,debug=False):
     '''
     Adapted from: https://github.com/vijendra1125/Python-Socket-Programming/blob/master/server.py
     @brief: send payload along with data size and data identifier to the connection
@@ -146,7 +146,7 @@ def send_data(conn, payload,bigPayload=False,debug=True):
         "###################################################")
     conn.sendall(serialized_payload)
     
-def receive_data(conn,payload_size=2048,debug=True):
+def receive_data(conn,payload_size=2048,debug=False):
     '''
     @brief: receive data from the connection assuming that data is a json string
     @args[in]: 

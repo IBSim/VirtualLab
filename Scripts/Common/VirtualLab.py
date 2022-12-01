@@ -14,30 +14,23 @@ import uuid
 import VLconfig
 from .VLContainer import Container_Utils as Utils
 from . import VLFunctions as VLF
+from importlib import import_module
 #############################################################
 # Note: VLSetup is the VLManager in the V2.0 naming scheme. #
 #       However, changing it's name would break far to much #
 #       legacy code to be worthwhile. So it's easier to     #
 #       just live with it for now.                          #
 #############################################################
+DefaultSettings = {'Mode':'I','Launcher':'Process','NbJobs':1,'Max_Containers':1,
+              'InputDir':VLconfig.InputDir, 'OutputDir':VLconfig.OutputDir,
+              'MaterialDir':VLconfig.MaterialsDir, 'Cleanup':True}
 class VLSetup():
     def __init__(self, Simulation, Project,Cont_id=1):
-        #####################################################
-        # import run/setup functions for curently all but CIL
-        from .VLTypes import DA as DAFn
-        self.DAFn=DAFn
         #perform setup steps that are common to both VL_modules and VL_manger
-        self._Common_init(Simulation, Project,Cont_id)
-        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
-        self.tcp_sock = Utils.create_tcp_socket()
+        self._Common_init(Simulation, Project, DefaultSettings, Cont_id)
         # Unique ID
         git_id = self._git()
         self._ID ="{}_{}".format(git_id,self._time)
-        # Specify default settings
-        self.Settings(Mode='H',Launcher='Process',NbJobs=1,
-                      InputDir=VLconfig.InputDir, OutputDir=VLconfig.OutputDir,
-                      MaterialDir=VLconfig.MaterialsDir,Max_Containers=1,
-                      Cleanup=True)
         ############################################################
         # dynamically create hook functions for all modules based on config file
         ############################################################
@@ -49,6 +42,48 @@ class VLSetup():
         self.Logger('\n############################\n'\
                         '### Launching VirtualLab ###\n'\
                         '############################\n',Print=True)
+
+    def _AddMethod(self):
+        ''' Add in the methods defined in Scripts/Methods to the VirtualLab class.'''
+        MethodsDir = "{}/Methods".format(self.SCRIPTS_DIR)
+        self.Methods = []
+        # Loop through directory contents
+        for _method in os.listdir(MethodsDir):
+            # skip directiories, files that start with '_' and those that aren't python
+            if _method.startswith('_'): continue
+            if not os.path.isfile("{}/{}".format(MethodsDir,_method)):continue
+            method_name,ext = os.path.splitext(_method)
+            if ext != '.py':continue
+
+            # define the path to the scripts for a certain method & add to class
+            script_path = "{}/{}".format(self.SIM_SCRIPTS,method_name)
+            setattr(self,"SIM_{}".format(method_name.upper()),script_path)
+
+            # If there's a config.py file in the methods directory this is used instead
+            if os.path.isfile("{}/config.py".format(script_path)):
+                mod_path = "{}.config".format(method_name)
+            else:
+                mod_path = "Methods.{}".format(method_name)
+
+            method_mod = import_module(mod_path)
+            # Try and import the method
+            # try:
+            #     method_mod = import_module(mod_path)
+            # except :
+            #     print(VLF.WarningMessage("Error during import of method '{}'.\nThis method will be unavailable for analysis".format(method_name)))
+            #     continue
+
+            # check the imported method has a class called Method
+            if not hasattr(method_mod,'Method'):
+                self.Exit(VLF.ErrorMessage("The method '{}' does not have the required class 'Method'".format(method_name)))
+
+            # initiate class and wrap key function
+            method_inst = method_mod.Method(self)
+
+            # add the method to self and add to list of methods
+            setattr(self,method_name,method_inst)
+            self.Methods.append(method_name)
+
 
     def handle_except(self,*args):
         ''' 
@@ -95,31 +130,35 @@ class VLSetup():
                 print(exception)
         return config
 
-    def _Common_init(self,Simulation, Project,Cont_id=1):
+    def _Common_init(self,Simulation, Project, DefaultSettings, Cont_id=1):
         '''
         init steps that are common between both VL_manger and VL_modules. 
         These are here since it makes sense to have them in one place and
         save duplicating work.
         '''
         sys.excepthook= self.handle_except
-        ########################################################################
-    	 # Get parsed args (achieved using the -k flag when launching VirtualLab).
-        self._GetParsedArgs()
+        # ======================================================================
+        # Check for updates to Simulation and Project in parsed arguments
+        arg_dict = VLF.Parser_update(['Simulation','Project'])
+        self.Simulation = arg_dict.get('Simulation',Simulation)
+        self.Project = arg_dict.get('Project',Project)
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
         self.Container=Cont_id
         # ======================================================================
-        # Define variables
-        self.Simulation = self._ParsedArgs.get('Simulation',Simulation)
-        self.Project = self._ParsedArgs.get('Project',Project)
-        # ======================================================================
 
         # ======================================================================
         # Define path to scripts
-        self.COM_SCRIPTS = "{}/Scripts/Common".format(VLconfig.VL_DIR)
-        self.SIM_SCRIPTS = "{}/Scripts/{}".format(VLconfig.VL_DIR, self.Simulation)
+        # check simulation type exists
+        self.SCRIPTS_DIR = "{}/Scripts".format(VLconfig.VL_DIR)
+
+        self.SIM_SCRIPTS = "{}/Experiments/{}".format(self.SCRIPTS_DIR, self.Simulation)
+        if not os.path.isdir(self.SIM_SCRIPTS):
+            self.Exit(VLF.ErrorMessage("Simulation type doesn't exist"))
+        self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
+        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
         # Add these to path
-        sys.path = [self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
+        sys.path = [self.SCRIPTS_DIR,self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
 
         #=======================================================================
         # Define & create temporary directory for work to be saved to
@@ -134,7 +173,11 @@ class VLSetup():
             # Unlikely this would happen. Suffix random number to directory name
             self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.randint(1000))
             os.makedirs(self.TEMP_DIR)
-
+        # Specify default settings
+        self.Settings(**DefaultSettings)
+        #create socket for networking
+        self.tcp_sock = Utils.create_tcp_socket()
+        self._AddMethod()
 
     def _SetMode(self,Mode='H'):
         # ======================================================================
@@ -191,95 +234,85 @@ class VLSetup():
         atexit.register(self._Cleanup,Cleanup)
 
     def _SetMax_Containers(self,Max_Containers=1,):
-        Max_Containers = self._ParsedArgs.get('Max_Containers',Max_Containers)
         if type(Max_Containers) == int:
-            _Max_Containers = Max_Containers
+            self._Max_Containers = Max_Containers
         elif type(Max_Containers) == float:
             if Max_Containers.is_integer():
-                _Max_Containers = Max_Containers
+                self._Max_Containers = Max_Containers
             else:
                 self.Exit(ErrorMessage("Max_Containers must be an integer"))
         else:
             self.Exit(ErrorMessage("Max_Containers must be an integer"))
 
-        if _Max_Containers >= 1:
-            self._Max_Containers = _Max_Containers
-        else:
+        if Max_Containers <= 0:
             self.Exit(ErrorMessage("Max_Containers must be positive"))
 
     
+    @VLF.kwarg_update
     def Settings(self,**kwargs):
-        
-        Diff = set(kwargs).difference(['Mode','Launcher','NbJobs','Max_Containers','InputDir',
-                                    'OutputDir','MaterialDir','Cleanup'])
+        # Dont specify the kwarsg so that the defauls aren't overwritten if there
+        # are multiple calls to settings
+        # dictionary of available kwargs and the function used to specify them
+        kwargs_fnc = {'Mode':self._SetMode,
+                      'Launcher':self._SetLauncher,
+                      'NbJobs':self._SetNbJobs,
+                      'InputDir':self._SetInputDir,
+                      'OutputDir':self._SetOutputDir,
+                      'MaterialDir':self._SetMaterialDir,
+                      'Max_Containers':self._SetMax_Containers,
+                      'Cleanup':self._SetCleanup}
+
+        # check no incorrect kwargs given
+        Diff = set(kwargs).difference(kwargs_fnc.keys())
         if Diff:
             self.Exit(VLF.ErrorMessage("The following are not valid options in Settings:\n{}".format("\n".join(Diff))))
 
-        if 'Mode' in kwargs:
-            self._SetMode(kwargs['Mode'])
-        if 'Launcher' in kwargs:
-            self._SetLauncher(kwargs['Launcher'])
-        if 'Max_Containers' in kwargs:
-            self._SetMax_Containers(kwargs['Max_Containers'])
-        if 'NbJobs' in kwargs:
-            self._SetNbJobs(kwargs['NbJobs'])
-        if 'Cleanup' in kwargs:
-            self._SetCleanup(kwargs['Cleanup'])
-        if 'InputDir' in kwargs:
-            self._SetInputDir(kwargs['InputDir'])
-        if 'OutputDir' in kwargs:
-            self._SetOutputDir(kwargs['OutputDir'])
-        if 'MaterialDir' in kwargs:
-            self._SetMaterialDir(kwargs['MaterialDir'])
-        # save settings as a dict here ready to send to containers
-        # this saves us pointlessly recreating it later.
-        self.settings_dict = kwargs
+        # pick up the kwargs passed in the parser
+        parsed_kwargs = VLF.Parser_update(kwargs_fnc.keys())
+        kwargs.update(parsed_kwargs)
 
         for kw_name,kw_fnc in kwargs_fnc.items():
             # if kw_name is in kwargs then we set it using kw_fnc
             if kw_name in kwargs:
                 kw_fnc(kwargs[kw_name])
+        self.settings_dict = kwargs
 
 
     @VLF.kwarg_update
     def Parameters(self, Parameters_Master, Parameters_Var=None, ParameterArgs=None,
-                    RunMesh=True, RunSim=True, RunDA=True,
-                    RunVox=True, RunGVXR=True, RunCIL=True,
-                    RunTest=True, Import=False):
+                    Import=False,**run_flags):
 
-        # Update args with parsed args
-        Parameters_Master = self._ParsedArgs.get('Parameters_Master',Parameters_Master)
-        Parameters_Var = self._ParsedArgs.get('Parameters_Var',Parameters_Var)
-        RunMesh = self._ParsedArgs.get('RunMesh',RunMesh)
-        RunSim = self._ParsedArgs.get('RunSim',RunSim)
-        RunDA = self._ParsedArgs.get('RunDA',RunDA)
-        RunVox = self._ParsedArgs.get('RunVox',RunVox)
-        RunGVXR = self._ParsedArgs.get('RunGVXR',RunGVXR)
-        RunCIL = self._ParsedArgs.get('RunCIL',RunCIL)
-        RunTest = self._ParsedArgs.get('RunTest',RunTest)
-        Import = self._ParsedArgs.get('Import',Import)
+        flags = {"Run{}".format(name):True for name in self.Methods} # all defaulted to True
 
-        # Create variables based on the namespaces (NS) in the Parameters file(s) provided
-        VLNamespaces = ['Mesh','Sim','DA','Vox','GVXR','CIL','Test']
+        # check no incorrect kwargs given
+        Diff = set(run_flags).difference(flags.keys())
+        if Diff:
+            self.Exit(VLF.ErrorMessage("The following are not valid options in Parameters:\n{}".format("\n".join(Diff))))
 
-        bool_list = [RunMesh,RunSim,RunDA,RunGVXR,RunCIL,RunVox,RunTest]
+        # update run_flags keywords (not covered by decorator)
+        parsed_flags = VLF.Parser_update(flags.keys())
+        run_flags.update(parsed_flags)
+        # update default flags
+        flags.update(run_flags)
 
         #Note: The call to GetParams converts params_master/var into Namespaces
         # however we need to original strings for passing into other containers.
         # So we will ned to get them here.
         self.Parameters_Master_str = Parameters_Master
         self.Parameters_Var_str = Parameters_Var
-        self.GetParams(Parameters_Master, Parameters_Var, VLNamespaces)
 
-        self.DAFn.Setup(self,RunDA, Import)
-        # get the number of runs defined in params for each module
-        self.Num_runs=self._get_Num_Runs(bool_list,VLNamespaces)
+        # update Parameters_master with parser (not covered by decorator)
+        arg_dict = VLF.Parser_update(['Parameters_Master'])
+        Parameters_Master = arg_dict.get('Parameters_Master',Parameters_Master)
+
+        self._SetParams(Parameters_Master, Parameters_Var,
+                       ParameterArgs=ParameterArgs)
+         # get the number of runs defined in params for each module
+        self.Num_runs=self._get_Num_Runs(flags,self.Methods)
         # get a list of all the containers and the runs they will process for each module
         self.container_list = self._Spread_over_Containers()
-        #self.do_Analytics(self,Num_runs) #disabled pending discussion with llion/Rhydian
-
         for method_name in self.Methods:
-            # get method_name instance
+        # get method_name instance
             method_cls = getattr(self,method_name)
             # create dictionary of parameters associated with the method_name
             # from the parameter file(s)
@@ -334,12 +367,20 @@ class VLSetup():
             Var = self.ImportParameters(Var,ParameterArgs)
 
         # ======================================================================
-        # Check any of the attributes of NS are included
-        if Master != None and not set(Master.__dict__).intersection(VLTypes):
-            message = "Parameters_Master contains none of the attributes {}".format(VLTypes)
-            self.Exit(VLF.ErrorMessage(message))
-        if Var != None and not set(Var.__dict__).intersection(VLTypes):
-            message = "Parameters_Var contains none of the attributes {}".format(VLTypes)
+        # Perform checks of master and var and assign to self
+        self.Parameters_Master = self._CheckParams(Master,'Parameters_Master',self.Methods)
+        self.Parameters_Var = self._CheckParams(Var,'Parameters_Var',self.Methods)
+
+    def _CheckParams(self,input,input_name,VLTypes):
+        '''Perform checks on the input file and return namespace whose attributes
+           are the VLTypes'''
+        # if the input is None return empty namespace
+        NS = Namespace()
+        if input is None: return NS
+
+        # check some of the VLTypes are defined in the input
+        if not set(input.__dict__).intersection(VLTypes):
+            message = "{} contains none of the attrbutes {}".format(input_name,VLTypes)
             self.Exit(VLF.ErrorMessage(message))
 
         for nm in VLTypes:
@@ -361,7 +402,7 @@ class VLSetup():
 
             setattr(NS,nm,attr_ns) # add the info to the namespace
 
-        return NS
+        return NS    
 
     def _CreateParameters(self, method_name):
         '''
@@ -446,48 +487,30 @@ class VLSetup():
 
         return ParaDict
 
-    def _get_Num_Runs(self,Runbools,Namespaces):
+    def _get_Num_Runs(self,flags,Namespaces):
         '''
         Function to get the number of runs defined in Params_master/Var for each Namespace.
         this is used to help calculate how many containers to spawn for parallel runs.
         Inputs:
-        Runbools - list of bool's  for namespaces to run 
+        flags - list of bool's  for namespaces to run 
         Namespaces -  list of namespaces
         returns:
         dict of number of runs defined for each namespace or 0 for each that Runbools is set for.
         '''
         num_runs = {}
-        
+        flags = list(flags.items())
         for I,module in enumerate(Namespaces):
             # special case for CIL since it shares the GVXR namespace
             if module == 'CIL':
-                TMPDict = self.CreateParameters(self.Parameters_Master_str, self.Parameters_Var_str,'GVXR')
+                TMPDict = self._CreateParameters('GVXR')
             else:
-                TMPDict = self.CreateParameters(self.Parameters_Master_str, self.Parameters_Var_str,module)
+                TMPDict = self._CreateParameters(module)
             # if Run is False or Dict is empty add 0 to list 0 instead.
-            if not(Runbools[I] and TMPDict):
+            if not(flags[I][1] and TMPDict):
                 num_runs[module] = 0
             else:
                 num_runs[module] = len(TMPDict)
         return (num_runs)
-        
-    def GetFilePath(self, Dirs, file_name, file_ext='py', exit_on_error=True):
-        ''' This function will return either the file path if it exists or None.'''
-        # ==========================================================================
-        # Check file exists
-        if type(Dirs) == str: Dirs=[Dirs]
-        FilePath = None
-        for dir in Dirs:
-            _FilePath = "{}/{}.{}".format(dir,file_name,file_ext)
-            FileExist = os.path.isfile(_FilePath)
-            if FileExist:
-                FilePath = _FilePath
-                break
-        if exit_on_error and FilePath is None:
-            self.Exit(VLF.ErrorMessage("The file {}.{} is not in the following directories:\n"\
-                    "{}".format(file_name,file_ext,"\n".join(Dirs))))
-
-        return FilePath
 
     def _Spread_over_Containers(self):
         '''
@@ -516,140 +539,6 @@ class VLSetup():
             if temp:    
                 containers[module] = temp
         return containers
-
-
-    def GetFunction(self, file_path, func_name, exit_on_error=True):
-        func = VLF.GetFunc(file_path,func_name)
-        if exit_on_error and func is None:
-            self.Exit(VLF.ErrorMessage("The function {} is not "\
-                    "in {}".format(func_name,file_path)))
-
-        return func
-# Call to Run a container
-    def Mesh(self,**kwargs):
-        
-        # if in main contianer submit job request
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Salome",
-        Num_Cont=len(self.container_list['Mesh']),
-        Cont_runs=self.container_list['Mesh'],
-        Parameters_Master=self.Parameters_Master_str,
-        Parameters_Var=self.Parameters_Var_str,
-        Project=self.Project,
-        Simulation=self.Simulation,
-        Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock,
-        run_args=kwargs)
-
-        if return_value != '0':
-            #an error ocured so exit VirtualLab
-            self.Exit("Error Occurred with Mesh")
-        return
-
-    # def devMesh(self,**kwargs):
-    #     kwargs = self._UpdateArgs(kwargs)
-    #     return self.MeshFn.Run(self,**kwargs)
-# Call to Run a container
-    def Sim(self,**kwargs):
-        
-        # if in main contianer submit job request
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Aster",
-        Num_Cont=len(self.container_list['Sim']),
-        Cont_runs=self.container_list['Sim'],
-        Parameters_Master=self.Parameters_Master_str,
-        Parameters_Var=self.Parameters_Var_str,
-        Project=self.Project,
-        Simulation=self.Simulation,
-        Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock,
-        run_args=kwargs)
-
-        if return_value != '0':
-            #an error ocured so exit VirtualLab
-            self.Exit("Error Occurred with Sim")
-        return
-
-    # def devSim(self,**kwargs):
-    #     kwargs = self._UpdateArgs(kwargs)
-    #     return self.SimFn.Run(self,**kwargs)
-
-    def DA(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.DAFn.Run(self,**kwargs)
-
-# Call to Run a container
-    def Voxelise(self,**kwargs):
-        
-        # if in main contianer submit job request
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Vox",
-        Num_Cont=len(self.container_list['Vox']),
-        Cont_runs=self.container_list['Vox'],
-        Parameters_Master=self.Parameters_Master_str,
-        Parameters_Var=self.Parameters_Var_str,
-        Project=self.Project,
-        Simulation=self.Simulation,
-        Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock,
-        run_args=kwargs)
-
-        if return_value != '0':
-            #an error ocured so exit VirtualLab
-            self.Exit("Error Occurred with Cad2Vox")
-        return
-
-# Call to Run a container for GVXR
-    def CT_Scan(self,**kwargs):
-        
-        # if in main contianer submit job request
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="GVXR",
-        Num_Cont=len(self.container_list['GVXR']),
-        Cont_runs=self.container_list['GVXR'],
-        Parameters_Master=self.Parameters_Master_str,
-        Parameters_Var=self.Parameters_Var_str,
-        Project=self.Project,
-        Simulation=self.Simulation,
-        Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock,
-        run_args=kwargs)
-
-        if return_value != '0':
-            #an error ocured so exit VirtualLab
-            self.Exit("Error Occurred with GVXR")
-        return
-# Call to Run a container for CIL       
-    def CT_Recon(self,**kwargs):
-        # if in main container submit job request
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="CIL",
-        # Note CIL uses GVXR namespace
-        Num_Cont=len(self.container_list['GVXR']),
-        Cont_runs=self.container_list['GVXR'],
-        Parameters_Master=self.Parameters_Master_str,
-        Parameters_Var=self.Parameters_Var_str,
-        Project=self.Project,
-        Simulation=self.Simulation,
-        Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock)
-
-        if return_value != '0':
-            #an error occurred so exit VirtualLab
-            self.Exit("Error Occurred with CIL")
-        return
-
-    def devDA(self,**kwargs):
-        kwargs = self._UpdateArgs(kwargs)
-        return self.DAFn.Run(self,**kwargs)
-# Call to spawn a minimal container for testing server communications and docker/apptainer
-    def Test_Coms(self,**kwargs):
-        # if in main container submit job request
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Test_Comms",
-        Num_Cont=len(self.container_list['Test']),
-        Cont_runs=self.container_list['Test'],
-        Parameters_Master=self.Parameters_Master_str,
-        Parameters_Var=self.Parameters_Var_str,
-        Project=self.Project,
-        Simulation=self.Simulation,
-        Settings=self.settings_dict,
-        tcp_socket=self.tcp_sock,
-        run_args=kwargs)
 
     def Logger(self,Text='',**kwargs):
         Prnt = kwargs.get('Print',False)
@@ -699,28 +588,6 @@ class VLSetup():
 
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
-
-
-def _git():
-    version,branch = '<version>','<branch>'
-    try:
-        from git import Repo
-        repo = Repo(VLconfig.VL_DIR)
-        sha = repo.head.commit.hexsha
-        version = repo.git.rev_parse(sha, short=7)
-        branch = repo.active_branch.name
-    except :
-        pass
-    return "{}_{}".format(version,branch)
-
-    def _UpdateArgs(self,ArgDict):
-        Changes = set(ArgDict).intersection(self._ParsedArgs)
-        if not Changes: return ArgDict
-
-        # If some of the arguments have been parsed then they are updated
-        for key in Changes:
-            ArgDict[key] = self._ParsedArgs[key]
-        return ArgDict
         
     def do_Analytics(VL,Dicts):
         ''' 

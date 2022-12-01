@@ -7,6 +7,7 @@ from Scripts.Common.VLPackages.Salome import Salome
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
+from Scripts.Common.VLContainer import Container_Utils as Utils
 
 class Method(Method_base):
     def __init__(self,VL):
@@ -69,6 +70,23 @@ class Method(Method_base):
             os.makedirs(MeshDict['TMP_CALC_DIR'],exist_ok=True)
 
             self.Data[MeshName] = MeshDict.copy()
+
+    def Spawn(self,VL,**kwargs):
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Salome",
+            Num_Cont=len(VL.container_list['Mesh']),
+            Cont_runs=VL.container_list['Mesh'],
+            Parameters_Master=VL.Parameters_Master_str,
+            Parameters_Var=VL.Parameters_Var_str,
+            Project=VL.Project,
+            Simulation=VL.Simulation,
+            Settings=VL.settings_dict,
+            tcp_socket=VL.tcp_sock,
+            run_args=kwargs)
+
+        if return_value != '0':
+            #an error occurred so exit VirtualLab
+            VL.Exit("Error Occurred with Mesh")
+        return
 
     @staticmethod
     def PoolRun(VL, MeshDict,GUI=False):

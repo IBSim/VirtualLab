@@ -53,10 +53,17 @@ Salome:
       Namespace: 'Mesh'
       Method: 'Mesh'
 
+DA: 
+      Docker_url: 'localhost:5000/salome'
+      Tag: 'latest'
+      Apptainer_file: 'Containers/VL_Salome.sif'
+      Run_script: '/home/ibsim/VirtualLab/bin/VL_DA.sh'
+
 Aster:
       Docker_url: 'localhost:5000/aster'
       Tag: 'latest'
-      Apptainer_file: 'Containers/VL_Aster.sif'
+      #Apptainer_file: 'Containers/VL_Aster.sif'
+      Apptainer_file: 'Containers/my_sbox'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_Aster.sh'
       Namespace: 'Sim'
       Method: 'Sim'

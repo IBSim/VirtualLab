@@ -30,4 +30,4 @@ VirtualLab.Parameters(
            RunSim=True,
            RunDA=True)
 
-VirtualLab.Test_Coms()
+VirtualLab.Test()

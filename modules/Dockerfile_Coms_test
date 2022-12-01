@@ -20,7 +20,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     rm /Miniconda3-latest-Linux-x86_64.sh && \
-    wget https://github.com/IBSim/VirtualLab/blob/main/modules/misc/jokes.sh && \
+    wget https://github.com/IBSim/VirtualLab/blob/main/common/jokes.sh && \
     chmod +x jokes.sh && \
     mv jokes.sh /usr/bin/jokes.sh
     

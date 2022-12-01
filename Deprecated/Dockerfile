@@ -66,7 +66,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 #COPY hello.sh /home/ibsim/hello.sh
-COPY patch.sh /home/ibsim/patch.sh
+COPY /common/patch.sh /home/ibsim/patch.sh
 #RUN chmod +x /home/ibsim/hello.sh
 #RUN chmod +x /home/ibsim/patch.sh
 

@@ -1,0 +1,22 @@
+# Code_Aster 14.4
+# From https://github.com/tianyikillua/code_aster_on_docker
+
+Welcome to Code_Aster!
+
+This image provides a GCC-based build of the 14.4 version of Code_Aster containing the following
+components:
+
+- hdf5 1.10.3
+- med 4.0.0
+- gmsh 3.0.6
+- scotch 6.0.4
+- astk 2019.0
+- metis 5.1.0
+- mfront 3.2.1
+- mumps 5.1.2
+- homard 11.12
+- aster 14.4.0
+
+To execute an "export" file, just run
+
+    as_run foo.export

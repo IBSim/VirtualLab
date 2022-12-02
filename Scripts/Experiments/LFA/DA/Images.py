@@ -6,6 +6,7 @@ from Scripts.Common.VLPackages import SalomeRun
 def Single(VL,DADict):
     Parameters = DADict['Parameters']
     ResultNames = getattr(Parameters,'ResultNames',[])
+    print(DADict)
     ResDir = "{}/{}".format(VL.PROJECT_DIR, DADict["Name"])
 
     GlobalRange = [np.inf, -np.inf]

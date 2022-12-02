@@ -5,6 +5,7 @@ from types import SimpleNamespace as Namespace
 
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
+from Scripts.Common.VLContainer import Container_Utils as Utils
 '''
 Template file for creating a new method. Create a copy of this file as #MethodName.py,
 which is the name of the new method, and edit as desired. Any file starting with
@@ -68,7 +69,12 @@ class Method(Method_base):
     def Run(self,VL,**kwargs):
         '''
         This is the function called when running VirtualLab.#MethodName in the
-        run file. This uses the information assigned to self.Data to perform
+        run file with the commandline option Module=True.
+
+        If this option if set to False (or not set at all since the default is 
+        False) the Function "Spawn" is called instead.
+
+        This Function uses the information assigned to self.Data to perform
         analysis.
 
         Use VLPool for high throughput parallelisation. This uses the information
@@ -93,3 +99,31 @@ class Method(Method_base):
         VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
                   '~~~ #MethodName Complete ~~~\n'\
                   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
+
+    def Spawn(self,VL,**kwargs):
+        '''
+        This is the function called when running VirtualLab.#MethodName in the
+        run file with the command line option Module=False (or not set at all 
+        as False is the default value).
+
+        If this option if set to True Function "Run" is called instead.
+
+        This Function sends a message to the host to spawn a container 
+        "#ContainerName". This refers to one of the Containers defined
+        in VL_modules.yaml.
+        '''
+        return_value=Utils.Spawn_Container(Cont_id=1,Tool="#ContainerName",
+            Num_Cont=len(VL.container_list['#MethodName']),
+            Cont_runs=VL.container_list['#MethodName'],
+            Parameters_Master=VL.Parameters_Master_str,
+            Parameters_Var=VL.Parameters_Var_str,
+            Project=VL.Project,
+            Simulation=VL.Simulation,
+            Settings=VL.settings_dict,
+            tcp_socket=VL.tcp_sock,
+            run_args=kwargs)
+
+        if return_value != '0':
+            #an error occurred so exit VirtualLab
+            VL.Exit("Error Occurred with #MethodName")
+        return

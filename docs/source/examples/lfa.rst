@@ -205,6 +205,7 @@ You will notice in the *Parameters_Var* file :file:`Input/LFA/Tutorials/Parametr
 
    Since 3 simulations are to be run you can set *NbJobs* to 3 (if you have the resources available)::
 
+
        VirtualLab.Settings(
                   Mode='Interactive',
                   Launcher='Process',
@@ -259,6 +260,7 @@ Since 'SimNoVoid' is the first entry in *Sim.Name* in :file:`Parametric_1.py` th
       Sim.LaserS = ['Uniform','Gauss','Uniform']
 
    There is no need to change the value for *NbJobs*.
+
 
    Launch **VirtualLab**.
 

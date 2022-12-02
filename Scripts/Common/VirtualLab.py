@@ -8,73 +8,40 @@ import shutil
 import copy
 from types import SimpleNamespace as Namespace, ModuleType
 import atexit
-import uuid
-from importlib import import_module
-
+import json
 import numpy as np
-
+import uuid
 import VLconfig
-from . import Analytics
+from .VLContainer import Container_Utils as Utils
 from . import VLFunctions as VLF
-
-DefaultSettings = {'Mode':'H','Launcher':'Process','NbJobs':1,
+from importlib import import_module
+#############################################################
+# Note: VLSetup is the VLManager in the V2.0 naming scheme. #
+#       However, changing it's name would break far to much #
+#       legacy code to be worthwhile. So it's easier to     #
+#       just live with it for now.                          #
+#############################################################
+DefaultSettings = {'Mode':'H','Launcher':'Process','NbJobs':1,'Max_Containers':1,
               'InputDir':VLconfig.InputDir, 'OutputDir':VLconfig.OutputDir,
               'MaterialDir':VLconfig.MaterialsDir, 'Cleanup':True}
-
 class VLSetup():
-    def __init__(self, Simulation, Project):
-        print('\n############################\n'\
-              '### Launching VirtualLab ###\n'\
-              '############################\n')
-
-        # ======================================================================
-        # Check for updates to Simulation and Project in parsed arguments
-        arg_dict = VLF.Parser_update(['Simulation','Project'])
-        self.Simulation = arg_dict.get('Simulation',Simulation)
-        self.Project = arg_dict.get('Project',Project)
-
-        #=======================================================================
-        # Define & create temporary directory for work to be saved to
-        self._TempDir = VLconfig.TEMP_DIR
-        # timestamp
-        self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
-        self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
-        try:
-            os.makedirs(self.TEMP_DIR)
-        except FileExistsError:
-            # Unlikely this would happen. Suffix random number to direcory name
-            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.random_integer(1000))
-            os.makedirs(self.TEMP_DIR)
-
+    def __init__(self, Simulation, Project,Cont_id=1):
+        #perform setup steps that are common to both VL_modules and VL_manger
+        self._Common_init(Simulation, Project, DefaultSettings, Cont_id)
         # Unique ID
-        git_id = _git()
+        git_id = self._git()
         self._ID ="{}_{}".format(git_id,self._time)
-
-        # Copy path at the start for MPI to match sys.path
-        self._pypath = sys.path.copy()
-
-        # ======================================================================
-        # Setdefault settings
-        self.Settings(**DefaultSettings)
-
-        # ======================================================================
-        # Define path to scripts
-        # check simulation type exists
-        self.SCRIPTS_DIR = "{}/Scripts".format(VLconfig.VL_DIR)
-
-        self.SIM_SCRIPTS = "{}/Experiments/{}".format(self.SCRIPTS_DIR, self.Simulation)
-        if not os.path.isdir(self.SIM_SCRIPTS):
-            self.Exit(VLF.ErrorMessage("Simulation type doesn't exist"))
-        self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
-        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
-
-        # Add these to path
-        sys.path = [self.SCRIPTS_DIR,self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
-
-        # ======================================================================
-        self._AddMethod()
-
-
+        ############################################################
+        # dynamically create hook functions for all modules based on config file
+        ############################################################
+        #module_config = self.load_module_config(VLconfig.VL_DIR)
+        ############################################################
+        data = {"msg":"VirtualLab started","Cont_id":1}
+        data_string = json.dumps(data)
+        Utils.send_data(self.tcp_sock,data)
+        self.Logger('\n############################\n'\
+                        '### Launching VirtualLab ###\n'\
+                        '############################\n',Print=True)
 
     def _AddMethod(self):
         ''' Add in the methods defined in Scripts/Methods to the VirtualLab class.'''
@@ -117,6 +84,100 @@ class VLSetup():
             setattr(self,method_name,method_inst)
             self.Methods.append(method_name)
 
+
+    def handle_except(self,*args):
+        ''' 
+        This function stops errors in containers from occurring silently by 
+        catching them with sys.excepthook and printing a traceback to the 
+        user via VL.Logger. When python errors are raised it normally only
+         prints the traceback to the the container not the host. 
+         Hence we need to be careful errors are handled appropriately.
+        
+        If this were not here Cleanup will get run Via AtExit. 
+        This sends the Finished message to the server to tell the main 
+        thread to close. This is what we want. However, AtExit does not
+        distinguish between errors and a normal exit. More annoyingly 
+        it returns 0. Thus the server assumes all is well.
+
+        This Function is a bit of a hack but at least it gives 
+        you a heads-up that all is not well.
+        ''' 
+        import traceback as tb
+        btrace = ''.join(tb.format_exception(None,None,args[2]))
+        errtype = str(args[1])
+        errormsg = '\n############################\n'\
+                     '###  Error Occurred   ######\n'\
+                     '###  in the container ######\n'\
+                        f'{errtype}\n'\
+                        f'{btrace}'\
+                     '############################\n'
+
+        self.Logger(errormsg,Print=True)
+        
+    def load_module_config(self,vlab_dir):
+        ''' Function to get the config for the 
+        modules from VL_Modules.yaml file 
+        '''
+        import yaml
+        from pathlib import Path
+        vlab_dir = Path(vlab_dir)
+        #load module config from yaml_file
+        config_file = vlab_dir/'VL_Modules.yaml'
+        with open(config_file)as file:
+            try:
+                config = yaml.safe_load(file)
+            except yaml.YAMLError as exception:
+                print(exception)
+        return config
+
+    def _Common_init(self,Simulation, Project, DefaultSettings, Cont_id=1):
+        '''
+        init steps that are common between both VL_manger and VL_modules. 
+        These are here since it makes sense to have them in one place and
+        save duplicating work.
+        '''
+        sys.excepthook= self.handle_except
+        # ======================================================================
+        # Check for updates to Simulation and Project in parsed arguments
+        arg_dict = VLF.Parser_update(['Simulation','Project'])
+        self.Simulation = arg_dict.get('Simulation',Simulation)
+        self.Project = arg_dict.get('Project',Project)
+        # Copy path at the start for MPI to match sys.path
+        self._pypath = sys.path.copy()
+        self.Container=Cont_id
+        # ======================================================================
+
+        # ======================================================================
+        # Define path to scripts
+        # check simulation type exists
+        self.SCRIPTS_DIR = "{}/Scripts".format(VLconfig.VL_DIR)
+
+        self.SIM_SCRIPTS = "{}/Experiments/{}".format(self.SCRIPTS_DIR, self.Simulation)
+        if not os.path.isdir(self.SIM_SCRIPTS):
+            self.Exit(VLF.ErrorMessage("Simulation type doesn't exist"))
+        self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
+        self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
+        # Add these to path
+        sys.path = [self.SCRIPTS_DIR,self.COM_SCRIPTS,self.SIM_SCRIPTS] + sys.path
+
+        #=======================================================================
+        # Define & create temporary directory for work to be saved to
+        self._TempDir = VLconfig.TEMP_DIR
+        # timestamp
+        self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
+        
+        self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
+        try:
+            os.makedirs(self.TEMP_DIR)
+        except FileExistsError:
+            # Unlikely this would happen. Suffix random number to directory name
+            self.TEMP_DIR = "{}_{}".format(self.TEMP_DIR,np.random.randint(1000))
+            os.makedirs(self.TEMP_DIR)
+        # Specify default settings
+        self.Settings(**DefaultSettings)
+        #create socket for networking
+        self.tcp_sock = Utils.create_tcp_socket()
+        self._AddMethod()
 
     def _SetMode(self,Mode='H'):
         # ======================================================================
@@ -172,11 +233,25 @@ class VLSetup():
         else: atexit.unregister(self._Cleanup)
         atexit.register(self._Cleanup,Cleanup)
 
+    def _SetMax_Containers(self,Max_Containers=1,):
+        if type(Max_Containers) == int:
+            self._Max_Containers = Max_Containers
+        elif type(Max_Containers) == float:
+            if Max_Containers.is_integer():
+                self._Max_Containers = Max_Containers
+            else:
+                self.Exit(ErrorMessage("Max_Containers must be an integer"))
+        else:
+            self.Exit(ErrorMessage("Max_Containers must be an integer"))
+
+        if Max_Containers <= 0:
+            self.Exit(ErrorMessage("Max_Containers must be positive"))
+
+    
     @VLF.kwarg_update
     def Settings(self,**kwargs):
         # Dont specify the kwarsg so that the defauls aren't overwritten if there
         # are multiple calls to settings
-
         # dictionary of available kwargs and the function used to specify them
         kwargs_fnc = {'Mode':self._SetMode,
                       'Launcher':self._SetLauncher,
@@ -184,6 +259,7 @@ class VLSetup():
                       'InputDir':self._SetInputDir,
                       'OutputDir':self._SetOutputDir,
                       'MaterialDir':self._SetMaterialDir,
+                      'Max_Containers':self._SetMax_Containers,
                       'Cleanup':self._SetCleanup}
 
         # check no incorrect kwargs given
@@ -199,6 +275,7 @@ class VLSetup():
             # if kw_name is in kwargs then we set it using kw_fnc
             if kw_name in kwargs:
                 kw_fnc(kwargs[kw_name])
+        self.settings_dict = kwargs
 
 
     @VLF.kwarg_update
@@ -218,15 +295,24 @@ class VLSetup():
         # update default flags
         flags.update(run_flags)
 
+        #Note: The call to GetParams converts params_master/var into Namespaces
+        # however we need to original strings for passing into other containers.
+        # So we will ned to get them here.
+        self.Parameters_Master_str = Parameters_Master
+        self.Parameters_Var_str = Parameters_Var
+
         # update Parameters_master with parser (not covered by decorator)
         arg_dict = VLF.Parser_update(['Parameters_Master'])
         Parameters_Master = arg_dict.get('Parameters_Master',Parameters_Master)
 
         self._SetParams(Parameters_Master, Parameters_Var,
                        ParameterArgs=ParameterArgs)
-
+         # get the number of runs defined in params for each module
+        self.Num_runs=self._get_Num_Runs(flags,self.Methods)
+        # get a list of all the containers and the runs they will process for each module
+        self.container_list = self._Spread_over_Containers()
         for method_name in self.Methods:
-            # get method_name instance
+        # get method_name instance
             method_cls = getattr(self,method_name)
             # create dictionary of parameters associated with the method_name
             # from the parameter file(s)
@@ -316,7 +402,7 @@ class VLSetup():
 
             setattr(NS,nm,attr_ns) # add the info to the namespace
 
-        return NS
+        return NS    
 
     def _CreateParameters(self, method_name):
         '''
@@ -401,6 +487,59 @@ class VLSetup():
 
         return ParaDict
 
+    def _get_Num_Runs(self,flags,Namespaces):
+        '''
+        Function to get the number of runs defined in Params_master/Var for each Namespace.
+        this is used to help calculate how many containers to spawn for parallel runs.
+        Inputs:
+        flags - list of bool's  for namespaces to run 
+        Namespaces -  list of namespaces
+        returns:
+        dict of number of runs defined for each namespace or 0 for each that Runbools is set for.
+        '''
+        num_runs = {}
+        flags = list(flags.items())
+        for I,module in enumerate(Namespaces):
+            # special case for CIL since it shares the GVXR namespace
+            if module == 'CIL':
+                TMPDict = self._CreateParameters('GVXR')
+            else:
+                TMPDict = self._CreateParameters(module)
+            # if Run is False or Dict is empty add 0 to list 0 instead.
+            if not(flags[I][1] and TMPDict):
+                num_runs[module] = 0
+            else:
+                num_runs[module] = len(TMPDict)
+        return (num_runs)
+
+    def _Spread_over_Containers(self):
+        '''
+        Function to generate a dict with a key for each VitualLab module. 
+        The values of the Dict are tuples the first index designates the 
+        container and the second designates which runs are assigned to 
+        that container.
+        '''
+        from itertools import cycle
+        containers={}
+
+        container_ids = [*range(1,self._Max_Containers+1)]
+        y=cycle(container_ids)
+        for module in self.Num_runs.keys():
+            runs = list(range(0, self.Num_runs[module]))
+            temp = []
+            for i in container_ids:
+                tmp =[]
+                for j in runs:
+                    x = next(y)
+                    if x == i:
+                        tmp.append(j)
+                if tmp:
+                    temp.append((i,tmp))
+                y=cycle(container_ids)
+            if temp:    
+                containers[module] = temp
+        return containers
+
     def Logger(self,Text='',**kwargs):
         Prnt = kwargs.get('Print',False)
 
@@ -420,7 +559,7 @@ class VLSetup():
             print(Text,flush=True)
         else:
             if Prnt: print(Text,flush=True)
-            with open(self.LogFile,'a') as f:
+            with open(str(self.LogFile),'a') as f:
                 f.write(Text+"\n")
 
     def Exit(self, mess='', Cleanup=True):
@@ -428,17 +567,18 @@ class VLSetup():
         sys.exit(mess)
 
     def _Cleanup(self,Cleanup=True):
-        # Report overview of VirtualLab usage
+        from . import Analytics
+        # Running with base virtualLab so Report overview of VirtualLab usage
         if hasattr(self,'_Analytics') and VLconfig.VL_ANALYTICS=="True":
             Category = "{}_Overview".format(self.Simulation)
             list_AL = ["{}={}".format(key,value) for key,value in self._Analytics.items()]
             Action = "_".join(list_AL)
             Analytics.Run(Category,Action,self._ID)
-
+            
         exitstr = '\n#############################\n'\
                     '### VirtualLab Terminated ###\n'\
                     '#############################\n'\
-
+        
         if not Cleanup:
             exitstr = 'The temp directory {} has not been deleted.\n'.format(self.TEMP_DIR) + exitstr
         elif os.path.isdir(self.TEMP_DIR):
@@ -448,16 +588,49 @@ class VLSetup():
 
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
+        
+    def do_Analytics(VL,vltype):
+        ''' 
+        Function to analyse usage of VirtualLab to evidence impact for
+        use in future research grant applications. Can be turned off via
+        VLconfig.py. See Scripts/Common/Analytics.py for more details.
+        '''
+        import os
+        import VLconfig
+        N = VL._NbJobs
+        if VLconfig.VL_ANALYTICS=="true" and vltype != 'Test':
+            print("~~~~~~~~~~~~~~~~~~~~~~\n" \
+                "Sending Analytics data\n" \
+                "~~~~~~~~~~~~~~~~~~~~~~")
+            from Scripts.Common import Analytics
+            # Create dictionary, if one isn't defined already  
+            if not hasattr(VL,'_Analytics'): VL._Analytics = {}
 
+            Category = "{}_{}".format(VL.Simulation,vltype)
+            Action = "NJob={}_NCore={}_NNode=1_NContainers={}".format(vltype,N,len(VL.container_list[vltype]))
+            # ======================================================================
+            # Send information about current job
+            Analytics.Run(Category,Action,VL._ID)
 
-def _git():
-    version,branch = '<version>','<branch>'
-    try:
-        from git import Repo
-        repo = Repo(VLconfig.VL_DIR)
-        sha = repo.head.commit.hexsha
-        version = repo.git.rev_parse(sha, short=7)
-        branch = repo.active_branch.name
-    except :
-        pass
-    return "{}_{}".format(version,branch)
+            # ======================================================================
+            # Update Analytics dictionary with new information
+            # Add information to dictionary
+            if vltype not in VL._Analytics:
+                VL._Analytics[vltype] = VL.Num_runs[vltype]
+            else:
+                VL._Analytics[vltype] += VL.Num_runs[vltype]
+            return
+        else:
+            return
+    
+    def _git(self):
+        version,branch = '<version>','<branch>'
+        try:
+            from git import Repo
+            repo = Repo(VLconfig.VL_DIR)
+            sha = repo.head.commit.hexsha
+            version = repo.git.rev_parse(sha, short=7)
+            branch = repo.active_branch.name
+        except :
+            pass
+        return "{}_{}".format(version,branch)

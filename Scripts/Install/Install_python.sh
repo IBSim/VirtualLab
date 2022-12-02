@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
@@ -74,23 +75,23 @@ if [ "$PYTHON_INST" == "y" ]; then
   sudo apt install -y python3.8
   sudo apt install -y python3-pip
   #sudo apt install -y python3-sphinx
-  sudo pip3 install -U sphinx
-  sudo -u ${SUDO_USER:-$USER} pip3 install furo sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
-  sudo -u ${SUDO_USER:-$USER} pip3 install -r $VL_DIR/requirements.txt
-  sudo -u ${SUDO_USER:-$USER} pip3 install scikit-learn==0.24.1
-  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps iapws==1.4
+  sudo pip3 install --user -U sphinx
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user furo sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user -r $VL_DIR/requirements.txt
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user scikit-learn==0.24.1
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user -U --no-deps iapws==1.4
 
   # install pyina (uses MPI)
   sudo apt install -y mpich
-  sudo -u ${SUDO_USER:-$USER} pip3 install mpi4py==3.0.3 dill==0.3.3 pox==0.2.9
-  sudo -u ${SUDO_USER:-$USER} pip3 install -U --no-deps pyina==0.2.4
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user mpi4py==3.0.3 dill==0.3.3 pox==0.2.9
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user -U --no-deps pyina==0.2.4
   # sourcing profile adds $HOME/.local/bin to $PATH for this terminal.
   # TODO: This is a temporary solution for this terminal, it is only permanent by
   # logging out and back in. Or could add this in to VLprofile?
   source ~/.profile
 
-#  sudo -u ${SUDO_USER:-$USER} pip3 install numpy scipy matplotlib h5py sphinx-rtd-theme sphinxcontrib-bibtex
-#  sudo -u ${SUDO_USER:-$USER} pip3 install iapws pathos==0.2.7
+#  sudo -u ${SUDO_USER:-$USER} pip3 install --user numpy scipy matplotlib h5py sphinx-rtd-theme sphinxcontrib-bibtex
+#  sudo -u ${SUDO_USER:-$USER} pip3 install --user iapws pathos==0.2.7
 
   ### Add $VL_DIR to $PYTHONPATH in python env and current shell
   if grep -q PYTHONPATH='$PYTHONPATH'$VL_DIR $USER_HOME/.VLprofile; then
@@ -133,6 +134,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
     echo "Skipping conda installation."
   else
     ### Otherwise download and install conda
+    conda_dir=$USER_HOME/anaconda3
     echo
     cd $USER_HOME
     if test ! -f "$CONDA_VER"; then
@@ -140,12 +142,12 @@ elif [ "$PYTHON_INST" == "c" ]; then
       echo "Downloading https://repo.anaconda.com/archive/"$CONDA_VER""
       sudo -u ${SUDO_USER:-$USER} wget https://repo.anaconda.com/archive/"$CONDA_VER"
     fi
-    echo "Proceeding to install conda in $USER_HOME/anaconda3"
-    sudo -u ${SUDO_USER:-$USER} bash $CONDA_VER -b -p $USER_HOME/anaconda3
-    eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"
+    echo "Proceeding to install conda in ${conda_dir}"
+    sudo -u ${SUDO_USER:-$USER} bash $CONDA_VER -b -p ${conda_dir}
+    eval "$(${conda_dir}/bin/conda shell.bash hook)"
     conda init
     sudo -s -u ${SUDO_USER} source $VL_DIR/Scripts/Install/conda_init.sh
-    export PATH=$USER_HOME/anaconda3/bin:$PATH
+    export PATH=${conda_dir}/bin:$PATH
     source $USER_HOME/.VLprofile
     ### Test conda
     if hash conda 2>/dev/null; then
@@ -160,14 +162,14 @@ elif [ "$PYTHON_INST" == "c" ]; then
     #conda --version
   fi
   conda update -n base -c defaults conda -y
-  if test ! -d "$USER_HOME/anaconda3/envs/$CONDAENV"; then
+  if test ! -d "${conda_dir}/envs/$CONDAENV"; then
     echo "Creating Conda env $CONDAENV"
     conda create -n $CONDAENV python=3.8 -y
   fi
 
   OS_v=$(eval lsb_release -r -s)
   if [[ $OS_v == "20.04" ]]; then
-    if test ! -d "$USER_HOME/anaconda3/envs/python2"; then
+    if test ! -d "${conda_dir}/envs/python2"; then
       echo "OS is Ubuntu $OS_v, which doesn't have python2 installed as default."
       echo "A python2 environment is also being created to install Salome_Meca."
       echo "Creating Conda end python2."
@@ -184,39 +186,41 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda install -y --file $VL_DIR/requirements.txt
   conda install -y scikit-learn=0.24.1 iapws=1.4
 
-  sudo chown $SUDO_USER:$SUDO_USER -R $USER_HOME/anaconda3/envs/$CONDAENV
-  sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
-  sudo chown -R 1000:1000 $USER_HOME/anaconda3/pkgs/cache
-  sudo chown -R 1000:1000 $USER_HOME/.cache/pip
-
+  sudo chown $SUDO_USER:$SUDO_USER -R ${conda_dir}/envs/$CONDAENV
+  sudo chmod -R 0755 ${conda_dir}/envs/$CONDAENV
+  sudo chown -R 1000:1000 ${conda_dir}/pkgs/cache
+  if test -e $USER_HOME/.cache/pip; then
+    sudo chown -R 1000:1000 $USER_HOME/.cache/pip
+  fi
+  ### Install python and required packages
+  sudo apt install -y python3-pip
 
   # install pyina (uses MPI)
   conda install pip
   sudo apt install -y mpich
-  conda install -y mpi4py=3.0.3 dill=0.3.3 pox=0.2.9
-  sudo -u ${SUDO_USER:-$USER} pip install -U --no-deps pyina==0.2.4
+  sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install mpi4py dill pox
+  sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install -U pyina
   source ~/.profile # This adds $HOME/.local/bin to $PATH which is needed by pyina
 
   echo "Finished creating Conda env $CONDAENV"
-  echo
 
   ### Add $VL_DIR to $PYTHONPATH in Conda env and current shell
   PYV=`python -V`
   PYV2=${PYV#* }
   PYV=${PYV2%.*}
-  PATH_FILE=$USER_HOME/anaconda3/envs/$CONDAENV/lib/python$PYV/site-packages/$CONDAENV.pth
-  if test -f "$PATH_FILE"; then
-    echo "VirtualLab PYTHONPATH found in Conda env."
-    echo
-  else
-    echo "Adding $VL_DIR to PYTHONPATH in Conda env."
-    echo
-    sudo -u ${SUDO_USER:-$USER} echo $VL_DIR >> $PATH_FILE
-    export PYTHONPATH=$PYTHONPATH$VL_DIR
-  fi
+  PATH_FILE=${conda_dir}/envs/$CONDAENV/lib/python$PYV/site-packages/$CONDAENV.pth
+  # if test -f "$PATH_FILE"; then
+  #   echo "VirtualLab PYTHONPATH found in Conda env."
+  #   echo
+  # else
+  #   echo "Adding $VL_DIR to PYTHONPATH in Conda env."
+  #   echo
+  #   sudo -u ${SUDO_USER:-$USER} echo $VL_DIR >> $PATH_FILE
+  #   export PYTHONPATH=$PYTHONPATH$VL_DIR
+  #fi
   echo "If conda was not previously installed you will need to open a new"
   echo "terminal to activate it or run the following command in this terminal:"
-  echo 'eval "$($USER_HOME/anaconda3/bin/conda shell.bash hook)"'
+  echo 'eval "$(${conda_dir}/bin/conda shell.bash hook)"'
   echo
 else
   echo "Skipping python installation"

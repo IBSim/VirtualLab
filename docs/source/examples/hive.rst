@@ -1,3 +1,6 @@
+.. role:: bash(code)
+   :language: bash
+
 Tutorial 3
 =================
 
@@ -29,6 +32,7 @@ As this is a multi-physics problem the setup of ``Sim`` is slightly different, w
                    Mode='Interactive',
                    Launcher='Process',
                    NbJobs=1)
+
 
         VirtualLab.Parameters(
                    Parameters_Master,

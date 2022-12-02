@@ -9,7 +9,9 @@
 !.gitignore
 !README.md
 !Run.py
+!VLconfig.py
 !VLconfig_DEFAULT.sh
+!VL_server.py
 !SetupConfig.sh
 !requirements.txt
 !LICENSE
@@ -28,7 +30,10 @@ Input/*/*
 !Input/*/.dev/
 !Input/Unit/*
 !tests/
-
+!Containers/
 # Ensure that only some Run files will be included in the RunFiles directory
 !RunFiles/
-
+# ignore logfiles but not directory
+!.log
+.log/*.log
+!VL_Modules.yaml

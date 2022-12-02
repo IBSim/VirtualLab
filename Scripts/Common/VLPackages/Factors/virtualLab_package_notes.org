@@ -1,0 +1,130 @@
+# VritualLab packaging
+Creating a package in VirtualLab consist of the following steps (these will be explained in detail later):
+
+1. Prepare a python script or package that you wish to include and place the files in virtuallab/Scripts/Common/VLPackages
+2. Write a bash install script to install all the dependencies required in Ubuntu 18.04
+3. Create a script inside the 'virtuallab/Scripts/Common/VLTypes' directory that contains the two functions, Setup and Run needed for integration with VirtualLab.
+4. Modify 'VirtualLab.py' to work with your Package.
+5. Test Your new package
+5. modify 'Install_VirtualLab.sh' to call your install script and install the dependencies as part of VirtualLab.
+
+As an example of the process we will walk through adding a simple example package called Factors. This contains a simple function which 
+takes in 3 parameters. two integers 'max' and 'min' and an optional list of integers 'avoid'. The main function then calculates and prints
+to the screen the factors a of randomly generated integer between max and min that is not in the list 'avoid'.
+
+### Step 1: Preparing the package scripts
+Step 1 of our process is nice and easy as our package is quite simple and only contains two files Factors.py and a blank '__init.py__'. So I 
+can simply place these in "virtuallab/Scripts/Common/VLPackages/Factors/"
+
+### Step 2: Writing an install script
+For step 2 we have an entire dedicated docs section on creating an install script that works with VLprofile. In my case step 2 is laughably
+easy as we are only using python builtin functions Numpy as such an install script is likely overkill. For brevity however, here is an example
+install script that simply sources VLProfile (not that it truly needs to) and then installs 
+
+####### Bash script ##########
+#!/bin/bash
+
+### get location of user home directory and variables set by VLprofile and VLconfig
+USER_HOME=$(eval echo ~${SUDO_USER})
+if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
+source ../../VLconfig.py
+
+#########################
+### This script is used to install Factors and its dependency I am 
+### aware this is likely overkill.
+#########################
+
+### Cumbersome Check if Conda is installed
+search_var=anaconda*
+conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+else
+  search_var=miniconda*
+  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+  if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+  fi
+fi
+
+### If conda found activate environment
+### If no conda, prerequisites are assumed installed in local python
+if hash conda 2>/dev/null; then
+  USE_CONDA=true
+  CONDAENV="$(basename -- $VL_DIR)"
+
+  if conda info --envs | grep -q $CONDAENV; then
+      echo "Found existing VirtualLab Conda environment"      
+  else
+      echo "VirtualLab conda environment not found so creating."
+      conda create -n $CONDAENV
+  fi
+  conda activate $CONDAENV
+
+else
+    USE_CONDA=false
+fi
+
+### Actually install numpy
+
+if USE_CONDA; then
+conda install numpy
+else
+pip install numpy
+fi
+
+### END of SCRIPT ####
+
+### Step 3: Creating A VLTypes script
+
+Next we need to create a script in the 'VLTypes' directory for VirtualLab to work with.
+
+This script will contain the two functions, Setup and Run needed for integration with VirtualLab.
+
+The Setup function parses the Params_Var and Params_Master Namespace files and creates a set of nested python dictionaries containing the 
+input parameters for each run. We can then use this to interface with the Run function.
+
+The Run Function (as the name implies) is what actually imports and calls the python package. This is generally done using the previously
+ mentioned nested dictionaries created by Setup.      
+
+This Dict is structured as follows. The outermost Dict contains keys for each run defined in 'Params_Master' and 'Params_Var'. Each key
+links to a second Dict which contains each of the input parameters for that Run.
+
+For example:
+
+ExampleData = {'run1': {'meshfile': 'mesh1.txt', 'Var1': 6, 'Var2': 9}, 'run2': {'meshfile': 'mesh2.txt', 'Var1': 3, 'Var2': 7}, 
+'run3': {'meshfile': 'mesh3.txt', 'Var1': 8, 'Var2': 9}}
+
+Note: in python you can use **dict as an input to a function. This passes in each key as a named input to the function.
+Thus we can perform each run sequentially using simple for loop.
+
+
+    for key in ExampleData.keys():
+        main(**ExampleData[key])
+
+The Basic VLTypes script used to setup the example Factors package can be found in 'VLTypes/Template.py'.
+
+#### Advanced tip
+As a more advanced step (assuming your runs are independent and thread-safe) you can also set the Run function to run them in parallel using the 
+python multiprocessing library (not to be confused with Python threading which is very different).
+https://docs.python.org/3/library/multiprocessing.html
+
+A very basic example of this would be:
+
+import multiprocessing
+
+if __name__=="__main__":
+# setup the first 2 runs to run in parallel processes.
+    prc1 = multiprocessing.Process(target=main, kwargs=ExampleData['run1']
+    prc2 = multiprocessing.Process(target=main, kwargs=ExampleData['run2']
+    # starting the 1st process
+    prc1.start()
+    # starting the 2nd process
+    prc2.start()
+    # waiting until 1st process is finished
+    prc1.join()
+    # waiting until 2nd process is finished
+    prc2.join()
+    print("Done")
+
+

@@ -4,13 +4,9 @@ import traceback
 import copy
 from types import SimpleNamespace as Namespace
 import pickle
-import inspect
 from contextlib import redirect_stderr, redirect_stdout
-import time
-
 import numpy as np
-
-from Scripts.Common import Analytics
+import time
 from Scripts.Common.tools import Paralleliser
 import VLconfig
 
@@ -142,32 +138,6 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
         trb = traceback.format_exception(etype=type(exc), value=exc, tb = exc.__traceback__)
 
         sys.exit("".join(trb))
-
-	# Function to analyse usage of VirtualLab to evidence impact for
-	# use in future research grant applications. Can be turned off via
-	# VLconfig.py. See Scripts/Common/Analytics.py for more details.
-    if VLconfig.VL_ANALYTICS=="True":
-        frame = inspect.stack()[1]
-        module = inspect.getmodule(frame[0])
-        vltype = os.path.splitext(os.path.basename(module.__file__))[0]
-
-        Category = "{}_{}".format(VL.Simulation,vltype)
-        Action = "NJob={}_NCore={}_NNode=1".format(len(Dicts),N)
-
-        # ======================================================================
-        # Send information abotu current job
-        Analytics.Run(Category,Action,VL._ID)
-
-        # ======================================================================
-        # Update Analytics dictionary with new information
-        # Create dictionary, if one isn't defined already
-        if not hasattr(VL,'_Analytics'): VL._Analytics = {}
-        # Add information to dictionary
-        if vltype not in VL._Analytics:
-            VL._Analytics[vltype] = len(Dicts)
-        else:
-            VL._Analytics[vltype] += len(Dicts)
-
 
     # Check if errors have been returned & update dictionaries
     Errorfnc = PoolReturn(analysis_data,Res)

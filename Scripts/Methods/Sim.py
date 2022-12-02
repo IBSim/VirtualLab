@@ -10,6 +10,7 @@ from Scripts.Common.VLPackages.CodeAster import Aster
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
+from Scripts.Common.VLContainer import Container_Utils as Utils
 
 class Method(Method_base):
     def Setup(self, VL, SimDicts, Import=False):
@@ -116,6 +117,26 @@ class Method(Method_base):
                 "Please see the materials directory {} for options.".format(Material,VL.MATERIAL_DIR)))
 
         # ==========================================================================
+        
+    def Spawn(self,VL,**kwargs):
+        MethodName = 'Sim'
+        ContainerName = "Aster"
+        return_value=Utils.Spawn_Container(VL,Cont_id=1,Tool=ContainerName,
+            Method_Name = MethodName,
+            Num_Cont=len(VL.container_list[MethodName]),
+            Cont_runs=VL.container_list[MethodName],
+            Parameters_Master=VL.Parameters_Master_str,
+            Parameters_Var=VL.Parameters_Var_str,
+            Project=VL.Project,
+            Simulation=VL.Simulation,
+            Settings=VL.settings_dict,
+            tcp_socket=VL.tcp_sock,
+            run_args=kwargs)
+
+        if return_value != '0':
+            #an error occurred so exit VirtualLab
+            VL.Exit("Error Occurred with Sim")
+        return
 
     @staticmethod
     @VLF.kwarg_update
@@ -261,3 +282,4 @@ def _ResView(Dir_dict,tempdir='/tmp'):
         print("\n### Opening results files in ParaVis ###\n")
         Script = "{}/ShowRes.py".format(Salome.Dir)
         Salome.Run(Script, GUI=True, DataDict=ResFiles,tempdir=tempdir)
+

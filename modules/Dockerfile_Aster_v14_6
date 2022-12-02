@@ -1,4 +1,7 @@
-FROM quay.io/tianyikillua/code_aster
+FROM quay.io/tianyikillua/base:latest
+#FROM ibsim/base:latest
+#FROM quay.io/tianyikillua/code_aster
+# Build script amended from https://github.com/tianyikillua/code_aster_on_docker
 
 # Variables
 ENV HDF5_VER=1.10.3
@@ -28,9 +31,23 @@ USER root
 RUN sudo rm -rf ${ASTER_ROOT}/14.4  ${ASTER_ROOT}/14.4_mpi  ${ASTER_ROOT}/bin  ${ASTER_ROOT}/etc  ${ASTER_ROOT}/lib
 RUN apt-get update && \
     apt-get upgrade -y --with-new-pkgs -o Dpkg::Options::="--force-confold" && \
-    apt-get install -y xorg openbox gmsh && \
+    apt-get install -y \
+    patch \
+    make cmake \
+    grace \
+    zlib1g-dev \
+    tk bison flex \
+    libglu1-mesa libxcursor-dev \
+    libmpich-dev \
+    libopenblas-dev \
+    libsuperlu-dev \
+    libboost-python-dev \
+    xorg \
+    openbox \
+    gmsh && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 RUN apt-get update && \
     apt-get install -y libsuperlu-dev
 
@@ -43,7 +60,59 @@ RUN wget --no-check-certificate --quiet ${ASTER_FULL_SRC} -O aster_full.tar.gz &
     cd aster_full && \
     python3 setup.py install --prefix ${ASTER_ROOT} --noprompt && \
     mv SRC/${SCOTCH_SRC} SRC/${MUMPS_SRC} SRC/${ASTER_SRC} /tmp && \
-    rm -rf /tmp/aster_full.tar.gz /tmp/aster_full 
+    rm -rf /tmp/aster_full.tar.gz /tmp/aster_full && \
+    cd ${PUBLIC}/tfel-${MFRONT_VER}/bin && \
+    ln -s mfront-3.2.1 mfront
+### last two lines new
+
+#### NEW ####
+# Build ptscotch
+RUN mkdir ptscotch && tar xf ${SCOTCH_SRC} -C ptscotch --strip-components 1 && \
+    cd ptscotch/src && \
+    make scotch esmumps ptscotch ptesmumps CCD=mpicc && \
+    mkdir ${PUBLIC}/ptscotch-${SCOTCH_VER} && \
+    make install prefix=${PUBLIC}/ptscotch-${SCOTCH_VER} && \
+    rm -rf /tmp/${SCOTCH_SRC} /tmp/ptscotch
+
+# Build parmetis
+# Patch from https://bitbucket.org/code_aster/parmetis/src/parmetis_aster/
+COPY --chown=aster:aster modules/code_aster_v14/parmetis.patch /tmp/parmetis.patch
+RUN wget --no-check-certificate --quiet ${PARMETIS_SRC} -O parmetis.tar.gz && \
+    mkdir parmetis && tar xf parmetis.tar.gz -C parmetis --strip-components 1 && \
+    patch -s -p0 < parmetis.patch && \
+    cd parmetis && \
+    make config prefix=${PUBLIC}/parmetis-${PARMETIS_VER} && \
+    make && \
+    make install && \
+    rm -rf /tmp/parmetis.tar.gz /tmp/parmetis.patch /tmp/parmetis
+
+# Build scalapack
+RUN wget --no-check-certificate --quiet ${SCALAPACK_SRC} -O scalapack.tar.gz && \
+    mkdir scalapack && tar xf scalapack.tar.gz -C scalapack --strip-components 1 && \
+    cd scalapack && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_INSTALL_PREFIX=${PUBLIC}/scalapack-${SCALAPACK_VER} -DBUILD_SHARED_LIBS=ON .. && \
+    make && \
+    make install && \
+    cd ${PUBLIC}/scalapack-${SCALAPACK_VER}/lib && \
+    cp libscalapack.so libblacs.so && \
+    rm -rf /tmp/scalapack.tar.gz /tmp/scalapack
+
+# Build parallel mumps
+RUN mkdir mumps && tar xf ${MUMPS_SRC} -C mumps --strip-components 1 && \
+    cd mumps && \
+    export INCLUDES="${PUBLIC}/metis-${METIS_VER}/include \
+                     ${PUBLIC}/parmetis-${PARMETIS_VER}/include \
+                     ${PUBLIC}/ptscotch-${SCOTCH_VER}/include" && \
+    export LIBPATH="${PUBLIC}/metis-${METIS_VER}/lib \
+                    ${PUBLIC}/parmetis-${PARMETIS_VER}/lib \
+                    ${PUBLIC}/ptscotch-${SCOTCH_VER}/lib \
+                    ${PUBLIC}/scalapack-${SCALAPACK_VER}/lib" && \
+    python3 waf configure --prefix=${PUBLIC}/mumps-${MUMPS_VER}_mpi --install-tests --enable-mpi && \
+    python3 waf build --jobs=1 && \
+    python3 waf install --jobs=1 && \
+    rm -rf /tmp/${MUMPS_SRC} /tmp/mumps
+#############
 
 # Build parallel PETSc
 COPY modules/code_aster_v14/petsc.patch /tmp/petsc.patch
@@ -77,47 +146,57 @@ RUN wget --no-check-certificate --quiet ${PETSC_SRC} -O petsc.tar.gz && \
 COPY modules/code_aster_v14/cfg.py /tmp/cfg.py
 COPY modules/code_aster_v14/aster.patch /tmp/aster.patch
 RUN . ${ASTER_ROOT}/${ASTER_VER}/share/aster/profile_mfront.sh && \
-     . ${ASTER_ROOT}/etc/codeaster/profile.sh && \
-     mkdir aster && tar xf ${ASTER_SRC} -C aster --strip-components 1 && \
-     patch aster/waftools/mathematics.py < aster.patch && \
-     cd aster && \
-     export INCLUDES="/usr/include/superlu \
-                      ${PUBLIC}/hdf5-${HDF5_VER}/include \
-                      ${PUBLIC}/med-${MED_VER}/include \
-                      ${PUBLIC}/metis-${METIS_VER}/include \
-                      ${PUBLIC}/parmetis-${PARMETIS_VER}/include \
-                      ${PUBLIC}/ptscotch-${SCOTCH_VER}/include \
-                      ${PUBLIC}/mumps-${MUMPS_VER}_mpi/include \
-                      ${PUBLIC}/petsc-${PETSC_VER}/include \
-                      ${PUBLIC}/tfel-${MFRONT_VER}/include" && \
-     export LIBPATH="${PUBLIC}/hdf5-${HDF5_VER}/lib \
-                     ${PUBLIC}/med-${MED_VER}/lib \
-                     ${PUBLIC}/metis-${METIS_VER}/lib \
-                     ${PUBLIC}/parmetis-${PARMETIS_VER}/lib \
-                     ${PUBLIC}/ptscotch-${SCOTCH_VER}/lib \
-                     ${PUBLIC}/scalapack-${SCALAPACK_VER}/lib \
-                     ${PUBLIC}/mumps-${MUMPS_VER}_mpi/lib \
-                     ${PUBLIC}/petsc-${PETSC_VER}/lib \
-                     ${PUBLIC}/tfel-${MFRONT_VER}/lib" && \
-     export METISDIR=${PUBLIC}/metis-${METIS_VER} && \
-     export TFELHOME=${PUBLIC}/tfel-${MFRONT_VER} && \
-     export GMSH_BIN_DIR=/usr/bin && \
-     export HOMARD_ASTER_ROOT_DIR=${PUBLIC}/homard-11.12 && \
-     ./waf configure --use-config-dir=/tmp --use-config=cfg --prefix=${ASTER_ROOT}/${ASTER_VER}_mpi --install-tests --enable-mpi && \
-     ./waf build  --jobs=6 && \
-     ./waf install 
- RUN sudo rm -rf /tmp/*
+    . ${ASTER_ROOT}/etc/codeaster/profile.sh && \
+    mkdir aster && tar xf ${ASTER_SRC} -C aster --strip-components 1 && \
+    patch aster/waftools/mathematics.py < aster.patch && \
+    cd aster && \
+    export INCLUDES="/usr/include/superlu \
+                    ${PUBLIC}/hdf5-${HDF5_VER}/include \
+                    ${PUBLIC}/med-${MED_VER}/include \
+                    ${PUBLIC}/metis-${METIS_VER}/include \
+                    ${PUBLIC}/parmetis-${PARMETIS_VER}/include \
+                    ${PUBLIC}/ptscotch-${SCOTCH_VER}/include \
+                    ${PUBLIC}/mumps-${MUMPS_VER}_mpi/include \
+                    ${PUBLIC}/petsc-${PETSC_VER}/include \
+                    ${PUBLIC}/tfel-${MFRONT_VER}/include" && \
+    export LIBPATH="${PUBLIC}/hdf5-${HDF5_VER}/lib \
+                    ${PUBLIC}/med-${MED_VER}/lib \
+                    ${PUBLIC}/metis-${METIS_VER}/lib \
+                    ${PUBLIC}/parmetis-${PARMETIS_VER}/lib \
+                    ${PUBLIC}/ptscotch-${SCOTCH_VER}/lib \
+                    ${PUBLIC}/scalapack-${SCALAPACK_VER}/lib \
+                    ${PUBLIC}/mumps-${MUMPS_VER}_mpi/lib \
+                    ${PUBLIC}/petsc-${PETSC_VER}/lib \
+                    ${PUBLIC}/tfel-${MFRONT_VER}/lib" && \
+    export METISDIR=${PUBLIC}/metis-${METIS_VER} && \
+    export TFELHOME=${PUBLIC}/tfel-${MFRONT_VER} && \
+    export GMSH_BIN_DIR=/usr/bin && \
+    export HOMARD_ASTER_ROOT_DIR=${PUBLIC}/homard-11.12 && \
+    ./waf configure --use-config-dir=/tmp --use-config=cfg --prefix=${ASTER_ROOT}/${ASTER_VER}_mpi --install-tests --enable-mpi && \
+    ./waf build  --jobs=6 && \
+    ./waf install
+RUN sudo rm -rf /tmp/*
 
 # Add a welcome message and a script for testcases
- WORKDIR /home/aster
- COPY modules/code_aster_v14/WELCOME /home/aster/WELCOME
- COPY modules/code_aster_v14/run_tests.sh /home/aster/run_tests.sh
- COPY modules/code_aster_v14/run_tests_par.sh /home/aster/run_tests_par.sh
- RUN echo "vers : stable_mpi:${ASTER_ROOT}/${ASTER_VER}_mpi/share/aster" >> ${ASTER_ROOT}/etc/codeaster/aster && \
-     echo "localhost" > ${ASTER_ROOT}/etc/codeaster/mpi_hostfile && \
-     echo "" >> .bashrc && \
-     echo "source ${ASTER_ROOT}/etc/codeaster/profile.sh" >> .bashrc
-RUN  echo 'mpi_get_procid_cmd : echo $OMPI_COMM_WORLD_RANK' >> ${ASTER_ROOT}/etc/codeaster/asrun
+WORKDIR /home/aster
+COPY modules/code_aster_v14/WELCOME /home/aster/WELCOME
+COPY modules/code_aster_v14/run_tests.sh /home/aster/run_tests.sh
+COPY modules/code_aster_v14/run_tests_par.sh /home/aster/run_tests_par.sh
+
+RUN echo "vers : stable_mpi:${ASTER_ROOT}/${ASTER_VER}_mpi/share/aster" >> ${ASTER_ROOT}/etc/codeaster/aster && \
+    echo "localhost" > ${ASTER_ROOT}/etc/codeaster/mpi_hostfile && \
+    echo 'mpi_get_procid_cmd : echo $OMPI_COMM_WORLD_RANK' >> ${ASTER_ROOT}/etc/codeaster/asrun && \
+    echo "" >> .bashrc && \
+    echo "source ${ASTER_ROOT}/etc/codeaster/profile.sh" >> .bashrc && \
+    echo "source ${ASTER_ROOT}/${ASTER_VER}/share/aster/profile_mfront.sh" >> .bashrc && \
+    echo "cat ~/WELCOME" >> .bashrc && \
+    echo "echo" >> .bashrc
+
+#RUN echo "vers : stable_mpi:${ASTER_ROOT}/${ASTER_VER}_mpi/share/aster" >> ${ASTER_ROOT}/etc/codeaster/aster && \
+#    echo "localhost" > ${ASTER_ROOT}/etc/codeaster/mpi_hostfile && \
+#    echo "" >> .bashrc && \
+#    echo "source ${ASTER_ROOT}/etc/codeaster/profile.sh" >> .bashrc
+#RUN echo 'mpi_get_procid_cmd : echo $OMPI_COMM_WORLD_RANK' >> ${ASTER_ROOT}/etc/codeaster/asrun
 #RUN  sed -i "s/14.4/${ASTER_VER}/" .bashrc &&\
 
 USER root

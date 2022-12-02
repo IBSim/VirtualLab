@@ -118,6 +118,6 @@ RUN . ${ASTER_ROOT}/${ASTER_VER}/share/aster/profile_mfront.sh && \
      echo "" >> .bashrc && \
      echo "source ${ASTER_ROOT}/etc/codeaster/profile.sh" >> .bashrc
 RUN  echo 'mpi_get_procid_cmd : echo $OMPI_COMM_WORLD_RANK' >> ${ASTER_ROOT}/etc/codeaster/asrun
-RUN  sed -i "s/14.4/${ASTER_VER}/" .bashrc &&\
+#RUN  sed -i "s/14.4/${ASTER_VER}/" .bashrc &&\
 
 USER root

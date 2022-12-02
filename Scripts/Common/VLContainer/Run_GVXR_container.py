@@ -25,4 +25,4 @@ VirtualLab.Parameters(
            args.Parameters_Var,
            RunGVXR=True)
            
-VirtualLab.CT_Scan(Module=True)
+VirtualLab.CT_Scan()

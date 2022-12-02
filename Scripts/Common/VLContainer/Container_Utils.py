@@ -6,7 +6,7 @@ from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
 
-def Spawn_Container(**kwargs):
+def Spawn_Container(VL,**kwargs):
     ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
         with another toll in separate container. At the moment this 
@@ -57,6 +57,7 @@ def Spawn_Container(**kwargs):
         These must be strings pointing to a Runfile.")
     sock = kwargs['tcp_socket']
     kwargs.pop('tcp_socket')
+    vltype = kwargs['Method_Name']
     #data_string = json.dumps(data)
     # send a signal to VL_server saying you want to spawn a container
     send_data(sock, kwargs)
@@ -82,8 +83,9 @@ def Spawn_Container(**kwargs):
             if rec_dict['msg'] == 'Error':
                 container_return = '-1'
                 break
-            #continue
-    #sock.close()
+            
+    if container_return == '0':
+        VL.do_Analytics(vltype)
     return container_return
 
 def create_tcp_socket(port=9000):
@@ -195,7 +197,8 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
         # check apptainer sif file exists and if not build from docker version
         if not os.path.exists(Module["Apptainer_file"]):
             try:
-                proc=subprocess.check_call(f'SINGULARITY_NOHTTPS=true singularity build {Module["Apptainer_file"]} docker://{Module["Docker_url"]}:{Module["Tag"]}', shell=True)
+                proc=subprocess.check_call(f'SINGULARITY_NOHTTPS=true singularity build '\
+                   f'{Module["Apptainer_file"]} docker://{Module["Docker_url"]}:{Module["Tag"]}', shell=True)
             except subprocess.CalledProcessError as E:
                 print(E.stderr)
                 raise E

@@ -99,10 +99,13 @@ class Method(Method_base):
 
         VL.Logger('\n### Voxelisation Complete ###',Print=True)
 
-    def Spawn(self,**kwargs):
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Cad2Vox",
-            Num_Cont=len(VL.container_list['Voxelise']),
-            Cont_runs=VL.container_list['Voxelise'],
+    def Spawn(self,VL,**kwargs):
+        MethodName = "Voxelise"
+        ContainerName = "Cad2Vox"
+        return_value=Utils.Spawn_Container(VL,Cont_id=1,Tool=ContainerName,
+            Method_Name = MethodName,
+            Num_Cont=len(VL.container_list[MethodName]),
+            Cont_runs=VL.container_list[MethodName],
             Parameters_Master=VL.Parameters_Master_str,
             Parameters_Var=VL.Parameters_Var_str,
             Project=VL.Project,

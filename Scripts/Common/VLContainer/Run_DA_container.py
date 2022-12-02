@@ -26,4 +26,4 @@ VirtualLab.Parameters(
            RunSim=True,
            RunMesh=True)
 
-VirtualLab.DA(Module=True)
+VirtualLab.DA()

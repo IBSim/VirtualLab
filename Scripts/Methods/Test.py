@@ -18,6 +18,7 @@ class Method(Method_base):
         self.RunFlag = True
         self._checks(VL.Exit)
         self. _WrapVL(VL,['Setup','Run','Spawn'])
+        self.clsname = str(VL.__class__.__name__)
         
 
     def Setup(self, VL, TestDicts, Import=False):
@@ -90,7 +91,7 @@ class Method(Method_base):
 
         VL.Logger('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'\
                   '~~~ Test Complete ~~~\n'\
-                  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
+                 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n',Print=True)
 
     def Spawn(self,VL,**kwargs):
         '''
@@ -104,9 +105,12 @@ class Method(Method_base):
         "#ContainerName". This refers to one of the Containers defined
         in VL_modules.yaml.
         '''
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Test_Comms",
-            Num_Cont=len(VL.container_list['Test']),
-            Cont_runs=VL.container_list['Test'],
+        MethodName = "Test"
+        ContainerName = "Test_Comms"
+        return_value=Utils.Spawn_Container(VL,Cont_id=1,Tool=ContainerName,
+            Method_Name = MethodName,
+            Num_Cont=len(VL.container_list[MethodName]),
+            Cont_runs=VL.container_list[MethodName],
             Parameters_Master=VL.Parameters_Master_str,
             Parameters_Var=VL.Parameters_Var_str,
             Project=VL.Project,

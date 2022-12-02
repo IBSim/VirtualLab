@@ -21,7 +21,7 @@ from importlib import import_module
 #       legacy code to be worthwhile. So it's easier to     #
 #       just live with it for now.                          #
 #############################################################
-DefaultSettings = {'Mode':'I','Launcher':'Process','NbJobs':1,'Max_Containers':1,
+DefaultSettings = {'Mode':'H','Launcher':'Process','NbJobs':1,'Max_Containers':1,
               'InputDir':VLconfig.InputDir, 'OutputDir':VLconfig.OutputDir,
               'MaterialDir':VLconfig.MaterialsDir, 'Cleanup':True}
 class VLSetup():
@@ -165,7 +165,7 @@ class VLSetup():
         self._TempDir = VLconfig.TEMP_DIR
         # timestamp
         self._time = (datetime.datetime.now()).strftime("%y.%m.%d_%H.%M.%S.%f")
-
+        
         self.TEMP_DIR = '{}/VL_{}'.format(self._TempDir, self._time)
         try:
             os.makedirs(self.TEMP_DIR)
@@ -559,7 +559,7 @@ class VLSetup():
             print(Text,flush=True)
         else:
             if Prnt: print(Text,flush=True)
-            with open(self.LogFile,'a') as f:
+            with open(str(self.LogFile),'a') as f:
                 f.write(Text+"\n")
 
     def Exit(self, mess='', Cleanup=True):
@@ -589,7 +589,7 @@ class VLSetup():
     def Cleanup(self,KeepDirs=[]):
         print('Cleanup() is depreciated. You can remove this from your script')
         
-    def do_Analytics(VL,Dicts):
+    def do_Analytics(VL,vltype):
         ''' 
         Function to analyse usage of VirtualLab to evidence impact for
         use in future research grant applications. Can be turned off via
@@ -597,26 +597,28 @@ class VLSetup():
         '''
         import os
         import VLconfig
-        if not N: N = VL._NbJobs
-        if VLconfig.VL_ANALYTICS=="True":
+        N = VL._NbJobs
+        if VLconfig.VL_ANALYTICS=="true" and vltype != 'Test':
+            print("~~~~~~~~~~~~~~~~~~~~~~\n" \
+                "Sending Analytics data\n" \
+                "~~~~~~~~~~~~~~~~~~~~~~")
             from Scripts.Common import Analytics
             # Create dictionary, if one isn't defined already  
             if not hasattr(VL,'_Analytics'): VL._Analytics = {}
 
-            for vltype in Dicts.keys():
-                Category = "{}_{}".format(VL.Simulation,vltype)
-                Action = "NJob={}_NCore={}_NNode=1".format(Dicts[vltype],N) #send N_containers?
-                # ======================================================================
-                # Send information about current job
-                Analytics.Run(Category,Action,VL._ID)
+            Category = "{}_{}".format(VL.Simulation,vltype)
+            Action = "NJob={}_NCore={}_NNode=1_NContainers={}".format(vltype,N,len(VL.container_list[vltype]))
+            # ======================================================================
+            # Send information about current job
+            Analytics.Run(Category,Action,VL._ID)
 
-                # ======================================================================
-                # Update Analytics dictionary with new information
-                # Add information to dictionary
-                if vltype not in VL._Analytics:
-                    VL._Analytics[vltype] = Dicts[vltype]
-                else:
-                    VL._Analytics[vltype] += Dicts[vltype]
+            # ======================================================================
+            # Update Analytics dictionary with new information
+            # Add information to dictionary
+            if vltype not in VL._Analytics:
+                VL._Analytics[vltype] = VL.Num_runs[vltype]
+            else:
+                VL._Analytics[vltype] += VL.Num_runs[vltype]
             return
         else:
             return

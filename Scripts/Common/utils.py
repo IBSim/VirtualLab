@@ -6,12 +6,13 @@ class Method_base():
         self.RunFlag = True
         self._checks(VL.Exit)
         self. _WrapVL(VL,['Setup','Run','Spawn'])
+        self.clsname = str(VL.__class__.__name__)
 
     def __call__(self,*args,Module=False,**kwargs):
         if not self.Data: return
         elif not self.RunFlag: return
-        #check for flag to see if calling from module or manger, This should be set if calling from module
-        if not Module: self._MethodSpawn(*args,**kwargs) # spawn container
+        #check if calling class is module or manger (i.e. vlsetup or vlmodule)
+        if self.clsname == 'VLSetup': return self._MethodSpawn(*args,**kwargs) # spawn container
         else: return self._MethodRun(*args,**kwargs) # run the method
 
     def _checks(self,exitfunc):

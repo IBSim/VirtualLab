@@ -25,4 +25,4 @@ VirtualLab.Parameters(
            args.Parameters_Var,
            RunCIL=True)
 
-VirtualLab.CT_Recon(Module=True)
+VirtualLab.CT_Recon()

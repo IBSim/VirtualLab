@@ -24,4 +24,4 @@ VirtualLab.Parameters(
            args.Parameters_Var,
            RunTest=True)
            
-VirtualLab.Test(Module=True)
+VirtualLab.Test()

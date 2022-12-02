@@ -56,7 +56,7 @@ Salome:
 DA: 
       Docker_url: 'localhost:5000/salome'
       Tag: 'latest'
-      Apptainer_file: 'Containers/VL_Salome.sif'
+      Apptainer_file: 'Containers/VL_Aster.sif'
       Run_script: '/home/ibsim/VirtualLab/bin/VL_DA.sh'
 
 Aster:

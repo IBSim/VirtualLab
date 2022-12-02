@@ -24,4 +24,4 @@ VirtualLab.Parameters(
            args.Parameters_Var,
            RunMesh=True)
 
-VirtualLab.Mesh(Module=True)
+VirtualLab.Mesh()

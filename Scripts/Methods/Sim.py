@@ -119,9 +119,12 @@ class Method(Method_base):
         # ==========================================================================
         
     def Spawn(self,VL,**kwargs):
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="Aster",
-            Num_Cont=len(VL.container_list['Sim']),
-            Cont_runs=VL.container_list['Sim'],
+        MethodName = 'Sim'
+        ContainerName = "Aster"
+        return_value=Utils.Spawn_Container(VL,Cont_id=1,Tool=ContainerName,
+            Method_Name = MethodName,
+            Num_Cont=len(VL.container_list[MethodName]),
+            Cont_runs=VL.container_list[MethodName],
             Parameters_Master=VL.Parameters_Master_str,
             Parameters_Var=VL.Parameters_Var_str,
             Project=VL.Project,

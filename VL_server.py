@@ -211,7 +211,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
                 send_data(manager_socket, data)
             sock_lock.release()
             # cont_ready should be set by another thread when the container messages to say its ready to go.
-            # This loop essentially checks to see if the container started corrctly by waiting for 10 seconds
+            # This loop essentially checks to see if the container started correctly by waiting for 10 seconds
             #  and if cont_ready is not set it will raise an error.
             i = 0
             while not cont_ready:

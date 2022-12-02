@@ -1,8 +1,11 @@
+NON_ROOT_USER=ibsim
+# NON_ROOT_USER=aster
+
 if [ -z "$ASRUN" ]; then
-    ASRUN=/home/aster/aster/bin/as_run
+    ASRUN=/home/$NON_ROOT_USER/aster/bin/as_run
 fi
 
-TEST_DIR=/home/aster/shared/test
+TEST_DIR=/home/$NON_ROOT_USER/shared/test
 
 mkdir -p $TEST_DIR
 cd $TEST_DIR
@@ -16,5 +19,4 @@ done
 
 $ASRUN --diag --only_nook --astest_dir=$TEST_DIR > $TEST_DIR/diag
 
-
-/home/aster/aster/bin/as_run --list --all --filter='"parallel" in testlist'
+/home/$NON_ROOT_USER/aster/bin/as_run --list --all --filter='"parallel" in testlist'

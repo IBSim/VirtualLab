@@ -17,7 +17,8 @@
 # https://github.com/FIPE-System/code_aster-paralell_installlation
 
 # Switch between versions
-# If switching, ensure that both FROM and ENV are un/commented
+# If switching, ensure that both FROM and ENV are un/commented.
+# Also needs changing in the run_tests files, if planning to use those.
 #FROM quay.io/tianyikillua/base:latest
 #ENV NON_ROOT_USER=aster
 FROM ibsim/base:latest

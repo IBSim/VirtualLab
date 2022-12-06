@@ -13,6 +13,7 @@ ENV LC_ALL=C.UTF-8 \
 # Get Ubuntu updates and basic packages
 USER root
 
+RUN sed -i 's/ universe/ universe multiverse/' /etc/apt/sources.list
 RUN apt-get update && \
     apt-get upgrade -y --with-new-pkgs -o Dpkg::Options::="--force-confold" && \
     apt-get install -y \

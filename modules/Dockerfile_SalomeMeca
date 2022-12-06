@@ -22,8 +22,8 @@ RUN apt-get update && \
     unzip \
     libglu1 \
     nano \
-    git && \
-    qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools && \
+    git \
+    qtbase5 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

@@ -362,7 +362,7 @@ def update_container(Module):
     if not os.path.exists(Module["Apptainer_file"]):
         print(f"Apptainer file {Module['Apptainer_file']} does not appear to exist so building. This may take a while.")
         try:
-            proc=subprocess.check_call(f'Apptainer build '\
+            proc=subprocess.check_call(f'apptainer build '\
                f'{Module["Apptainer_file"]} docker://{Module["Docker_url"]}:{Module["Tag"]}', shell=True)
         except subprocess.CalledProcessError as E:
             print(E.stderr)

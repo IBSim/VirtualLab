@@ -181,7 +181,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug):
             simulation = rec_dict["Simulation"]
             # setup command to run docker or Apptainer
             if use_Apptainer:
-                container_cmd = 'Apptainer exec --writable-tmpfs'
+                container_cmd = 'apptainer exec --writable-tmpfs'
             else:
                 # this monstrosity logs the user in as "themself" to allow safe access top x11 graphical apps"
                 #see http://wiki.ros.org/docker/Tutorials/GUI for more details
@@ -420,7 +420,7 @@ if __name__ == "__main__":
     #start VirtualLab
     lock.acquire()
     if use_Apptainer:
-        proc=subprocess.Popen(f'Apptainer exec --no-home --writable-tmpfs --nv -B \
+        proc=subprocess.Popen(f'apptainer exec --no-home --writable-tmpfs --nv -B \
                         /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
                         f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
     else:

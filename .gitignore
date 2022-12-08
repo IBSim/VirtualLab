@@ -22,6 +22,8 @@
 !docs/
 docs/build
 !Config/
+Config/*.yaml
+Config/*.py
 !Scripts/
 !Materials/
 # Ensure that only the Example and .dev sub-directory will be included in the whitelist

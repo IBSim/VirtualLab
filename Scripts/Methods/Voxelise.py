@@ -9,7 +9,7 @@ from Scripts.Common.utils import Method_base
 from Scripts.Common.VLContainer import Container_Utils as Utils
 
 def Check_Threads(num_threads):
-    """ Function to check the user defined Number of OpenMP threads are vaild"""
+    """ Function to check the user defined Number of OpenMP threads are valid"""
     try:
         int(num_threads)
     except ValueError:
@@ -88,7 +88,7 @@ class Method(Method_base):
             self.Data[VoxName] = VoxDict.copy()
 
     def Run(self,VL):
-        import cad2vox
+        from Scripts.Common.VLPackages import Vox as cad2vox
         if not self.Data: return
         VL.Logger('\n### Starting Voxelisation ###\n', Print=True)
 
@@ -104,7 +104,7 @@ class Method(Method_base):
         ContainerName = "Cad2Vox"
         return_value=Utils.Spawn_Container(VL,Cont_id=1,Tool=ContainerName,
             Method_Name = MethodName,
-            Num_Cont=len(VL.container_list[MethodName]),
+            Num_Cont=1,
             Cont_runs=VL.container_list[MethodName],
             Parameters_Master=VL.Parameters_Master_str,
             Parameters_Var=VL.Parameters_Var_str,

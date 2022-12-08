@@ -67,11 +67,11 @@ def Spawn_Container(VL,**kwargs):
     vltype = kwargs['Method_Name']
     #data_string = json.dumps(data)
     # send a signal to VL_server saying you want to spawn a container
-    send_data(sock, kwargs)
+    send_data(sock, kwargs,VL.debug)
     target_ids = []
     #wait to receive message saying the tool is finished before continuing on.
     while True:
-        rec_dict=receive_data(sock)
+        rec_dict=receive_data(sock,VL.debug)
         if rec_dict:
             if rec_dict['msg'] == 'Running':
                 target_ids.append(rec_dict['Cont_id'])
@@ -86,7 +86,7 @@ def Spawn_Container(VL,**kwargs):
         return target_ids
 
     while True:
-        rec_dict = receive_data(sock)
+        rec_dict = receive_data(sock,VL.debug)
         if rec_dict:
             if rec_dict['msg'] == 'Success':
                 target_ids.remove(rec_dict['Target_id'])
@@ -116,21 +116,21 @@ def create_tcp_socket(port=9000):
     sock.connect((host, port))   
     return sock
 
-def Cont_Started(Cont_id,sock):
+def Cont_Started(Cont_id,sock,debug=False):
     ''' Function to send a Message to the main script to say the container has started.'''
     data = {"msg":"started","Cont_id":Cont_id}
     send_data(sock, data)
     sock.close()
     return
 
-def Cont_Finished(Cont_id,sock):
+def Cont_Finished(Cont_id,sock,debug=False):
     ''' Function to send a Message to the main script to say the container has Finished.'''
     data = {"msg":"Finished","Cont_id":Cont_id}
-    send_data(sock, data)
+    send_data(sock, data,debug)
     sock.close()
     return
 
-def Wait_For_Container(sock,Cont_id,Target_id):
+def Wait_For_Container(sock,Cont_id,Target_id,debug=False):
     '''
     Function to wait to receive a message from container Target_id to say if 
     it has finished or is waiting. 
@@ -139,7 +139,7 @@ def Wait_For_Container(sock,Cont_id,Target_id):
     to continue.
     '''
     while True:
-        rec_data = receive_data(sock)
+        rec_data = receive_data(sock,debug)
         if rec_data == None:
             import sys
             sys.exit(f'got unexpected socket shutdown whilst waiting for container {Target_id}.')
@@ -158,28 +158,28 @@ def Wait_For_Container(sock,Cont_id,Target_id):
             raise ValueError(f'Unknown message {rec_dict["msg"]} received')
         return
 
-def Cont_Continue(Cont_id,sock,Target_id,wait=True):
+def Cont_Continue(Cont_id,sock,Target_id,wait=True,debug=False):
     ''' 
     Function to send a Message to a waiting container (Target_id) to tell it to continue working.
     optional arguments wait and Finished are flags to say if you wish to wait for 
     the container.
     '''
     data = {"msg":"Continue","Cont_id":Cont_id}
-    send_data(sock, data)
+    send_data(sock, data,debug)
     status = ''
     if wait:
         status = Wait_For_Container()
     return
 
-def Cont_Waiting(Cont_id,target_id, sock):
+def Cont_Waiting(Cont_id,target_id, sock,debug=False):
     ''' 
     Function to send a Message to container Target_id say the current 
     container is waiting for a message to continue.
     '''
     data = {"msg":"Waiting","Cont_id":Cont_id,"Target_id":Target_id}
-    send_data(sock, data)
+    send_data(sock, data,debug)
     # wait to receive message to continue
-    rec_data = receive_data(sock)
+    rec_data = receive_data(sock,debug)
     if rec_data == None:
         import sys
         sys.exit(f'Waiting container {Cont_id} got unexpected socket shutdown')
@@ -226,7 +226,7 @@ def send_data(conn, payload,bigPayload=False,debug=False):
         "###################################################")
     conn.sendall(serialized_payload)
     
-def receive_data(conn,payload_size=2048,debug=False):
+def receive_data(conn,debug,payload_size=2048):
     '''
     @brief: receive data from the connection assuming that data is a json string
     @args[in]: 

@@ -25,9 +25,9 @@ DefaultSettings = {'Mode':'H','Launcher':'Process','NbJobs':1,'Max_Containers':1
               'InputDir':VLconfig.InputDir, 'OutputDir':VLconfig.OutputDir,
               'MaterialDir':VLconfig.MaterialsDir, 'Cleanup':True}
 class VLSetup():
-    def __init__(self, Simulation, Project,Cont_id=1):
+    def __init__(self, Simulation, Project,Cont_id=1,debug=False):
         #perform setup steps that are common to both VLModule and VL_manger
-        self._Common_init(Simulation, Project, DefaultSettings, Cont_id)
+        self._Common_init(Simulation, Project, DefaultSettings, Cont_id,debug)
         # Unique ID
         git_id = self._git()
         self._ID ="{}_{}".format(git_id,self._time)
@@ -138,12 +138,13 @@ class VLSetup():
             config = json.load(file)
         return config
 
-    def _Common_init(self,Simulation, Project, DefaultSettings, Cont_id=1):
+    def _Common_init(self,Simulation, Project, DefaultSettings, Cont_id=1,debug=False):
         '''
         init steps that are common between both VLSetup and VLModule. 
         These are here since it makes sense to have them in one place and
         save duplicating work.
         '''
+        self.debug=debug
         sys.excepthook= self.handle_except
         # ======================================================================
         # Check for updates to Simulation and Project in parsed arguments

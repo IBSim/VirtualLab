@@ -59,7 +59,7 @@ def get_vlab_dir(parsed_dir):
 
     return vlab_dir
 
-def check_for_errors(process_list,client_socket,sock_lock):
+def check_for_errors(process_list,client_socket,sock_lock,debug):
     ''' 
     Function to take in nested a dictionary of containing running processes and container id's.
     Ideally any python errors will be handled and cleanup should print an error message to the screen
@@ -94,7 +94,7 @@ def check_for_errors(process_list,client_socket,sock_lock):
                 client_socket.settimeout(5)
                 conn_timeout = False
                 try:
-                    message = receive_data(client_socket)
+                    message = receive_data(client_socket,debug)
                 except timeout:
                     conn_timeout = True
                 if conn_timeout:
@@ -102,7 +102,7 @@ def check_for_errors(process_list,client_socket,sock_lock):
                     # send message to tell main vlab thread to close and 
                     # thus end the program.
                     data = {"msg":"Error","stderr":'-1'}
-                    send_data(client_socket,data)
+                    send_data(client_socket,data,debug)
                 elif message == 'Finished':
                     # Python has finished so error must have been handled there
                     # Thus no action needed from this end.
@@ -147,7 +147,7 @@ def load_module_config(vlab_dir):
         config = json.load(file)
     return config
 
-def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready):
+def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug):
     global waiting_cnt_sockets
     global target_ids
     global task_dict
@@ -160,7 +160,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready):
     # list of messages to simply relay from Container_id to Target_id
     relay_list = ["Continue","Waiting","Error"]
     while True:
-        rec_dict = receive_data(client_socket)
+        rec_dict = receive_data(client_socket,debug)
         if rec_dict == None:
             log_net_info(net_logger,'Socket has been closed')
             return
@@ -222,7 +222,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready):
                             
                     # send message to tell manager container what id the new containers will have
                 data = {"msg":"Running","Cont_id":target_ids[n]}
-                send_data(client_socket, data)
+                send_data(client_socket, data,debug)
             sock_lock.release()
             # cont_ready should be set by another thread when the container messages to say its ready to go.
             # This loop essentially checks to see if the container started correctly by waiting for 10 seconds
@@ -236,7 +236,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready):
             if not ready:
                 data = {"msg":"Error","stderr":'-1'}
                 if client_socket != manager_socket:
-                    send_data(client_socket,data)
+                    send_data(client_socket,data,debug)
                 send_data(manager_socket,data)
                 raise TimeoutError('The container appears to have have not started correctly.')
 
@@ -251,24 +251,23 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready):
                     "run_args":run_arg_dict[str(container_id)],
                     "Tool":tool_dict[str(container_id)]}
             sock_lock.release()       
-            send_data(client_socket, data2
-            )
+            send_data(client_socket, data2,debug)
             # This function will run until the server receives "finished"
             #  or an error occurs in the container.
-            check_pulse(client_socket,sock_lock,net_logger)
+            check_pulse(client_socket,sock_lock,net_logger,debug)
             #client_socket.shutdown(socket.SHUT_RDWR)
             #client_socket.close()
             break
         elif event in relay_list:
             Target_id = str(rec_dict['Target_id'])
             Target_socket = waiting_cnt_sockets[Target_id]
-            send_data(Target_socket, rec_dict)
+            send_data(Target_socket, rec_dict,debug)
         else:
             client_socket.shutdown(socket.SHUT_RDWR)
             client_socket.close()
             raise ValueError(f'Unknown message {event} received')
     
-def check_pulse(client_socket,sock_lock,net_logger):
+def check_pulse(client_socket,sock_lock,net_logger,debug):
     ''' 
     Function to check for periodic messages from the containers to say 
     they are still running.
@@ -281,20 +280,20 @@ def check_pulse(client_socket,sock_lock,net_logger):
     global next_cnt_id
     global manager_socket
     from socket import timeout
-# wait up to 15 seconds to see if container has started or has heartbeat
+# wait up to 30 seconds to see if container has started or has heartbeat
 # If not raise an error.
-    client_socket.settimeout(15)
+    client_socket.settimeout(30)
                 
     while True:
         # check_for_errors(running_processes, client_socket, sock_lock)
         try:
-            rec_dict = receive_data(client_socket)
+            rec_dict = receive_data(client_socket,debug)
         except timeout:
             # we've heard nothing from the container so we have 
             # to assume it has hung. Thus send error to manger 
             # to kill process. Note this should also kill the server.
             data = {"msg":"Error","stderr":'-1'}
-            send_data(client_socket,data)
+            send_data(client_socket,data,debug)
             raise TimeoutError('The container appears to have has hung')
         
         if rec_dict == None:
@@ -311,7 +310,7 @@ def check_pulse(client_socket,sock_lock,net_logger):
                     f'notifying source container {waiting_cnt_sockets[container_id]["id"]}')
                 waiting_cnt_socket = waiting_cnt_sockets[container_id]["socket"]
                 data = {"msg":"Success","Cont_id":waiting_cnt_sockets[container_id]["id"],"Target_id":int(container_id)}
-                send_data(manager_socket,data)
+                send_data(manager_socket,data,debug)
                 running_processes.pop(str(container_id))
             sock_lock.release()
             return
@@ -324,7 +323,7 @@ def check_pulse(client_socket,sock_lock,net_logger):
             client_socket.close()
             raise ValueError(f'Unexpected message {event} received from container {container_id}')
         
-def process(vlab_dir,use_singularity):
+def process(vlab_dir,use_singularity,debug):
     ''' Function that runs in a thread to handle communication ect. '''
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -348,13 +347,13 @@ def process(vlab_dir,use_singularity):
     # the manger 
         manager_socket, manager_address = sock.accept()
         log_net_info(net_logger,f'received request for connection.')
-        rec_dict = receive_data(manager_socket)
+        rec_dict = receive_data(manager_socket,debug)
         event = rec_dict["msg"]
         if event == 'VirtualLab started':
             log_net_info(net_logger,f'received VirtualLab started')
             waiting_cnt_sockets["Manager"]={"socket": manager_socket, "id": 0}
             #spawn a new thread to deal with messages
-            thread = threading.Thread(target=handle_messages,args=(manager_socket,net_logger,VL_MOD,sock_lock,cont_ready))
+            thread = threading.Thread(target=handle_messages,args=(manager_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug))
             thread.daemon = True 
             thread.start()
             break
@@ -372,7 +371,7 @@ def process(vlab_dir,use_singularity):
         waiting_cnt_sockets[str(next_cnt_id)] = {"socket": client_socket, "id": next_cnt_id}
         next_cnt_id += 1
         #spawn a new thread to deal with messages
-        thread = threading.Thread(target=handle_messages,args=(client_socket,net_logger,VL_MOD,sock_lock,cont_ready))
+        thread = threading.Thread(target=handle_messages,args=(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug))
         thread.daemon = True 
         thread.start()
         
@@ -391,6 +390,8 @@ if __name__ == "__main__":
         action='store_true')
     parser.add_argument("-U", "--dry-run", help="Flag to update containers without running.",
                         action='store_true')
+    parser.add_argument("-X", "--debug", help="Flag to print debug messages for networking.",
+                        action='store_true')                        
     parser.add_argument("-T", "--test", help="Flag to initiate comms testing.",
                         action='store_true')
 
@@ -407,7 +408,7 @@ if __name__ == "__main__":
 
     # start server listening for incoming jobs on separate thread
     lock = threading.Lock()
-    thread = threading.Thread(target=process,args=(vlab_dir,use_singularity))
+    thread = threading.Thread(target=process,args=(vlab_dir,use_singularity,args.debug))
     thread.daemon = True
 
     Modules = load_module_config(vlab_dir)

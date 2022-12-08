@@ -295,11 +295,11 @@ In the *Parameters_Master* file :file:`TrainingParameters.py` you will see the N
     DA.Name = 'Linear'
     DA.File = 'Images'
     DA.CaptureTime = 0.01
-    # DA.PVGUI = True
+    DA.PVGUI = True
 
 The data anlysis will be performed on the results in the directory specified by *DA.Name*. The file :file:`Scripts/Experiments/LFA/DA/Images.py` captures images of the simulations at time *CaptureTime*.
 
-Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using a Virtual Machine (VM). The attribute *PVGUI*, which is currently ignored due to the preceding '#', forces **ParaVis** to run the script in the GUI where the rendering works fine.
+Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using a the containers. The attribute *PVGUI* forces **ParaVis** to run the script in the GUI where the rendering works fine.
 
 .. admonition:: Action
    :class: Action
@@ -312,13 +312,6 @@ Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen 
                   RunMesh=False,
                   RunSim=False,
                   RunDA=True)
-
-   If you are using a VM you will need to uncomment *DA.PVGUI* in :file:`TrainingParameters.py` by removing the preceding '#'. ::
-
-       DA.Name = 'Linear'
-       DA.File = 'Images'
-       DA.CaptureTime = 0.01
-       DA.PVGUI = True
 
    You will need to manually close the GUI once the imaging is complete.
 

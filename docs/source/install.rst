@@ -53,7 +53,7 @@ To use **VirtualLab** you must first install Apptainer. Is it suggested that you
 Installation with the install script:
 *************************************
 
-Once you have either Docker or Apptainer installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab/-/raw/dev/bin/Install_VirtualLab?inline=false>`_`:
+Once you have either Docker or Apptainer installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab/-/raw/dev/bin/Install_VirtualLab?inline=false>`_:
 
 Both the Installer and VirtualLab itself are primarily command line only so you will need to run the following command in a terminal.
 

@@ -26,16 +26,11 @@ DefaultSettings = {'Mode':'H','Launcher':'Process','NbJobs':1,'Max_Containers':1
               'MaterialDir':VLconfig.MaterialsDir, 'Cleanup':True}
 class VLSetup():
     def __init__(self, Simulation, Project,Cont_id=1):
-        #perform setup steps that are common to both VL_modules and VL_manger
+        #perform setup steps that are common to both VLModule and VL_manger
         self._Common_init(Simulation, Project, DefaultSettings, Cont_id)
         # Unique ID
         git_id = self._git()
         self._ID ="{}_{}".format(git_id,self._time)
-        ############################################################
-        # dynamically create hook functions for all modules based on config file
-        ############################################################
-        #module_config = self.load_module_config(VLconfig.VL_DIR)
-        ############################################################
         data = {"msg":"VirtualLab started","Cont_id":1}
         data_string = json.dumps(data)
         Utils.send_data(self.tcp_sock,data)
@@ -47,6 +42,7 @@ class VLSetup():
         ''' Add in the methods defined in Scripts/Methods to the VirtualLab class.'''
         MethodsDir = "{}/Methods".format(self.SCRIPTS_DIR)
         self.Methods = []
+        self.method_config = self.load_config(self.CONF_DIR,'VL_Methods.json')
         # Loop through directory contents
         for _method in os.listdir(MethodsDir):
             # skip directiories, files that start with '_' and those that aren't python
@@ -85,6 +81,7 @@ class VLSetup():
             self.Methods.append(method_name)
 
 
+
     def handle_except(self,*args):
         ''' 
         This function stops errors in containers from occurring silently by 
@@ -114,15 +111,14 @@ class VLSetup():
 
         self.Logger(errormsg,Print=True)
         
-    def load_module_config(self,vlab_dir):
-        ''' Function to get the config for the 
-        modules from VL_Modules.yaml file 
+    def load_config_yaml(self,vlab_dir,filename):
+        ''' Function to get the config from a .yaml file 
         '''
         import yaml
         from pathlib import Path
         vlab_dir = Path(vlab_dir)
         #load module config from yaml_file
-        config_file = vlab_dir/'VL_Modules.yaml'
+        config_file = vlab_dir/filename
         with open(config_file)as file:
             try:
                 config = yaml.safe_load(file)
@@ -130,9 +126,21 @@ class VLSetup():
                 print(exception)
         return config
 
+    def load_config(self,vlab_dir,filename):
+        ''' Function to get the config from a json file 
+        '''
+        import json
+        from pathlib import Path
+        vlab_dir = Path(vlab_dir)
+        #load module config from file
+        config_file = vlab_dir/filename
+        with open(config_file)as file:
+            config = json.load(file)
+        return config
+
     def _Common_init(self,Simulation, Project, DefaultSettings, Cont_id=1):
         '''
-        init steps that are common between both VL_manger and VL_modules. 
+        init steps that are common between both VLSetup and VLModule. 
         These are here since it makes sense to have them in one place and
         save duplicating work.
         '''
@@ -153,6 +161,7 @@ class VLSetup():
         self.SCRIPTS_DIR = "{}/Scripts".format(VLconfig.VL_DIR_CONT)
 
         self.SIM_SCRIPTS = "{}/Experiments/{}".format(self.SCRIPTS_DIR, self.Simulation)
+        self.CONF_DIR = "{}/Config".format(VLconfig.VL_DIR_CONT)
         if not os.path.isdir(self.SIM_SCRIPTS):
             self.Exit(VLF.ErrorMessage("Simulation type doesn't exist"))
         self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
@@ -365,11 +374,14 @@ class VLSetup():
             Master = self.ImportParameters(Master,ParameterArgs)
         if type(Var)==str:
             Var = self.ImportParameters(Var,ParameterArgs)
-
+        MethodNS =[]
+        #extract namespaces for each method
+        for method in self.Methods:
+            MethodNS.append(self.method_config[method]['Namespace'])
         # ======================================================================
         # Perform checks of master and var and assign to self
-        self.Parameters_Master = self._CheckParams(Master,'Parameters_Master',self.Methods)
-        self.Parameters_Var = self._CheckParams(Var,'Parameters_Var',self.Methods)
+        self.Parameters_Master = self._CheckParams(Master,'Parameters_Master',MethodNS)
+        self.Parameters_Var = self._CheckParams(Var,'Parameters_Var',MethodNS)
 
     def _CheckParams(self,input,input_name,VLTypes):
         '''Perform checks on the input file and return namespace whose attributes
@@ -501,10 +513,8 @@ class VLSetup():
         flags = list(flags.items())
         for I,module in enumerate(Namespaces):
             # special case for CIL since it shares the GVXR namespace
-            if module == 'CIL':
-                TMPDict = self._CreateParameters('GVXR')
-            else:
-                TMPDict = self._CreateParameters(module)
+            VLNamespace = self.method_config[module]['Namespace']
+            TMPDict = self._CreateParameters(VLNamespace)
             # if Run is False or Dict is empty add 0 to list 0 instead.
             if not(flags[I][1] and TMPDict):
                 num_runs[module] = 0

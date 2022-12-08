@@ -21,7 +21,7 @@ def _fn_wrap_kwargs(fn,*args):
     return fn(*args,**kwargs)
 
 
-def Paralleliser(fnc, args_list, kwargs_list=[], method='sequential', nb_parallel=1, **kwargs):
+def Paralleliser(fnc, VL, args_list, kwargs_list=[], method='sequential', nb_parallel=1, **kwargs):
     '''
     Evaluate function 'fnc' for a range of arguments using a chosen method.
     Methods available are:

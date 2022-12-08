@@ -34,8 +34,15 @@ def Spawn_Container(VL,**kwargs):
         Settings: dict of settings that were passed into VL_Manger. 
                   This ensures modules receive the same settings 
                   (mode,Nbjobs ect.)
+        #######################################################
+        ####################   Note:   ########################
+        #######################################################
+         The return value for this function will be different 
+         depending upon if it is called by VLSetup or VLModule.
+         see comment on line 81 for more details.
         ''' 
-    
+    waiting_containers = {}
+
     if kwargs['Parameters_Var'] == None:
         kwargs['Parameters_Var'] = 'None'
 
@@ -71,19 +78,28 @@ def Spawn_Container(VL,**kwargs):
         # wait until all containers have started
             if len(target_ids) == kwargs['Num_Cont']:      
                 break
-    
+    # check if container spawned by module or manager. If called by manger (VLsetup)
+    # we should wait for the containers to complete. VLModule on the other hand is 
+    # expecting a list of containers and it will handle the rest with a combination of
+    #  calls to: Wait_For_Container, Cont_continue and Cont_Waiting.
+    if VL.__class__.__name__ == 'VLModule':
+        return target_ids
+
     while True:
         rec_dict = receive_data(sock)
         if rec_dict:
-            if rec_dict['msg'] == 'Success' and rec_dict['Cont_id'] == '1':
-                target_ids.remove(rec_dict['target_id'])
-            if len(target_ids) == 0:
-                container_return = '0'
-                break
-            if rec_dict['msg'] == 'Error':
+            if rec_dict['msg'] == 'Success':
+                target_ids.remove(rec_dict['Target_id'])
+            elif rec_dict['msg'] == 'Error':
                 container_return = '-1'
                 break
-            
+            else: 
+                continue
+
+        if len(target_ids) == 0:
+            container_return = '0'
+            break
+    #end of while loop
     if container_return == '0':
         VL.do_Analytics(vltype)
     return container_return
@@ -113,6 +129,68 @@ def Cont_Finished(Cont_id,sock):
     send_data(sock, data)
     sock.close()
     return
+
+def Wait_For_Container(sock,Cont_id,Target_id):
+    '''
+    Function to wait to receive a message from container Target_id to say if 
+    it has finished or is waiting. 
+    The return value can be used to determine if the target container. 
+    Completed (successfully or not) or is simply waiting for the signal
+    to continue.
+    '''
+    while True:
+        rec_data = receive_data(sock)
+        if rec_data == None:
+            import sys
+            sys.exit(f'got unexpected socket shutdown whilst waiting for container {Target_id}.')
+        #check if the message is for us
+        if rec_dict["Target_id"] != Cont_id:
+            continue
+        elif rec_dict["msg"] == "Waiting":
+            return "Waiting"
+        elif rec_dict["msg"] == "Finished":
+            return "Finished"
+        elif rec_dict["msg"] == "Error":
+            return "Error"
+        else:
+            sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+            raise ValueError(f'Unknown message {rec_dict["msg"]} received')
+        return
+
+def Cont_Continue(Cont_id,sock,Target_id,wait=True):
+    ''' 
+    Function to send a Message to a waiting container (Target_id) to tell it to continue working.
+    optional arguments wait and Finished are flags to say if you wish to wait for 
+    the container.
+    '''
+    data = {"msg":"Continue","Cont_id":Cont_id}
+    send_data(sock, data)
+    status = ''
+    if wait:
+        status = Wait_For_Container()
+    return
+
+def Cont_Waiting(Cont_id,target_id, sock):
+    ''' 
+    Function to send a Message to container Target_id say the current 
+    container is waiting for a message to continue.
+    '''
+    data = {"msg":"Waiting","Cont_id":Cont_id,"Target_id":Target_id}
+    send_data(sock, data)
+    # wait to receive message to continue
+    rec_data = receive_data(sock)
+    if rec_data == None:
+        import sys
+        sys.exit(f'Waiting container {Cont_id} got unexpected socket shutdown')
+    elif rec_dict["msg"] == "Continue":
+        return
+    else:
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+        raise ValueError(f'Unknown message {rec_dict["msg"]} received')
+    return
+
 
 def send_data(conn, payload,bigPayload=False,debug=False):
     '''

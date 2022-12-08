@@ -20,5 +20,5 @@ source /home/user/miniconda/etc/profile.d/conda.sh
 conda activate cil
 export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH
 conda config --set report_errors false
-python Scripts/Common/VLContainer/Run_CIL_container.py $master $Var $Project $Simulation
+python bin/python/Run_CIL_container.py $master $Var $Project $Simulation
 exit $?

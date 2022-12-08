@@ -22,5 +22,5 @@ cd /home/ibsim/VirtualLab
 source /opt/miniconda3/etc/profile.d/conda.sh
 conda activate coms_test
 export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH
-python Scripts/Common/VLContainer/Run_Test_container.py $master $Var $Project $Simulation $ID
+python bin/python/Run_Test_container.py $master $Var $Project $Simulation $ID
 exit $?

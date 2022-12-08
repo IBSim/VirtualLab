@@ -23,5 +23,5 @@ source /home/ibsim/miniconda/etc/profile.d/conda.sh
 conda activate VirtualLab
 export PYTHONPATH=/home/ibsim/VirtualLab:/home/ibsim/GVXR_Install/gvxrWrapper-1.0.5/python3:$PYTHONPATH
 conda config --set report_errors false
-python bin/python/Run_GVXR_container.py $master $Var $Project $Simulation $ID
+python bin/python/Run_Vox_container.py $master $Var $Project $Simulation $ID
 exit $?

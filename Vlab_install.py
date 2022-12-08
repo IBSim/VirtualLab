@@ -111,7 +111,8 @@ def install_Vlab(install_path):
         print(f'New directory {install_path} will be created')
         os.mkdirs(install_path)
     yes_no()
-    Docker = check_container_tool()
+    #Docker = check_container_tool()
+    Docker = False
     print('Downloading VirtuaLab\n')
     get_latest_code(install_path)
     if Docker:
@@ -126,17 +127,17 @@ def get_latest_code(install_path):
     # os.chdir(install_path)
     if Platform=='Windows':
         # use wget with powershell for windows
-        subprocess.call(f'powershell.exe wget https://gitlab.com/ibsim/virtuallab/-/archive/master/virtuallab-master.zip -p {install_path}', shell=True)
+        subprocess.call(f'powershell.exe wget https://gitlab.com/ibsim/virtuallab/-/archive/dev/virtuallab-dev.zip -p {install_path}', shell=True)
     else:
         # Mac/Linux hopefully have Curl
-        subprocess.call(f'curl --output {install_path}/VirtualLab.zip -O https://gitlab.com/ibsim/virtuallab/-/archive/master/virtuallab-master.zip', shell=True)
+        subprocess.call(f'curl --output {install_path}/VirtualLab.zip -O https://gitlab.com/ibsim/virtuallab/-/archive/dev/virtuallab-dev.zip', shell=True)
 
     with ZipFile(f'{install_path}/VirtualLab.zip', 'r') as zipObj:
    # Extract all the contents of zip file in current directory
         zipObj.extractall(path=install_path)
 
     dest = install_path
-    source = f'{install_path}/virtuallab-master'
+    source = f'{install_path}/virtuallab-dev'
 
     allfiles = os.listdir(source)
     for f in allfiles:
@@ -144,7 +145,7 @@ def get_latest_code(install_path):
         dst_path = os.path.join(dest, f)
         shutil.move(src_path, dst_path)
     os.remove(f'{install_path}/VirtualLab.zip')
-    os.rmdir(f'{install_path}/virtuallab-master')
+    os.rmdir(f'{install_path}/virtuallab-dev')
 
 def get_latest_docker():
     print("Pulling latest VLManager container from Dockerhub:\n")
@@ -201,7 +202,8 @@ def update_vlab():
     os.rename(vlab_dir,f'{vlab_dir}-old')
     os.mkdir(vlab_dir)
     get_latest_code(vlab_dir)
-    Docker = check_container_tool()
+    #Docker = check_container_tool()
+    Docker = False
     if Docker:
         get_latest_docker()
     else:
@@ -264,8 +266,8 @@ def add_to_Path(install_dir):
             print(" Before launching VirtuaLab you will need to run:\n")
             print(f" export VL_DIR={install_dir}")
             print(f" then add {install_dir}/bin to your system path.")
-            print(" Note: you may want to automate this on login using whatever way your\n")
-            print(" shell handles such things.")
+            print(" Note: you may want to automate this on login with whatever method your\n")
+            print(" shell to handles such things.")
             print("****************************************************************************")
         else:
             #default to bash

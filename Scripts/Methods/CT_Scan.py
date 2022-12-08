@@ -104,6 +104,10 @@ class Method(Method_base):
             Model_PosX: float
             Model_PosY: float
             Model_PosZ: float
+            # scaling of cad model along 3 axes 
+            Model_ScaleX: float = Field(default=1.0)
+            Model_ScaleY: float = Field(default=1.0)
+            Model_ScaleZ: float = Field(default=1.0)
             # inital rotation of model around each axis [x,y,z]
             # To keep things simple this defaults to [0,0,0]
             # Nikon files define these as Tilt, InitalAngle, and Roll respectively. 
@@ -206,8 +210,19 @@ class Method(Method_base):
 
                 Model = Cad_Model(Model_PosX=Parameters.Model_PosX,
                     Model_PosY=Parameters.Model_PosY,Model_PosZ=Parameters.Model_PosZ)
+
+                # add in model scaling factor
+                if hasattr(Parameters,'Model_ScaleX'):
+                    Model.Model_ScaleX = Parameters.Model_ScaleX
+
+                if hasattr(Parameters,'Model_ScaleY'):
+                    Model.Model_ScaleY = Parameters.Model_ScaleY
+
+                if hasattr(Parameters,'Model_ScaleZ'):
+                    Model.Model_ScaleZ = Parameters.Model_Pos_units
+
                 if hasattr(Parameters,'Model_Pos_units'):
-                    Model.Pos_units = Parameters.Model_Pos_units    
+                    Model.Model_Pos_units = Parameters.Model_Pos_units    
                 
                 if hasattr(Parameters,'rotation'):
                     Model.rotation = Parameters.rotation
@@ -269,14 +284,15 @@ class Method(Method_base):
             gvxr.createWindow(-1,1,"OPENGL",4,5); 
         
         launcher = VL._Launcher
-        if launcher.lower() in ('mpi','mpi_worker','process'):
+        if VL._NbJobs > 1:
             VL.Logger("********************************************\n"\
                 "WARNING: GVXR does not work with pathos or mpi\n"\
-                " Thus GVX runs will be performed sequentially.\n"\
-                " To run experiments in parallel set \n"\
-                " nb_containers to use multiple containers.\n"\
+                " Thus setting NbJobs has no effect and GVX runs\n"\
+                " will be performed sequentially.\n"\
+                " To run experiments in parallel set NbJobs=1 \n"\
+                " and use nb_containers to use multiple containers.\n"\
                 "********************************************")
-            VL._Launcher = 'sequential'
+        VL._Launcher = 'sequential'
 
 
         Errorfnc = VLPool(VL,self.GetPoolRun(),self.Data)

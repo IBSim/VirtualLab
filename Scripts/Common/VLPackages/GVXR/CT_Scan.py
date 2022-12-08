@@ -130,10 +130,11 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     for i,mesh in enumerate(meshes):
         label = mesh_names[i];
     ### BLOCK #####
-        gvxr.makeTriangularMesh(label,points.flatten(),mesh.flatten(),str(Model.Pos_units));
+        gvxr.makeTriangularMesh(label,points.flatten(),mesh.flatten(),str(Model.Model_Pos_units));
         # place mesh at the origin then translate it according to the defined offset
         gvxr.moveToCentre(label);
         gvxr.translateNode(label,Model.Model_PosX,Model.Model_PosY,Model.Model_PosZ,Model.Model_Pos_units)
+        gvxr.scaleNode(label, Model.Model_ScaleX, Model.Model_ScaleY, Model.Model_ScaleZ)
         gvxr.setElement(label, Material_list[i]);
         gvxr.addPolygonMeshAsInnerSurface(label)
         
@@ -218,7 +219,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         print(controls_msg)
         gvxr.renderLoop()
     #clear the scene graph ready for the next render in the loop    
-    gvxr.removePolygonMeshesFromSceneGraph ()
+    gvxr.removePolygonMeshesFromSceneGraph()
     return
 
 def flat_field_normalize(arr, flat, dark, cutoff=None):

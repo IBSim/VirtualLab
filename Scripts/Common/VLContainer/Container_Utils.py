@@ -253,7 +253,7 @@ def receive_data(conn,debug,payload_size=2048):
             print(f'received:{payload}')
     return (payload)
 
-def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_singularity,cont_id):
+def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id):
     ''' Function to format string for bind points and container to call specified tool.'''
     import os
     import subprocess
@@ -271,7 +271,7 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
 # Format run string and script to run   #
 # container based on Module used.       #
 #########################################
-    if use_singularity:
+    if use_Apptainer:
         update_container(Module)
         call_string = f' -B /run:/run -B /tmp:/tmp -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
                         --nv {Module["Apptainer_file"]}'
@@ -291,16 +291,16 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
 
 def check_platform():
     '''Simple function to return True on Linux and false on Mac/Windows to
-    allow the use of singularity instead of Docker on Linux systems.
-    Singularity does not support Windows/Mac OS hence we need to check.
+    allow the use of Apptainer instead of Docker on Linux systems.
+    Apptainer does not support Windows/Mac OS hence we need to check.
     Note: Docker can be used on Linux with the --docker flag. This flag
     however is ignored on both windows and Mac since they already
     default to Docker.'''
     import platform
-    use_singularity=False
+    use_Apptainer=False
     if platform.system()=='Linux':
-        use_singularity=True
-    return use_singularity
+        use_Apptainer=True
+    return use_Apptainer
 
 def setup_networking_log(filename='.log/network_log'):
     ''' 
@@ -362,7 +362,7 @@ def update_container(Module):
     if not os.path.exists(Module["Apptainer_file"]):
         print(f"Apptainer file {Module['Apptainer_file']} does not appear to exist so building. This may take a while.")
         try:
-            proc=subprocess.check_call(f'SINGULARITY_NOHTTPS=true singularity build '\
+            proc=subprocess.check_call(f'Apptainer build '\
                f'{Module["Apptainer_file"]} docker://{Module["Docker_url"]}:{Module["Tag"]}', shell=True)
         except subprocess.CalledProcessError as E:
             print(E.stderr)

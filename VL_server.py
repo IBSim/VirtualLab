@@ -179,9 +179,9 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug):
                 param_var = rec_dict["Parameters_Var"]
             project = rec_dict["Project"]
             simulation = rec_dict["Simulation"]
-            # setup command to run docker or singularity
-            if use_singularity:
-                container_cmd = 'singularity exec --writable-tmpfs'
+            # setup command to run docker or Apptainer
+            if use_Apptainer:
+                container_cmd = 'Apptainer exec --writable-tmpfs'
             else:
                 # this monstrosity logs the user in as "themself" to allow safe access top x11 graphical apps"
                 #see http://wiki.ros.org/docker/Tutorials/GUI for more details
@@ -207,7 +207,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug):
             # loop over containers again to spawn them this time
             for n,Container in enumerate(Cont_runs):    
                 options, command = Format_Call_Str(Module,vlab_dir,param_master,
-                                param_var,project,simulation,use_singularity,target_ids[n])
+                                param_var,project,simulation,use_Apptainer,target_ids[n])
 
                 log_net_info(net_logger,f'Server - starting a new container with ID: {target_ids[n]} '
                                         f'as requested by container {container_id}')
@@ -323,7 +323,7 @@ def check_pulse(client_socket,sock_lock,net_logger,debug):
             client_socket.close()
             raise ValueError(f'Unexpected message {event} received from container {container_id}')
         
-def process(vlab_dir,use_singularity,debug):
+def process(vlab_dir,use_Apptainer,debug):
     ''' Function that runs in a thread to handle communication ect. '''
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -386,7 +386,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--Run_file", help = "Runfile to use (default is assumed to \
         be current working directory).", default="Run.py")
     parser.add_argument("-D", "--Docker", help="Flag to use docker on Linux host instead of \
-        defaulting to Singularity.This will be ignored on Mac/Windows as Docker is the default.",
+        defaulting to Apptainer.This will be ignored on Mac/Windows as Docker is the default.",
         action='store_true')
     parser.add_argument("-U", "--dry-run", help="Flag to update containers without running.",
                         action='store_true')
@@ -398,8 +398,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # get vlab_dir either from cmd args or environment
     vlab_dir= get_vlab_dir(args.vlab)
-# Set flag to allow cmd switch between singularity and docker when using linux host.
-    use_singularity = check_platform() and not args.Docker
+# Set flag to allow cmd switch between Apptainer and docker when using linux host.
+    use_Apptainer = check_platform() and not args.Docker
 # set flag to run tests instate of the normal runfile
     if args.test:
         Run_file = f'Run_ComsTest.py'
@@ -411,7 +411,7 @@ if __name__ == "__main__":
 
     # start server listening for incoming jobs on separate thread
     lock = threading.Lock()
-    thread = threading.Thread(target=process,args=(vlab_dir,use_singularity,args.debug))
+    thread = threading.Thread(target=process,args=(vlab_dir,use_Apptainer,args.debug))
     thread.daemon = True
 
     Modules = load_module_config(vlab_dir)
@@ -419,8 +419,8 @@ if __name__ == "__main__":
     thread.start()
     #start VirtualLab
     lock.acquire()
-    if use_singularity:
-        proc=subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B \
+    if use_Apptainer:
+        proc=subprocess.Popen(f'Apptainer exec --no-home --writable-tmpfs --nv -B \
                         /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
                         f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
     else:

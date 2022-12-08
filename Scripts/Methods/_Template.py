@@ -111,10 +111,38 @@ class Method(Method_base):
         This Function sends a message to the host to spawn a container 
         "#ContainerName". This refers to one of the Containers defined
         in VL_modules.yaml.
+
+        ***************************************************************
+        ***********  Note for using multiple containers   *************
+        ***************************************************************
+
+        For running in parallel we recommend using pathos or mpi set via
+        the VL._Launcher option (see VLParallel.py). However, if this
+        is not an option. VirtualLab can, with some setup, spread defined
+        jobs over multiple containers. An example of how to implement 
+        this can be found in GVXR.py.
+
+        To run in parallel with multiple containers you will need first 
+        need to set: Num_Cont=len(VL.container_list['#MethodName'].
+
+        You will also need to call MethodDicts = VL.filter_runs(MethodDicts)
+        during setup. This will Filter MethodDicts for runs that are defined
+        in the running container. If you dont call this it will run all the jobs 
+        on each container which I suspect is not what you want. 
+
+        Finally you will likely want to set VL._Launcher to 'sequential' that
+        is unless you really want to run jobs in parallel inside multiple 
+        containers, though I can't see what you would expect to gain from that.
+        As the increased overhead and memory usage from multiple containers 
+        massively outweighs any minute performance gain.
+        
         '''
-        return_value=Utils.Spawn_Container(Cont_id=1,Tool="#ContainerName",
-            Num_Cont=len(VL.container_list['#MethodName']),
-            Cont_runs=VL.container_list['#MethodName'],
+        MethodName = '#MethodName'
+        ContainerName = '#ContainerName'
+        return_value=Utils.Spawn_Container(VL,Cont_id=1,Tool=ContainerName,
+            Method_Name = MethodName,
+            Num_Cont=1,
+            Cont_runs=VL.container_list[MethodName],
             Parameters_Master=VL.Parameters_Master_str,
             Parameters_Var=VL.Parameters_Var_str,
             Project=VL.Project,

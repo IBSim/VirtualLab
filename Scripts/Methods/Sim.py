@@ -123,7 +123,7 @@ class Method(Method_base):
         ContainerName = "Aster"
         return_value=Utils.Spawn_Container(VL,Cont_id=1,Tool=ContainerName,
             Method_Name = MethodName,
-            Num_Cont=len(VL.container_list[MethodName]),
+            Num_Cont=1,
             Cont_runs=VL.container_list[MethodName],
             Parameters_Master=VL.Parameters_Master_str,
             Parameters_Var=VL.Parameters_Var_str,
@@ -238,7 +238,6 @@ class Method(Method_base):
         method to the VLSetup class.
         To create an alternative create a function 'Run' in the config file.
         '''
-
         # ==========================================================================
         # Run Sim routine
 

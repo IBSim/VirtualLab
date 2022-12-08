@@ -17,12 +17,12 @@ from importlib import import_module
 ###############################################################################
 ######################     base module class     ##############################
 ###############################################################################
-DefaultSettings = {'Mode':'I','Launcher':'Process','NbJobs':1,'Max_Containers':1,
+DefaultSettings = {'Mode':'H','Launcher':'Process','NbJobs':1,'Max_Containers':1,
               'InputDir':VLconfig.InputDir, 'OutputDir':VLconfig.OutputDir,
               'MaterialDir':VLconfig.MaterialsDir, 'Cleanup':True}
-class VL_Module(VLSetup):
+class VLModule(VLSetup):
     def __init__(self, Simulation, Project,Cont_id=2):
-        #perform setup steps that are common to both VL_modules and VL_manger
+        #perform setup steps that are common to both VLModule and VLSetup
         self._Common_init(Simulation, Project, DefaultSettings, Cont_id)
 
     def start_module(self):

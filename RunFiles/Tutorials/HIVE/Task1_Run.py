@@ -30,7 +30,8 @@ VirtualLab.Parameters(
            Parameters_Var
            )
 
-VirtualLab.Mesh()
+VirtualLab.Mesh(ShowMesh=False,
+           MeshCheck=None)
 
 VirtualLab.Sim(RunERMES=False,RunAster=False,ShowRes=True)
 

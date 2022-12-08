@@ -207,9 +207,14 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
     else:
         #docker
         call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} '
-
-    command = f'{Module["Run_script"]} \
+    
+    # get custom command line arguments if specified in config.
+    arguments = Module.get("cmd_args",None)
+    if arguments == None:
+        command = f'{Module["Startup_cmd"]} \
                {param_master} {param_var} {Project} {Simulation} {ID}'
+    else:
+        command = f'{Module["Startup_cmd"]} {arguments}'
 
     return call_string, command
 

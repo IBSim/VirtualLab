@@ -410,11 +410,11 @@ if __name__ == "__main__":
         if use_singularity:
             proc=subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B \
                             /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
-                            f'{Manager["Run_script"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
+                            f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
         else:
             # Assume using Docker
             proc=subprocess.Popen(f'docker run --rm -it --network=host -v {vlab_dir}:/home/ibsim/VirtualLab ' f'{Manager["Docker_url"]}:{Manager["Tag"]} ' \
-                            f'"{Manager["Run_script"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}"', shell=True)
+                            f'"{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}"', shell=True)
         lock.release()
         # wait until virtualLab is done before closing
         proc.wait()

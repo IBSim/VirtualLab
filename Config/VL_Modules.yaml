@@ -1,0 +1,80 @@
+#################################################################
+# This file allows for configuration of all the containers 
+# used by VirtualLab. The outer keys are the Container (module) names 
+# and the inner keys are parameters.
+# Note: All paths are relative to the container not the host.
+
+# The following keys are required to define a module:
+#
+# Docker_url: The name of the image on DockerHub
+# Tag: The image tag
+# Apptainer_file: Path to the sif file used for Apptainer 
+# Startup_cmd: Command to run at container startup.  
+#
+##################################################################
+# You also have the following optional keys:
+# 
+# cmd_args: custom command line argumants, only useful if using
+# your own scripts to start the container.
+#
+# Note: The default arguments used by the template script are:  
+# '-m param_master -v param_var -s Simulation -p Project -I container_id'
+#
+# If cmd_args is set it will overide thease.
+# You can also set it to a empty string (i.e. "") to specify
+# no arguments.  
+#
+#################################################################
+---
+Manager:
+      Docker_url: 'ibsim/virtuallab' 
+      Tag: 'latest' 
+      Apptainer_file: 'Containers/VL_Manager.sif'
+      Startup_cmd: '/home/ibsim/VirtualLab/bin/VL_Manager'
+ 
+Cad2Vox:
+      Docker_url: 'ibsim/vl_cad2vox'
+      Tag: 'latest'
+      Apptainer_file: 'Containers/VL_Vox.sif'
+      Startup_cmd: '/home/ibsim/VirtualLab/bin/VL_Vox.sh'
+GVXR: 
+      Docker_url: 'ibsim/vl_gvxr'
+      Tag: 'latest'
+      Apptainer_file: 'Containers/VL_GVXR.sif'
+      Startup_cmd: '/home/ibsim/VirtualLab/bin/VL_GVXR.sh'
+CIL: 
+      Docker_url: 'ibsim/vl_cil'
+      Tag: 'latest'
+      Apptainer_file: 'Containers/VL_CIL.sif'
+      Startup_cmd: '/home/ibsim/VirtualLab/bin/VL_CIL.sh'
+
+Salome: 
+      Docker_url: 'ibsim/vl_salomemeca'
+      Tag: 'latest'
+      Apptainer_file: 'Containers/VL_Salome.sif'
+      Startup_cmd: '/home/ibsim/VirtualLab/bin/VL_Salome.sh'
+
+DA: 
+      Docker_url: 'ibsim/vl_salomemeca'
+      Tag: 'latest'
+      Apptainer_file: 'Containers/VL_Salome.sif'
+      Startup_cmd: '/home/ibsim/VirtualLab/bin/VL_DA.sh'
+
+Aster:
+      Docker_url: 'ibsim/vl_salomemeca'
+      Tag: 'latest'
+      Apptainer_file: 'Containers/VL_Salome.sif'
+      Startup_cmd: '/home/ibsim/VirtualLab/bin/VL_Aster.sh'
+
+Test_Comms: 
+      Docker_url: 'ibsim/vl_coms_test'
+      Tag: 'latest'
+      Apptainer_file: 'Containers/VL_Test.sif'
+      Startup_cmd: '/home/ibsim/VirtualLab/bin/VL_Test.sh'
+
+# Note: Not yet included on dockerhub but here in prep
+Aster_mpi: 
+      Docker_url: 'ibsim/aster_mpi'
+      Tag: 'latest'
+      Apptainer_file: 'Containers/VL_Aster_mpi.sif'
+      Startup_cmd: '/home/ibsim/VirtualLab/bin/VL_Aster_mpi.sh'

@@ -122,12 +122,12 @@ next_cnt_id = 1
 manager_socket = None
 cont_ready = False
 
-def load_module_config(vlab_dir):
+def load_module_config_yaml(vlab_dir):
     ''' Function to get the config for the 
     modules from VL_Modules.yaml file 
     '''
     #load module config from yaml_file
-    config_file = vlab_dir / 'VL_Modules.yaml'
+    config_file = vlab_dir / 'Config/VL_Modules.yaml'
     with open(config_file)as file:
         try:
             config = yaml.safe_load(file)
@@ -135,7 +135,18 @@ def load_module_config(vlab_dir):
             print(exception)
     return config
 
-def handle_messages(client_socket,net_logger,VL_MOD,sock_lock):
+def load_module_config(vlab_dir):
+    ''' Function to get the config from a json file 
+    '''
+    import json
+    from pathlib import Path
+    vlab_dir = Path(vlab_dir)
+    #load module config from file
+    config_file = vlab_dir/'Config/VL_Modules.json'
+    with open(config_file)as file:
+        config = json.load(file)
+    return config
+
     global waiting_cnt_sockets
     global target_ids
     global task_dict

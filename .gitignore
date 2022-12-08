@@ -21,6 +21,7 @@
 !bin/
 !docs/
 docs/build
+!Config/
 !Scripts/
 !Materials/
 # Ensure that only the Example and .dev sub-directory will be included in the whitelist

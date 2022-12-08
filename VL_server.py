@@ -384,7 +384,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--vlab", help = "Path to Directory on host containing \
      VirtualLab (default is assumed to be curent working directory).", default=None)
     parser.add_argument("-f", "--Run_file", help = "Runfile to use (default is assumed to \
-        be curent working directory).", default="Run.py")
+        be current working directory).", default="Run.py")
     parser.add_argument("-D", "--Docker", help="Flag to use docker on Linux host instead of \
         defaulting to Singularity.This will be ignored on Mac/Windows as Docker is the default.",
         action='store_true')
@@ -405,6 +405,9 @@ if __name__ == "__main__":
         Run_file = f'Run_ComsTest.py'
     else:
         Run_file = args.Run_file
+    path = vlab_dir / Path('RunFiles/') / Run_file
+    if not path.exists():
+        raise ValueError(f'Runfile not found. This must be a file inside the directory {vlab_dir}/RunFiles.')
 
     # start server listening for incoming jobs on separate thread
     lock = threading.Lock()

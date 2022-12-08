@@ -1,4 +1,4 @@
-03 Heat exchanger (Thermo-mechanical)
+03 Thermo-mechanical
 =====================================
 
 Introduction

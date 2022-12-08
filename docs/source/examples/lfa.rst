@@ -1,6 +1,6 @@
 .. include:: ../substitutions.rst
 
-02 Laser Flash Analysis (Thermal)
+02 Thermal
 =================================
 
 Introduction

@@ -1,4 +1,4 @@
-01 Tensile Testing (Mechanical)
+01 Mechanical
 ===============================
 
 Introduction

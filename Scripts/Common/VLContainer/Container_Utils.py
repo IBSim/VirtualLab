@@ -194,14 +194,7 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
 # container based on Module used.       #
 #########################################
     if use_singularity:
-        # check apptainer sif file exists and if not build from docker version
-        if not os.path.exists(Module["Apptainer_file"]):
-            try:
-                proc=subprocess.check_call(f'SINGULARITY_NOHTTPS=true singularity build '\
-                   f'{Module["Apptainer_file"]} docker://{Module["Docker_url"]}:{Module["Tag"]}', shell=True)
-            except subprocess.CalledProcessError as E:
-                print(E.stderr)
-                raise E
+        update_container(Module)
         call_string = f' -B /run:/run -B /tmp:/tmp -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
                         --nv {Module["Apptainer_file"]}'
     else:
@@ -283,4 +276,17 @@ def log_net_info(logger,message,screen=False):
         logger.info(message)
     else:
         logger.debug(message)
-        
+
+def update_container(Module):
+    import os
+    import subprocess
+    # check apptainer sif file exists and if not build from docker version
+    if not os.path.exists(Module["Apptainer_file"]):
+        print(f"Apptainer file {Module['Apptainer_file']} does not appear to exist so building. This may take a while.")
+        try:
+            proc=subprocess.check_call(f'SINGULARITY_NOHTTPS=true singularity build '\
+               f'{Module["Apptainer_file"]} docker://{Module["Docker_url"]}:{Module["Tag"]}', shell=True)
+        except subprocess.CalledProcessError as E:
+            print(E.stderr)
+            raise E
+    return

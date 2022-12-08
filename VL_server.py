@@ -389,7 +389,7 @@ if __name__ == "__main__":
     parser.add_argument("-D", "--Docker", help="Flag to use docker on Linux host instead of \
         defaulting to Singularity.This will be ignored on Mac/Windows as Docker is the default.",
         action='store_true')
-    parser.add_argument("-C", "--Container", help="Flag to use tools in Containers.",
+    parser.add_argument("-U", "--dry-run", help="Flag to update containers without running.",
                         action='store_true')
     parser.add_argument("-T", "--test", help="Flag to initiate comms testing.",
                         action='store_true')
@@ -405,37 +405,28 @@ if __name__ == "__main__":
     else:
         Run_file = args.Run_file
 
-    Container = args.Container
-    if Container:
-        # start server listening for incoming jobs on separate thread
-        lock = threading.Lock()
-        thread = threading.Thread(target=process,args=(vlab_dir,use_singularity))
-        thread.daemon = True
+    # start server listening for incoming jobs on separate thread
+    lock = threading.Lock()
+    thread = threading.Thread(target=process,args=(vlab_dir,use_singularity))
+    thread.daemon = True
 
-        Modules = load_module_config(vlab_dir)
-        Manager = Modules["Manager"]
-        thread.start()
-        #start VirtualLab
-        lock.acquire()
-        if use_singularity:
-            proc=subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B \
-                            /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
-                            f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
-        else:
-            # Assume using Docker
-            proc=subprocess.Popen(f'docker run --rm -it --network=host -v {vlab_dir}:/home/ibsim/VirtualLab ' f'{Manager["Docker_url"]}:{Manager["Tag"]} ' \
-                            f'"{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}"', shell=True)
-        lock.release()
-        # wait until virtualLab is done before closing
-        proc.wait()
+    Modules = load_module_config(vlab_dir)
+    Manager = Modules["Manager"]
+    thread.start()
+    #start VirtualLab
+    lock.acquire()
+    if use_singularity:
+        proc=subprocess.Popen(f'singularity exec --no-home --writable-tmpfs --nv -B \
+                        /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
+                        f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
     else:
-        # use native version
-        print("Warning: VirtualLab is Running in native mode Some tools will be unavailable.\n"
-            " Since version 2.0 VirtualLab is being setup to run inside a container with \n "
-            " Docker/Singularity. To use this container functionality, and tools which depend \n"
-            " on it you will need to install docker or Singularity and pass in the -C option. \n")
+        # Assume using Docker
+        proc=subprocess.Popen(f'docker run --rm -it --network=host -v {vlab_dir}:/home/ibsim/VirtualLab ' f'{Manager["Docker_url"]}:{Manager["Tag"]} ' \
+                            f'"{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}"', shell=True)
+    lock.release()
+    # wait until virtualLab is done before closing
+    proc.wait()
 
-        proc=subprocess.check_call(f'VL_Manager -f {Run_file}', shell=True)
 
 
 

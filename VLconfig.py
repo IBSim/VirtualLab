@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# Note: all directories are relative to the respective containers not the host.
-VL_DIR="/home/ibsim/VirtualLab"
+VL_DIR_CONT="/home/ibsim/VirtualLab"
 CONDA_VER="Anaconda3-2020.02-Linux-x86_64.sh"
 SALOME_DIR="/opt/SalomeMeca"
 SALOME_VER="salome_meca-2019.0.3-1-universal"
@@ -14,6 +13,3 @@ RunFilesDir="/home/ibsim/VirtualLab/RunFiles"
 OutputDir="/home/ibsim/VirtualLab/Output"
 TEMP_DIR="/tmp"
 VL_ANALYTICS="true"
-CAD2VOX_DIR="/home/ibsim/VirtualLab/third_party/Cad2vox"
-CAD2VOX_WITH_CUDA="true"
-CAD2VOX_TAG="VirtualLab-18.04"

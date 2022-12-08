@@ -24,7 +24,6 @@ SALOME_VER_DEFAULT="salome_meca-2019.0.3-1-universal"
 SALOME_BIN_DEFAULT="V2019.0.3_universal"
 ERMES_DIR_DEFAULT="/opt/ERMES"
 ERMES_VER_DEFAULT="ERMES-CPlas-v12.5"
-CAD2VOX_DIR_DEFAULT="$VL_DIR_DEFAULT/third_party/Cad2vox"
 #########################
 
 ### Config values for VirtualLab operation.
@@ -51,7 +50,7 @@ CAD2VOX_TAG_DEFAULT='VirtualLab-18.04'
 ### This is a list of the variables to be exported from this file.
 ### Add any additional variables to this list to be sourced by SetupConfig.
 var=(
-  VL_DIR
+  VL_DIR_CONT
   CONDA_VER
   SALOME_DIR
   SALOME_VER
@@ -65,9 +64,6 @@ var=(
   OutputDir
   TEMP_DIR
   VL_ANALYTICS
-  CAD2VOX_DIR
-  CAD2VOX_WITH_CUDA
-  CAD2VOX_TAG
 )
 
 ### Verbose {ON/OFF}
@@ -90,17 +86,17 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
   SOURCE="$(readlink "$SOURCE")"
   [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
 done
-VL_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+VL_DIR_CONT="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 
 ### Checks whether $VL_DIR_DEFAULT is used in any variables.
 ### If so and $VL_DIR is different, will replace string.
-if [[ ! "$VL_DIR_DEFAULT" =~ "$VL_DIR" ]]; then
+if [[ ! "$VL_DIR_DEFAULT" =~ "$VL_DIR_CONT" ]]; then
   for i in ${!var[@]}; do
     var_def_val=${var[i]}_DEFAULT
     STRING_TMP=${!var_def_val}
     var_def=${var[$i]}_DEFAULT
     if [[ $STRING_TMP == *"$VL_DIR_DEFAULT"* ]] && [[ ! $var_def == "VL_DIR_DEFAULT" ]]; then
-      STRING_TMP="${STRING_TMP/$VL_DIR_DEFAULT/$VL_DIR}"
+      STRING_TMP="${STRING_TMP/$VL_DIR_DEFAULT/$VL_DIR_CONT}"
       eval "${var_def}=$STRING_TMP"
     fi
   done
@@ -177,10 +173,6 @@ fi
 ERMES_DIR=$ERMES_DIR_DEFAULT
 ERMES_VER=$ERMES_VER_DEFAULT
 
-### Stuff for Cad2Vox
-CAD2VOX_DIR=$CAD2VOX_DIR_DEFAULT
-CAD2VOX_WITH_CUDA=$CAD2VOX_WITH_CUDA_DEFAULT
-CAD2VOX_TAG=$CAD2VOX_TAG_DEFAULT
 
 ### PATH to various directories required as in/out for VirtualLab.
 ### Default behaviour is to locate in $VL_DIR.

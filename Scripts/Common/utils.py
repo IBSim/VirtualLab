@@ -9,11 +9,16 @@ class Method_base():
         self.clsname = str(VL.__class__.__name__)
 
     def __call__(self,*args,Module=False,**kwargs):
-        if not self.Data: return
-        elif not self.RunFlag: return
+        if not self.RunFlag: 
+            return
+
         #check if calling class is module or manger (i.e. vlsetup or vlmodule)
-        if self.clsname == 'VLSetup': return self._MethodSpawn(*args,**kwargs) # spawn container
-        else: return self._MethodRun(*args,**kwargs) # run the method
+        if self.clsname == 'VLSetup' and not self.Data: 
+            return self._MethodSpawn(*args,**kwargs) # spawn container
+        elif not self.Data:
+            return
+        else:
+            return self._MethodRun(*args,**kwargs) # run the method
 
     def _checks(self,exitfunc):
         # Check Setup and Run are definec correctly

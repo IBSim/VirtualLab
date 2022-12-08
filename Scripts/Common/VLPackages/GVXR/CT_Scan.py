@@ -17,7 +17,7 @@ class GVXRError(Exception):
         "=========================\n\n"
         return Errmsg
 
-def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_list,Headless=False,
+def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_list,_Name=None,Headless=False,
 num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=False):
     ''' Main run function for GVXR'''
     
@@ -52,6 +52,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     if not all_mat_tags:
         print ("[WARN] No materials defined in input file so we assume the whole mesh is made of a single material.")
         mat_tag_dict={0:['Un-Defined']}
+        all_mat_tags = mat_tag_dict
         if use_tetra:
             mat_ids = np.zeros(np.shape(tetra)[0],dtype = int)
         else:
@@ -67,7 +68,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         
         tags = np.unique(mat_ids)
         if(np.any(mat_ids==0)):
-            all_mat_tags[0]=['Un-Defined']
+            all_mat_tags['0']=['Un-Defined']
         mat_tag_dict = find_the_key(all_mat_tags, np.unique(mat_ids))
             
 # switch element type based on flag, this prevents us having to keep checking
@@ -92,7 +93,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         nodes=nodes[0]
         mat_nodes = np.take(elements,nodes,axis=0)
         meshes.append(mat_nodes)
-        mesh_names.append(all_mat_tags[N][0])
+        mesh_names.append(str(all_mat_tags[N]))
     
 
     #define boundray box for mesh
@@ -104,8 +105,6 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
         points[vertex_id][0] -= min_corner[0] + bbox_range[0] / 2.0;
         points[vertex_id][1] -= min_corner[1] + bbox_range[1] / 2.0;
         points[vertex_id][2] -= min_corner[2] + bbox_range[2] / 2.0;
-
-
 
     # Set up the beam
     print("Set up the beam")
@@ -131,10 +130,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     for i,mesh in enumerate(meshes):
         label = mesh_names[i];
     ### BLOCK #####
-        gvxr.makeTriangularMesh(label,
-        points.flatten(),
-        mesh.flatten(),
-        Model.Pos_units);
+        gvxr.makeTriangularMesh(label,points.flatten(),mesh.flatten(),str(Model.Pos_units));
         # place mesh at the origin then translate it according to the defined offset
         gvxr.moveToCentre(label);
         gvxr.translateNode(label,Model.Model_PosX,Model.Model_PosY,Model.Model_PosZ,Model.Model_Pos_units)

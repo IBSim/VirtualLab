@@ -65,8 +65,8 @@ GVXR.Detect_PosZ = 0
 GVXR.Detect_Pos_units = 'mm'
 # number of pixels in x and y, this defines both the resolution of the 
 # final images and physical size of te detector plane when combined with spacing_in_mm.
-GVXR.Pix_X = 400
-GVXR.Pix_Y = 450
+GVXR.Pix_X = 300
+GVXR.Pix_Y = 350
 # Postion of center of cad model in x,y and z
 GVXR.Model_PosX = 0
 GVXR.Model_PosY = 0

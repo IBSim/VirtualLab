@@ -27,6 +27,7 @@ VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunCT_Scan=True,
+           RunCT_Recon=True)
 
 VirtualLab.CT_Scan()
 

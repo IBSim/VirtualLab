@@ -17,12 +17,12 @@ To use **VirtualLab** there are very few prerequisites which depend on you Opera
     - Mint 19/Ubuntu 18.04+
     - Any reasonably modern distro should work. We have tested on various desktops and laptops running ubuntu 18.04 and 22.04 LTS and our supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
   
-.. [1] Note: builds are made with pyinstaller which can be downloaded `here <https://github.com/pyinstaller/pyinstaller>`_. For linux this can generate builds for Arm64 (Raspberry Pi) and IBM PowerPc. We don't officially support this, due to lack of demand/resources but it's there should the need arise.
+.. [1] Note: builds are made with pyinstaller which can be downloaded `here <https://github.com/pyinstaller/pyinstaller>`_ For linux this can generate builds for Arm64 (Raspberry Pi) and IBM PowerPc. We don't officially support this, due to lack of demand/resources but it's there should the need arise.
 
 Containers
 **********
 
-The only other prerequisite for using **VirtualLab** on your system is a containerisation tool. We currently only support `Apptainer <https://apptainer.org/>`_ (currently this is Linux only). [3]_  (`Docker <https://www.docker.com/>`_ is used for container development and hosting development and support is planned for a future release  or
+The only other prerequisite for using **VirtualLab** on your system is a containerisation tool. We currently only support `Apptainer <https://apptainer.org/>`_ (currently this is Linux only). [3]_ 
 
 If you're unfamiliar with containers, here's a quick overview from `opensource.com <https://opensource.com/resources/what-are-linux-containers>`_ :cite:`containers`:
 
@@ -40,9 +40,9 @@ We have chosen containers as the main way of distributing **VirtualLab** for a n
 
 For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on you local machine (we will go into more details on exactly how this all works later.)
 
-.. image:: path/filename.png
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png?inline=false
   :width: 400
-  :alt: Diagram of VirtualLab container setup (add me)
+  :alt: Diagram of VirtualLab container setup
 
 To use **VirtualLab** you must first install Apptainer. Is it suggested that you follow the most up-to-date instructions from their website:
 
@@ -53,7 +53,7 @@ To use **VirtualLab** you must first install Apptainer. Is it suggested that you
 Installation with the install script:
 *************************************
 
-Once you have either Docker or Apptainer installed you can download the automated install/update script for you OS of choice links to which can be found `here <https://gitlab.com/ibsim/virtuallab/-/raw/dev/bin/Install_VirtualLab?inline=false>`_`:
+Once you have either Docker or Apptainer installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab/-/raw/dev/bin/Install_VirtualLab?inline=false>`_`:
 
 Both the Installer and VirtualLab itself are primarily command line only so you will need to run the following command in a terminal.
 
@@ -67,7 +67,6 @@ VirtualLab executable can then be found in the bin directory inside VirtualLab i
 
 We recommend you run a quick test to ensure everything is working this can be done with the the following command:
 
-Linux/MacOs:
 :bash:`VirtualLab --test`
 
 The --test option downloads a minimal test container and runs a series of tests to check everything is working. It also spits out a randomly selected programming joke as a nice whimsical bonus. For more on how to use VirtualLab we recommend the Tutorials section.
@@ -94,7 +93,7 @@ The next step is to generate an executable. The original script the executable i
 
 The final step is to add VirtualLab to the system path and set the VL_DIR environment variable to tell VirtualLab where the code is installed.
 
-On Linux/MacOs simply run:
+To do this run the following commands:
 :bash:`export VL_DIR=Path/to/repo`
 :bash:`export PATH=$PATH:{Path/to/repo}/bin`
 Note: You may want to automate this by adding these lines to ~/.bashrc, ~/.zshrc or similar.

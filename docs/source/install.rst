@@ -80,7 +80,7 @@ If you choose to perform the installation manually, in addition to Apptainer you
 First you will need clone our git repository with:
 :bash:`git clone https://gitlab.com/ibsim/virtuallab.git`
 
-Next you need to download the latest version of the manager container from dockerhub. To do this for run  :bash:`singularity build VLManager.sif docker://ibsim/virtuallab:latest` then place the generated VLManager.sif file into the Containers directory of the repository.
+Next you need to download the latest version of the manager container from dockerhub. To do this for run  :bash:`singularity build VL_Manager.sif docker://ibsim/virtuallab:latest` then place the generated VLManager.sif file into the Containers directory of the repository.
 
 The next step is to generate an executable. The original script the executable is based on is VL_server.py. So from here you have essentially 3 options:
 

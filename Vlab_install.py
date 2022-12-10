@@ -158,7 +158,7 @@ def get_latest_docker():
 def get_latest_Apptainer(install_path):
     print("Pulling latest VLManager container from Dockerhub and converting to Apptainer:\n")
     try:
-        subprocess.run(f'apptainer build -F {install_path}/Containers/VirtualLab.sif docker://ibsim/virtuallab:latest',shell=True,check=True)
+        subprocess.run(f'apptainer build -F {install_path}/Containers/VL_Manager.sif docker://ibsim/virtuallab:latest',shell=True,check=True)
     except:
         print('build failed. please check Apptainer is installed and working corectly.')
         sys.exit()

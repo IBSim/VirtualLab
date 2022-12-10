@@ -97,19 +97,19 @@ def custom_dir():
 
 def install_Vlab(install_path):
     os.system('clear')
-    print(f'Installing VirtualLab to {choice}')
-    if os.isdir(install_path):
+    print(f'Installing VirtualLab to {install_path}')
+    if os.path.isdir(install_path):
         # if it exists check if it is empty
-        dir_list = os.listdir(path)
+        dir_list = os.listdir(install_path)
         # Checking if the list is empty or not
-        if len(dir) != 0:
+        if len(dir_list) != 0:
             print('******************************************\n')
             print(f"The Directory {install_path} is not Empty\n")
             print("Warning: contents will be overwriten.\n")
             print('******************************************\n')
     else:
         print(f'New directory {install_path} will be created')
-        os.mkdirs(install_path)
+        os.mkdir(install_path)
     yes_no()
     #Docker = check_container_tool()
     Docker = False
@@ -158,7 +158,7 @@ def get_latest_docker():
 def get_latest_Apptainer(install_path):
     print("Pulling latest VLManager container from Dockerhub and converting to Apptainer:\n")
     try:
-        subprocess.run(f'Apptainer build -F {install_path}/Containers/VirtualLab.sif docker://ibsim/virtuallab_main:Dev',shell=True,check=True)
+        subprocess.run(f'apptainer build -F {install_path}/Containers/VirtualLab.sif docker://ibsim/virtuallab_main:Dev',shell=True,check=True)
     except:
         print('build failed. please check Apptainer is installed and working corectly.')
         sys.exit()

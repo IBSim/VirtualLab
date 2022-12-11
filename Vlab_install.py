@@ -136,7 +136,7 @@ def get_latest_code(install_path):
         #subprocess.call(f'curl --output {install_path}/VirtualLab.zip -O https://gitlab.com/ibsim/virtuallab/-/archive/dev/virtuallab-dev.zip', shell=True)
         import git
         git.Repo.clone_from('https://gitlab.com/ibsim/virtuallab.git',f'{install_path}')
-        my_repo = git.Repo(f'{install_path}/VirtualLab')
+        my_repo = git.Repo(f'{install_path}')
         my_repo.git.checkout('dev')
 
 

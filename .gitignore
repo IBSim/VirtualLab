@@ -30,6 +30,7 @@ Config/*.py
 !Input/
 Input/*/*
 !Input/*/Tutorials/
+!Input/Test/*
 !Input/*/.dev/
 !Input/Unit/*
 !tests/

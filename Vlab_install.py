@@ -133,22 +133,12 @@ def get_latest_code(install_path):
         subprocess.call(f'powershell.exe wget https://gitlab.com/ibsim/virtuallab/-/archive/dev/virtuallab-dev.zip -p {install_path}', shell=True)
     else:
         # Mac/Linux hopefully have Curl
-        subprocess.call(f'curl --output {install_path}/VirtualLab.zip -O https://gitlab.com/ibsim/virtuallab/-/archive/dev/virtuallab-dev.zip', shell=True)
+        #subprocess.call(f'curl --output {install_path}/VirtualLab.zip -O https://gitlab.com/ibsim/virtuallab/-/archive/dev/virtuallab-dev.zip', shell=True)
+        import git
+        git.Repo.clone_from('https://gitlab.com/ibsim/virtuallab.git',f'{install_path}')
+        my_repo = git.Repo(f'{install_path}/VirtualLab')
+        my_repo.git.checkout('dev')
 
-    with ZipFile(f'{install_path}/VirtualLab.zip', 'r') as zipObj:
-   # Extract all the contents of zip file in current directory
-        zipObj.extractall(path=install_path)
-
-    dest = install_path
-    source = f'{install_path}/virtuallab-dev'
-
-    allfiles = os.listdir(source)
-    for f in allfiles:
-        src_path = os.path.join(source, f)
-        dst_path = os.path.join(dest, f)
-        shutil.move(src_path, dst_path)
-    os.remove(f'{install_path}/VirtualLab.zip')
-    os.rmdir(f'{install_path}/virtuallab-dev')
 
 def get_latest_docker():
     print("Pulling latest VLManager container from Dockerhub:\n")

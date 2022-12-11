@@ -398,6 +398,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # get vlab_dir either from cmd args or environment
     vlab_dir= get_vlab_dir(args.vlab)
+    os.chdir(vlab_dir)
 # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
 # set flag to run tests instate of the normal runfile

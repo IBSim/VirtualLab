@@ -107,10 +107,13 @@ def install_Vlab(install_path):
             print(f"The Directory {install_path} is not Empty\n")
             print("Warning: contents will be overwriten.\n")
             print('******************************************\n')
+            shutil.rmtree(install_path)
+            os.mkdir(install_path)
+        yes_no()
     else:
         print(f'New directory {install_path} will be created')
         os.mkdir(install_path)
-    yes_no()
+        yes_no()
     #Docker = check_container_tool()
     Docker = False
     print('Downloading VirtuaLab\n')
@@ -119,7 +122,7 @@ def install_Vlab(install_path):
         get_latest_docker()
     else:
         get_latest_Apptainer(install_path)
-    add_to_Path(install_dir)
+    add_to_Path(install_path)
     print("Instalation Complete!!")
     sys.exit()
 
@@ -157,20 +160,9 @@ def get_latest_docker():
 
 def get_latest_Apptainer(install_path):
     print("Pulling latest VLManager container from Dockerhub and converting to Apptainer:\n")
-    try:
-        subprocess.run(f'apptainer build -F {install_path}/Containers/VL_Manager.sif docker://ibsim/virtuallab:latest',shell=True,check=True)
-    except:
-        print('build failed. please check Apptainer is installed and working corectly.')
-        sys.exit()
     
-    print('******************************************************************************\n')
-    print(' Note: Unfortunately unlike Docker apptainer does not currently have a built in\n')
-    print(' tool to check for container updates. If you would like to ensure that you are\n')
-    print(' using the latest version of a particular module. You will need delete the\n')
-    print(' already downloaded .sif files for the module you wish to update. These can be\n')
-    print(f' found in {install_path}/Containers. You can then re-run VirtualLab which will\n')
-    print(' automatically download the newest version.\n')
-    print('******************************************************************************\n')
+    subprocess.run(f'apptainer build -F {install_path}/Containers/VL_Manager.sif docker://ibsim/virtuallab:latest',
+                        shell=True,check=True)
 
 def update_vlab():
     if Platform == 'Windows':
@@ -257,8 +249,9 @@ def add_to_Path(install_dir):
         print('3: Other')
         choice = input(" >>  ")
         if choice ==2:
+            subprocess.check_call(['chmod', '+x', f'{install_dir}/Scripts/Install/Set_VLProfile_bash.sh'])
             output = subprocess.run([f'{install_dir}/Scripts/Install/Set_VLProfile_zsh.sh', f'{install_dir}',f'{Path.home()}'],capture_output=True)
-            print(Output.stdout.decode('utf8'))
+            print(output.stdout.decode('utf8'))
         if choice ==3:
             print("****************************************************************************")
             print(" Auto setting of path variables is only offically supported with bash and zsh.\n")
@@ -271,10 +264,11 @@ def add_to_Path(install_dir):
             print("****************************************************************************")
         else:
             #default to bash
+            subprocess.check_call(['chmod', '+x', f'{install_dir}/Scripts/Install/Set_VLProfile_bash.sh'])
             output = subprocess.run([f'{install_dir}/Scripts/Install/Set_VLProfile_bash.sh', f'{install_dir}',f'{Path.home()}'],capture_output=True)
-            print(test.stdout.decode('utf8'))
-        
-    if Platform == 'Darwin':
+            print(output.stdout.decode('utf8'))
+        subprocess.check_call(['chmod', '+x', f'{install_dir}/bin/VirtualLab'])
+    elif Platform == 'Darwin':
         # MacOs uses zsh by default
         output = subprocess.run([f'{install_dir}/Scripts/Install/Set_VLProfile_zsh.sh', f'{install_dir}',f'{Path.home()}'],capture_output=True)
         print(output.stdout.decode('utf8'))

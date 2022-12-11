@@ -20,7 +20,7 @@ else
   ### If not, add VirtualLab to PATH
   echo "Adding VirtualLab to PATH."
   # Add VL_DIR to VLProfile so that different parts of install can be run seperately
-  echo 'VL_DIR="'$VL_DIR'"' >> $USER_HOME/.VLprofile
+  echo 'export VL_DIR="'$VL_DIR'"' >> $USER_HOME/.VLprofile
 
   echo 'if [[ ! $PATH =~ "'$VL_DIR'" ]]; then' >> $USER_HOME/.VLprofile
 

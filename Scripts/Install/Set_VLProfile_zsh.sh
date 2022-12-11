@@ -33,7 +33,7 @@ fi
 ### ~/.bashrc doesn't get read by subshells in ubuntu.
 ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.
 STRING_TMP="if [ -f ~/.VLprofile ]; then source ~/.VLprofile; fi"
-if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.bashrc | grep -F -v "#$STRING") ]]; then
+if [[ ! $(grep -F "$STRING_TMP" $USER_HOME/.zshrc | grep -F -v "#$STRING") ]]; then
   echo '' >> $USER_HOME/.zshrc
   echo '# Read in environment for VirtualLab' >> $USER_HOME/.zshrc
   echo $STRING_TMP >> $USER_HOME/.zshrc

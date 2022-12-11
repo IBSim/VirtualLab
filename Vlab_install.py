@@ -155,9 +155,8 @@ def get_latest_Apptainer(install_path):
                         shell=True,check=True)
 
 def update_vlab():
-    if Platform == 'Windows':
-        vlab_dir ='C:/Program Files/VirtualLab'
-    else:
+    vlab_dir = os.environ.get('VL_DIR',None)
+    if vlab_dir == None:
         vlab_dir = f'{Path.home()}/VirtualLab'
     
     if not os.path.isdir(vlab_dir):
@@ -239,7 +238,6 @@ def add_to_Path(install_dir):
         print('3: Other')
         choice = input(" >>  ")
         if choice ==2:
-            subprocess.check_call(['chmod', '+x', f'{install_dir}/Scripts/Install/Set_VLProfile_bash.sh'])
             output = subprocess.run([f'{install_dir}/Scripts/Install/Set_VLProfile_zsh.sh', f'{install_dir}',f'{Path.home()}'],capture_output=True)
             print(output.stdout.decode('utf8'))
         if choice ==3:
@@ -254,7 +252,6 @@ def add_to_Path(install_dir):
             print("****************************************************************************")
         else:
             #default to bash
-            subprocess.check_call(['chmod', '+x', f'{install_dir}/Scripts/Install/Set_VLProfile_bash.sh'])
             output = subprocess.run([f'{install_dir}/Scripts/Install/Set_VLProfile_bash.sh', f'{install_dir}',f'{Path.home()}'],capture_output=True)
             print(output.stdout.decode('utf8'))
         subprocess.check_call(['chmod', '+x', f'{install_dir}/bin/VirtualLab'])

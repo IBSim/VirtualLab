@@ -11,9 +11,9 @@ ENV GCC_VERSION 11
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test && apt-get update \
      && apt-get install -y gcc-$GCC_VERSION g++-$GCC_VERSION gfortran-$GCC_VERSION
 
-RUN apt-get update && apt-get install -y --no-install-recommends git wget cmake python3 make libreadline-dev libncurses5-dev ssh ca-certificates curl zsh na$
+RUN apt-get update && apt-get install -y --no-install-recommends git wget cmake python3 make libreadline-dev libncurses5-dev ssh ca-certificates curl zsh nano less python3-pip ninja-build
 
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$GCC_VERSION 100 --slave /usr/bin/g++ g++ /usr/bin/g++-$GCC_VERSION --slave /usr/bin/gfortra$
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$GCC_VERSION 100 --slave /usr/bin/g++ g++ /usr/bin/g++-$GCC_VERSION --slave /usr/bin/gfortran gfortran /usr/bin/gfortran-$GCC_VERSION
 
 RUN git clone https://gitlab.com/libeigen/eigen.git
 

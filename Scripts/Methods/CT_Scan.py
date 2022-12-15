@@ -305,15 +305,35 @@ class Method(Method_base):
 
     def Spawn(self,VL,**kwargs):
         '''
-        This is the function called when running VirtualLab.GVXR in the
-        run file with the command line option Module=False (or not set at all 
-        as False is the default value).
+        This is the function called when running VirtualLab.CT_Scan() in the
+        RunFile. 
 
-        If this option if set to True Function "Run" is called instead.
+        ***************************************************************
+        ***********  Note for using multiple containers   *************
+        ***************************************************************
+        This particular module runs in parallel using multiple containers.
+        However, this can be very problematic and resource (particularly
+        ram) intensive.
 
-        This Function sends a message to the host to spawn a container 
-        "#ContainerName". This refers to one of the Containers defined
-        in VL_modules.yaml.
+        Therefore, for running in parallel we recommend using pathos or mpi
+        set via the VL._Launcher option (see VLParallel.py). However, if this
+        is not an option. VirtualLab can, with some setup, spread defined
+        jobs over multiple containers.
+
+        To run in parallel with multiple containers you will need first 
+        need to set: Num_Cont=len(VL.container_list['#MethodName'].
+
+        You will also need to call MethodDicts = VL.filter_runs(MethodDicts)
+        during setup. This will Filter MethodDicts for runs that are defined
+        in the running container. If you dont call this it will run all the jobs 
+        on each container which I suspect is not what you want. 
+
+        Finally you will likely want to set VL._Launcher to 'sequential' that
+        is unless you really want to run jobs in parallel inside multiple 
+        containers, though I can't see what you would expect to gain from that.
+        As the increased overhead and memory usage from multiple containers 
+        massively outweighs any minute performance gain.
+
         '''
         MethodName = 'CT_Scan'
         ContainerName = 'GVXR'

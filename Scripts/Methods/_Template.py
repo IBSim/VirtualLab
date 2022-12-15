@@ -102,11 +102,8 @@ class Method(Method_base):
 
     def Spawn(self,VL,**kwargs):
         '''
-        This is the function called when running VirtualLab.#MethodName in the
-        run file with the command line option Module=False (or not set at all 
-        as False is the default value).
-
-        If this option if set to True Function "Run" is called instead.
+        This is the function called when running VirtualLab.#MethodName 
+        within the VL_Manger container (i.e. the RunFile).
 
         This Function sends a message to the host to spawn a container 
         "#ContainerName". This refers to one of the Containers defined
@@ -115,26 +112,14 @@ class Method(Method_base):
         ***************************************************************
         ***********  Note for using multiple containers   *************
         ***************************************************************
+        VirtualLab can, with some setup, be configured to spread defined
+        jobs over multiple containers.However, this can be very 
+        problematic and resource (particularly ram) intensive.
 
-        For running in parallel we recommend using pathos or mpi set via
-        the VL._Launcher option (see VLParallel.py). However, if this
-        is not an option. VirtualLab can, with some setup, spread defined
-        jobs over multiple containers. An example of how to implement 
-        this can be found in GVXR.py.
-
-        To run in parallel with multiple containers you will need first 
-        need to set: Num_Cont=len(VL.container_list['#MethodName'].
-
-        You will also need to call MethodDicts = VL.filter_runs(MethodDicts)
-        during setup. This will Filter MethodDicts for runs that are defined
-        in the running container. If you dont call this it will run all the jobs 
-        on each container which I suspect is not what you want. 
-
-        Finally you will likely want to set VL._Launcher to 'sequential' that
-        is unless you really want to run jobs in parallel inside multiple 
-        containers, though I can't see what you would expect to gain from that.
-        As the increased overhead and memory usage from multiple containers 
-        massively outweighs any minute performance gain.
+        Therefore, for running in parallel we recommend using pathos or mpi
+        set via the VL._Launcher option (see VLParallel.py). However, if 
+        for whatever reason this is not an option an example of how to 
+        implement this can be found in GVXR.py.
         
         '''
         MethodName = '#MethodName'
@@ -153,5 +138,5 @@ class Method(Method_base):
 
         if return_value != '0':
             #an error occurred so exit VirtualLab
-            VL.Exit("Error Occurred with #MethodName")
+            VL.Exit(f"Error Occurred with {MethodName}")
         return

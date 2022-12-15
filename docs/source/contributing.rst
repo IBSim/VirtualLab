@@ -92,15 +92,20 @@ a continent way of hosting and updating containers which Apptainer can pull from
 detail how to do this because it's out of the scope of this document. However, most popular software already have pre-made DockerFiles you can use as a starting point or failing that there are plenty 
 of resources online already to get you started.
 
-Once you have a DockerFile you will need to convert it to Apptainer. Annoyingly Apptainer can't build directly from a Docker file instead you need to point it to a repository on a docker registry. 
+Once you have a DockerFile you will need to convert it to Apptainer. Annoyingly, Apptainer can't build directly from a Docker file instead you need to point it to a repository on a docker registry. 
 The easiest way to do this is to use `DockerHub  <https://hub.docker.com/>`_. You will first need to create an account. Once this is done you will need to log into the DockerHub website then click 
 on the blue "Create Repository" button (see screenshots). 
 
-# add sceenshoots
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/dockerhub_1.png
+   :alt: insert screenshot of Dockerhub here.
+
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/dockerhub_2.png
+   :alt: insert screenshot of Dockerhub here.
 
 From there you will need to give your repository a name and decide if you want it to be public or private (Note: DockerHub only allows you have 1 private repository for free).
 
-#add more screenshots
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/dockerhub_3.png
+   :alt: insert screenshot of Dockerhub here.
 
 Once this is complete you will need to push your docker image to the repository. this can be easily achieved at the command line.
 
@@ -128,7 +133,7 @@ With that done we can finally convert our Docker image to Apptainer with the fol
 .. admonition:: Using a local Docker Repository
 
     Whilst DockerHub is free to use and a convenient solution it may not be the best solution for your situation. If privacy is your concern you could use an alternative registry like 
-    `singulasrity hub <https://singularityhub.github.io/>`_ or even `host your own <https://www.c-sharpcorner.com/article/setup-and-host-your-own-private-docker-registry/>`_. 
+    `singularity hub <https://singularityhub.github.io/>`_ or even `host your own <https://www.c-sharpcorner.com/article/setup-and-host-your-own-private-docker-registry/>`_. 
     
     However, Say you are doing lots of testing and have a slow or limited internet connection. It's conceivable you may have to wait several minutes for upload your container to DockerHub only to re-download 
     it through Apptainer. Fortunately, it is entirely possible to host a Docker registry on your local machine. Unfortunately, there are a number of caveats to consider:

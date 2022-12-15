@@ -53,23 +53,33 @@ To use **VirtualLab** you must first install Apptainer. Is it suggested that you
 Installation with the install script:
 *************************************
 
-Once you have either Docker or Apptainer installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab/-/raw/dev/bin/Install_VirtualLab?inline=false>`_:
+Once you have either Docker or Apptainer installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab_bin/-/raw/main/Install_VirtualLab?inline=false>`_:
 
-Both the Installer and VirtualLab itself are primarily command line only so you will need to run the following command in a terminal.
+Both the Installer and VirtualLab itself are primarily command line only so you will need to run the following commands in a terminal.
 
-:bash:`./vlabinstall` 
+:bash:`chmod +x Install_VirtualLab`
+
+:bash:`./Install_VirtualLab` 
 
 The installer will then take you though a series of menus and download the latest version of the code as well as pulling the latest VirtualLab Manager container from Dockerhub (converting it to an apptainer container).
 
-Note: The various module are not immediately installed but instead will be downloaded and installed dynamically when used for the first time (this is intentional to save disk space as it means you only have installed the exact tools you need/use).
+.. admonition:: Note
 
-VirtualLab executable can then be found in the bin directory inside VirtualLab install directory (you may want to add this to your system path). Note: unless you changed it during the install the default install is :bash:`/home/$USER/VirtualLab` where $USER is your username.
+  You may see lots of warning messages appear on screen during the install, similar to: :bash:`warn rootless {path/to/file} ignoring (usually) harmless EPERM on setxattr`. 
+  As the messages suggests these are harmless and just a bi-product of building containers from sif files without root privileges on Linux. 
+  Thus as long as you get a "build complete" message at the end they can be safely ignored.
+
+We note at this stage that only the Server and Manger have been downloaded. The remaining modules are not immediately installed but instead will be downloaded and installed dynamically when used for the first time. 
+Although this means that the first run of any module will take significantly longer, as it has to download and install a bunch of files.
+This is an intentional trade off to save disk space as it means you only have installed the exact tools you need/use.
+
+VirtualLab executable can then be found in the bin directory inside VirtualLab install directory (you may want to add this to your system path). Note: unless you changed it during the install the default install directory is :bash:`/home/$USER/VirtualLab` where $USER is your username.
 
 We recommend you run a quick test to ensure everything is working this can be done with the the following command:
 
 :bash:`VirtualLab --test`
 
-The --test option downloads a minimal test container and runs a series of tests to check everything is working. It also spits out a randomly selected programming joke as a nice whimsical bonus. For more on how to use VirtualLab we recommend the Tutorials section.
+The :bash:`--test` option downloads a minimal test container and runs a series of tests to check everything is working. It also spits out a randomly selected programming joke as a nice whimsical bonus. For more on how to use VirtualLab we recommend the Tutorials section.
 
 
 Installation from source code
@@ -80,13 +90,12 @@ If you choose to perform the installation manually, in addition to Apptainer you
 First you will need clone our git repository with:
 :bash:`git clone https://gitlab.com/ibsim/virtuallab.git`
 
-Next you need to download the latest version of the manager container from dockerhub. To do this for run  :bash:`singularity build VL_Manager.sif docker://ibsim/virtuallab:latest` then place the generated VLManager.sif file into the Containers directory of the repository.
+Next you need to download the latest version of the manager container from dockerhub. To do this for run  :bash:`apptainer build VL_Manager.sif docker://ibsim/virtuallab:latest` then place the generated VLManager.sif file into the Containers directory of the repository.
 
-The next step is to generate an executable. The original script the executable is based on is VL_server.py. So from here you have essentially 3 options:
+The next step is to generate an executable. The original script the executable is based on is VL_server.py. So from here you have essentially 2 options:
 
-1. use the pre-built VirtualLab executable in the bin directory
-2. run the script directly with :bash:`python3 VL_server.py --test`
-3. Build a new executable yourself using pyinstaller by running :bash:`pyinstaller -n VirtualLab -F VL_server.py`
+1. run the script directly with :bash:`python3 VL_server.py --test`
+2. Build an executable yourself using pyinstaller by running :bash:`pyinstaller -n VirtualLab -F VL_server.py`
 
 .. note:: As mentioned previously all the other container modules get downloaded automatically the first time they are used. However, regardless of your container choice they are all hosted on dockerhub under `ibsim <https://hub.docker.com/search?q=ibsim>`_. So you can always pull/build them from there if desired. Alternatively the dockerfiles used to create the containers can be found in a separate github `repo <https://github.com/IBSim/VirtualLab>`_ that is itself linked to Dockerhub.
 

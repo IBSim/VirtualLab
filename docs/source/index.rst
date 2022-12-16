@@ -11,18 +11,30 @@
 Welcome to VirtualLab's documentation!
 ======================================
 
-**VirtualLab** is a software package which enables the user to run Finite Element (FE) simulations of an increasing number of physical laboratory experiments, i.e. their 'virtual counterparts'.
+**VirtualLab** is a modular platform which enables the user to run simulations of physical laboratory experiments, i.e., their 'virtual counterparts'.
 
-The software is mostly written in python, and is fully parametrised such that it can be run in 'batch mode', i.e. non-interactively, via the command line. The bulk of the simulations are carried out in the FE solver `Code_Aster <https://www.code-aster.org/>`_.
+The motivation for creating a virtual laboratory is manyfold, for example:
 
-The pre and post processing is carried out using the various software:
+* Planning and optimisation of physical experiments.
+* Ability to directly compare experimental and simulation data, useful to better understand both physical and virtual methods.
+* Augment sparse experimental data with simulation data for increased insight.
+* Generating synthetic data to train machine learning models.
+
+The software is mostly written in python, and is fully parametrised such that it can be run in 'batch mode', i.e., non-interactively, via the command line. This is in order to facilitate automation and so that many virtual experiments can be conducted in parallel.
+
+Due to the modularity of the platform, by nature, **VirtualLab** is continually expanding. The bulk of the 'virtual experiments' currently included are carried out in the FE solver `Code_Aster <https://www.code-aster.org/>`_. However, there are also modules to simulate `X-ray computed tomography <https://gvirtualxray.fpvidal.net/>`_, `irradiation damage of materials <https://github.com/giacomo-po/MoDELib>`_ and `electromagnetics <https://ruben-otin.blogspot.com/2015/04/ruben-otin-software-ruben-otin-april-19.html>`_.
+
+The pre and post processing is carried out using various software, for example:
 
 * `SALOME <https://www.salome-platform.org/>`_: Mesh generation
-* `ERMES <https://ruben-otin.blogspot.com/2015/04/ruben-otin-software-ruben-otin-april-19.html>`_: Induction heating
+* `Cad2Vox <https://github.com/bjthorpe/Cad2vox>`_: Mesh voxelisation
+* `CIL <https://ccpi.ac.uk/cil/>`_: CT reconstruction
+* `SuRVoS <https://github.com/DiamondLightSource/SuRVoS2>`_: Image segmentation
+* `iso2mesh <http://iso2mesh.sourceforge.net/>`_: Image-based meshing
+* `PyTorch <https://pytorch.org/>`_: Data analytics
 * `ParaVis <https://docs.salome-platform.org/latest/dev/PARAVIS/>`_: Data visualisation
-* `Cad2Vox <https://github.com/bjthorpe/Cad2vox>`_: Mesh Voxelisation
   
-While this package has been written for use from the command line, some capabilities have been included to use the GUI for debugging and training.
+While this platform has been written for use from the command line, some capabilities have been included to use GUIs offered by the various software for debugging and training.
 
 .. toctree::
    :caption: Contents:
@@ -33,8 +45,8 @@ While this package has been written for use from the command line, some capabili
    virtual_exp
    runsim/index
    examples/index
-   about
    contributing
+   about
 
 Indices and tables
 ******************

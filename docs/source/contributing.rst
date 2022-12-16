@@ -4,56 +4,56 @@
 Adding to VirtualLab
 ====================
 
-VirtualLab has been designed so that adding work is as easy as possible. There are 4 ways in which new work can be added:
+**VirtualLab** has been designed so that adding work is as easy as possible. There are four ways in which new work can be added:
  1. New analysis scripts,
  2. New methods of performing analysis,
  3. New virtual experiments,
  4. Containers with new software or code.
 
-
-Description on how work can be added to these are discussed below, along with the best practice for adding your work on the VirtualLab repository.
+Description on how work can be added to these are discussed below, along with the best practice for adding your work to the **VirtualLab** repository.
 
 Scripts
 *******
 
-The easiest way to add to VirtualLab is by creating scripts for experiments and methods that already exist. For example, to create a new mesh script 'NewComponent' for the tensile experiment one would need to create the file :file:`Scripts/Experiments/Tensile/Mesh/NewComponent.py` which describes the steps that **SALOME** must follow to create a CAD geometry and mesh. This file can then be used by specifying it as the 'file' attribute to the 'Mesh' namespace, e.g. Mesh.File = 'NewComponent' in the parameter file.
+The easiest way to add to **VirtualLab** is by creating scripts for experiments and methods that already exist. For example, to create a new mesh script 'NewComponent' for the tensile experiment one would need to create the file :file:`Scripts/Experiments/Tensile/Mesh/NewComponent.py` which describes the steps that **SALOME** must follow to create a CAD geometry and mesh. This file can then be used by specifying it as the 'file' attribute to the 'Mesh' namespace, e.g. Mesh.File = 'NewComponent' in the parameter file.
 
-Similarly Sim and DA scipts can be created and placed in the relevant directories in the experiment directory.
+Similarly 'Sim' and 'DA' scipts can be created and placed in the relevant directories in the experiment directory.
 
 Experiments
 ***********
 
-Adding a new experiment to **VirtualLab** will require creating a new experiment directory :file:`Scripts/Experiments/#ExpName`, where #ExpName is the name of the experiment. Within this experiment directory sub-directories for the methods required to perform the analysis are needed. For example, if a mesh of a component is required using **SALOME** then a directory names :file:`Mesh` is required within the experiment directory which contains a relevant **SALOME** file.
+Adding a new experiment to **VirtualLab** will require creating a new experiment directory :file:`Scripts/Experiments/#ExpName`, where #ExpName is the name of the experiment. Within this experiment directory, sub-directories for the methods required to perform the analysis are needed. For example, if a mesh of a component is required using **SALOME** then a directory named :file:`Mesh` is required within the experiment directory which contains a relevant **SALOME** file.
 
-A relevant directory would also need to be created within the input directory, i.e. :file:`Input/#ExpName`. Within this directory the parameter file(s) are included which passes information to the relevant methods and files used.
+A relevant directory would also need to be created within the input directory, i.e. :file:`Input/#ExpName`. The parameter file(s) which passes information to the relevant methods and files used are to be included within this directory.
 
 Containers and Methods:
 ***********************
-In VirtualLab Containers Methods are closely linked and are the heart of how VirtualLab can pull together many different pieces of software.
-The VirtualLab executable actually starts out as a tcp sever running on the host machine defined by the script :file:`VL_server.py`. The server first spawns a manger 
-container **VL_Manager** and passes in the Runfile. **VL_Manager** then executes the RunFile in python environment. The RunFile itself begins by creating
+In **VirtualLab**, 'Containers' and 'Methods' are closely linked and are the heart of how **VirtualLab** can pull together many different pieces of software.
+The **VirtualLab** executable actually starts out as a tcp (networking) sever running on the host machine defined by the script :file:`VL_server.py`. The server first spawns a manager container, **VL_Manager**, and passes in the RunFile. **VL_Manager** then executes the RunFile in a python environment. The RunFile itself begins by creating
 an instance of the VLSetup class. This then acts to spawn, control and co-ordinate all the other containers that will run the software to perform the actual analysis.
 
-The Containers are spawned using various Methods which are functions assigned to the VirtualLab class to perform different types analysis, e.g. Mesh and Sim.
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png?inline=false
+  :width: 400
+  :alt: Diagram of VirtualLab container setup
+  :align: center
+
+The Containers are spawned using various Methods which are functions assigned to the **VirtualLab** class to perform different types analysis, e.g. Mesh and Sim.
 When a method is called by the **VL_Manager** a second container is spawned which is setup to perform the perform the required analysis. 
 
-For example a call to VirtualLab.Mesh() will spawn a container which has SalomeMeca installed. This will then run a script that will perform the actual analysis
+For example, a call to :bash:`VirtualLab.Mesh()` will spawn a container which has SalomeMeca installed inside. This will then run a script that will perform the actual analysis
 using the parameters supplied by **VL_Manager**. The full list of different methods can be found in the methods directory :file:`Scripts/Methods`.
 
-Each method file has a base class called 'Method' within it. These classes have a function called 'Setup' where information from the parameter file(s) are passed to build up the work to perform analysis, 
-e.g. the information attached to the namespace 'Mesh' in the parameter file(s) is available in the Setup function of the method 'Mesh'. 
+Each method file has a base class called 'Method' within it. These classes have a function called 'Setup' where information from the parameter file(s) are passed to build up the work to perform analysis, e.g., the information attached to the namespace 'Mesh' in the parameter file(s) is available in the Setup function of the method 'Mesh'. 
 
-The 'Method' class must also have two other functions 'Spawn' and 'Run' which change how the method should behave when called, e.g VirtualLab.Mesh().
+The 'Method' class must also have two other functions 'Spawn' and 'Run' which change how the method should behave when called, e.g., VirtualLab.Mesh().
 The first function 'Spawn' is selected when the method is called by the **VL_Manager** container. This is handled automatically in the base method class.
 'Spawn' as the name suggests configures a number of parameters and then communicates with the server on the host to spawn the container linked to the method 
 and pass in the parameters for the analysis in question.
 
-The second function 'Run' is selected when the method is called within a container other than **VL_Manager** again this is handled transparently. 
+The second function 'Run' is selected when the method is called within a container other than **VL_Manager**, again this is handled transparently. 
 'Run' is the function that will perform the required analysis with the supplied parameters.
 
-Although not compulsory, these classes usually have a function called PoolRun which helps performs the analysis in parallel. For example, in the 'Mesh' method the meshes are created using **SALOME** in the PoolRun function. 
-Placing the analysis in a seperate function enables the use of VirtualLab's parallelisation package. This allows multiple pieces of analysis to be performed in parallel using either the pathos (single node) 
-or pyina (multi-node) packages. Please see one of the available methods to understand how this is achieved.
+Although not compulsory, these classes usually have a function called PoolRun which helps performs the analysis in parallel. For example, in the 'Mesh' method the meshes are created using **SALOME** in the PoolRun function. Placing the analysis in a seperate function enables the use of **VirtualLab**'s parallelisation package. This allows multiple pieces of analysis to be performed in parallel using either the pathos (single intra-node) or pyina (multi inter-node) packages. Please see one of the available methods to understand how this is achieved.
 
 .. note::
     Any file in the methods directory starting with '_' will be ignored.
@@ -61,36 +61,31 @@ or pyina (multi-node) packages. Please see one of the available methods to under
 Amending Available Methods
 **************************
 
-Ammendments can be made to the methods available by using the :file:`config.py` file in the relevant methods directory. For example, as the HIVE experiment is a multi-physics experiment 'Sim'
- needs to include a few additional steps. These are added in the file :file:`Scripts/Experiments/HIVE/Sim/config.py`. There is a similar config file for the meshing routine of HIVE also.
+Ammendments can be made to the methods available by using the :file:`config.py` file in the relevant methods directory. For example, due to the HIVE experiment being a multi-stage multi-physics experiment, 'Sim' needs to include a few additional steps. These are added in the file :file:`Scripts/Experiments/HIVE/Sim/config.py`. There is a similar config file for the meshing routine of HIVE also.
 
 Adding New Methods:
 *******************
 
-To create a new method you will need few things. Firstly you will need a script to place in the methods directory. you can create a copy of the file :file:`_Template.py` in the methods directory and 
-save it as #MethodName.py, where #MethodName the name of the new method type. Edit this file to perform the steps you desire. Not forgetting to edit the 'Spawn' function to associate your new
+To create a new method you will need a few things. Firstly, you will need a script to place in the methods directory. You may create a copy of the file :file:`_Template.py` in the methods directory and save it as #MethodName.py, where #MethodName the name of the new method type. Edit this file to perform the steps you desire. Not forgetting to edit the 'Spawn' function to associate your new
 method with a new or existing container. #MethodName will then be available to add information to in the parameter file(s) and to perform analysis using VirtualLab.#MethodName() 
 in the run file.
 
-Next you will need an apptainer Container configured with the appropriate software to run you analysis. This can either be one of our existing containers, found in the Containers directory
-or a custom one you have created (see adding new containers). You will also need to create both a bash and python script to start the container and 
+Next, you will need an apptainer Container configured with the appropriate software to run you analysis. This can either be one of our existing containers, found in the Containers directory, or a custom one you have created (see `adding new containers <contributing.html#adding-new-containers>`_). You will also need to create both a bash and python script to start the container and 
 perform the analysis respectively. We have templates for both of these in the bin and bin/python directories.
 
-Finally you will need to add your method to the config file :file:`Config/VL_Modules.json`. Currently this only requires one parameter, a namespace to associate with 
-your method. This is the name that is used in the the parameters file for VirtualLab and allows you to use a different name if you wish. 
-For example Cad2vox uses the method 'Voxelise' but the namespace 'Vox' as it's easier to type. Note: each method can only have a single namespace
-however namespaces do not need to be unique to particular methods. 
+Finally, you will need to add your method to the config file :file:`Config/VL_Modules.json`. Currently this only requires one parameter, a namespace to associate with 
+your method. This is the name that is used in the the parameters file for **VirtualLab** and allows you to use a different name if you wish. 
+For example Cad2vox uses the method 'Voxelise' but the namespace 'Vox' as it's easier to type. 
 
-Say for example you have several methods which share parameters they can share the same namespace. This is the case for CIL and GVXR where they share
-the 'GVXR' namespace since they share many of the same parameters.
+.. note:: 
+   Each method can only have a single namespace, however, namespaces do not need to be unique to particular methods. 
 
-Adding /new Containers:
-***********************
+Say for example you have several methods which share parameters they can share the same namespace. This is the case for CIL and GVXR where they share the 'GVXR' namespace since they share many of the same parameters.
 
-To build new containers for VirtualLab you will first need to `Install Docker <https://docs.docker.com/get-docker/>`_. We use Docker for development as opposed to Apptainer because Dockerhub provides 
-a continent way of hosting and updating containers which Apptainer can pull from natively. The next step is to create your DockerFile configured with the software that you wish to use. We wont go into 
-detail how to do this because it's out of the scope of this document. However, most popular software already have pre-made DockerFiles you can use as a starting point or failing that there are plenty 
-of resources online already to get you started.
+Adding New Containers:
+**********************
+
+To build new containers for **VirtualLab** you will first need to `Install Docker <https://docs.docker.com/get-docker/>`_. We use Docker for development of containers as opposed to Apptainer because Dockerhub provides a convenient way of hosting and updating containers which Apptainer can pull from natively. The next step is to create your DockerFile configured with the software that you wish to use. We wont go into detail how to do this because it's out of the scope of this document. However, most popular software already have pre-made DockerFiles you can use as a starting point or failing that there are already plenty of resources online to get you started.
 
 Once you have a DockerFile you will need to convert it to Apptainer. Annoyingly, Apptainer can't build directly from a Docker file instead you need to point it to a repository on a docker registry. 
 The easiest way to do this is to use `DockerHub  <https://hub.docker.com/>`_. You will first need to create an account. Once this is done you will need to log into the DockerHub website then click 
@@ -145,10 +140,10 @@ With that done we can finally convert our Docker image to Apptainer with the fol
     With those caveats in mind, if you are still undeterred a good set of instructions can be `found here <https://rcherara.ca/docker-registry/>`_.
 
 
-Now that we have an apptainer file making it available as a module in VirtualLab is a fairly straightforward process. First place the sif file in the Containers directory of VirtualLab. You will then need to edit
-the modules Config file :file:`Config/VL_Modules.json` to make the container available as VirtualLab module.
+Now that we have an apptainer file making it available as a module in **VirtualLab** is a fairly straightforward process. First place the sif file in the Containers directory of **VirtualLab**. You will then need to edit
+the modules Config file :file:`Config/VL_Modules.json` to make the container available as **VirtualLab** module.
 
-This file contains all the parameters to allow for the configuration of the various containers used by VirtualLab. The outer keys are the Module name used in the 'Spawn' method and the inner keys 
+This file contains all the parameters to allow for the configuration of the various containers used by **VirtualLab**. The outer keys are the Module name used in the 'Spawn' method and the inner keys 
 are the various parameters.
 
 .. note:: 

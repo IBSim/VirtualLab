@@ -15,14 +15,26 @@ To use **VirtualLab** there are very few prerequisites which depend on you Opera
     - Notes
   * - Linux
     - Mint 19/Ubuntu 18.04+
-    - Any reasonably modern distro should work. We have tested on various desktops and laptops running ubuntu 18.04 and 22.04 LTS and our supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
+    - Any reasonably modern distro should work. **VirtualLab** has been tested on various desktops and laptops running ubuntu 18.04 and 22.04 LTS and a supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
   
-.. [1] Note: builds are made with pyinstaller which can be downloaded `here <https://github.com/pyinstaller/pyinstaller>`_ For linux this can generate builds for Arm64 (Raspberry Pi) and IBM PowerPc. We don't officially support this, due to lack of demand/resources but it's there should the need arise.
+.. [1] Note: Builds are made with pyinstaller which can be downloaded `here <https://github.com/pyinstaller/pyinstaller>`_. For linux this can generate builds for Arm64 (Raspberry Pi) and IBM PowerPc. These aren't officially supported, due to lack of demand/resources but it's there should the need arise.
+
+Quick Installation
+******************
+
+You may run the following 'one line' command on a fresh installation of a supported linux distro to install **VirtualLab** and the containerisation tool.
+
+.. warning::
+   If you are not using a fresh OS it is highly recommended that you read the rest of this page before trying this method, to better understand how the installation is carried out in case you have pre-installed dependencies which might brake.
+
+Terminal::
+
+    cd ~ && commands_to_go_here
 
 Containers
 **********
 
-The only other prerequisite for using **VirtualLab** on your system is a containerisation tool. We currently only support `Apptainer <https://apptainer.org/>`_ (currently this is Linux only). [3]_ 
+The only other prerequisite for using **VirtualLab** on your system is a containerisation tool. We currently only support `Apptainer <https://apptainer.org/>`_ (currently this is Linux only, hence Linux being the only officially supported OS). [3]_ 
 
 If you're unfamiliar with containers, here's a quick overview from `opensource.com <https://opensource.com/resources/what-are-linux-containers>`_ :cite:`containers`:
 
@@ -38,48 +50,46 @@ We have chosen containers as the main way of distributing **VirtualLab** for a n
 * Containers offer superior performance compared with virtual machines and can make use of hardware acceleration with GPUs.
 * Containers allow us to install external modules each with there own dependencies isolated from one another.
 
-For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on you local machine (we will go into more details on exactly how this all works later.)
+For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on you local machine (we will go into more details on exactly how this all works later).
 
 .. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png?inline=false
   :width: 400
   :alt: Diagram of VirtualLab container setup
+  :align: center
 
 To use **VirtualLab** you must first install Apptainer. Is it suggested that you follow the most up-to-date instructions from their website:
 
-* `Install Apptainer <https://apptainer.org/docs/user/main/quick_start.html>`_
+* `Quick start <https://apptainer.org/docs/user/main/quick_start.html>`_
+* `Install Apptainer <https://apptainer.org/docs/admin/main/installation.html>`_
 
 .. [3] Apptainer's website does contain instructions for using it Windows and MacOs. However, this through a virtual machine which prevents the use of GPUs for modules that support them. It also has a negative impact on performance as such we don't recommend using Apptainer on non Linux systems. 
 
 Installation with the install script:
 *************************************
 
-Once you have either Docker or Apptainer installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab_bin/-/raw/main/Install_VirtualLab?inline=false>`_:
+Once you have the containerisation tool installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab_bin/-/raw/main/Install_VirtualLab?inline=false>`_:
 
-Both the Installer and VirtualLab itself are primarily command line only so you will need to run the following commands in a terminal.
+Both the Installer and **VirtualLab** itself are primarily command line only so you will need to run the following commands in a terminal.
 
 :bash:`chmod +x Install_VirtualLab`
 
 :bash:`./Install_VirtualLab` 
 
-The installer will then take you though a series of menus and download the latest version of the code as well as pulling the latest VirtualLab Manager container from Dockerhub (converting it to an apptainer container).
+The installer will then take you though a series of menus and download the latest version of the code as well as pulling the latest **VirtualLab** Manager container from Dockerhub (converting it to an apptainer container).
 
-.. admonition:: Note
+.. note:: You may see lots of warning messages appear on screen during the install, similar to: :bash:`warn rootless {path/to/file} ignoring (usually) harmless EPERM on setxattr`. As the messages suggests these are harmless and just a bi-product of building containers from sif files without root privileges on Linux. Thus, as long as you get a "build complete" message at the end they can be safely ignored.
 
-  You may see lots of warning messages appear on screen during the install, similar to: :bash:`warn rootless {path/to/file} ignoring (usually) harmless EPERM on setxattr`. 
-  As the messages suggests these are harmless and just a bi-product of building containers from sif files without root privileges on Linux. 
-  Thus as long as you get a "build complete" message at the end they can be safely ignored.
+We note at this stage that only the 'Server' and 'Manger' have been downloaded. The remaining modules are not immediately installed but instead will be downloaded and installed dynamically when used for the first time. This means that the first run of any module will take significantly longer because it has to download and install the required files. This is an intentional trade off to save disk space because it means you only have installed the exact tools you need/use.
 
-We note at this stage that only the Server and Manger have been downloaded. The remaining modules are not immediately installed but instead will be downloaded and installed dynamically when used for the first time. 
-Although this means that the first run of any module will take significantly longer, as it has to download and install a bunch of files.
-This is an intentional trade off to save disk space as it means you only have installed the exact tools you need/use.
+The **VirtualLab** executable can then be found in the bin directory inside the **VirtualLab** install directory (you may want to add this to your system path).
 
-VirtualLab executable can then be found in the bin directory inside VirtualLab install directory (you may want to add this to your system path). Note: unless you changed it during the install the default install directory is :bash:`/home/$USER/VirtualLab` where $USER is your username.
+.. note:: Unless you changed it during the install the default install directory is :bash:`/home/$USER/VirtualLab` where $USER is your username.
 
 We recommend you run a quick test to ensure everything is working this can be done with the the following command:
 
 :bash:`VirtualLab --test`
 
-The :bash:`--test` option downloads a minimal test container and runs a series of tests to check everything is working. It also spits out a randomly selected programming joke as a nice whimsical bonus. For more on how to use VirtualLab we recommend the Tutorials section.
+The :bash:`--test` option downloads a minimal test container and runs a series of tests to check everything is working. It also spits out a randomly selected programming joke as a nice whimsical bonus. For more on how to use **VirtualLab** we recommend the `Tutorials <examples/index.html>`_ section.
 
 
 Installation from source code
@@ -90,22 +100,22 @@ If you choose to perform the installation manually, in addition to Apptainer you
 First you will need clone our git repository with:
 :bash:`git clone https://gitlab.com/ibsim/virtuallab.git`
 
-Next you need to download the latest version of the manager container from dockerhub. To do this for run  :bash:`apptainer build VL_Manager.sif docker://ibsim/virtuallab:latest` then place the generated VLManager.sif file into the Containers directory of the repository.
+Next you need to download the latest version of the manager container from dockerhub. To do this run :bash:`apptainer build VL_Manager.sif docker://ibsim/virtuallab:latest` then place the generated VLManager.sif file into the Containers directory of the **VirtualLab** repository which you cloned in the previous step.
 
 The next step is to generate an executable. The original script the executable is based on is VL_server.py. So from here you have essentially 2 options:
 
 1. run the script directly with :bash:`python3 VL_server.py --test`
 2. Build an executable yourself using pyinstaller by running :bash:`pyinstaller -n VirtualLab -F VL_server.py`
 
-.. note:: As mentioned previously all the other container modules get downloaded automatically the first time they are used. However, regardless of your container choice they are all hosted on dockerhub under `ibsim <https://hub.docker.com/search?q=ibsim>`_. So you can always pull/build them from there if desired. Alternatively the dockerfiles used to create the containers can be found in a separate github `repo <https://github.com/IBSim/VirtualLab>`_ that is itself linked to Dockerhub.
+.. note:: As mentioned previously, all the other container modules get downloaded automatically the first time they are used. However, regardless of your container choice they are all hosted on dockerhub under `ibsim <https://hub.docker.com/u/ibsim>`_. You could always pull/build them from there if desired. Alternatively, the dockerfiles used to create the containers can be found in a separate github `repo <https://github.com/IBSim/VirtualLab>`_ that is itself linked to Dockerhub.
 
-
-The final step is to add VirtualLab to the system path and set the VL_DIR environment variable to tell VirtualLab where the code is installed.
+The final step is to add **VirtualLab** to the system path and set the VL_DIR environment variable to tell **VirtualLab** where the code is installed.
 
 To do this run the following commands:
 :bash:`export VL_DIR=Path/to/repo`
 :bash:`export PATH=$PATH:{Path/to/repo}/bin`
-Note: You may want to automate this by adding these lines to ~/.bashrc, ~/.zshrc or similar.
+
+.. note:: You may want to automate this by adding these lines to ~/.bashrc, ~/.zshrc or similar.
 
 References
 **********

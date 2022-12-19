@@ -147,7 +147,7 @@ def load_module_config(vlab_dir):
         config = json.load(file)
     return config
 
-def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug):
+def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,gpu_flag):
     global waiting_cnt_sockets
     global target_ids
     global task_dict
@@ -181,7 +181,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug):
             simulation = rec_dict["Simulation"]
             # setup command to run docker or Apptainer
             if use_Apptainer:
-                container_cmd = 'apptainer exec --writable-tmpfs'
+                container_cmd = f'apptainer exec {gpu_flag} --writable-tmpfs'
             else:
                 # this monstrosity logs the user in as "themself" to allow safe access top x11 graphical apps"
                 #see http://wiki.ros.org/docker/Tutorials/GUI for more details
@@ -323,7 +323,7 @@ def check_pulse(client_socket,sock_lock,net_logger,debug):
             client_socket.close()
             raise ValueError(f'Unexpected message {event} received from container {container_id}')
         
-def process(vlab_dir,use_Apptainer,debug):
+def process(vlab_dir,use_Apptainer,debug,gpu_flag):
     ''' Function that runs in a thread to handle communication ect. '''
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -353,7 +353,7 @@ def process(vlab_dir,use_Apptainer,debug):
             log_net_info(net_logger,f'received VirtualLab started')
             waiting_cnt_sockets["Manager"]={"socket": manager_socket, "id": 0}
             #spawn a new thread to deal with messages
-            thread = threading.Thread(target=handle_messages,args=(manager_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug))
+            thread = threading.Thread(target=handle_messages,args=(manager_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,gpu_flag))
             thread.daemon = True 
             thread.start()
             break
@@ -371,7 +371,7 @@ def process(vlab_dir,use_Apptainer,debug):
         waiting_cnt_sockets[str(next_cnt_id)] = {"socket": client_socket, "id": next_cnt_id}
         next_cnt_id += 1
         #spawn a new thread to deal with messages
-        thread = threading.Thread(target=handle_messages,args=(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug))
+        thread = threading.Thread(target=handle_messages,args=(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,gpu_flag))
         thread.daemon = True 
         thread.start()
         
@@ -394,6 +394,8 @@ if __name__ == "__main__":
                         action='store_true')                        
     parser.add_argument("-T", "--test", help="Flag to initiate comms testing.",
                         action='store_true')
+    parser.add_argument("-N", "--no_nvidia", help="Flag to turn on/off nvidia support.",
+                        action='store_false')
 
     args = parser.parse_args()
     # get vlab_dir either from cmd args or environment
@@ -409,10 +411,18 @@ if __name__ == "__main__":
     path = vlab_dir / Path('RunFiles/') / Run_file
     if not path.exists():
         raise ValueError(f'Runfile not found. This must be a file inside the directory {vlab_dir}/RunFiles.')
-
+#turn on/off gpu support with a flag
+    gpu_support = args.no_nvidia
+    if gpu_support:
+        gpu_flag = '--nv'
+    else:
+        gpu_flag = ''
+        print('##############################################')
+        print("VirtualLab Running in software rendering mode.")
+        print('##############################################')
     # start server listening for incoming jobs on separate thread
     lock = threading.Lock()
-    thread = threading.Thread(target=process,args=(vlab_dir,use_Apptainer,args.debug))
+    thread = threading.Thread(target=process,args=(vlab_dir,use_Apptainer,args.debug,gpu_flag))
     thread.daemon = True
 
     Modules = load_module_config(vlab_dir)
@@ -421,7 +431,7 @@ if __name__ == "__main__":
     #start VirtualLab
     lock.acquire()
     if use_Apptainer:
-        proc=subprocess.Popen(f'apptainer exec --no-home --writable-tmpfs --nv -B \
+        proc=subprocess.Popen(f'apptainer exec --no-home --writable-tmpfs {gpu_flag} -B \
                         /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
                         f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
     else:

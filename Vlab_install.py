@@ -140,7 +140,8 @@ def get_latest_code(install_path):
         my_repo.git.checkout('dev')
         # get binaries from second repo and copy them across
         git.Repo.clone_from('https://gitlab.com/ibsim/virtuallab_bin.git',f'{install_path}/bins')
-        shutil.copytree(f'{install_path}/bin',f'{install_path}/bins',dirs_exist_ok=True)
+        shutil.copytree(f'{install_path}/bins',f'{install_path}/bin',dirs_exist_ok=True)
+        shutil.rmtree(f'{install_path}/bins')
 
 
 def get_latest_docker():

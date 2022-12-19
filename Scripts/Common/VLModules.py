@@ -107,16 +107,16 @@ class VLModule(VLSetup):
         super().Parameters(Parameters_Master, Parameters_Var, ParameterArgs,
                     Import,**run_flags)
         self.start_module()
-                # call setup for each method
-        for method_name in self.Methods:
-            # get method_name instance
-            method_cls = getattr(self,method_name)
-            # create dictionary of parameters associated with the method_name
-            # from the parameter file(s) using the namespace defined in the
-            # method config file.
-            VLnamespace = self.method_config[method_name]['Namespace']
-            method_dicts = self._CreateParameters(VLnamespace)
-            # add flag to the instance
-            method_cls.SetFlag(flags['Run{}'.format(method_name)])
-            method_cls._MethodSetup(method_dicts)
+        #         # call setup for each method
+        # for method_name in self.Methods:
+        #     # get method_name instance
+        #     method_cls = getattr(self,method_name)
+        #     # create dictionary of parameters associated with the method_name
+        #     # from the parameter file(s) using the namespace defined in the
+        #     # method config file.
+        #     VLnamespace = self.method_config[method_name]['Namespace']
+        #     method_dicts = self._CreateParameters(VLnamespace)
+        #     # add flag to the instance
+        #     method_cls.SetFlag(flags['Run{}'.format(method_name)])
+        #     method_cls._MethodSetup(method_dicts)
         

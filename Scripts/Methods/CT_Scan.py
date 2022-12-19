@@ -13,8 +13,14 @@ class Method(Method_base):
         '''
         GVXR - Simulation of X-ray CT scans 
         '''
-        print(len(GVXRDicts))
         if not (self.RunFlag and GVXRDicts): return
+        # if called from VLsetup add dummy data and return, this is here
+        # To skip setup because setup requires packages the manger does 
+        # not have and all VLsetup needs is a non blank dict then setup 
+        # proper can be called by VLModule
+        if self.clsname == 'VLSetup':
+            self.Data = {'Master':True}
+            return
         # filter out dict so we only setup runs assigned this container.
         GVXRDicts = VL.filter_runs(GVXRDicts)
 

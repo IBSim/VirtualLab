@@ -321,6 +321,18 @@ class VLSetup():
         self.Num_runs=self._get_Num_Runs(flags,self.Methods)
         # get a list of all the containers and the runs they will process for each module
         self.container_list = self._Spread_over_Containers()
+        # call setup for each method
+        for method_name in self.Methods:
+        # get method_name instance
+            method_cls = getattr(self,method_name)
+            # create dictionary of parameters associated with the method_name
+            # from the parameter file(s) using the namespace defined in the
+            # method config file.
+            VLnamespace = self.method_config[method_name]['Namespace']
+            method_dicts = self._CreateParameters(VLnamespace)
+         # add flag to the instance
+            method_cls.SetFlag(flags['Run{}'.format(method_name)])
+            method_cls._MethodSetup(method_dicts)
 
 
     def ImportParameters(self, Rel_Parameters,ParameterArgs=None):

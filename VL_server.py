@@ -190,7 +190,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,g
                                 '--rm -it --network=host'\
                                 '--env="DISPLAY" --env="QT_X11_NO_MITSHM=1" '\
                                 '--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" '
-                 
+                                 
             # loop over containers once to create a dict of final container ids
             # and associated runs to output to file
             sock_lock.acquire()
@@ -408,9 +408,9 @@ if __name__ == "__main__":
         Run_file = f'Run_ComsTest.py'
     else:
         Run_file = args.Run_file
-    path = vlab_dir / Path('RunFiles/') / Run_file
+    path = vlab_dir / Run_file
     if not path.exists():
-        raise ValueError(f'Runfile not found. This must be a file inside the directory {vlab_dir}/RunFiles.')
+        raise ValueError(f'Runfile not found at {path}.')
 #turn on/off gpu support with a flag
     gpu_support = args.no_nvidia
     if gpu_support:
@@ -433,11 +433,11 @@ if __name__ == "__main__":
     if use_Apptainer:
         proc=subprocess.Popen(f'apptainer exec --no-home --writable-tmpfs {gpu_flag} -B \
                         /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
-                        f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}', shell=True)
+                        f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/{Run_file}', shell=True)
     else:
         # Assume using Docker
         proc=subprocess.Popen(f'docker run --rm -it --network=host -v {vlab_dir}:/home/ibsim/VirtualLab ' f'{Manager["Docker_url"]}:{Manager["Tag"]} ' \
-                            f'"{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/RunFiles/{Run_file}"', shell=True)
+                            f'"{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/{Run_file}"', shell=True)
     lock.release()
     # wait until virtualLab is done before closing
     proc.wait()

@@ -63,7 +63,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'VirtualLab'
-copyright = '2020-'datetime.datetime.now().year', IBSim Group'
+#copyright = '2020-'datetime.datetime.now().year', IBSim Group'
+copyright = '2020-|today|, IBSim Group'
 author = 'Rhydian Lewis; Benjamin Thorpe; Llion Marc Evans'
 
 # The version info for the project you're documenting, acts as replacement for

@@ -20,7 +20,7 @@
 #import os
 #import sys
 #sys.path.insert(0, os.path.abspath('../../'))
-
+import datetime
 
 # -- General configuration ------------------------------------------------
 
@@ -63,8 +63,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'VirtualLab'
-copyright = '2020, Rhydian Lewis; Llion Marc Evans'
-author = 'Rhydian Lewis; Llion Marc Evans'
+copyright = '2020-'datetime.datetime.now().year', IBSim Group'
+author = 'Rhydian Lewis; Benjamin Thorpe; Llion Marc Evans'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

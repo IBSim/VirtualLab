@@ -11,6 +11,11 @@
 Welcome to VirtualLab's documentation!
 ======================================
 
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Logo.png?inline=false
+  :width: 800
+  :alt: VirtualLab Logo
+  :align: center
+
 **VirtualLab** is a modular platform which enables the user to run simulations of physical laboratory experiments, i.e., their 'virtual counterparts'.
 
 The motivation for creating a virtual laboratory is manyfold, for example:

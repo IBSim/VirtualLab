@@ -26,8 +26,8 @@ Adding a new experiment to **VirtualLab** will require creating a new experiment
 
 A relevant directory would also need to be created within the input directory, i.e. :file:`Input/#ExpName`. The parameter file(s) which passes information to the relevant methods and files used are to be included within this directory.
 
-Containers and Methods:
-***********************
+Containers and Methods
+**********************
 In **VirtualLab**, 'Containers' and 'Methods' are closely linked and are the heart of how **VirtualLab** can pull together many different pieces of software. The **VirtualLab** executable actually starts out as a tcp (networking) sever running on the host machine defined by the script :file:`VL_server.py`. The server first spawns a manager container, **VL_Manager**, and passes in the RunFile. **VL_Manager** then executes the RunFile in a python environment. The RunFile itself begins by creating an instance of the VLSetup class. This then acts to spawn, control and co-ordinate all the other containers that will run the software to perform the actual task/analysis.
 
 .. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png?inline=false
@@ -59,8 +59,8 @@ Amending Available Methods
 
 Ammendments can be made to the methods available by using the :file:`config.py` file in the relevant methods directory. For example, due to the HIVE experiment being a multi-stage multi-physics experiment, 'Sim' needs to include a few additional steps. These are added in the file :file:`Scripts/Experiments/HIVE/Sim/config.py`. There is a similar config file for the meshing routine of HIVE also.
 
-Adding New Methods:
-*******************
+Adding New Methods
+******************
 
 To create a new method you will need a few things. Firstly, you will need a script to place in the methods directory. You may create a copy of the file :file:`_Template.py` in the methods directory and save it as #MethodName.py, where #MethodName is the name of the new method type. Edit this file to perform the steps you desire. Not forgetting to edit the 'Spawn' function to associate your new method with a new or existing container. #MethodName will then be available to add information to in the parameter file(s) and to perform analysis using VirtualLab.#MethodName() in the run file.
 
@@ -73,8 +73,8 @@ Finally, you will need to add your method to the config file :file:`Config/VL_Mo
 
 Say for example you have several methods which share parameters, they can share the same namespace. This is the case for CIL and GVXR where they share the 'GVXR' namespace since they share many of the same parameters.
 
-Adding New Containers:
-**********************
+Adding New Containers
+*********************
 
 Our aim is that **VirtualLab** grows to accommodate applications that we might not have originally envisaged being part of the workflow. As such, our recommendation is that you contact us by raising an `issue on gitlab <https://gitlab.com/ibsim/virtuallab/-/issues/new>`_ with 'Type: Enhancement'. We will then be able to work with you to add or create a new Container such that others may also benefit from its inclusion. If you're keen to create a container which will only be used by yourself, then please follow these instructions.
 

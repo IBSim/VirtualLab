@@ -105,6 +105,8 @@ todo_include_todos = False
 html_theme = 'furo'
 html_title = 'VirtualLab'
 #html_logo = "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_dark.png?inline=false"
+#html_static_path = ["_static"]
+html_static_path = [""]
 html_theme_options = {
     "light_logo": "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_light.png?inline=false",
     "dark_logo": "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_dark.png?inline=false",

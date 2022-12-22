@@ -36,7 +36,7 @@ There are several ways to contribute to **VirtualLab**, all of which require a G
 
   https://gitlab.com/ibsim/virtuallab/-/tree/master
 
-Further instructions on developmental contributions are `available here<contributing.html>`_.
+Further instructions on developmental contributions are `available here <contributing.html>`_.
 
 3. Similarly, this web-based documentation is also publicly available from the **VirtualLab** repository. New content for the documentation, correction typos or new tutorials in the form of PR are very welcome.
 

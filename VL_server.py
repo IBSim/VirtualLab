@@ -405,7 +405,7 @@ if __name__ == "__main__":
     use_Apptainer = check_platform() and not args.Docker
 # set flag to run tests instate of the normal runfile
     if args.test:
-        Run_file = f'Run_ComsTest.py'
+        Run_file = f'{vlab_dir}/RunFiles/Run_ComsTest.py'
     else:
         Run_file = args.Run_file
     path = vlab_dir / Run_file

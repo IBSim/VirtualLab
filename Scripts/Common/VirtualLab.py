@@ -37,7 +37,24 @@ class VLSetup():
         self.Logger('\n############################\n'\
                         '### Launching VirtualLab ###\n'\
                         '############################\n',Print=True)
+    def __getstate__(self):
+        '''
+        This is here to solve issues with pickling when using mpi.
+        Specifically because we pass a VLsetup/VLmodule object into
+        the call to mpi. When this occurs the class gets serialised through pickle
+        to be sent to each mpi process. The problem is not all objects in the class can be serialised.
 
+        This dundder method thus provides a workaround since __getstate__ gets called before pickling.
+        Thus we can remove the offending attributes since they are not needed by the mpi processes.
+        
+        Note: we do  not directly modify self.__dict__ but instead copy it and serialise the copy. This is 
+        because we dont want to modify the object itself but instead send a modified version to each mpi process.
+
+        '''
+        attributes = self.__dict__.copy()
+        attributes.pop('tcp_sock',None)
+        return attributes
+    
     def _AddMethod(self):
         ''' Add in the methods defined in Scripts/Methods to the VirtualLab class.'''
         MethodsDir = "{}/Methods".format(self.SCRIPTS_DIR)
@@ -60,7 +77,6 @@ class VLSetup():
                 mod_path = "{}.config".format(method_name)
             else:
                 mod_path = "Methods.{}".format(method_name)
-
             method_mod = import_module(mod_path)
             # Try and import the method
             # try:

@@ -17,7 +17,7 @@ Scripts
 
 The easiest way to add to **VirtualLab** is by creating scripts for experiments and methods that already exist. For example, to create a new mesh script 'NewComponent' for the tensile experiment one would need to create the file :file:`Scripts/Experiments/Tensile/Mesh/NewComponent.py` which describes the steps that **SALOME** must follow to create a CAD geometry and mesh. This file can then be used by specifying it as the 'file' attribute to the 'Mesh' namespace, e.g. Mesh.File = 'NewComponent' in the parameter file.
 
-Similarly 'Sim' and 'DA' scipts can be created and placed in the relevant directories in the experiment directory.
+Similarly 'Sim' and 'DA' scripts can be created and placed in the relevant directories in the experiment directory.
 
 Experiments
 ***********
@@ -49,7 +49,7 @@ and pass in the parameters for the task/analysis in question.
 The second function, 'Run', is selected when the method is called within a container other than **VL_Manager**, again this is handled transparently. 
 'Run' is the function that will perform the required task/analysis with the supplied parameters.
 
-Although not compulsory, these classes usually have a function called PoolRun which helps perform the tasks/analyses in parallel. For example, in the 'Mesh' method, the meshes are created using **SALOME** in the PoolRun function. Placing the task in a seperate function enables the use of **VirtualLab**'s parallelisation package. This allows multiple tasks/analyses to be performed in parallel using either the pathos (single intra-node) or pyina (multi inter-node) packages. Please see one of the available methods to understand how this is achieved.
+Although not compulsory, these classes usually have a function called PoolRun which helps perform the tasks/analyses in parallel. For example, in the 'Mesh' method, the meshes are created using **SALOME** in the PoolRun function. Placing the task in a separate function enables the use of **VirtualLab**'s parallelisation package. This allows multiple tasks/analyses to be performed in parallel using either the pathos (single intra-node) or pyina (multi inter-node) packages. Please see one of the available methods to understand how this is achieved.
 
 .. note::
     Any file in the methods directory starting with '_' will be ignored.
@@ -57,7 +57,7 @@ Although not compulsory, these classes usually have a function called PoolRun wh
 Amending Available Methods
 **************************
 
-Ammendments can be made to the methods available by using the :file:`config.py` file in the relevant methods directory. For example, due to the HIVE experiment being a multi-stage multi-physics experiment, 'Sim' needs to include a few additional steps. These are added in the file :file:`Scripts/Experiments/HIVE/Sim/config.py`. There is a similar config file for the meshing routine of HIVE also.
+Amendments can be made to the methods available by using the :file:`config.py` file in the relevant methods directory. For example, due to the HIVE experiment being a multi-stage multi-physics experiment, 'Sim' needs to include a few additional steps. These are added in the file :file:`Scripts/Experiments/HIVE/Sim/config.py`. There is a similar config file for the meshing routine of HIVE also.
 
 Adding New Methods
 ******************
@@ -66,7 +66,7 @@ To create a new method you will need a few things. Firstly, you will need a scri
 
 Next, you will need a Container configured with the appropriate software to run your task/analysis. This can either be one of our existing containers, found in the Containers directory, or a custom one you have created (see `adding new containers <contributing.html#adding-new-containers>`_). You will also need to create both a bash and python script to start the container and perform the task/analysis respectively. We have templates for both of these in the bin and bin/python directories.
 
-Finally, you will need to add your method to the config file :file:`Config/VL_Modules.json`. Currently, this only requires one parameter, a namespace to associate with your method. This is the name that is used in the the parameters file for **VirtualLab** and allows you to use a different name if you wish. For example, Cad2vox uses the method 'Voxelise' but the namespace 'Vox' because it's easier to type. 
+Finally, you will need to add your method to the config file :file:`Config/VL_Modules.json`. Currently, this only requires one parameter, a namespace to associate with your method. This is the name that is used in the parameters file for **VirtualLab** and allows you to use a different name if you wish. For example, Cad2vox uses the method 'Voxelise' but the namespace 'Vox' because it's easier to type. 
 
 .. note:: 
    Each method can only have a single namespace, however, namespaces do not need to be unique to particular methods. 
@@ -78,7 +78,7 @@ Adding New Containers
 
 Our aim is that **VirtualLab** grows to accommodate applications that we might not have originally envisaged being part of the workflow. As such, our recommendation is that you contact us by raising an `issue on gitlab <https://gitlab.com/ibsim/virtuallab/-/issues/new>`_ with 'Type: Enhancement'. We will then be able to work with you to add or create a new Container such that others may also benefit from its inclusion. If you're keen to create a container which will only be used by yourself, then please follow these instructions.
 
-To build new containers for **VirtualLab** you will first need to `Install Docker <https://docs.docker.com/get-docker/>`_. We use Docker for development of containers as opposed to Apptainer because Dockerhub provides a convenient way of hosting and updating containers which Apptainer can pull from natively. The next step is to create your DockerFile configured with the software that you wish to use. We wont go into detail how to do this because it's out of the scope of this document. However, most popular software already have pre-made DockerFiles you can use as a starting point or failing that there are already plenty of `resources online <https://docs.docker.com/develop/develop-images/dockerfile_best-practices/>`_` to get you started.
+To build new containers for **VirtualLab** you will first need to `Install Docker <https://docs.docker.com/get-docker/>`_. We use Docker for development of containers as opposed to Apptainer because Dockerhub provides a convenient way of hosting and updating containers which Apptainer can pull from natively. The next step is to create your DockerFile configured with the software that you wish to use. We won't go into detail how to do this because it's out of the scope of this document. However, most popular software already have pre-made DockerFiles you can use as a starting point or failing that there are already plenty of `resources online <https://docs.docker.com/develop/develop-images/dockerfile_best-practices/>`_` to get you started.
 
 Once you have a DockerFile you will need to convert it to Apptainer. Annoyingly, Apptainer can't build directly from a local Docker file instead you need to point it to a repository on a docker registry. The easiest way to do this is to use `DockerHub  <https://hub.docker.com/>`_. You will first need to create an account. Once this is done you will need to log into the DockerHub website then click on the blue "Create Repository" button (see screenshots). 
 
@@ -99,15 +99,15 @@ First build your image locally, if you have not done so already. Replacing <imag
 
 :bash:`Docker build -t <image-name>:<tag-name> -f <my_dockerfile>`
 
-Next login to DockerHub with the account you created.
+Next, login to DockerHub with the account you created.
 
 :bash:`docker login`
 
-Next we need to tag the image in a particular way to tell docker to point it to your repository. In this case <user-name> and <repo-name> are your username on DockerHub and the name of the repository you wish to push to.
+Next, we need to tag the image in a particular way to tell docker to point it to your repository. In this case <user-name> and <repo-name> are your username on DockerHub and the name of the repository you wish to push to.
 
 :bash:`docker tag <image-name>:<tag-name> <user-name>/<repo-name>:<tag-name>`
 
-Finally we can push the image with:
+Finally, we can push the image with:
 
 :bash:`docker push <user-name>/<repo-name>:<tag-name>`
 
@@ -117,9 +117,9 @@ With that done we can finally convert our Docker image to Apptainer with the fol
 
 .. admonition:: Using a local Docker Repository
 
-    Whilst DockerHub is free to use and a convenient solution it may not be the best solution for your situation. If privacy is your concern you could use an alternative registry like `singularity hub <https://singularityhub.github.io/>`_ or even `host your own <https://www.c-sharpcorner.com/article/setup-and-host-your-own-private-docker-registry/>`_. 
+    Whilst DockerHub is free to use and a convenient solution it may not be the best solution for your situation. If privacy is your concern, you could use an alternative registry like `singularity hub <https://singularityhub.github.io/>`_ or even `host your own <https://www.c-sharpcorner.com/article/setup-and-host-your-own-private-docker-registry/>`_. 
     
-    However, Say you are doing lots of testing and have a slow or limited internet connection. It's conceivable you may have to wait several minutes for uploading of your container to DockerHub only to re-download it through Apptainer. Fortunately, it is entirely possible to host a Docker registry on your local machine. Unfortunately, there are a number of caveats to consider:
+    However, suppose you are doing lots of testing and have a slow or limited internet connection. It's conceivable you may have to wait several minutes for uploading of your container to DockerHub only to re-download it through Apptainer. Fortunately, it is entirely possible to host a Docker registry on your local machine. Unfortunately, there are a number of caveats to consider:
 
     1. It's quite fiddly and unintuitive to actually set up.
     2. You are essentially doubling the amount of space needed to store docker images as you will have both a local and remote copy of the image to deal with.
@@ -128,12 +128,12 @@ With that done we can finally convert our Docker image to Apptainer with the fol
     With those caveats in mind, if you are still undeterred a good set of instructions can be `found here <https://rcherara.ca/docker-registry/>`_.
 
 
-Now that we have an apptainer file making it available as a module in **VirtualLab** is a fairly straightforward process. First, place the sif file in the Containers directory of **VirtualLab**. You will then need to edit the modules Config file :file:`Config/VL_Modules.json` to make the container available as a **VirtualLab** module.
+Now that we have an Apptainer file making it available as a module in **VirtualLab** is a fairly straightforward process. First, place the sif file in the Containers directory of **VirtualLab**. You will then need to edit the modules Config file :file:`Config/VL_Modules.json` to make the container available as a **VirtualLab** module.
 
 This file contains all the parameters to allow for the configuration of the various containers used by **VirtualLab**. The outer keys are the Module name used in the 'Spawn' method and the inner keys are the various parameters.
 
 .. note:: 
-    A single apptainer file can be associated to multiple Modules. This name is only used to identify how to setup the container 
+    A single Apptainer file can be associated to multiple Modules. This name is only used to identify how to setup the container 
     when 'Spawn' is called by a particular method.  Thus, you can use a single container for multiple different 
     methods that share the same software. Each method will simply need its own bash and python scripts to tell the 
     container what needs to be done.
@@ -152,9 +152,9 @@ You also have the following optional keys:
 .. admonition:: Using custom startup scripts and custom_args
 
     The default arguments used by the template script are: '-m param_master -v param_var -s Simulation -p Project -I container_id'. 
-    If cmd_args is set it will override these. You can also set it to a empty string (i.e. "") to specify no arguments.  
+    If cmd_args is set it will override these. You can also set it to an empty string (i.e. "") to specify no arguments.  
 
-Ideally, we would like you to contribute your Container to the official IBSim repository on DockerHub. We keep all our DockerFiles in a separate `git repoisitory <https://github.com/IBSim/VirtualLab://github.com/IBSim/VirtualLab>`_ this is linked to DockerHub such that all we have to do is push our updated DockerFiles to that repo and it will automatically update and re-build the container on DockerHub. To do this please contact us by raising an `issue on gitlab <https://gitlab.com/ibsim/virtuallab/-/issues/new>`_ with 'Type: Enhancement'.
+Ideally, we would like you to contribute your Container to the official IBSim repository on DockerHub. We keep all our DockerFiles in a separate `git repository <https://github.com/IBSim/VirtualLab://github.com/IBSim/VirtualLab>`_ this is linked to DockerHub such that all we have to do is push our updated DockerFiles to that repo and it will automatically update and re-build the container on DockerHub. To do this please contact us by raising an `issue on gitlab <https://gitlab.com/ibsim/virtuallab/-/issues/new>`_ with 'Type: Enhancement'.
 
 Contributing to VirtualLab
 **************************
@@ -175,9 +175,9 @@ Creating a new branch should be done roughly as follows::
 
     # First ensure you are on the dev branch
     git checkout dev
-    # Create a new branch with a name and your initails
+    # Create a new branch with a name and your initials
     git branch INITIALS_BRANCH-NAME
-    # change onto the newly created branch
+    # Change onto the newly created branch
     git checkout BRANCHNAME-INT
     git push --set-upstream origin INITIALS_BRANCH-NAME
 
@@ -186,26 +186,26 @@ Now that we have a new temporary branch, development can continue on this branch
 Creating a merge request
 ########################
 
-Once work on the temporary branch is complete and and ready to be merged into the dev branch we need to first ensure we have pushed our changes over to the remote GitLab repo.::
+Once work on the temporary branch is complete and ready to be merged into the dev branch we need to first ensure we have pushed our changes over to the remote GitLab repo.::
 
-    # first ensure we have the latest changes
+    # First ensure we have the latest changes
     git pull
-    # push our changes to the GitLab repo
+    # Push our changes to the GitLab repo
     git push
 
-Once this is complete we can go to the **VirtualLab** repo on `gitlab.com <https://gitlab.com/ibsim/virtuallab>`_ and ensure we are loged into GitLab.
+Once this is complete we can go to the **VirtualLab** repo on `gitlab.com <https://gitlab.com/ibsim/virtuallab>`_ and ensure we are logged into GitLab.
 
-To create the request, from the left hand side of the page click on "merge requests".
+To create the request, from the left-hand side of the page click on "merge requests".
 
 .. image:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/GitLab.png
    :alt: insert screenshot of GitLab here.
 
-Then on the right hand side of the next page click "New merge request".
+Then on the right-hand side of the next page click "New merge request".
 
 .. image:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/GitLab2.png
    :alt: insert screenshot of GitLab here.
 
-From here set the source branch as your temporary branch and the taget branch as dev then click compare branches and continue.
+From here set the source branch as your temporary branch and the target branch as dev then click compare branches and continue.
 
 .. image:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/GitLab3.png
    :alt: insert screenshot of GitLab here.
@@ -224,7 +224,7 @@ Once this is complete click "create merge request" this will then notify whoever
 Tidying up
 ##########
 
-Once the merge has been accepted, The final step is to pull in the latest changes to dev and delete your local copy of the temporary branch ::
+Once the merge has been accepted, the final step is to pull in the latest changes to dev and delete your local copy of the temporary branch ::
 
     # first ensure we have the latest changes
     git checkout dev

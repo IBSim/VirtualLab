@@ -50,7 +50,7 @@ In this example a CT scan of a `dog-bone <tensile.html#sample>`_ component is us
 
    Ensure that the image-based mesh downloaded has been saved to the following location :file:`Output/Tensile/Tutorials/Meshes/Tensile_IBSim.med`
 
-   Launch **VirtualLab** using the followign command::
+   Launch **VirtualLab** using the following command::
 
         VirtualLab -f RunFiles/RunTutorials.py
 
@@ -58,7 +58,7 @@ Looking at :file:`Input/Tensile/Tutorials/TrainingParameters_IBSim.py` you will 
 
 From the results shown in **ParaViS** you should notice the asymmetric nature of the displacement, stress and strain profiles. These are as a result of the subtle imperfections in the Tensile_IBSim mesh compared with an idealised CAD-based mesh.
 
-You will also notice the Parameters file also has a new namespace *Vox*  
+You will also notice the Parameters file also has a new namespace *Vox*. 
 
 .. bibliography:: ../refs.bib
    :style: plain

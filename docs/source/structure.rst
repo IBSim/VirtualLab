@@ -30,7 +30,7 @@ The directory :file:`Experiments` contain simulation-specific scripts for each e
 
 Other simulation-specific sub-directories may also be included in the experiment directory here, such as *Laser* for the LFA simulation which contains different laser pulse profiles measured experimentally.
 
-:file:`Common` contains scripts used by **VirtualLab** for any type of experiment. These includes setting up the environment through creating directories and inerfacing with the various packages incorporated, such as **SALOME** and **Code_Aster**.
+:file:`Common` contains scripts used by **VirtualLab** for any type of experiment. These includes setting up the environment through creating directories and interfacing with the various packages incorporated, such as **SALOME** and **Code_Aster**.
 
 Materials
 *********

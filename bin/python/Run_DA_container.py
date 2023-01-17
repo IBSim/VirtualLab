@@ -28,4 +28,4 @@ VirtualLab.Parameters(
 
 kwargs = VirtualLab.get_args()
 
-VirtualLab.DA(**kwrags)
+VirtualLab.DA(**kwargs)

@@ -101,7 +101,7 @@ There are also a number of options we have not used in this file. They are liste
 
 The output from the Voxelisation can now be found under ``Output/Tensile/Tutorials/Voxel-Images/Notch1.tiff`` this can be viewed with appropriate software such as `ImageJ <https://imagej.nih.gov/ij/>`_.
 
-In this folder you will also find the file ``greyscale_Notch1.csv``. This file contains in csv format all the materials that were read from the mesh file and the corresponding 8-bit greyscale values used in the output images. We will go into this file in detail with the next example as in this case it's not really interesting as there is only one material that is "Copper" hence the entire dog-bone is coloured white (that is the max greyscale value of 255).
+In this folder you will also find the file ``greyscale_Notch1.csv``. This file contains in csv format all the materials that were read from the mesh file and the corresponding 8-bit greyscale values used in the output images. We will go into this file in detail with the next example as in this case it's not really interesting as there is only one material that is "Copper" hence the entire dog-bone is coloured white (that is the max greyscale value of 255). Please note that the first column is the region name as read from the mesh file by CadVox, in this case there is only one region, so you should see ``Un-Defined`` in the first column.
 
 
 

@@ -178,7 +178,7 @@ Task 2: Running an ERMES simulation
 .. admonition:: Action
    :class: Action
 
-   Change *RunMesh* to :code:`False` in `VirtualLab.Parameters <../runsim/runfile.html#virtuallab-parameters>`_ as we are using the same mesh. As we don't need to perform the coolant analysis again change *RunCoolant* to :code:`False` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_::
+   Change *RunMesh* to :code:`False` in `VirtualLab.Parameters <../runsim/runfile.html#virtuallab-parameters>`_ as we are using the same mesh. As we don't need to perform the coolant analysis again change *RunCoolant* to :code:`False` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_. Finally, change RunERMES to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_ as we want to run **ERMES** solver:: 
 
         VirtualLab.Parameters(
                  Parameters_Master,
@@ -205,7 +205,6 @@ It should then be possible to visualise any of the following results:
 
  * Joule_heating
  * Electric field (E) - real, imaginary and modulus
- * Magnetic field (H) - real, imaginary and modulus
  * Current Density (J) - real, imaginary and modulus
 
 Joule_heating is the field which is used in **Code_Aster**.

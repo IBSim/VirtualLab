@@ -156,10 +156,12 @@ Running this simulation will create the following outputs:
 
  * :file:`Output/Tensile/Tutorials/Meshes/Notch1.med`
  * :file:`Output/Tensile/Tutorials/Meshes/Notch1.py`
+ * :file:`Output/Tensile/Tutorials/Meshes/Notch1.log`
  * :file:`Output/Tensile/Tutorials/Single/Parameters.py`
  * :file:`Output/Tensile/Tutorials/Single/Aster/Export`
  * :file:`Output/Tensile/Tutorials/Single/Aster/AsterLog`
  * :file:`Output/Tensile/Tutorials/Single/Aster/TensileTest.rmed`
+ * :file:`Output/Tensile/Tutorials/Single/Output.log`
 
 The first two output files relate to the mesh generated. The :file:`.med` file contains the mesh data, while the attributes of ``Mesh`` are saved to the :file:`.py` file.
 

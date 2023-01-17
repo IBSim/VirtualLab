@@ -180,7 +180,9 @@ class VLSetup():
         self.SIM_SCRIPTS = "{}/Experiments/{}".format(self.SCRIPTS_DIR, self.Simulation)
         self.CONF_DIR = "{}/Config".format(VLconfig.VL_DIR_CONT)
         if not os.path.isdir(self.SIM_SCRIPTS):
-            self.Exit(VLF.ErrorMessage("Simulation type doesn't exist"))
+            self.Exit(VLF.ErrorMessage(f"Simulation type {self.Simulation} does not exist." /
+                 f" Please check you have created a directory named {self.Simulation}" /
+                 f" inside the Scripts/Experiments directory."))
         self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
         # Add these to path

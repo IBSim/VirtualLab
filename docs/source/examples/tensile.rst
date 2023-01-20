@@ -264,7 +264,7 @@ In `VirtualLab.Settings <../runsim/runfile.html#virtuallab-settings>`_ you will 
 
    Launch **VirtualLab**.
 
-   You should now see that 'Notch2' and 'Notch3' are created simultaneously, followed by two *xterm* windows opening, with the *Name* of each simulation written on top.
+   You should now see that 'Notch2' and 'Notch3' are created simultaneously, followed by one *xterm* window opening, with the *Name* of each simulation written on top left. You can switch between simulations and compare them. Additionally, it is possible to open two simulations side by side.
 
 Task 4: Simulation Without Meshing
 **********************************

@@ -117,7 +117,7 @@ task_dict = {}
 settings_dict = {}
 running_processes = {}
 run_arg_dict = {}
-tool_dict = {}
+Method_dict = {}
 next_cnt_id = 1
 manager_socket = None
 cont_ready = False
@@ -156,7 +156,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,g
     global next_cnt_id
     global manager_socket
     global run_arg_dict
-    global tool_dict
+    global Method_dict
     # list of messages to simply relay from Container_id to Target_id
     relay_list = ["Continue","Waiting","Error"]
     while True:
@@ -201,7 +201,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,g
                 task_dict[str(next_cnt_id)] = list_of_runs
                 settings_dict[str(next_cnt_id)]=rec_dict["Settings"]
                 run_arg_dict[str(next_cnt_id)] = rec_dict["run_args"]
-                tool_dict[str(next_cnt_id)] = rec_dict["Tool"]
+                Method_dict[str(next_cnt_id)] = Module["Method"]
                 next_cnt_id += 1
 
             # loop over containers again to spawn them this time
@@ -249,7 +249,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,g
             data2 = {"msg":"Container_runs","tasks":task_dict[str(container_id)]
                     ,"settings":settings_dict[str(container_id)],
                     "run_args":run_arg_dict[str(container_id)],
-                    "Tool":tool_dict[str(container_id)]}
+                    "Tool":Method_dict[str(container_id)]}
             sock_lock.release()       
             send_data(client_socket, data2,debug)
             # This function will run until the server receives "finished"

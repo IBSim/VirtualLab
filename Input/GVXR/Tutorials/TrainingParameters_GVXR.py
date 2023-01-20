@@ -18,7 +18,7 @@ GVXR = Namespace()
 ############################################################
 # name for the GVXR run.
 GVXR.Name = 'AMAZE'
-# name of the mesh(es) you wish to vitually CT scan
+# name of the mesh(es) you wish to virtually CT scan
 GVXR.mesh = 'AMAZE_Sample'
 # Flag to use specpy to gentrate a beam spectrum
 GVXR.use_spekpy = True
@@ -26,7 +26,7 @@ GVXR.Tube_Voltage = 50
 GVXR.Tube_Angle = 12
 # chemical element corresponding to the material properties
 # of each region of the model. Can be any of Full name, Symbol
-# or Atomic number (Z). Cureently works for every element in the
+# or Atomic number (Z). Currently works for every element in the
 # peridic table up to Francium, that is elements 1-100
 GVXR.Material_list = ["Cu","Cu","Cu"]
 # Beam energy (default units are MeV)
@@ -44,7 +44,7 @@ GVXR.Material_list = ["Cu","Cu","Cu"]
 # Anything you define from this block will 
 # override the values read in if using a 
 # .xtekct file. 
-# Note: thease are required prameters when 
+# Note: these are required parameter's when 
 # NOT USING a .xtekct file.
 ############################################
 # Position of x-ray beam
@@ -73,8 +73,6 @@ GVXR.Model_Pos_units = 'm'
 #############################
 # Fully Optional Parameters #
 #############################
-# Name of materail file
-#GVXR.Material_file = 'materials.csv'
 # spacing between detector pixels, determines the physical size of the detector.
 # default = 0.5 
 GVXR.SpacingX = 0.5

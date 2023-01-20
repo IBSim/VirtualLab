@@ -42,6 +42,14 @@ class VLModule(VLSetup):
                     self.run_args = data['run_args']
                     self.tool = data['Tool']
                     break
+        # create dictionary of parameters associated with the method_name
+        # from the parameter file(s) using the namespace defined in the
+        # method config file.
+        method_cls = getattr(self,self.tool)
+        VLnamespace = self.method_config[self.tool]['Namespace']
+        method_dicts = self._CreateParameters(VLnamespace)
+        method_cls._MethodSetup(method_dicts)
+        
         # Start heartbeat thread to message back to the server once every n seconds
         thread = threading.Thread(target=self.heartbeat,args=())
         thread.daemon = True 

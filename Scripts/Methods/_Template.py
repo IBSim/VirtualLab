@@ -124,10 +124,16 @@ class Method(Method_base):
         '''
         MethodName = '#MethodName'
         ContainerName = '#ContainerName'
+        Cont_runs=VL.container_list.get(MethodName,None)
+        if Cont_runs == None:
+            print(f'Warning: Method {MethodName} was called in the inputfile but has no coresponding' \
+            f' namespace in the parameters file. To remove this warning message please set Run{MethodName}=False.')
+            return
+
         return_value=Utils.Spawn_Container(VL,Cont_id=1,Tool=ContainerName,
             Method_Name = MethodName,
             Num_Cont=1,
-            Cont_runs=VL.container_list[MethodName],
+            Cont_runs=Cont_runs,
             Parameters_Master=VL.Parameters_Master_str,
             Parameters_Var=VL.Parameters_Var_str,
             Project=VL.Project,

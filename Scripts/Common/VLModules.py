@@ -40,13 +40,13 @@ class VLModule(VLSetup):
                     self.settings_dict = data['settings']
                     self.Settings(**self.settings_dict)
                     self.run_args = data['run_args']
-                    self.tool = data['Tool']
+                    self.method_name = data['Method']
                     break
         # create dictionary of parameters associated with the method_name
         # from the parameter file(s) using the namespace defined in the
         # method config file.
-        method_cls = getattr(self,self.tool)
-        VLnamespace = self.method_config[self.tool]['Namespace']
+        method_cls = getattr(self,self.method_name)
+        VLnamespace = self.method_config[self.method_name]['Namespace']
         method_dicts = self._CreateParameters(VLnamespace)
         method_cls._MethodSetup(method_dicts)
         

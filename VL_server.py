@@ -249,7 +249,7 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,g
             data2 = {"msg":"Container_runs","tasks":task_dict[str(container_id)]
                     ,"settings":settings_dict[str(container_id)],
                     "run_args":run_arg_dict[str(container_id)],
-                    "Tool":Method_dict[str(container_id)]}
+                    "Method":Method_dict[str(container_id)]}
             sock_lock.release()       
             send_data(client_socket, data2,debug)
             # This function will run until the server receives "finished"

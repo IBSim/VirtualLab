@@ -17,7 +17,7 @@ For the example of :file:`Input/Tensile/Tutorials`:
  * :file:`$PARAMETERS_MASTER.py` = :file:`TrainingParameters.py`
  * :file:`$PARAMETERS_VAR.py` = :file:`Parametric_1.py`
 
-Scriptsgit@gitlab.com:ibsim/virtuallab.git
+Scripts
 *******
 
 This directory includes the scripts required to install and launch **VirtualLab**.

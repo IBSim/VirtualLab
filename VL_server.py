@@ -420,6 +420,9 @@ if __name__ == "__main__":
         print('##############################################')
         print("VirtualLab Running in software rendering mode.")
         print('##############################################')
+    #test never needs gpu support
+    if args.test:
+        gpu_flag = ''
     # start server listening for incoming jobs on separate thread
     lock = threading.Lock()
     thread = threading.Thread(target=process,args=(vlab_dir,use_Apptainer,args.debug,gpu_flag))
@@ -431,7 +434,7 @@ if __name__ == "__main__":
     #start VirtualLab
     lock.acquire()
     if use_Apptainer:
-        proc=subprocess.Popen(f'apptainer exec --no-home --writable-tmpfs {gpu_flag} -B \
+        proc=subprocess.Popen(f'apptainer exec --no-home --writable-tmpfs -B \
                         /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
                         f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/{Run_file}', shell=True)
     else:

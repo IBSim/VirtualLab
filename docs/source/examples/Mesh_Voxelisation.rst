@@ -36,7 +36,7 @@ In this first example we will use the same analysis performed in Tutorial 1 usin
         VirtualLab.Settings(
                    Mode='Interactive',
                    Launcher='Process',
-                   NbThreads=1)
+                   NbJobs=1)
 
         VirtualLab.Parameters(
                    Parameters_Master,

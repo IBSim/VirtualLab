@@ -22,7 +22,8 @@ import time
 import yaml
 from Scripts.Common.VLContainer.Container_Utils import check_platform, \
     Format_Call_Str, send_data, receive_data, setup_networking_log,\
-    log_net_info
+    log_net_info, get_vlab_dir, host_to_container_path
+    
 def ContainerError(out,err):
     '''Custom function to format error message in a pretty way.'''
     Errmsg = "\n========= Container returned non-zero exit code =========\n\n"\
@@ -31,33 +32,6 @@ def ContainerError(out,err):
                 "==================================\n\n"
     return Errmsg
 
-def get_vlab_dir(parsed_dir):
-    ''' 
-    Function to get path to vlab_dir from either:
-    input function parameters or os environment. in that order.
-    If nether is possible it defaults to the users home directory.
-    which will be either /home/{user}/VirtualLab 
-    or C:\Documents\VirtualLab depending upon the OS.
-
-    If the given directory does not exist it raises a value error.
-
-    '''
-    if parsed_dir:
-       vlab_dir = Path(parsed_dir)
-    else:
-    # get dir from OS environment which should be set during installation
-        vlab_dir = os.environ.get('VL_DIR',None)
-        if vlab_dir == None:
-            vlab_dir = Path.home() / 'VirtualLab'
-        else:
-            # here because you can't create a Path object from None
-            vlab_dir = Path(vlab_dir)
-        
-    if not vlab_dir.is_dir():
-        raise ValueError(f'Could not find VirtualLab install directory. The directory {str(vlab_dir)} does not appear to exist. \n' \
-        ' Please specify where to find the VirtualLab install directory using the -d option.')
-
-    return vlab_dir
 
 def check_for_errors(process_list,client_socket,sock_lock,debug):
     ''' 
@@ -382,7 +356,7 @@ if __name__ == "__main__":
 # rerad in CMD arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--vlab", help = "Path to Directory on host containing \
-     VirtualLab (default is assumed to be curent working directory).", default=None)
+     VirtualLab (default is assumed to be current working directory).", default=None)
     parser.add_argument("-f", "--Run_file", help = "Runfile to use (default is assumed to \
         be current working directory).", default="Run.py")
     parser.add_argument("-D", "--Docker", help="Flag to use docker on Linux host instead of \
@@ -400,7 +374,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # get vlab_dir either from cmd args or environment
     vlab_dir= get_vlab_dir(args.vlab)
-    os.chdir(vlab_dir)
 # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
 # set flag to run tests instate of the normal runfile
@@ -430,17 +403,19 @@ if __name__ == "__main__":
 
     Modules = load_module_config(vlab_dir)
     Manager = Modules["Manager"]
+    # convert path from host to container    
+    path = host_to_container_path(path)
     thread.start()
     #start VirtualLab
     lock.acquire()
     if use_Apptainer:
         proc=subprocess.Popen(f'apptainer exec --no-home --writable-tmpfs -B \
                         /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
-                        f'{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/{Run_file}', shell=True)
+                        f'{Manager["Startup_cmd"]} -f {path}', shell=True)
     else:
         # Assume using Docker
         proc=subprocess.Popen(f'docker run --rm -it --network=host -v {vlab_dir}:/home/ibsim/VirtualLab ' f'{Manager["Docker_url"]}:{Manager["Tag"]} ' \
-                            f'"{Manager["Startup_cmd"]} -f /home/ibsim/VirtualLab/{Run_file}"', shell=True)
+                            f'"{Manager["Startup_cmd"]} -f {path}"', shell=True)
     lock.release()
     # wait until virtualLab is done before closing
     proc.wait()

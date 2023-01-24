@@ -1,6 +1,8 @@
 # Ignore all files and folder then chose the ones we want to sync
 # Blacklist all files and folders
 /*
+# Ignore readthedocs HTML builds
+docs/source/_build
 
 # Blacklist all .pyc files
 *.pyc

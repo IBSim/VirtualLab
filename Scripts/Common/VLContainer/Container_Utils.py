@@ -382,8 +382,9 @@ def get_vlab_dir(parsed_dir=None):
     '''
     import os
     from pathlib import Path
-    if parsed_dir:
+    if parsed_dir != None:
        vlab_dir = Path(parsed_dir)
+       os.environ['VL_DIR'] = str(parsed_dir)
     else:
     # get dir from OS environment which should be set during installation
         vlab_dir = os.environ.get('VL_DIR',None)

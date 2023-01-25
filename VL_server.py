@@ -440,6 +440,31 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run):
         thread.daemon = True
         thread.start()
 
+def check_file_in_container(vlab_dir,Run_file):
+    """
+    Function to check that the given runfile is accessible by the container i.e it is inside 
+    the virtualLab directory. If not the file is copied to /tmp which is accessible. 
+    """
+    from pathlib import Path
+    import shutil
+    import os, sys, stat
+    # Convert Run_file to a pathlib path
+    Run_file = Path(Run_file)
+    if not Run_file.is_absolute():
+        Run_file = Run_file.resolve()
+    
+    if not Run_file.exists():
+        raise ValueError(f"Runfile not found at {Run_file}.")
+    
+    if not Run_file.is_relative_to(vlab_dir):
+        dest = "/tmp/" + Run_file.name
+        shutil.copyfile(Run_file,dest)
+        # make file executable by everyone
+        os.chmod(dest,stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        Run_file = dest
+
+    
+    return Run_file
 
 ##########################################################################################
 ####################  ACTUAL CODE STARTS HERE !!!! #######################################
@@ -500,9 +525,8 @@ if __name__ == "__main__":
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
     else:
         Run_file = args.Run_file
-    path = vlab_dir / Run_file
-    if not path.exists():
-        raise ValueError(f"Runfile not found at {path}.")
+    Run_file = check_file_in_container(vlab_dir,Run_file)
+    print(Run_file)
     # turn on/off gpu support with a flag
     gpu_support = args.no_nvidia
     if gpu_support:
@@ -526,14 +550,14 @@ if __name__ == "__main__":
     Modules = load_module_config(vlab_dir)
     Manager = Modules["Manager"]
     # convert path from host to container
-    path = host_to_container_path(path)
+    path = host_to_container_path(Run_file)
     thread.start()
     # start VirtualLab
     lock.acquire()
     if use_Apptainer:
         proc = subprocess.Popen(
             f'apptainer exec --no-home --writable-tmpfs -B \
-                        /usr/share/glvnd -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
+                        /usr/share/glvnd -B /tmp:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
             f'{Manager["Startup_cmd"]} -f {path}',
             shell=True,
         )

@@ -526,7 +526,6 @@ if __name__ == "__main__":
     else:
         Run_file = args.Run_file
     Run_file = check_file_in_container(vlab_dir,Run_file)
-    print(Run_file)
     # turn on/off gpu support with a flag
     gpu_support = args.no_nvidia
     if gpu_support:

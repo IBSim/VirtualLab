@@ -101,7 +101,7 @@ def custom_dir():
     install_Vlab(choice)
 
 
-def install_Vlab(install_path):
+def install_Vlab(install_path,non_interactive=False):
     os.system("clear")
     print(f"Installing VirtualLab to {install_path}")
     if os.path.isdir(install_path):
@@ -115,14 +115,16 @@ def install_Vlab(install_path):
             print("******************************************\n")
             shutil.rmtree(install_path)
             os.mkdir(install_path)
-        yes_no()
+        if not non_interactive:
+            yes_no()
     else:
         print(f"New directory {install_path} will be created")
         os.mkdir(install_path)
-        yes_no()
+        if not non_interactive:
+            yes_no()
     # Docker = check_container_tool()
     Docker = False
-    print("Downloading VirtuaLab\n")
+    print("Downloading VirtualLab\n")
     get_latest_code(install_path)
     if Docker:
         get_latest_docker()
@@ -184,7 +186,7 @@ def get_latest_Apptainer(install_path):
     )
 
 
-def update_vlab():
+def update_vlab(non_interactive=False):
     vlab_dir = os.environ.get("VL_DIR", None)
     if vlab_dir == None:
         vlab_dir = f"{Path.home()}/VirtualLab"
@@ -208,7 +210,8 @@ def update_vlab():
             update_vlab()
 
     print(f"Found VirtualLab install in {vlab_dir}")
-    yes_no()
+    if not non_interactive:
+        yes_no()
     # reame old dir to avoid deletion
     os.rename(vlab_dir, f"{vlab_dir}-old")
     os.mkdir(vlab_dir)
@@ -293,7 +296,7 @@ def add_to_Path(install_dir):
             print(
                 " For other shells you will need to do this manualy (this is tedious I know).\n"
             )
-            print(" Before launching VirtuaLab you will need to run:\n")
+            print(" Before launching VirtualLab you will need to run:\n")
             print(f" export VL_DIR={install_dir}")
             print(f" then add {install_dir}/bin to your system path.")
             print(
@@ -373,7 +376,45 @@ menu_actions = {
 
 # Main Program
 if __name__ == "__main__":
-    # Launch main menu
+    import argparse
     Apptainer = False
     Platform = check_platform()
-    main_menu()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-d",
+        "--inst_dir",
+        help="Path to custom Directory in which to install VirtuaLab when using -y.",
+        default=None,
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        help="Run installer non-interactivley. By default this installs in /home/$USER/VirtualLab unless opiton -d is used. ",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-U",
+        "--update",
+        help="Run update non-interactivley..",
+        action="store_true",
+    )
+
+    args = parser.parse_args()
+    if args.update and args.yes:
+        raise ValueError("You cannot use options -y and -U together as that makes no sense.")
+    
+    if args.inst_dir != None:
+        install_path = args.inst_dir
+    else:
+        if Platform == "Windows":
+            install_path = "C:/Program Files/VirtualLab"
+        else:
+            install_path = f"{Path.home()}/VirtualLab"
+
+    if args.yes:
+        install_Vlab(install_path,non_interactive=True)
+    elif args.update:
+        update_vlab(non_interactive=True)
+    else:
+    # Launch main menu
+        main_menu()

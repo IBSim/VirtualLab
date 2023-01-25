@@ -121,7 +121,7 @@ def load_module_config(vlab_dir):
         config = json.load(file)
     return config
 
-def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,gpu_flag):
+def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,gpu_flag,dry_run):
     global waiting_cnt_sockets
     global target_ids
     global task_dict
@@ -223,7 +223,8 @@ def handle_messages(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,g
             data2 = {"msg":"Container_runs","tasks":task_dict[str(container_id)]
                     ,"settings":settings_dict[str(container_id)],
                     "run_args":run_arg_dict[str(container_id)],
-                    "Method":Method_dict[str(container_id)]}
+                    "Method":Method_dict[str(container_id)],
+                    "dry_run":dry_run}
             sock_lock.release()       
             send_data(client_socket, data2,debug)
             # This function will run until the server receives "finished"
@@ -297,7 +298,7 @@ def check_pulse(client_socket,sock_lock,net_logger,debug):
             client_socket.close()
             raise ValueError(f'Unexpected message {event} received from container {container_id}')
         
-def process(vlab_dir,use_Apptainer,debug,gpu_flag):
+def process(vlab_dir,use_Apptainer,debug,gpu_flag,dry_run):
     ''' Function that runs in a thread to handle communication ect. '''
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -327,7 +328,7 @@ def process(vlab_dir,use_Apptainer,debug,gpu_flag):
             log_net_info(net_logger,f'received VirtualLab started')
             waiting_cnt_sockets["Manager"]={"socket": manager_socket, "id": 0}
             #spawn a new thread to deal with messages
-            thread = threading.Thread(target=handle_messages,args=(manager_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,gpu_flag))
+            thread = threading.Thread(target=handle_messages,args=(manager_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,gpu_flag,dry_run))
             thread.daemon = True 
             thread.start()
             break
@@ -345,7 +346,7 @@ def process(vlab_dir,use_Apptainer,debug,gpu_flag):
         waiting_cnt_sockets[str(next_cnt_id)] = {"socket": client_socket, "id": next_cnt_id}
         next_cnt_id += 1
         #spawn a new thread to deal with messages
-        thread = threading.Thread(target=handle_messages,args=(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,gpu_flag))
+        thread = threading.Thread(target=handle_messages,args=(client_socket,net_logger,VL_MOD,sock_lock,cont_ready,debug,gpu_flag,dry_run))
         thread.daemon = True 
         thread.start()
         
@@ -398,7 +399,7 @@ if __name__ == "__main__":
         gpu_flag = ''
     # start server listening for incoming jobs on separate thread
     lock = threading.Lock()
-    thread = threading.Thread(target=process,args=(vlab_dir,use_Apptainer,args.debug,gpu_flag))
+    thread = threading.Thread(target=process,args=(vlab_dir,use_Apptainer,args.debug,gpu_flag,args.dry_run))
     thread.daemon = True
 
     Modules = load_module_config(vlab_dir)

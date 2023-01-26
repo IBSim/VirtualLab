@@ -101,7 +101,7 @@ def custom_dir():
     install_Vlab(choice)
 
 
-def install_Vlab(install_path,non_interactive=False):
+def install_Vlab(install_path,non_interactive=False,shell_num=1):
     os.system("clear")
     print(f"Installing VirtualLab to {install_path}")
     if os.path.isdir(install_path):
@@ -130,7 +130,7 @@ def install_Vlab(install_path,non_interactive=False):
         get_latest_docker()
     else:
         get_latest_Apptainer(install_path)
-    add_to_Path(install_path)
+    add_to_Path(install_path, non_interactive,shell_num)
     print("Instalation Complete!!")
     sys.exit()
 
@@ -266,16 +266,19 @@ def check_container_tool():
         return True
 
 
-def add_to_Path(install_dir):
+def add_to_Path(install_dir,non_interactive,shell_num):
     os.system("clear")
     os.chdir(install_dir)
     if Platform == "Linux":
-        print("What Shell are you using?")
-        print("If you don't know just stick with the default (i.e. Bash).")
-        print("1: Bash (default)")
-        print("2: Zsh")
-        print("3: Other")
-        choice = input(" >>  ")
+        if non_interactive:
+            choice = shell_num
+        else:
+            print("What Shell are you using?")
+            print("If you don't know just stick with the default (i.e. Bash).")
+            print("1: Bash (default)")
+            print("2: Zsh")
+            print("3: Other")
+            choice = input(" >>  ")
         if choice == 2:
             output = subprocess.run(
                 [
@@ -380,6 +383,7 @@ if __name__ == "__main__":
     Apptainer = False
     Platform = check_platform()
     parser = argparse.ArgumentParser()
+    shell_types = {"bash":1,"zsh":2, "other":3}
     parser.add_argument(
         "-d",
         "--inst_dir",
@@ -389,14 +393,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "-y",
         "--yes",
-        help="Run installer non-interactivley. By default this installs in /home/$USER/VirtualLab unless opiton -d is used. ",
+        help="Run installer non-interactivley. By default this installs in /home/$USER/VirtualLab and uses bash as the default shell unless options -d or -S are used. ",
         action="store_true",
     )
     parser.add_argument(
         "-U",
         "--update",
-        help="Run update non-interactivley..",
+        help="Run update non-interactivley.",
         action="store_true",
+    )
+    parser.add_argument(
+        "-S",
+        "--shell",
+        help="Specify which shell to use for non-interactive install. Supported shells are: zsh, bash and other",
+        default = "bash",
     )
 
     args = parser.parse_args()
@@ -411,8 +421,12 @@ if __name__ == "__main__":
         else:
             install_path = f"{Path.home()}/VirtualLab"
 
+    shell_num = shell_types.get(args.shell,None)
+    if shell_num == None:
+        raise ValueError(f"Option {args.shell} is not a supported shell must be one of {list(shell_types.keys())}.")
+
     if args.yes:
-        install_Vlab(install_path,non_interactive=True)
+        install_Vlab(install_path,non_interactive=True,shell_num=shel_num)
     elif args.update:
         update_vlab(non_interactive=True)
     else:

@@ -84,7 +84,7 @@ def crop_array(an_array,A=10):
     
 def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         rotation=[0,0,0],Headless=False, num_projections = 180,angular_step=1,
-        im_format='tiff',Nikon=None):
+        im_format='tiff',Nikon=None,_Name=None):
     try:
         inputfile = f"{work_dir}/{Name}"
 	
@@ -108,14 +108,16 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
             .set_angles(angles=angles_rad, angle_unit='radian')
             ig = ag.get_ImageGeometry()
         
-        if not Headless:
-            show_geometry(ag)
+        #if not Headless:
+        #    breakpoint()
+        #    show_geometry(ag)
 	
         
         im = TIFFStackReader(file_name=inputfile)
         im_data=im.read_as_AcquisitionData(ag)
         im_data = TransmissionAbsorptionConverter(white_level=255.0)(im_data)
         Check_GPU()
+        
         im_data.reorder(order='tigre')
         fdk =  FDK(im_data)
         recon = fdk.run()

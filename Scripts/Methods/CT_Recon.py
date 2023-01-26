@@ -103,6 +103,7 @@ class Method(Method_base):
         Note: This must have the decorator @staticmethod as it does not take the
         argument 'self'.
         '''
+        from Scripts.Common.VLPackages.CIL.CT_reconstruction import CT_Recon
         Errorfnc = CT_Recon(**AnalysisDict)
         if Errorfnc:
             return Errorfnc
@@ -125,7 +126,7 @@ class Method(Method_base):
 
         Check for errors and exit if there are any.
         '''
-        if not VL.CILData: return
+        if not self.Data: return
         ####################################
         ## Test for CIL install ########
         try:
@@ -135,15 +136,15 @@ class Method(Method_base):
             raise ModuleNotFoundError("module CIL is not installed are you sure "\
                 "you are running in the correct container?")
         #########################################
-        from Scripts.Common.VLPackages.CIL.CT_reconstruction import CT_Recon
+
         
         VL.Logger('\n### Starting CIL ###\n', Print=True)
         
-        AnalysisDicts = list(self.Data.values()) # Data assigned during Setup
+        AnalysisDicts = self.Data # Data assigned during Setup
 
         Errorfnc = VLPool(VL,self.GetPoolRun(),AnalysisDicts)
         if Errorfnc:
-            VL.Exit(VLF.ErrorMessage("The following CIL routine(s) finished with errors:\n{}".format(Errorfnc)),
+            VL.Exit("The following CIL routine(s) finished with errors:\n{}".format(Errorfnc),
                     Cleanup=False)
 
         VL.Logger('\n### CIL Complete ###',Print=True)

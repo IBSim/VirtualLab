@@ -426,7 +426,7 @@ if __name__ == "__main__":
         raise ValueError(f"Option {args.shell} is not a supported shell must be one of {list(shell_types.keys())}.")
 
     if args.yes:
-        install_Vlab(install_path,non_interactive=True,shell_num=shel_num)
+        install_Vlab(install_path,non_interactive=True,shell_num=shell_num)
     elif args.update:
         update_vlab(non_interactive=True)
     else:

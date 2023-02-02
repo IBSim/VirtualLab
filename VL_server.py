@@ -556,7 +556,7 @@ if __name__ == "__main__":
     if use_Apptainer:
         proc = subprocess.Popen(
             f'apptainer exec --no-home --writable-tmpfs -B \
-                        /usr/share/glvnd -B /tmp:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {Manager["Apptainer_file"]} '
+                        /usr/share/glvnd -B /tmp:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {vlab_dir}/{Manager["Apptainer_file"]} '
             f'{Manager["Startup_cmd"]} -f {path}',
             shell=True,
         )

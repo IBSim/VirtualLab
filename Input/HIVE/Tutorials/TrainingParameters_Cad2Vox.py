@@ -74,7 +74,7 @@ Vox.Name = 'AMAZE'
 # name of the mesh(es) you wish to voxelise
 Vox.mesh = 'AMAZE'
 # Number of voxels in each dimension
-Vox.gridsize = 250
+Vox.gridsize = [250,250,250]
 
 #### Optional Arguments #############
 # Skip the check for GPU and fallback to CPU

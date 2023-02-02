@@ -274,7 +274,7 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
     if use_Apptainer:
         update_container(Module)
         call_string = f' -B /run:/run -B /tmp:/tmp -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
-                        {Module["Apptainer_file"]}'
+                        {str(vlab_dir)}/{Module["Apptainer_file"]}'
     else:
         #docker
         call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} '

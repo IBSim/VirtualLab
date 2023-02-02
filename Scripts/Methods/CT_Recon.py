@@ -113,7 +113,9 @@ class Method(Method_base):
 
         Note: This must have the decorator @staticmethod as it does not take the
         argument 'self'.
+
         """
+        from Scripts.Common.VLPackages.CIL.CT_reconstruction import CT_Recon
         Errorfnc = CT_Recon(**AnalysisDict)
         if Errorfnc:
             return Errorfnc
@@ -135,8 +137,9 @@ class Method(Method_base):
         Note: self.GetPoolRun() is a safer way of getting the PoolRun function.
 
         Check for errors and exit if there are any.
+
         """
-        if not VL.CILData:
+        if not self.Data:
             return
         ####################################
         ## Test for CIL install ########
@@ -152,7 +155,7 @@ class Method(Method_base):
         #########################################
         from Scripts.Common.VLPackages.CIL.CT_reconstruction import CT_Recon
 
-        VL.Logger("\n### Starting CIL ###\n", Print=True)
+        VL.Logger('\n### Starting CIL ###\n', Print=True)
 
         AnalysisDicts = list(self.Data.values())  # Data assigned during Setup
 

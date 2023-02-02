@@ -10,7 +10,7 @@ Vox.Name = 'Welsh-Dragon'
 # name of the mesh(es) you wish to voxelise
 Vox.mesh = 'welsh-dragon-small.stl'
 # Number of voxels in each dimension
-Vox.gridsize = 500
+Vox.gridsize = [500,500,500]
 
 #### Optional Arguments #############
 # Skip the check for GPU and fallback to CPU

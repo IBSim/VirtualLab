@@ -368,3 +368,65 @@ def update_container(Module):
             print(E.stderr)
             raise E
     return
+
+def get_vlab_dir(parsed_dir=None):
+    ''' 
+    Function to get path to vlab_dir from either:
+    input function parameters or os environment. in that order.
+    If nether is possible it defaults to the users home directory.
+    which will be either /home/{user}/VirtualLab 
+    or C:\Documents\VirtualLab depending upon the OS.
+
+    If the given directory does not exist it raises a value error.
+
+    '''
+    import os
+    from pathlib import Path
+    if parsed_dir != None:
+       vlab_dir = Path(parsed_dir)
+       os.environ['VL_DIR'] = str(parsed_dir)
+    else:
+    # get dir from OS environment which should be set during installation
+        vlab_dir = os.environ.get('VL_DIR',None)
+        if vlab_dir == None:
+            vlab_dir = Path.home() / 'VirtualLab'
+        else:
+            # here because you can't create a Path object from None
+            vlab_dir = Path(vlab_dir)
+        
+    if not vlab_dir.is_dir():
+        raise ValueError(f'Could not find VirtualLab install directory. The directory {str(vlab_dir)} does not appear to exist. \n' \
+        ' Please specify where to find the VirtualLab install directory using the -d option.')
+
+    return vlab_dir
+
+def host_to_container_path(filepath):
+    '''
+    Function to Convert a path in the virtualLab directory on the host 
+    to an equivalent path inside the container. since the vlab _dir is 
+    mounted as /home/ibsim/VirtualLab inside the container.
+    Note: The filepath needs to be absolute and  is converted
+    into a string before it is returned.
+    '''
+    vlab_dir=get_vlab_dir()
+    #location of vlab inside the container
+    cont_vlab_dir = "/home/ibsim/VirtualLab"
+    # convert path to be relative to container not host
+    filepath = str(filepath).replace(str(vlab_dir), cont_vlab_dir)
+    return filepath
+
+def container_to_host_path(filepath):
+    '''
+    Function to Convert a path inside the container 
+    to an equivalent path on the host. since the vlab _dir is 
+    mounted as /home/ibsim/VirtualLab inside the container.
+
+    Note: The filepath needs to be absolute and  is converted
+    into a string before it is returned. 
+    '''
+    vlab_dir=get_vlab_dir()
+    #location of vlab inside the container
+    cont_vlab_dir = "/home/ibsim/VirtualLab"
+    # convert path to be relative to host not container
+    filepath = str(filepath).replace(cont_vlab_dir,str(vlab_dir))
+    return filepath

@@ -53,5 +53,5 @@ ENV PATH=/home/ibsim/miniconda/bin:${PATH}
 
 RUN conda update -y conda && conda init
 RUN conda create --name VirtualLab python=3.9 h5py pytest
-RUN /home/ibsim/miniconda/envs/VirtualLab/bin/pip install cad2vox
+RUN /home/ibsim/miniconda/envs/VirtualLab/bin/pip install cad2vox==1.6.0
 USER root

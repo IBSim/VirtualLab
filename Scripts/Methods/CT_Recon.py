@@ -116,7 +116,6 @@ class Method(Method_base):
 
         """
         from Scripts.Common.VLPackages.CIL.CT_reconstruction import CT_Recon
->>>>>>> bbd31e0756d6c3b9085f9e4f84666ad1da87bd9a
         Errorfnc = CT_Recon(**AnalysisDict)
         if Errorfnc:
             return Errorfnc
@@ -140,7 +139,7 @@ class Method(Method_base):
         Check for errors and exit if there are any.
 
         """
-        if not VL.CILData:
+        if not self.Data:
             return
         ####################################
         ## Test for CIL install ########

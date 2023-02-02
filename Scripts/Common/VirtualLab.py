@@ -727,7 +727,11 @@ class VLSetup:
             )
         elif os.path.isdir(self.TEMP_DIR):
             shutil.rmtree(self.TEMP_DIR)
-
+        if hasattr(self, "tcp_sock"):
+            import socket
+            print("closing tcp connection")
+            self.tcp_sock.shutdown(socket.SHUT_RDWR)
+            self.tcp_sock.close()
         print(exitstr)
 
     def Cleanup(self, KeepDirs=[]):

@@ -272,7 +272,7 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
 # container based on Module used.       #
 #########################################
     if use_Apptainer:
-        update_container(Module)
+        update_container(Module,vlab_dir)
         call_string = f' -B /run:/run -B /tmp:/tmp -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
                         {str(vlab_dir)}/{Module["Apptainer_file"]}'
     else:
@@ -302,7 +302,7 @@ def check_platform():
         use_Apptainer=True
     return use_Apptainer
 
-def setup_networking_log(filename='.log/network_log'):
+def setup_networking_log(filename):
     ''' 
     Setup two loggers one for file and one for the screen.
     The file logger is set to debug so it should catch 
@@ -355,15 +355,16 @@ def log_net_info(logger,message,screen=False):
     else:
         logger.debug(message)
 
-def update_container(Module):
+def update_container(Module,vlab_dir):
     import os
     import subprocess
+    Apptainer_file = f"{vlab_dir}/{Module['Apptainer_file']}"
     # check apptainer sif file exists and if not build from docker version
-    if not os.path.exists(Module["Apptainer_file"]):
-        print(f"Apptainer file {Module['Apptainer_file']} does not appear to exist so building. This may take a while.")
+    if not os.path.exists(Apptainer_file):
+        print(f"Apptainer file {Apptainer_file} does not appear to exist so building. This may take a while.")
         try:
             proc=subprocess.check_call(f'apptainer build '\
-               f'{Module["Apptainer_file"]} docker://{Module["Docker_url"]}:{Module["Tag"]}', shell=True)
+               f'{Apptainer_file} docker://{Module["Docker_url"]}:{Module["Tag"]}', shell=True)
         except subprocess.CalledProcessError as E:
             print(E.stderr)
             raise E

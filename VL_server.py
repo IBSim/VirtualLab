@@ -365,7 +365,8 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run):
     next_cnt_id = 1
     global manager_socket
     cont_ready = threading.Event()
-    net_logger = setup_networking_log()
+    log_dir = f"{vlab_dir}/.log/network_log"
+    net_logger = setup_networking_log(log_dir)
     sock_lock = threading.Lock()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

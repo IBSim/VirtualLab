@@ -46,7 +46,6 @@ In this example a CT scan of a `dog-bone <tensile.html#sample>`_ component is us
 
         VirtualLab.DA()
 	VirtualLab.Voxelise()
-        VirtualLab.Cleanup()
 
    Ensure that the image-based mesh downloaded has been saved to the following location :file:`Output/Tensile/Tutorials/Meshes/Tensile_IBSim.med`
 

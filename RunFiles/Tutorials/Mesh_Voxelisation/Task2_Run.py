@@ -31,4 +31,3 @@ VirtualLab.Parameters(
            RunDA=False)
 
  VirtualLab.Voxelise()
- VirtualLab.Cleanup()

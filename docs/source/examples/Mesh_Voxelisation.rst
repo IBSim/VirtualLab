@@ -57,7 +57,6 @@ In this first example we will use the same analysis performed in Tutorial 1 usin
 
         VirtualLab.DA()
 	VirtualLab.Voxelise()
-        VirtualLab.Cleanup()
 
 
    Launch **VirtualLab** using the following command::
@@ -160,7 +159,6 @@ This performs the meshing and a bare bones simulation (in non-interactive mode) 
                    RunDA=False)
 
 	VirtualLab.Voxelise()
-        VirtualLab.Cleanup()
 
 
    Launch **VirtualLab** using the following command::
@@ -239,7 +237,6 @@ For our example we will use the Welsh Dragon Model which was released by `Bangor
                    RunDA=False)
 
 	VirtualLab.Voxelise()
-        VirtualLab.Cleanup()
 
 
    We can then once again launch **VirtualLab** using the following command::

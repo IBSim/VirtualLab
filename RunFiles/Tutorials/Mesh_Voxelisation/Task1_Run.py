@@ -42,4 +42,3 @@ VirtualLab.Sim(
 
 VirtualLab.DA()
 VirtualLab.Voxelise()
-VirtualLab.Cleanup()

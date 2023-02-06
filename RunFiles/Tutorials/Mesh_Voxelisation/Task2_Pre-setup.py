@@ -41,5 +41,3 @@ VirtualLab.Sim(
            ShowRes=False)
 
 VirtualLab.DA()
-
-VirtualLab.Cleanup()

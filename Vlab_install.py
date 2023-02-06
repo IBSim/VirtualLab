@@ -356,6 +356,14 @@ def add_to_Path(install_dir,non_interactive,shell_num):
             print(
                 "****************************************************************************"
             )
+# add vlab_dir to VLconfig.py
+    import re
+    with open(f'{install_dir}/VLconfig.py', 'r+') as f:
+        file = f.read()
+        file = re.sub('VL_HOST_DIR=""',f'VL_HOST_DIR="{install_dir}"',file)
+        f.seek(0)
+        f.write(file)
+        f.truncate()
     return
 
 

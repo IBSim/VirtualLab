@@ -262,3 +262,10 @@ The **ERMES** and **CodeAster** results should both be opened in **ParaVis** to 
 
 .. note::
     You can open the results from the previous analysis alongside this by going to ``File/Open ParaView File`` and navigating to the directory 'Test_Coil'
+
+References
+**********
+
+.. bibliography:: ../refs.bib
+   :style: plain
+   :filter: docname in docnames

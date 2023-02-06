@@ -173,7 +173,7 @@ Once again the file ``Input/HIVE/Tutorials/TrainingParameters_Cad2Vox.py`` is  s
 
 Unlike the previous example this mesh has 3 regions representing 2 different materials, tungsten and copper (see ``Sim.Materials`` in ``training_parameters.py``. In this case the regions are labelled as: ``Block Sample``, ``Pipe Sample``, and ``Sample Tile``. These have been automatically read in from the mesh by Cad2Vox and each region has different greyscale values applied to make them visually distinct from one another.
 
-The greyscale values used for each region can be seen in the file ``Output/HIVE/Tutorials/Voxel-Images/greyscale_AMAZE.csv``. This file contains a simple csv table with 3 columns of data separated by commas. First is the region name as read from the mesh file by CadVox, second is the region index assigned by Salome and the third is the greyscale value used in the output.
+The greyscale values used for each region can be seen in the file ``Output/HIVE/Tutorials/Voxel-Images/greyscale_AMAZE.csv``. This file contains a simple csv table with 3 columns of data separated by commas. First is the region name as read from the mesh file by Cad2Vox, second is the region index assigned by Salome and the third is the greyscale value used in the output.
 
 When first generated the greyscale values are evenly spread from 1 to 255 across all regions found. These can be changed in this file to whatever values you wish and will be read in on subsequent runs. You can also change the region names if desired. However, we do not recommend changing the region index as this is used internally by Cad2Vox to generate the voxel image slices and may produce unexpected results.
 

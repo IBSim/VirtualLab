@@ -273,7 +273,7 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
 #########################################
     if use_Apptainer:
         update_container(Module,vlab_dir)
-        call_string = f' -B /run:/run -B /tmp:/tmp -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
+        call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
                         {str(vlab_dir)}/{Module["Apptainer_file"]}'
     else:
         #docker

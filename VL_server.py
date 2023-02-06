@@ -138,7 +138,7 @@ def load_module_config(vlab_dir):
 
 
 def handle_messages(
-    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, dry_run
+    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, dry_run, options
 ):
     global waiting_cnt_sockets
     global target_ids
@@ -212,6 +212,7 @@ def handle_messages(
                     simulation,
                     use_Apptainer,
                     target_ids[n],
+                    options,
                 )
 
                 log_net_info(
@@ -359,7 +360,7 @@ def check_pulse(client_socket, sock_lock, net_logger, debug):
             )
 
 
-def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run):
+def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,options):
     """Function that runs in a thread to handle communication ect."""
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -401,6 +402,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run):
                     debug,
                     gpu_flag,
                     dry_run,
+                    options
                 ),
             )
             thread.daemon = True
@@ -436,6 +438,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run):
                 debug,
                 gpu_flag,
                 dry_run,
+                options
             ),
         )
         thread.daemon = True
@@ -474,13 +477,6 @@ if __name__ == "__main__":
     # rerad in CMD arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-d",
-        "--vlab",
-        help="Path to Directory on host containing \
-     VirtualLab (default is assumed to be current working directory).",
-        default=None,
-    )
-    parser.add_argument(
         "-f",
         "--Run_file",
         help="Runfile to use (default is assumed to \
@@ -515,10 +511,18 @@ if __name__ == "__main__":
         help="Flag to turn on/off nvidia support.",
         action="store_false",
     )
+    parser.add_argument(
+        "-K",
+        "--options",
+        help="Overwrite the value specified for variables/keyword arguments specified in the Run file.",
+        default=None,
+        action='append',
+        nargs='*',
+    )  
 
     args = parser.parse_args()
     # get vlab_dir either from cmd args or environment
-    vlab_dir = get_vlab_dir(args.vlab)
+    vlab_dir = get_vlab_dir()
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
     # set flag to run tests instate of the normal runfile
@@ -527,6 +531,17 @@ if __name__ == "__main__":
     else:
         Run_file = args.Run_file
     Run_file = check_file_in_container(vlab_dir,Run_file)
+    ######################################
+    # formatting for optional -K cmd option
+    if args.options !=None:
+        options = ""
+        #Note: -K can be set multiple times so we need these loops to format them correctly to be passed on
+        for N,opt in enumerate(args.options):
+            for n,_ in enumerate(opt):
+                options = options + " -k " + opt[n]
+    else:
+        options = ""
+    #####################################    
     # turn on/off gpu support with a flag
     gpu_support = args.no_nvidia
     if gpu_support:
@@ -543,7 +558,7 @@ if __name__ == "__main__":
     lock = threading.Lock()
     thread = threading.Thread(
         target=process,
-        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, args.dry_run),
+        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, args.dry_run,options),
     )
     thread.daemon = True
 
@@ -554,11 +569,14 @@ if __name__ == "__main__":
     thread.start()
     # start VirtualLab
     lock.acquire()
+
+
+
     if use_Apptainer:
         proc = subprocess.Popen(
-            f'apptainer exec --no-home --writable-tmpfs -B \
-                        /usr/share/glvnd -B /tmp:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {vlab_dir}/{Manager["Apptainer_file"]} '
-            f'{Manager["Startup_cmd"]} -f {path}',
+            f'apptainer exec --contain --writable-tmpfs \
+                    -B /usr/share/glvnd:/usr/share/glvnd -B /tmp:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {vlab_dir}/{Manager["Apptainer_file"]} '
+            f'{Manager["Startup_cmd"]} {options} -f {path}',
             shell=True,
         )
     else:
@@ -566,7 +584,7 @@ if __name__ == "__main__":
         proc = subprocess.Popen(
             f"docker run --rm -it --network=host -v {vlab_dir}:/home/ibsim/VirtualLab "
             f'{Manager["Docker_url"]}:{Manager["Tag"]} '
-            f'"{Manager["Startup_cmd"]} -f {path}"',
+            f'"{Manager["Startup_cmd"]} {options} -f {path}"',
             shell=True,
         )
     lock.release()

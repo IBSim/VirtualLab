@@ -14,9 +14,12 @@ Usage of 'VirtualLab':
   VirtualLab -f <path>
 
 More options:
-   | :bash:`-f <path>` : Where <path> points to the location of the python `RunFiles <../structure.html#runsim/runfile>`_ (relative to the current working      directory).
-   | :bash:`-k <Name=Value>` Overwrite the value specified for variables/keyword arguments specified in the *Run* file.
+   | :bash:`-f <path>` : Where <path> points to the location of the python `RunFiles <../structure.html#runsim/runfile>`_ (this must be either an absolute path or relative to the current working directory).
+   | :bash:`-K <Name=Value>` Overwrite the value specified for variables/keyword arguments specified in the *Run* file.
    | :bash:`-N` : Flag to turn on/off nvidia support.
+   | :bash:`--dry-run` Flag to update containers without running simulations.
+   | :bash:`--debug` print debug messages for networking.
+   | :bash:`--test` Launch a small container to test installation and communication.
    | :bash:`-h` : Display the help menu.
 
 .. note:: The default behaviour is to exit if no :bash:`<path>` is given.

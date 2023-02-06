@@ -74,7 +74,7 @@ The only values that are strictly required are:
 
 * ``Vox.Name``: Label for the Cad2Vox run(s), this can be anything you like. This doubles up as the name of the output file(s) so you probably want it to be something descriptive.
 * ``Vox.mesh``: The name of the mesh(es) you wish to voxelise. These are assumed to be in the simulation Meshes directory, in this case ``Output/Tensile/Tutorials/Meshes/``. The code also assumes a file extension of ``.med`` if none is given.
-* ``Vox.gridsize``: Number of voxels in each dim (currently assumes a cubic grid so only a single parameter is needed).
+* ``Vox.gridsize``: Number of voxels in each dim.
 
 We have also included a few optional parameters:
 
@@ -95,9 +95,9 @@ There are also a number of options we have not used in this file. They are liste
    All these parameters work in the same manner as with ``Mesh`` and ``Sim``.  Whereby using lists in ``parameters_var``  will initiate multiple runs with different parameters.
 
 
-   With this in mind ``Vox.Gridsize`` accepts the value 0 to skip it when using in conjunction with ``Vox.unit_length`` and, conversely, ``Vox.unit_length`` accepts 0.0 for the reverse effect (i.e. skip it when using ``Vox.Gridsize``).
+   With this in mind ``Vox.Gridsize`` accepts the value 0 to skip it when using in conjunction with ``Vox.unit_length`` and, conversely, ``Vox.unit_length`` accepts [0.0,0.0,0.0] for the reverse effect (i.e. skip it when using ``Vox.Gridsize``).
 
-   This is useful if, for example you wish to run two run two different cases one after the other. The first with a gridsize of 500 and a second with a unit length of 5.0. In that case you could set ``Vox.Gridsize=[500,0]`` and ``Vox.unit_length=[0.0,5.0]`` inside parameters_var to achieve this.
+   This is useful if, for example you wish to run two run two different cases one after the other. The first with a gridsize of 500 and a second with a unit length of 5.0. In that case you could set ``Vox.Gridsize=[[500,500,500],[0,0,0]]`` and ``Vox.unit_length=[[0.0,0.0,0.0],[5.0,5.0,5.0]]`` inside parameters_var to achieve this.
 
 The output from the Voxelisation can now be found under ``Output/Tensile/Tutorials/Voxel-Images/Notch1.tiff`` this can be viewed with appropriate software such as `ImageJ <https://imagej.nih.gov/ij/>`_.
 

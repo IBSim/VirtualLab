@@ -21,7 +21,7 @@ VirtualLab=VLSetup(
 VirtualLab.Settings(
            Mode='Headless',
            Launcher='Process',
-           NbThreads=1)
+           NbJobs=1)
 
 VirtualLab.Parameters(
            Parameters_Master,

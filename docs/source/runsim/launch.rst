@@ -9,12 +9,15 @@ If **VirtualLab** has been installed correctly, the main program will have been 
 .. _usage:
 
 Usage of 'VirtualLab':
+::
+  
   VirtualLab -f <path>
 
-Options:
-   | :bash:`-f <path>` Where <path> points to the location of the python `RunFiles <../structure.html#runsim/runfile>`_ (relative to the current working      directory).
+More options:
+   | :bash:`-f <path>` : Where <path> points to the location of the python `RunFiles <../structure.html#runsim/runfile>`_ (relative to the current working      directory).
    | :bash:`-k <Name=Value>` Overwrite the value specified for variables/keyword arguments specified in the *Run* file.
-   | :bash:`-h` Display the help menu.
+   | :bash:`-N` : Flag to turn on/off nvidia support.
+   | :bash:`-h` : Display the help menu.
 
 .. note:: The default behaviour is to exit if no :bash:`<path>` is given.
 

@@ -32,7 +32,7 @@ import datetime
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 
-extensions = ['sphinx.ext.autodoc','sphinxcontrib.bibtex']
+extensions = ['sphinx.ext.autodoc','sphinxcontrib.bibtex', 'sphinx_copybutton']
 # extensions = [
 #    # Sphinx's own extensions
 #    "sphinx.ext.autodoc",

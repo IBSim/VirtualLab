@@ -54,7 +54,7 @@ The variables in this file are assigned to different ``Namespaces``, which is es
 
 The ``Mesh`` namespace defines the parameters required by **SALOME** to construct a mesh, such as geometric dimensions or mesh fineness. The script :file:`$Mesh.File.py` is executed in **SALOME** using the attributes of ``Mesh`` to create the geometry and subsequent mesh. This script must be in directory :file:`Scripts/Experiments/$SIMULATION/Mesh`. The meshes will be stored in ``MED`` format under the name ``Mesh.Name`` in the 'Meshes' directory of the `Project`_, i.e. :file:`Output/$SIMULATION/$PROJECT/Meshes`.
 
-The ``Sim`` namespace define the parameters needed by **Code_Aster** to perform a FE simulation. The command file :file:`$Sim.AsterFile.comm` is executed in **Code_Aster** using the attributes of ``Sim`` to initiate the simulation. This script must be in directory :file:`Scripts/Experiments/$SIMULATION/Sim`. Optional pre and post-processing scripts can be run by specifying them in ``Sim.PreAsterFile`` and ``Sim.PostAsterFile`` respectively. These scripts, which are executed before and after the **Code_Aster** are also found in :file:`Scripts/Experiments/$SIMULATION/Sim`. Simulation information and data will be stored in the sub-directory ``Sim.Name`` of the project directory, i.e. :file:`Output/$SIMULATION/$PROJECT/$Sim.Name`.
+The ``Sim`` namespace define the parameters needed by **Code_Aster** to perform a FE simulation. The command file :file:`$Sim.AsterFile.comm` is executed in **Code_Aster** using the attributes of ``Sim`` to initiate the simulation. This script must be in directory :file:`Scripts/Experiments/$SIMULATION/Sim`. Optional pre- and post-processing scripts can be run by specifying them in ``Sim.PreAsterFile`` and ``Sim.PostAsterFile`` respectively. These scripts, which are executed before and after the **Code_Aster** are also found in :file:`Scripts/Experiments/$SIMULATION/Sim`. Simulation information and data will be stored in the sub-directory ``Sim.Name`` of the project directory, i.e. :file:`Output/$SIMULATION/$PROJECT/$Sim.Name`.
 
 The ``DA`` namespace define the parameters needed to perform data analysis (DA) on the data collected from simulations. These are generally python scripts. These files can be found in :file:`Scripts/Experiments/$SIMULATION/DA`. Like with the simulations, results for the data analysis is saved to :file:`Output/$SIMULATION/$PROJECT/$DA.Name`.
 
@@ -122,7 +122,7 @@ Defines how many of the studies that will run concurrently when using either the
 ``VirtualLab.Parameters``
 **************************
 
-This function creates the parameter files defined using `Parameters_Master`_ and `Parameters_Var`_. It is also performs some checks, such as checking defined files exist in their expected locations i.e. Parameters_Master, Parameters_Var and the files specified therein (Mesh.File, Sim.AsterFile etc.). ::
+This function creates the parameter files defined using `Parameters_Master`_ and `Parameters_Var`_. It also performs some checks, such as checking defined files exist in their expected locations i.e. Parameters_Master, Parameters_Var and the files specified therein (Mesh.File, Sim.AsterFile etc.). ::
 
     VirtualLab.Parameters(Parameters_Master,
                           Parameters_Var,
@@ -172,7 +172,7 @@ MeshCheck
 ``VirtualLab.Sim``
 ******************
 
-This function is the simulation routine. The simulation(s) defined using ``Sim`` in *Parameters_Master* and *Parameters_Var* are carried out with the results saved to the project directory. This routine also runs the pre and post-processing scripts, if they are provided. If RunSim is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped. ::
+This function is the simulation routine. The simulation(s) defined using ``Sim`` in *Parameters_Master* and *Parameters_Var* are carried out with the results saved to the project directory. This routine also runs the pre- and post-processing scripts, if they are provided. If RunSim is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped. ::
 
 
     VirtualLab.Sim(RunPreAster=True,

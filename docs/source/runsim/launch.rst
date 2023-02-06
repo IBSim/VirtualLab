@@ -15,6 +15,7 @@ Usage of 'VirtualLab':
 
 More options:
    | :bash:`-f <path>` : Where <path> points to the location of the python `RunFiles <../structure.html#runsim/runfile>`_ (relative to the current working      directory).
+   | :bash:`-k <Name=Value>` Overwrite the value specified for variables/keyword arguments specified in the *Run* file.
    | :bash:`-N` : Flag to turn on/off nvidia support.
    | :bash:`-h` : Display the help menu.
 

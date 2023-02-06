@@ -22,7 +22,7 @@ To use **VirtualLab** there are very few prerequisites which depend on your Oper
 Quick Installation
 ******************
 
-You may run the following 'one line' command on a fresh installation of a supported linux distro to install **VirtualLab** and the containerisation tool.
+You may run the following 'one line' command on a fresh installation of a supported Linux distro to install **VirtualLab** and the containerisation tool.
 
 .. warning::
    If you are not using a fresh OS it is highly recommended that you read the rest of this page before trying this method, to better understand how the installation is carried out in case you have pre-installed dependencies which might brake.
@@ -48,16 +48,16 @@ We have chosen containers as the main way of distributing **VirtualLab** for a n
 * The portability of containers means that, whether working on a laptop or a HPC cluster, a container pull (or download) is all that's required and users' workflows can be easily moved from machine to machine when scaling up to a larger resource is required.
 * The small impact on performance is far outweighed by the benefits of easy installation compared with a local installation.
 * Containers offer superior performance compared with virtual machines and can make use of hardware acceleration with GPUs.
-* Containers allow us to install external modules each with there own dependencies isolated from one another.
+* Containers allow us to install external modules each with their own dependencies isolated from one another.
 
-For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on you local machine (we will go into more details on exactly how this all works later).
+For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on your local machine (we will go into more details on exactly how this all works later).
 
 .. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png?inline=false
   :width: 400
   :alt: Diagram of VirtualLab container setup
   :align: center
 
-To use **VirtualLab** you must first install Apptainer. Is it suggested that you follow the most up-to-date instructions from their website:
+To use **VirtualLab** you must first install Apptainer. It is suggested that you follow the most up-to-date instructions from their website:
 
 * `Quick start <https://apptainer.org/docs/user/main/quick_start.html>`_
 * `Install Apptainer <https://apptainer.org/docs/admin/main/installation.html>`_
@@ -75,7 +75,7 @@ Both the Installer and **VirtualLab** itself are primarily command line only so 
 
 :bash:`./Install_VirtualLab` 
 
-The installer will then take you though a series of menus and download the latest version of the code as well as pulling the latest **VirtualLab** Manager container from Dockerhub (converting it to an apptainer container).
+The installer will then take you through a series of menus and download the latest version of the code as well as pulling the latest **VirtualLab** Manager container from Dockerhub (converting it to an apptainer container).
 
 .. note:: You may see lots of warning messages appear on screen during the install, similar to: :bash:`warn rootless {path/to/file} ignoring (usually) harmless EPERM on setxattr`. As the messages suggests these are harmless and just a bi-product of building containers from sif files without root privileges on Linux. Thus, as long as you get a "build complete" message at the end they can be safely ignored.
 
@@ -85,7 +85,7 @@ The **VirtualLab** executable can then be found in the bin directory inside the 
 
 .. note:: Unless you changed it during the install the default install directory is :bash:`/home/$USER/VirtualLab` where $USER is your username.
 
-We recommend you run a quick test to ensure everything is working this can be done with the the following command:
+We recommend you run a quick test to ensure everything is working this can be done with the following command:
 
 :bash:`VirtualLab --test`
 

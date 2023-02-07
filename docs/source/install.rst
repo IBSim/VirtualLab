@@ -4,7 +4,9 @@
 Installation
 ============
 
-To use **VirtualLab** there are very few prerequisites which depend on your Operating system (OS). **VirtualLab** Supports the following operating systems:
+To use **VirtualLab** there are very few prerequisites. To use VirtualLab only Apptainer is strictly required. However git is required for the installation.
+
+**VirtualLab** Supports the following operating systems:
 
 .. list-table:: Supported OS's
   :widths: 25 25 50
@@ -15,7 +17,7 @@ To use **VirtualLab** there are very few prerequisites which depend on your Oper
     - Notes
   * - Linux
     - Mint 19/Ubuntu 18.04+
-    - Any reasonably modern distro should work. **VirtualLab** has been tested on various desktops and laptops running ubuntu 18.04 and 22.04 LTS and a supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
+    - Any reasonably modern distro should work. **VirtualLab** has been tested on various desktops and laptops running ubuntu 18.04 and 20.04 LTS and a supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
   
 .. [1] Note: Builds are made with pyinstaller which can be downloaded `here <https://github.com/pyinstaller/pyinstaller>`_. For linux this can generate builds for Arm64 (Raspberry Pi) and IBM PowerPc. These aren't officially supported, due to lack of demand/resources but it's there should the need arise.
 
@@ -67,7 +69,11 @@ To use **VirtualLab** you must first install Apptainer. It is suggested that you
 Installation with the install script:
 *************************************
 
-Once you have the containerisation tool installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab_bin/-/raw/main/Install_VirtualLab?inline=false>`_:
+To use the install/update script you will need to install git. This can be easily done by either following the instructions on `git's website <https://git-scm.com/download/linux>`_ or, on Ubuntu based distros, you can run the following in a terminal.
+
+:bash:`sudo apt install git`
+
+Once you have git and Apptainer installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab_bin/-/raw/main/Install_VirtualLab?inline=false>`_:
 
 Both the Installer and **VirtualLab** itself are primarily command line only so you will need to run the following commands in a terminal.
 
@@ -95,7 +101,7 @@ The :bash:`--test` option downloads a minimal test container and runs a series o
 Installation from source code
 *****************************
 
-If you choose to perform the installation manually, in addition to Apptainer you will need both `git <https://git-scm.com/downloads>`_, `python <https://www.python.org/>`_ version 3.9+ and optionally the pip package `pyinstaller <https://pyinstaller.org/en/stable/>`_. 
+If you choose to perform the installation manually, in addition to Apptainer you will need both `git <https://git-scm.com/download/linux>`_, `python <https://www.python.org/>`_ version 3.9+ and optionally the pip package `pyinstaller <https://pyinstaller.org/en/stable/>`_. 
 
 First, you will need to clone our git repository with:
 :bash:`git clone https://gitlab.com/ibsim/virtuallab.git`

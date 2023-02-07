@@ -157,6 +157,8 @@ def get_latest_code(install_path):
         git.Repo.clone_from(
             "https://gitlab.com/ibsim/virtuallab_bin.git", f"{install_path}/bins"
         )
+        my_repo2 = git.Repo(f"{install_path}/bins")
+        my_repo2.git.checkout("dev")
         shutil.copytree(
             f"{install_path}/bins", f"{install_path}/bin", dirs_exist_ok=True
         )

@@ -136,9 +136,41 @@ def load_module_config(vlab_dir):
         config = json.load(file)
     return config
 
+def correct_typecasting(arg):
+    '''
+    This function is here to correct type casting mistakes made by the -k cmd option.
+    The short version is arguments are passed in as strings but they may be ints 
+    floats or bools. This is particular problem for bool values as bool("False")
+    evaluates as True in python. Thus this function exits to, hopefully, convert
+    arguments to the expected/appropriate type.
+    '''
+    # check for bool disguised as string
+    print(arg)
+    if arg == 'True':
+        return True
+    elif arg == 'False':
+        return False
+    else:
+        pass
+
+    try :
+        int(arg)
+        return int(arg)
+    except ValueError:
+    # cant be cast as int but may be float
+        pass    
+    # Check for float string
+    try :
+        float(arg)
+        return float(arg)
+    except ValueError:
+        # assume arg is a string
+        pass
+    
+    return arg
 
 def handle_messages(
-    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, dry_run, options
+    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, dry_run, kOptions
 ):
     global waiting_cnt_sockets
     global target_ids
@@ -187,7 +219,11 @@ def handle_messages(
                     '--env="DISPLAY" --env="QT_X11_NO_MITSHM=1" '
                     '--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" '
                 )
-
+            # update kwaargs from -k cmd options if set
+            for K in kOptions.keys():
+                if K in rec_dict["run_args"]:
+                    kOptions[K] = correct_typecasting(kOptions[K])
+                    rec_dict["run_args"][K]=kOptions[K]
             # loop over containers once to create a dict of final container ids
             # and associated runs to output to file
             sock_lock.acquire()
@@ -197,7 +233,7 @@ def handle_messages(
                 list_of_runs = Container[1]
                 task_dict[str(next_cnt_id)] = list_of_runs
                 settings_dict[str(next_cnt_id)] = rec_dict["Settings"]
-                run_arg_dict[str(next_cnt_id)] = rec_dict["run_args"]
+                run_arg_dict[str(next_cnt_id)] = rec_dict["run_args"] 
                 Method_dict[str(next_cnt_id)] = Module["Method"]
                 next_cnt_id += 1
 
@@ -212,7 +248,6 @@ def handle_messages(
                     simulation,
                     use_Apptainer,
                     target_ids[n],
-                    options,
                 )
 
                 log_net_info(
@@ -360,7 +395,7 @@ def check_pulse(client_socket, sock_lock, net_logger, debug):
             )
 
 
-def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,options):
+def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions):
     """Function that runs in a thread to handle communication ect."""
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -402,7 +437,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,options):
                     debug,
                     gpu_flag,
                     dry_run,
-                    options
+                    koptions
                 ),
             )
             thread.daemon = True
@@ -535,10 +570,14 @@ if __name__ == "__main__":
     # formatting for optional -K cmd option
     if args.options !=None:
         options = ""
+        kOption_dict = {}
         #Note: -K can be set multiple times so we need these loops to format them correctly to be passed on
         for N,opt in enumerate(args.options):
             for n,_ in enumerate(opt):
                 options = options + " -k " + opt[n]
+                key = opt[n].split('=')[0]
+                value = opt[n].split('=')[1]
+                kOption_dict[key] = value
     else:
         options = ""
     #####################################    
@@ -558,7 +597,7 @@ if __name__ == "__main__":
     lock = threading.Lock()
     thread = threading.Thread(
         target=process,
-        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, args.dry_run,options),
+        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, args.dry_run,kOption_dict),
     )
     thread.daemon = True
 

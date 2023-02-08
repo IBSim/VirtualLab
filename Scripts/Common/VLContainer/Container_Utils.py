@@ -253,7 +253,7 @@ def receive_data(conn,debug,payload_size=2048):
             print(f'received:{payload}')
     return (payload)
 
-def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id,k_flag):
+def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id):
     ''' Function to format string for bind points and container to call specified tool.'''
     import os
     import subprocess
@@ -274,10 +274,10 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
     if use_Apptainer:
         update_container(Module,vlab_dir)
         call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
-                        {str(vlab_dir)}/{Module["Apptainer_file"]} {k_flag}'
+                        {str(vlab_dir)}/{Module["Apptainer_file"]}'
     else:
         #docker
-        call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} {k_flag}'
+        call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]}'
     
     # get custom command line arguments if specified in config.
     arguments = Module.get("cmd_args",None)
@@ -397,7 +397,7 @@ def get_vlab_dir(parsed_dir=None):
         
     if not vlab_dir.is_dir():
         raise ValueError(f'Could not find VirtualLab install directory. The directory {str(vlab_dir)} does not appear to exist. \n' \
-        ' Please specify where to find the VirtualLab install directory using the -d option.')
+        ' Please specify where to find the VirtualLab install directory by setting the environment variable VL_DIR.')
 
     return vlab_dir
 

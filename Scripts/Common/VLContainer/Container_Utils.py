@@ -272,8 +272,12 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
 # container based on Module used.       #
 #########################################
     if use_Apptainer:
+        import random
         update_container(Module,vlab_dir)
-        call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
+        #make a dir in /tmp on host with random name to avoid issues on shared systems
+        tmp_dir = f"/tmp/VirtualLab_{random.randint(0, 10000)}"
+        os.mkdir(tmp_dir)
+        call_string = f' -B /run:/run -B {tmp_dir}:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
                         {str(vlab_dir)}/{Module["Apptainer_file"]}'
     else:
         #docker

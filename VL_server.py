@@ -145,7 +145,6 @@ def correct_typecasting(arg):
     arguments to the expected/appropriate type.
     '''
     # check for bool disguised as string
-    print(arg)
     if arg == 'True':
         return True
     elif arg == 'False':
@@ -547,6 +546,12 @@ if __name__ == "__main__":
         action="store_false",
     )
     parser.add_argument(
+        "-C",
+        "--nvccli",
+        help="Flag to use nvidia continer toolkit instead of default --nv.",
+        action="store_true",
+    )
+    parser.add_argument(
         "-K",
         "--options",
         help="Overwrite the value specified for variables/keyword arguments specified in the Run file.",
@@ -584,7 +589,10 @@ if __name__ == "__main__":
     # turn on/off gpu support with a flag
     gpu_support = args.no_nvidia
     if gpu_support:
-        gpu_flag = "--nv"
+        if args.nvccli:
+            gpu_flag = "--nvccli"
+        else:
+            gpu_flag = "--nv"
     else:
         gpu_flag = ""
         print("##############################################")

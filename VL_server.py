@@ -566,11 +566,11 @@ if __name__ == "__main__":
     else:
         Run_file = args.Run_file
     Run_file = check_file_in_container(vlab_dir,Run_file)
+    kOption_dict = {}
     ######################################
     # formatting for optional -K cmd option
-    if args.options !=None:
+    if args.options != None:
         options = ""
-        kOption_dict = {}
         #Note: -K can be set multiple times so we need these loops to format them correctly to be passed on
         for N,opt in enumerate(args.options):
             for n,_ in enumerate(opt):

@@ -527,13 +527,13 @@ if __name__ == "__main__":
         be current working directory).",
         default="Run.py",
     )
-    parser.add_argument(
-        "-D",
-        "--Docker",
-        help="Flag to use docker on Linux host instead of \
-        defaulting to Apptainer.This will be ignored on Mac/Windows as Docker is the default.",
-        action="store_true",
-    )
+    # parser.add_argument(
+    #     "-D",
+    #     "--Docker",
+    #     help="Flag to use docker on Linux host instead of \
+    #     defaulting to Apptainer.This will be ignored on Mac/Windows as Docker is the default.",
+    #     action="store_true",
+    # )
     parser.add_argument(
         "-U",
         "--dry-run",
@@ -555,12 +555,12 @@ if __name__ == "__main__":
         help="Flag to turn on/off nvidia support.",
         action="store_false",
     )
-    parser.add_argument(
-        "-C",
-        "--nvccli",
-        help="Flag to use nvidia continer toolkit instead of default --nv.",
-        action="store_true",
-    )
+    # parser.add_argument(
+    #     "-C",
+    #     "--nvccli",
+    #     help="Flag to use nvidia continer toolkit instead of default --nv.",
+    #     action="store_true",
+    # )
     parser.add_argument(
         "-K",
         "--options",
@@ -571,6 +571,19 @@ if __name__ == "__main__":
     )  
 
     args = parser.parse_args()
+    ################################################################
+    # Note: Docker and nvcclli are work in progress options. As such
+    # I don't want to totally remove them since they will be needed 
+    # if/when we fix the issues. However, I also don't want them to
+    # apprear as valid options with --help so when they are needed 
+    # simply delete/uncomment the apropriate lines.
+    ###############################################################
+    args.Docker=False
+    args.nvccli=False
+    ###############################################################
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     # get vlab_dir either from cmd args or environment
     vlab_dir = get_vlab_dir()
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
@@ -599,13 +612,13 @@ if __name__ == "__main__":
     #####################################    
     # turn on/off gpu support with a flag
     gpu_support = args.no_nvidia
-    if gpu_support:
-        if args.nvccli:
-            gpu_flag = "--nvccli"
-        else:
-            gpu_flag = "--nv"
+    if gpu_support and args.nvccli:
+        gpu_flag = "--nvccli"
+    elif gpu_support:
+        gpu_flag = "--nv"
     else:
         gpu_flag = ""
+
         print("##############################################")
         print("VirtualLab Running in software rendering mode.")
         print("##############################################")

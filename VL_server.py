@@ -500,9 +500,19 @@ def check_file_in_container(vlab_dir,Run_file):
         # make file executable by everyone
         os.chmod(dest,stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         Run_file = dest
-
-    
     return Run_file
+
+def check_k_options(option):
+    ''' 
+    check that the options given to -K are of the form Name=Value 
+    '''
+    import re
+    # look for a single = sign that is not at the beging or end of the string.
+    # Note: this coves a blank string and '='. 
+    matches = re.findall(r'\b=\b',option)
+    if len(matches)!=1 or matches == []:
+        raise ValueError (f"invaid option {option} passed into -K this must be of the form Name=Value.")
+    return
 
 ##########################################################################################
 ####################  ACTUAL CODE STARTS HERE !!!! #######################################
@@ -579,6 +589,7 @@ if __name__ == "__main__":
         #Note: -K can be set multiple times so we need these loops to format them correctly to be passed on
         for N,opt in enumerate(args.options):
             for n,_ in enumerate(opt):
+                check_k_options(opt[n])
                 options = options + " -k " + opt[n]
                 key = opt[n].split('=')[0]
                 value = opt[n].split('=')[1]

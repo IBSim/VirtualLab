@@ -31,7 +31,7 @@ You may run the following 'one line' command on a fresh installation of a suppor
 
 Terminal::
 
-    cd ~ && commands_to_go_here
+    cd && wget https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Install_VLplus.sh && chmod 755 Install_VLplus.sh && sudo ./Install_VLplus.sh -B d -y && source ~/.VLprofile && rm Install_VLplus.sh
 
 Containers
 **********
@@ -54,7 +54,7 @@ We have chosen containers as the main way of distributing **VirtualLab** for a n
 
 For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on your local machine (we will go into more details on exactly how this all works later).
 
-.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png?inline=false
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png
   :width: 400
   :alt: Diagram of VirtualLab container setup
   :align: center

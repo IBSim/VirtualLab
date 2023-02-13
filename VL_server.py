@@ -511,7 +511,8 @@ def check_k_options(option):
     # Note: this coves a blank string and '='. 
     matches = re.findall(r'\b=\b',option)
     if len(matches)!=1 or matches == []:
-        raise ValueError (f"invaid option {option} passed into -K this must be of the form Name=Value.")
+        print(f"invaid option {option} passed into -K this must be of the form Name=Value.")
+        sys.exit(1)
     return
 
 ##########################################################################################

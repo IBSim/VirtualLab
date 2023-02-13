@@ -54,7 +54,7 @@ We have chosen containers as the main way of distributing **VirtualLab** for a n
 
 For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on your local machine (we will go into more details on exactly how this all works later).
 
-.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png?inline=false
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png
   :width: 400
   :alt: Diagram of VirtualLab container setup
   :align: center

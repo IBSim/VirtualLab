@@ -31,7 +31,7 @@ You may run the following 'one line' command on a fresh installation of a suppor
 
 Terminal::
 
-    cd ~ && commands_to_go_here
+    cd && wget https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Install_VLplus.sh && chmod 755 Install_VLplus.sh && sudo ./Install_VLplus.sh -B d -y && source ~/.VLprofile && rm Install_VLplus.sh
 
 Containers
 **********

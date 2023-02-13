@@ -138,6 +138,7 @@ else
   rm $fname
   
   ### Test to check if installation worked
+  source .VLprofile
   if hash VirtualLab 2>/dev/null; then
     ### If exists
     echo "VirtualLab has been installed"

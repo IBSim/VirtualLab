@@ -478,10 +478,11 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions):
         thread.daemon = True
         thread.start()
 
-def check_file_in_container(vlab_dir,Run_file):
+def check_file_in_container(vlab_dir,Run_file,tmp_dir):
     """
     Function to check that the given runfile is accessible by the container i.e it is inside 
-    the virtualLab directory. If not the file is copied to /tmp which is accessible. 
+    the virtualLab directory. If not the file is copied to the temporary directory, previously
+    created by the tempfile library which is accessible and bound to /tmp in the container. 
     """
     from pathlib import Path
     import shutil
@@ -495,7 +496,7 @@ def check_file_in_container(vlab_dir,Run_file):
         raise ValueError(f"Runfile not found at {Run_file}.")
     
     if not Run_file.is_relative_to(vlab_dir):
-        dest = "/tmp/" + Run_file.name
+        dest = tmp_dir + "/" + Run_file.name
         shutil.copyfile(Run_file,dest)
         # make file executable by everyone
         os.chmod(dest,stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
@@ -612,6 +613,11 @@ if __name__ == "__main__":
     vlab_dir = get_vlab_dir()
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
+
+    # make a dir in /tmp on host with random name to avoid issues on shared systems
+    # the tempfile library ensures this directory is deleted on exiting python.
+    tmp_dir = tempfile.TemporaryDirectory()
+
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
@@ -623,7 +629,7 @@ if __name__ == "__main__":
         sys.exit(1)
     else:
         Run_file = args.Run_file
-    Run_file = check_file_in_container(vlab_dir,Run_file)
+    Run_file = check_file_in_container(vlab_dir,Run_file,tmp_dir.name)
     kOption_dict = {}
     ######################################
     # formatting for optional -K cmd option
@@ -671,12 +677,10 @@ if __name__ == "__main__":
     # start VirtualLab
     lock.acquire()
 
-
-
     if use_Apptainer:
         proc = subprocess.Popen(
             f'apptainer exec --contain --writable-tmpfs \
-                    -B /usr/share/glvnd:/usr/share/glvnd -B /tmp:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {vlab_dir}/{Manager["Apptainer_file"]} '
+                    -B /usr/share/glvnd:/usr/share/glvnd -B {tmp_dir.name}:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {vlab_dir}/{Manager["Apptainer_file"]} '
             f'{Manager["Startup_cmd"]} {options} -f {path}',
             shell=True,
         )

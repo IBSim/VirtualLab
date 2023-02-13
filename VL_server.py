@@ -523,9 +523,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-f",
         "--Run_file",
-        help="Runfile to use (default is assumed to \
-        be current working directory).",
-        default="Run.py",
+        help="Where "'RUN_FILE'" is the path of the python run file.",
+        default=None,
     )
     # parser.add_argument(
     #     "-D",
@@ -568,29 +567,59 @@ if __name__ == "__main__":
         default=None,
         action='append',
         nargs='*',
-    )  
+    )
+   # parser.add_argument(
+   #     "-V",
+   #     "--version",
+   #     help="Display version number and citation information",
+   #     action="store_false",
+   # )   
 
     args = parser.parse_args()
     ################################################################
     # Note: Docker and nvcclli are work in progress options. As such
     # I don't want to totally remove them since they will be needed 
     # if/when we fix the issues. However, I also don't want them to
-    # apprear as valid options with --help so when they are needed 
-    # simply delete/uncomment the apropriate lines.
+    # appear as valid options with --help so when they are needed 
+    # simply delete/uncomment the appropriate lines.
     ###############################################################
     args.Docker=False
     args.nvccli=False
     ###############################################################
     if len(sys.argv)==1:
+        print('***************************************')
+        print("A script to run VirtualLab simulations.")
+        print('***************************************')
         parser.print_help(sys.stderr)
         sys.exit(1)
+
+# #print version and citation info then exit
+#     if args.version:
+#         print('***************************************')
+#         print("            VirtualLab-V2.0            ")
+#         print(" If you use this code in your publication\n" )
+#         print(" Please site it in the following way:") 
+
+#     R. Lewis, B.J. Thorpe, Ll.M. Evans (2020) VirtualLab source code (Version !!!) [Source code]. https://gitlab.com/ibsim/virtuallab/-/commit/3c1d7727987def758df32a34933c964f54579325
+
+
+# NOTE: You will need to update the version number and url to the commit version you used.
+#         print('***************************************')
+#         sys.exit(1)
+    
     # get vlab_dir either from cmd args or environment
     vlab_dir = get_vlab_dir()
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
-    # set flag to run tests instate of the normal runfile
+    # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
+    elif args.Run_file == None:
+        print('****************************************************************')
+        print("Error: you must specify a path to a valid RunFile with option -f")
+        print('****************************************************************')
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     else:
         Run_file = args.Run_file
     Run_file = check_file_in_container(vlab_dir,Run_file)

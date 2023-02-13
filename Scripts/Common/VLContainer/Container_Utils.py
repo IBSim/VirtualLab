@@ -1,6 +1,7 @@
 from email import message
 import socket
 import json
+import tempfile
 import pickle
 from types import SimpleNamespace as Namespace
 from ast import Raise
@@ -275,9 +276,8 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
         import random
         update_container(Module,vlab_dir)
         #make a dir in /tmp on host with random name to avoid issues on shared systems
-        tmp_dir = f"/tmp/VirtualLab_{random.randint(0, 10000)}"
-        os.mkdir(tmp_dir)
-        call_string = f' -B /run:/run -B {tmp_dir}:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
+        tmp_dir = tempfile.TemporaryDirectory()
+        call_string = f' -B /run:/run -B {tmp_dir.name}:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
                         {str(vlab_dir)}/{Module["Apptainer_file"]}'
     else:
         #docker

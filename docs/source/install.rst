@@ -104,20 +104,20 @@ The :bash:`--test` option downloads a minimal test container and runs a series o
   ``version `GLIBC_2.34' not found (required by /.singularity.d/libs/libGLX.so.0)``
   
   The issue is a bug in the way that the ``--nv`` flag loads nvidia libraries. The short version is that the ``--nv`` flag isn't very sophisticated when it comes to libraries. It looks for a list of library files on the host which is defined in ``nvliblist.conf``. 
-  The issue is that the latest version(s) of Ubuntu are complied against a newer version of libGLX than is included within the Salome container. This is causes problems in Apptainer.
+  The issue is that the latest version(s) of Ubuntu are compiled against a newer version of libGLX than is included within the Salome container. This causes problems in Apptainer.
 
-  To fix this you have two options. Firstly you can use the ``-N`` option to turn off the nvidia libraries. The drawback to this is that you will be running in 'software rendering mode' and thus you will not benefit from any GPU acceleration.
+  To fix this you have two options. Firstly, you can use the ``-N`` option to turn off the nvidia libraries. The drawback to this is that you will be running in 'software rendering mode' and thus you will not benefit from any GPU acceleration.
 
   The second option is to use the following workaround.
 
-  1. Search for a file named ``nvliblist.conf`` in your installation. It should be under your Apptainer installation directory By default this is under ``/etc/apptainer.``
-  2. Make a back-up of this file ``mv nvliblist.conf nvliblist.conf.bak.``
+  1. Search for a file named ``nvliblist.conf`` in your installation. It should be under your Apptainer installation directory. By default this is under ``/etc/apptainer``.
+  2. Make a back-up of this file ``mv nvliblist.conf nvliblist.conf.bak``.
   3. Open the file ``nvliblist.conf`` using a text editor.
   4. Delete all of the following lines that appear ``libGLX.so``, ``libGLX.so.0``, ``libglx.so``, ``libglx.so.0`` and ``libGLdispatch.so``. Note, depending on you exact system, the file may not contain all of them.
 
   Try running the Salome container again, it should work this time.
 
-  Reference: https: //github.com/apptainer/apptainer/issues/598
+  Reference: `https://github.com/apptainer/apptainer/issues/598 <https://github.com/apptainer/apptainer/issues/598>`_
 
   Note: this workaround involves messing with configs that apply system wide. As such, it may have unintended side-effects with other software/containers that use Apptainer. Our team have not yet reported any issues. 
   However, this does not mean they do not exist. Therefore, we cannot 100% guarantee you won't experience any issues. This is also the reason we recommend backing up your original config in step 2, just in case. Also, for future reference, these fixes were applied to Ubuntu 22.04 with Apptainer version 1.0.5. Your millage may vary with future updates.

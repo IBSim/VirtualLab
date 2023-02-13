@@ -27,7 +27,7 @@ Quick Installation
 You may run the following 'one line' command on a fresh installation of a supported Linux distro to install **VirtualLab** and the containerisation tool.
 
 .. warning::
-   If you are not using a fresh OS it is highly recommended that you read the rest of this page before trying this method, to better understand how the installation is carried out in case you have pre-installed dependencies which might brake.
+  If you are not using a fresh OS it is highly recommended that you read the rest of this page before trying this method, to better understand how the installation is carried out in case you have pre-installed dependencies which might brake.
 
 Terminal::
 
@@ -97,6 +97,31 @@ We recommend you run a quick test to ensure everything is working this can be do
 
 The :bash:`--test` option downloads a minimal test container and runs a series of tests to check everything is working. It also spits out a randomly selected programming joke as a nice whimsical bonus. For more on how to use **VirtualLab** we recommend the `Tutorials <examples/index.html>`_ section.
 
+.. warning:: **GlibC issues with Ubuntu 22.04+**
+  
+  We note at this stage that there is a known bug with Salome meca Running in VirtualLab with Ubuntu 22.04, along with some newer versions of Fedora. 
+  If you are using these you may find you get an error containing something similar to the following.
+  ``version `GLIBC_2.34' not found (required by /.singularity.d/libs/libGLX.so.0)``
+  
+  The issue is a bug in the way the ``--nv`` flag loads nvidia libraries. The short version is ``--nv`` is quite dumb when it comes to libraries and looks for a list of library files on the host defined in ``nvliblist.conf``. 
+  The issue is the latest version(s) of Ubuntu are complied against a newer version of libGLX than is in the Salome container. This is causes problems in Apptainer.
+
+  To fix this you have two options. Firstly you can use the ``-N`` option to turn off the nvidia libraries. The drawback to this is you will be running in software rendering mode and thus you will not get any gpu acceleration.
+
+  The second option is to use the following workaround. 
+
+  1. Search for a file named ``nvliblist.conf`` in your installation. It should be under your Apptainer installation directory By default this is under ``/etc/apptainer.``
+  2. Make a back-up of this file ``mv nvliblist.conf nvliblist.conf.bak.``
+  3. Open the file ``nvliblist.conf`` using a text editor.
+  4. Delete all of the following lines that appear ``libGLX.so``, ``libGLX.so.0``, ``libglx.so``, ``libglx.so.0`` and ``libGLdispatch.so``. Note depending on you exact system the file may not have all of them.
+
+  Try running the Salome container again, it should work this time.
+
+  Reference: https: //github.com/apptainer/apptainer/issues/598
+
+  Note: this workaround involves messing with configs that apply system wide. As such it may have unintended side-effects with other software/containers that use Apptainer. Our team have not yet reported any issues. 
+  However, this does not mean they do not exist so we cannot 100% guarantee you won't have any issues. This is also the reason we recommend backing up your original config in step 2, just in case. Also for future 
+  reference these fixes where applied to ubuntu 22.04 with Apptainer version 1.0.5 your millage may vary with future updates.
 
 Installation from source code
 *****************************

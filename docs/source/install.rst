@@ -27,11 +27,11 @@ Quick Installation
 You may run the following 'one line' command on a fresh installation of a supported Linux distro to install **VirtualLab** and the containerisation tool.
 
 .. warning::
-   If you are not using a fresh OS it is highly recommended that you read the rest of this page before trying this method, to better understand how the installation is carried out in case you have pre-installed dependencies which might brake.
+  If you are not using a fresh OS it is highly recommended that you read the rest of this page before trying this method, to better understand how the installation is carried out in case you have pre-installed dependencies which might brake.
 
 Terminal::
 
-    cd ~ && commands_to_go_here
+    cd && wget https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Install_VLplus.sh && chmod 755 Install_VLplus.sh && sudo ./Install_VLplus.sh -B d -y && source ~/.VLprofile && rm Install_VLplus.sh
 
 Containers
 **********
@@ -54,7 +54,7 @@ We have chosen containers as the main way of distributing **VirtualLab** for a n
 
 For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on your local machine (we will go into more details on exactly how this all works later).
 
-.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png?inline=false
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png
   :width: 400
   :alt: Diagram of VirtualLab container setup
   :align: center
@@ -85,7 +85,7 @@ The installer will then take you through a series of menus and download the late
 
 .. note:: You may see lots of warning messages appear on screen during the install, similar to: :bash:`warn rootless {path/to/file} ignoring (usually) harmless EPERM on setxattr`. As the messages suggests these are harmless and just a bi-product of building containers from sif files without root privileges on Linux. Thus, as long as you get a "build complete" message at the end they can be safely ignored.
 
-We note at this stage that only the 'Server' and 'Manger' have been downloaded. The remaining modules are not immediately installed but instead will be downloaded and installed dynamically when used for the first time. This means that the first run of any module will take significantly longer because it has to download and install the required files. This is an intentional trade off to save disk space because it means you only have installed the exact tools you need/use.
+We note at this stage that only the 'Server' and 'Manager' have been downloaded. The remaining modules are not immediately installed but instead will be downloaded and installed dynamically when used for the first time. This means that the first run of any module will take significantly longer because it has to download and install the required files. This is an intentional trade off to save disk space because it means you only have installed the exact tools you need/use.
 
 The **VirtualLab** executable can then be found in the bin directory inside the **VirtualLab** install directory (you may want to add this to your system path).
 
@@ -97,6 +97,31 @@ We recommend you run a quick test to ensure everything is working this can be do
 
 The :bash:`--test` option downloads a minimal test container and runs a series of tests to check everything is working. It also spits out a randomly selected programming joke as a nice whimsical bonus. For more on how to use **VirtualLab** we recommend the `Tutorials <examples/index.html>`_ section.
 
+.. warning:: **GlibC issues with Ubuntu 22.04+**
+  
+  We note, at this stage, that there is a known bug with Salome-Meca Running in VirtualLab with Ubuntu 22.04, along with some newer versions of Fedora. 
+  If you are using these you may find you get an error containing something similar to the following:
+  ``version `GLIBC_2.34' not found (required by /.singularity.d/libs/libGLX.so.0)``
+  
+  The issue is a bug in the way that the ``--nv`` flag loads nvidia libraries. The short version is that the ``--nv`` flag isn't very sophisticated when it comes to libraries. It looks for a list of library files on the host which is defined in ``nvliblist.conf``. 
+  The issue is that the latest version(s) of Ubuntu are compiled against a newer version of libGLX than is included within the Salome container. This causes problems in Apptainer.
+
+  To fix this you have two options. Firstly, you can use the ``-N`` option to turn off the nvidia libraries. The drawback to this is that you will be running in 'software rendering mode' and thus you will not benefit from any GPU acceleration.
+
+  The second option is to use the following workaround. But please note that it only works when `installing Apptainer from source <https://github.com/apptainer/apptainer/blob/main/INSTALL.md>`_. After cloning the repo and before compiling Apptainer, please do the following:
+
+  1. Search for a file named ``nvliblist.conf`` in your installation. It should be under your Apptainer installation directory. By default this is under ``/etc/apptainer``.
+  2. Make a back-up of this file ``mv nvliblist.conf nvliblist.conf.bak``.
+  3. Open the file ``nvliblist.conf`` using a text editor.
+  4. Delete all of the following lines that appear ``libGLX.so``, ``libGLX.so.0``, ``libglx.so``, ``libglx.so.0`` and ``libGLdispatch.so``. Note, depending on you exact system, the file may not contain all of them.
+
+  Complete the installation by compiling Apptainer. Apptainer should be installed now. Now try running the Salome container again, it should work this time.
+
+  Reference: https: //github.com/apptainer/apptainer/issues/598
+  
+  One caveat with this workaround, however, is that involves messing with configs that apply system wide. As such, it may have unintended side-effects with other software/containers that use Apptainer. Our team have not yet reported any issues. 
+  However, this does not mean they do not exist. Therefore, we cannot 100% guarantee you won't have any issues. This is also the reason we recommend backing up your original config in step 2, just in case. Also, for future 
+  reference, these fixes where applied to ubuntu 22.04 with Apptainer version 1.0.5. Your millage may vary with future updates.
 
 Installation from source code
 *****************************
@@ -128,3 +153,4 @@ References
 .. bibliography:: refs.bib
    :style: plain
    :filter: docname in docnames
+

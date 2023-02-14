@@ -85,7 +85,7 @@ The installer will then take you through a series of menus and download the late
 
 .. note:: You may see lots of warning messages appear on screen during the install, similar to: :bash:`warn rootless {path/to/file} ignoring (usually) harmless EPERM on setxattr`. As the messages suggests these are harmless and just a bi-product of building containers from sif files without root privileges on Linux. Thus, as long as you get a "build complete" message at the end they can be safely ignored.
 
-We note at this stage that only the 'Server' and 'Manger' have been downloaded. The remaining modules are not immediately installed but instead will be downloaded and installed dynamically when used for the first time. This means that the first run of any module will take significantly longer because it has to download and install the required files. This is an intentional trade off to save disk space because it means you only have installed the exact tools you need/use.
+We note at this stage that only the 'Server' and 'Manager' have been downloaded. The remaining modules are not immediately installed but instead will be downloaded and installed dynamically when used for the first time. This means that the first run of any module will take significantly longer because it has to download and install the required files. This is an intentional trade off to save disk space because it means you only have installed the exact tools you need/use.
 
 The **VirtualLab** executable can then be found in the bin directory inside the **VirtualLab** install directory (you may want to add this to your system path).
 
@@ -99,29 +99,29 @@ The :bash:`--test` option downloads a minimal test container and runs a series o
 
 .. warning:: **GlibC issues with Ubuntu 22.04+**
   
-  We note at this stage that there is a known bug with Salome meca Running in VirtualLab with Ubuntu 22.04, along with some newer versions of Fedora. 
-  If you are using these you may find you get an error containing something similar to the following.
+  We note, at this stage, that there is a known bug with Salome-Meca Running in VirtualLab with Ubuntu 22.04, along with some newer versions of Fedora. 
+  If you are using these you may find you get an error containing something similar to the following:
   ``version `GLIBC_2.34' not found (required by /.singularity.d/libs/libGLX.so.0)``
   
-  The issue is a bug in the way the ``--nv`` flag loads nvidia libraries. The short version is ``--nv`` is quite dumb when it comes to libraries and looks for a list of library files on the host defined in ``nvliblist.conf``. 
-  The issue is the latest version(s) of Ubuntu are complied against a newer version of libGLX than is in the Salome container. This is causes problems in Apptainer.
+  The issue is a bug in the way that the ``--nv`` flag loads nvidia libraries. The short version is that the ``--nv`` flag isn't very sophisticated when it comes to libraries. It looks for a list of library files on the host which is defined in ``nvliblist.conf``. 
+  The issue is that the latest version(s) of Ubuntu are compiled against a newer version of libGLX than is included within the Salome container. This causes problems in Apptainer.
 
-  To fix this you have two options. Firstly you can use the ``-N`` option to turn off the nvidia libraries. The drawback to this is you will be running in software rendering mode and thus you will not get any gpu acceleration.
+  To fix this you have two options. Firstly, you can use the ``-N`` option to turn off the nvidia libraries. The drawback to this is that you will be running in 'software rendering mode' and thus you will not benefit from any GPU acceleration.
 
-  The second option is to use the following workaround. 
+  The second option is to use the following workaround.
 
-  1. Search for a file named ``nvliblist.conf`` in your installation. It should be under your Apptainer installation directory By default this is under ``/etc/apptainer.``
-  2. Make a back-up of this file ``mv nvliblist.conf nvliblist.conf.bak.``
+  1. Search for a file named ``nvliblist.conf`` in your installation. It should be under your Apptainer installation directory. By default this is under ``/etc/apptainer``.
+  2. Make a back-up of this file ``mv nvliblist.conf nvliblist.conf.bak``.
   3. Open the file ``nvliblist.conf`` using a text editor.
-  4. Delete all of the following lines that appear ``libGLX.so``, ``libGLX.so.0``, ``libglx.so``, ``libglx.so.0`` and ``libGLdispatch.so``. Note depending on you exact system the file may not have all of them.
+  4. Delete all of the following lines that appear ``libGLX.so``, ``libGLX.so.0``, ``libglx.so``, ``libglx.so.0`` and ``libGLdispatch.so``. Note, depending on you exact system, the file may not contain all of them.
 
   Try running the Salome container again, it should work this time.
 
   Reference: https: //github.com/apptainer/apptainer/issues/598
   
-  One caveat with this workaround, however, is that involves messing with configs that apply system wide. As such it may have unintended side-effects with other software/containers that use Apptainer. Our team have not yet reported any issues. 
-  However, this does not mean they do not exist so we cannot 100% guarantee you won't have any issues. This is also the reason we recommend backing up your original config in step 2, just in case. Also for future 
-  reference these fixes where applied to ubuntu 22.04 with Apptainer version 1.0.5 your millage may vary with future updates.
+  One caveat with this workaround, however, is that involves messing with configs that apply system wide. As such, it may have unintended side-effects with other software/containers that use Apptainer. Our team have not yet reported any issues. 
+  However, this does not mean they do not exist. Therefore, we cannot 100% guarantee you won't have any issues. This is also the reason we recommend backing up your original config in step 2, just in case. Also, for future 
+  reference, these fixes where applied to ubuntu 22.04 with Apptainer version 1.0.5. Your millage may vary with future updates.
 
 Installation from source code
 *****************************
@@ -153,3 +153,4 @@ References
 .. bibliography:: refs.bib
    :style: plain
    :filter: docname in docnames
+

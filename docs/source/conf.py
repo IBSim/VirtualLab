@@ -81,7 +81,8 @@ release = ''
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+#language = None
+language = en
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -105,7 +106,7 @@ todo_include_todos = False
 html_theme = 'furo'
 html_title = 'VirtualLab'
 #html_logo = "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_dark.png?inline=false"
-html_logo = "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_light.png?inline=false"
+html_logo = "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_light.png"
 #html_static_path = ["_static"]
 #html_static_path = [""]
 #html_theme_options = {

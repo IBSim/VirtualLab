@@ -150,4 +150,4 @@ To do this run the following commands:
 
 References
 **********
-.. bibliography::
+.. bibliography:: refs.bib

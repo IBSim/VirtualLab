@@ -28,7 +28,8 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 ### Default VirtualLab branch if no flag.
-BRANCH=main
+BRANCH=master
+B="m"
 
 ################################################################################
 #                    Parse CMD Arguments

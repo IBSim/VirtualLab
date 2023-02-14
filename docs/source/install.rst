@@ -118,8 +118,8 @@ The :bash:`--test` option downloads a minimal test container and runs a series o
   Try running the Salome container again, it should work this time.
 
   Reference: https: //github.com/apptainer/apptainer/issues/598
-
-  Note: this workaround involves messing with configs that apply system wide. As such it may have unintended side-effects with other software/containers that use Apptainer. Our team have not yet reported any issues. 
+  
+  One caveat with this workaround, however, is that involves messing with configs that apply system wide. As such it may have unintended side-effects with other software/containers that use Apptainer. Our team have not yet reported any issues. 
   However, this does not mean they do not exist so we cannot 100% guarantee you won't have any issues. This is also the reason we recommend backing up your original config in step 2, just in case. Also for future 
   reference these fixes where applied to ubuntu 22.04 with Apptainer version 1.0.5 your millage may vary with future updates.
 

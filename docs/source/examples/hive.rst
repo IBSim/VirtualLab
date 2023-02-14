@@ -265,6 +265,6 @@ The **ERMES** and **CodeAster** results should both be opened in **ParaVis** to 
 
 References
 **********
-.. bibliography:: ../refs.bib
+.. bibliography:: _static/refs.bib
    :style: plain
    :filter: docname in docnames

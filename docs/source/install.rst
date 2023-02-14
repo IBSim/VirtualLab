@@ -38,7 +38,7 @@ Containers
 
 The only other prerequisite for using **VirtualLab** on your system is a containerisation tool. We currently only support `Apptainer <https://apptainer.org/>`_ (currently this is Linux only, hence Linux being the only officially supported OS). [3]_ 
 
-If you're unfamiliar with containers, here's a quick overview from `opensource.com <https://opensource.com/resources/what-are-linux-containers>`_ :cite:`containers`:
+If you're unfamiliar with containers, here's a quick overview from `opensource.com <https://opensource.com/resources/what-are-linux-containers>`_\ :footcite:`containers`:
 
     *"Containers, in short, contain applications in a way that keep them isolated from the host system that they run on. Containers allow a developer to package up an application with all of the parts it needs, such as libraries and other dependencies, and ship it all out as one package. And they are designed to make it easier to provide a consistent experience as developers and system administrators move code from development environments into production in a fast and replicable way.*
 
@@ -150,7 +150,4 @@ To do this run the following commands:
 
 References
 **********
-.. bibliography:: refs.bib
-   :style: plain
-   
-some text
+.. footbibliography::

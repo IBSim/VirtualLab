@@ -79,7 +79,7 @@ The file used to generate the mesh is :file:`Scripts/Experiments/HIVE/Mesh/Monob
 
 .. _AMAZE:
 
-.. figure :: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/AMAZE.png?inline=false
+.. figure :: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/AMAZE.png
 
     Drawing of the AMAZE sample with the attributes of ``Mesh`` used to specify the dimensions.
 
@@ -262,3 +262,9 @@ The **ERMES** and **CodeAster** results should both be opened in **ParaVis** to 
 
 .. note::
     You can open the results from the previous analysis alongside this by going to ``File/Open ParaView File`` and navigating to the directory 'Test_Coil'
+
+References
+**********
+.. bibliography:: refs.bib
+   :style: plain
+   :filter: docname in docnames

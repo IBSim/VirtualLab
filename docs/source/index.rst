@@ -11,7 +11,7 @@
 Welcome to VirtualLab's documentation!
 ======================================
 
-.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Logo.png?inline=false
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Logo.png
   :width: 800
   :alt: VirtualLab Logo
   :align: center

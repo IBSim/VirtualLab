@@ -151,3 +151,5 @@ To do this run the following commands:
 References
 **********
 .. footbibliography::
+
+some text

@@ -17,6 +17,7 @@ import json
 import sys
 from pathlib import Path
 import time
+import tempfile
 
 # import Scripts.Common.VLContainer.VL_Modules as VL_MOD
 import yaml
@@ -169,7 +170,7 @@ def correct_typecasting(arg):
     return arg
 
 def handle_messages(
-    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, dry_run, kOptions
+    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, dry_run, kOptions,tmp_dir
 ):
     global waiting_cnt_sockets
     global target_ids
@@ -247,6 +248,7 @@ def handle_messages(
                     simulation,
                     use_Apptainer,
                     target_ids[n],
+                    tmp_dir,
                 )
 
                 log_net_info(
@@ -394,7 +396,7 @@ def check_pulse(client_socket, sock_lock, net_logger, debug):
             )
 
 
-def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions):
+def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions,tmp_dir):
     """Function that runs in a thread to handle communication ect."""
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -436,7 +438,8 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions):
                     debug,
                     gpu_flag,
                     dry_run,
-                    koptions
+                    koptions,
+                    tmp_dir,
                 ),
             )
             thread.daemon = True
@@ -472,7 +475,8 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions):
                 debug,
                 gpu_flag,
                 dry_run,
-                options
+                options,
+                tmp_dir,
             ),
         )
         thread.daemon = True
@@ -617,7 +621,6 @@ if __name__ == "__main__":
     # make a dir in /tmp on host with random name to avoid issues on shared systems
     # the tempfile library ensures this directory is deleted on exiting python.
     tmp_dir = tempfile.TemporaryDirectory()
-
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
@@ -665,7 +668,7 @@ if __name__ == "__main__":
     lock = threading.Lock()
     thread = threading.Thread(
         target=process,
-        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, args.dry_run,kOption_dict),
+        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, args.dry_run,kOption_dict,tmp_dir),
     )
     thread.daemon = True
 

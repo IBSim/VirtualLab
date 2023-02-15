@@ -254,7 +254,7 @@ def receive_data(conn,debug,payload_size=2048):
             print(f'received:{payload}')
     return (payload)
 
-def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id):
+def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id,tmp_dir):
     ''' Function to format string for bind points and container to call specified tool.'''
     import os
     import subprocess
@@ -276,8 +276,7 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
         import random
         update_container(Module,vlab_dir)
         #make a dir in /tmp on host with random name to avoid issues on shared systems
-        tmp_dir = tempfile.TemporaryDirectory()
-        call_string = f' -B /run:/run -B {tmp_dir.name}:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
+        call_string = f' -B /run:/run -B /dev:/dev -B {tmp_dir.name}:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
                         {str(vlab_dir)}/{Module["Apptainer_file"]}'
     else:
         #docker

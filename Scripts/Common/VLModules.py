@@ -7,6 +7,7 @@ import datetime
 import json
 import os
 import shutil
+import dill
 from importlib import import_module
 from types import SimpleNamespace as Namespace
 from importlib import import_module, reload
@@ -85,7 +86,7 @@ class VLModule(VLSetup):
         Utils.send_data(self.tcp_sock, ready_msg)
         while True:
             data = Utils.receive_data(self.tcp_sock, self.debug)
-
+            print(data)
             if data:
                 if data["msg"] == "Container_runs":
                     self.Logger(
@@ -202,3 +203,87 @@ class VLModule(VLSetup):
         #     # add flag to the instance
         #     method_cls.SetFlag(flags['Run{}'.format(method_name)])
         #     method_cls._MethodSetup(method_dicts)
+        
+        
+        
+        
+class VLModule2():
+    def __init__(self, VL, debug=False):
+
+        sock = Utils.create_tcp_socket()
+
+        VL.tcp_sock = sock
+        
+        self.VL = VL
+        
+        self.tcp_sock = sock
+        self.Container = VL.Container
+        self.Logger = VL.Logger
+        self.debug = debug
+
+        self.start_module() # initiate things
+        
+        method = self.get_method() # get from data received
+        method_inst = getattr(VL,method)
+        method_inst.clsname = 'VLModule'
+        
+    def start_module(self):
+        import threading
+
+        # send ready message then wait to receive runs to perform from the server
+        ready_msg = {"msg": "Ready", "Cont_id": self.Container}
+        Utils.send_data(self.tcp_sock, ready_msg)
+        while True:
+            data = Utils.receive_data(self.tcp_sock, self.debug)
+            if data:
+                if data["msg"] == "Container_runs":
+                    self.Logger(
+                        f"container {self.Container} received job list from server.",
+                        print=True,
+                    )
+                    self.data = data
+                    break
+
+        # Start heartbeat thread to message back to the server once every n seconds
+        thread = threading.Thread(target=self.heartbeat, args=())
+        thread.daemon = True
+        thread.start()
+        return
+
+    def get_args(self):
+        """
+        function to get the arguments for inputting into the call to the method.
+        """
+        return self.data["run_args"]
+
+    def get_method(self):
+        return self.data["Method"]
+        
+    def heartbeat(self, heart_rate=5):
+        """
+        Function to send a message periodically to tell the server
+        that the Module is still running. optional argument heart_rate
+        sets the number of seconds between each message.
+
+        """
+        import time
+
+        beat_msg = {"msg": "Beat", "Cont_id": self.Container}
+        while True:
+            Utils.send_data(self.tcp_sock, beat_msg)
+            time.sleep(heart_rate)
+
+
+    def Run(self):
+        method = self.get_method()
+        method_inst = getattr(self.VL,method)
+        args = self.get_args()
+        method_inst(**args)
+        
+    def Terminate(self):
+        Utils.Cont_Finished(self.VL.Container, self.VL.tcp_sock)
+
+        
+    
+        
+ 

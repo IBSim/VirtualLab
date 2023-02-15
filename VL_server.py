@@ -157,6 +157,7 @@ def handle_messages(
             log_net_info(net_logger, "Socket has been closed")
             return
         event = rec_dict["msg"]
+
         container_id = rec_dict["Cont_id"]
         log_net_info(
             net_logger,
@@ -164,16 +165,16 @@ def handle_messages(
         )
         if event == "Spawn_Container":
             Module = VL_MOD[rec_dict["Tool"]]
+            path = Module['Startup_cmd']
+            basename,ext = os.path.splitext(path)
+            
+            Module['Startup_cmd'] = "{}/VL_Runner{}".format(os.path.dirname(basename),ext)
+            #Module['Startup_cmd'] = "{}_N{}".format(*os.path.splitext(path))
 
             num_containers = rec_dict["Num_Cont"]
             Cont_runs = rec_dict["Cont_runs"]
-            param_master = rec_dict["Parameters_Master"]
-            if rec_dict["Parameters_Var"] == "None":
-                param_var = None
-            else:
-                param_var = rec_dict["Parameters_Var"]
-            project = rec_dict["Project"]
-            simulation = rec_dict["Simulation"]
+            class_file = rec_dict["class_file"]
+            
             # setup command to run docker or Apptainer
             if use_Apptainer:
                 container_cmd = f"apptainer exec {gpu_flag} --writable-tmpfs"
@@ -192,27 +193,25 @@ def handle_messages(
             # and associated runs to output to file
             sock_lock.acquire()
             target_ids = []
+
             for Container in Cont_runs:
                 target_ids.append(next_cnt_id)
                 list_of_runs = Container[1]
                 task_dict[str(next_cnt_id)] = list_of_runs
-                settings_dict[str(next_cnt_id)] = rec_dict["Settings"]
+                # settings_dict[str(next_cnt_id)] = rec_dict["Settings"]
                 run_arg_dict[str(next_cnt_id)] = rec_dict["run_args"]
                 Method_dict[str(next_cnt_id)] = Module["Method"]
                 next_cnt_id += 1
 
             # loop over containers again to spawn them this time
+
             for n, Container in enumerate(Cont_runs):
                 options, command = Format_Call_Str(
                     Module,
                     vlab_dir,
-                    param_master,
-                    param_var,
-                    project,
-                    simulation,
+                    class_file,
                     use_Apptainer,
                     target_ids[n],
-                    options,
                 )
 
                 log_net_info(
@@ -240,7 +239,7 @@ def handle_messages(
             # cont_ready should be set by another thread when the container messages to say its ready to go.
             # This loop essentially checks to see if the container started correctly by waiting for 10 seconds
             #  and if cont_ready is not set it will raise an error.
-            ready = cont_ready.wait(timeout=15)
+            ready = cont_ready.wait(timeout=30)
             # we've heard nothing from the container so we have
             # to assume it has hung. Thus send error to manger
             # and client (if client is not the manger)
@@ -267,18 +266,20 @@ def handle_messages(
             data2 = {
                 "msg": "Container_runs",
                 "tasks": task_dict[str(container_id)],
-                "settings": settings_dict[str(container_id)],
+                #"settings": settings_dict[str(container_id)],
                 "run_args": run_arg_dict[str(container_id)],
                 "Method": Method_dict[str(container_id)],
                 "dry_run": dry_run,
             }
             sock_lock.release()
             send_data(client_socket, data2, debug)
+
             # This function will run until the server receives "finished"
             #  or an error occurs in the container.
             check_pulse(client_socket, sock_lock, net_logger, debug)
             # client_socket.shutdown(socket.SHUT_RDWR)
             # client_socket.close()
+
             break
         elif event in relay_list:
             Target_id = str(rec_dict["Target_id"])
@@ -460,12 +461,12 @@ def check_file_in_container(vlab_dir,Run_file):
     if not Run_file.exists():
         raise ValueError(f"Runfile not found at {Run_file}.")
     
-    if not Run_file.is_relative_to(vlab_dir):
-        dest = "/tmp/" + Run_file.name
-        shutil.copyfile(Run_file,dest)
-        # make file executable by everyone
-        os.chmod(dest,stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-        Run_file = dest
+#    if not Run_file.is_relative_to(vlab_dir):
+#        dest = "/tmp/" + Run_file.name
+#        shutil.copyfile(Run_file,dest)
+#        # make file executable by everyone
+#        os.chmod(dest,stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+#        Run_file = dest
 
     
     return Run_file
@@ -531,6 +532,7 @@ if __name__ == "__main__":
     else:
         Run_file = args.Run_file
     Run_file = check_file_in_container(vlab_dir,Run_file)
+
     ######################################
     # formatting for optional -K cmd option
     if args.options !=None:
@@ -576,7 +578,7 @@ if __name__ == "__main__":
         proc = subprocess.Popen(
             f'apptainer exec --contain --writable-tmpfs \
                     -B /usr/share/glvnd:/usr/share/glvnd -B /tmp:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {vlab_dir}/{Manager["Apptainer_file"]} '
-            f'{Manager["Startup_cmd"]} {options} -f {path}',
+            f'{Manager["Startup_cmd"]} {options} -f {path} -k Test',
             shell=True,
         )
     else:
@@ -590,3 +592,5 @@ if __name__ == "__main__":
     lock.release()
     # wait until virtualLab is done before closing
     proc.wait()
+    
+

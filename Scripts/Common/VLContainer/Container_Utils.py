@@ -275,7 +275,7 @@ def receive_data(conn,debug,payload_size=2048):
             print(f'received:{payload}')
     return (payload)
 
-def Format_Call_Str2(Module,vlab_dir,class_file,use_Apptainer,cont_id,k_flag):
+def Format_Call_Str(Module,vlab_dir,class_file,use_Apptainer,cont_id):
 
 
     ''' Function to format string for bind points and container to call specified tool.'''
@@ -291,7 +291,7 @@ def Format_Call_Str2(Module,vlab_dir,class_file,use_Apptainer,cont_id,k_flag):
     if use_Apptainer:
         update_container(Module,vlab_dir)
         call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
-                        {str(vlab_dir)}/{Module["Apptainer_file"]} {k_flag}'
+                        {str(vlab_dir)}/{Module["Apptainer_file"]} '
     else:
         #docker
         call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} {k_flag}'
@@ -306,7 +306,7 @@ def Format_Call_Str2(Module,vlab_dir,class_file,use_Apptainer,cont_id,k_flag):
 
     return call_string, command
 
-def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id,k_flag):
+def Format_Call_Str_old(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id):
 
 
     ''' Function to format string for bind points and container to call specified tool.'''
@@ -329,7 +329,8 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
     if use_Apptainer:
         update_container(Module,vlab_dir)
         call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
-                        {str(vlab_dir)}/{Module["Apptainer_file"]} {k_flag}'
+                        {str(vlab_dir)}/{Module["Apptainer_file"]} '
+
     else:
         #docker
         call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} {k_flag}'

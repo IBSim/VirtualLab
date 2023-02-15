@@ -42,37 +42,41 @@ def GetFunction(file_path, func_name, exit_on_error=True):
 
 def kwarg_update(func):
     def wrapper_kwarg_update(*args,**kwargs):
-        argspace = inspect.getargspec(func)
-        if argspace.defaults is not None:
-            nb = len(argspace.defaults)
-            fnc_kwargs = argspace.args[-nb:]
-            _kwargs = Parser_update(fnc_kwargs) # update kwargs
-            kwargs.update(_kwargs)
+        self = args[0] # always the first argument
+        if self._parsed_kwargs: 
+            # something has been passed using the -K flag
+            argspace = inspect.getargspec(func)
+            if argspace.defaults is not None:
+                # func has kwargs so find out their name and check if they are in self._parsed_kwargs
+                nb = len(argspace.defaults)
+                fnc_kwargs = argspace.args[-nb:]
+                updated_kwargs = Parser_update(fnc_kwargs, self._parsed_kwargs)
+                kwargs.update(updated_kwargs)
         return func(*args,**kwargs)
     return wrapper_kwarg_update
-
-def Parser_update(arg_names):
-    # update a disctionary of arguments with any values from parser
-    arg_dict = {}
-    for arg in sys.argv[1:]:
-        # get variable name and value from parsed arguments
+        
+def Parser_update(possible_kwargs, parsed_kwargs):
+    kwargs = {}
+    for key, val in parsed_kwargs.items():
+        if key in possible_kwargs:
+            kwargs[key] = val
+    return kwargs   
+        
+def parsed_kwargs(arglist):
+    kwargs = {}
+    for arg in arglist:
         split=arg.split('=')
         if len(split)!=2:
+            # not separated by equal sign so skip it 
             continue
         var_name, value = split
+        try:
+            value = eval(value)
+        except NameError:
+            pass
+        kwargs[var_name] = value
+    return kwargs
 
-        # skip if not in kwargs
-        if var_name not in arg_names:continue
-
-        if value=='False':value=False
-        elif value=='True':value=True
-        elif value=='None':value=None
-        elif value.isnumeric():value=int(value)
-        else:
-            try: value=float(value)
-            except: ValueError
-        arg_dict[var_name] = value
-    return arg_dict
 
 
 def WriteArgs(path,Args):

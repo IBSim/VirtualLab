@@ -7,6 +7,7 @@ class Method_base():
         self._checks(VL.Exit)
         self. _WrapVL(VL,['Setup','Run','Spawn'])
         self.clsname = str(VL.__class__.__name__)
+        self._parsed_kwargs = VL._parsed_kwargs
 
     def __call__(self,*args,Module=False,**kwargs):
         if not self.RunFlag: 

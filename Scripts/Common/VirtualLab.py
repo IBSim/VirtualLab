@@ -37,6 +37,8 @@ DefaultSettings = {
 
 class VLSetup:
     def __init__(self, Simulation, Project, Cont_id=1, debug=False):
+        self._parsed_kwargs = VLF.parsed_kwargs(sys.argv[1:]) # may need to be more robust than sys.argv
+
         # perform setup steps that are common to both VLModule and VL_manger
         self._Common_init(Simulation, Project, DefaultSettings, Cont_id, debug)
         # Unique ID
@@ -192,9 +194,9 @@ class VLSetup:
         sys.excepthook = self.handle_except
         # ======================================================================
         # Check for updates to Simulation and Project in parsed arguments
-        arg_dict = VLF.Parser_update(["Simulation", "Project"])
-        self.Simulation = arg_dict.get("Simulation", Simulation)
-        self.Project = arg_dict.get("Project", Project)
+        # Use given Simulation and project if not in self._parsed_kwargs
+        self.Simulation = self._parsed_kwargs.get('Simulation', Simulation)
+        self.Project = self._parsed_kwargs.get('Project', Project)
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
         self.Container = Cont_id
@@ -210,9 +212,9 @@ class VLSetup:
         if not os.path.isdir(self.SIM_SCRIPTS):
             self.Exit(
                 VLF.ErrorMessage(
-                    f"Simulation type {self.Simulation} does not exist."
-                    / f" Please check you have created a directory named {self.Simulation}"
-                    / f" inside the Scripts/Experiments directory."
+                    "Simulation type '{0}' does not exist.\n" \
+                    "Please check you have created a directory named '{0}' "
+                    "inside the Scripts/Experiments directory.".format(self.Simulation) \
                 )
             )
         self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
@@ -335,7 +337,7 @@ class VLSetup:
         if Max_Containers <= 0:
             self.Exit(ErrorMessage("Max_Containers must be positive"))
 
-    #@VLF.kwarg_update
+    @VLF.kwarg_update
     def Settings(self, **kwargs):
         # Dont specify the kwarsg so that the defauls aren't overwritten if there
         # are multiple calls to settings
@@ -362,9 +364,8 @@ class VLSetup:
                 )
             )
 
-        # pick up the kwargs passed in the parser
-        parsed_kwargs = VLF.Parser_update(kwargs_fnc.keys())
-        kwargs.update(parsed_kwargs)
+        updated_kwargs = VLF.Parser_update(kwargs_fnc.keys(),self._parsed_kwargs)
+        kwargs.update(updated_kwargs)
 
         for kw_name, kw_fnc in kwargs_fnc.items():
             # if kw_name is in kwargs then we set it using kw_fnc
@@ -372,7 +373,7 @@ class VLSetup:
                 kw_fnc(kwargs[kw_name])
         self.settings_dict = kwargs
 
-    #@VLF.kwarg_update
+    @VLF.kwarg_update
     def Parameters(
         self,
         Parameters_Master,
@@ -396,25 +397,26 @@ class VLSetup:
                     )
                 )
             )
-
-        # update run_flags keywords (not covered by decorator)
-        parsed_flags = VLF.Parser_update(flags.keys())
-        run_flags.update(parsed_flags)
-        # update default flags
         flags.update(run_flags)
+        
+        # update run_flags keywords (not covered by decorator as they depend on the files in methods directory)
+        updated_flags = VLF.Parser_update(flags.keys(),self._parsed_kwargs)
+        flags.update(updated_flags)
 
+        # update Parameters_master with parser (not covered by decorator as its an argument)
+        Parameters_Master = self._parsed_kwargs.get('Parameters_Master',Parameters_Master) 
+        
         # Note: The call to GetParams converts params_master/var into Namespaces
         # however we need to original strings for passing into other containers.
         # So we will ned to get them here.
+        # Remove this       
         if type(Parameters_Master)==str: self.Parameters_Master_str = Parameters_Master
         else: self.Parameters_Master_str = "None"
         if type(Parameters_Var)==str: self.Parameters_Var_str = Parameters_Var
         else: self.Parameters_Var_str = "None"        
         #self.Parameters_Var_str = ""#Parameters_Var
 
-        # update Parameters_master with parser (not covered by decorator)
-        arg_dict = VLF.Parser_update(["Parameters_Master"])
-        Parameters_Master = arg_dict.get("Parameters_Master", Parameters_Master)
+
 
         self._SetParams(Parameters_Master, Parameters_Var, ParameterArgs=ParameterArgs)
         # get the number of runs defined in params for each module
@@ -797,3 +799,4 @@ class VLSetup:
         except:
             pass
         return "{}_{}".format(version, branch)
+

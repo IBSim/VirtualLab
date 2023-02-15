@@ -31,5 +31,6 @@ def ParsedArgs(pytestconfig):
                 # TODO add error for this
                 print("Unknown arg {}".format(arg))
 
-    cmd_list = ["-K {}={}".format(key,val) for key,val in global_args.items()]
+    cmd_list = ["{}={}".format(key,val) for key,val in global_args.items()]
+    cmd_list.insert(0,'-K')
     return cmd_list

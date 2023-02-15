@@ -9,7 +9,7 @@ TestName='LFA' # sub direcotry within TutorialsDir where test scripts are kept
 
 def test_Task1(TutorialsDir,ParsedArgs):
     # Change RunSim and RunDA to False as ShowMesh is automatically set to False
-    ParsedArgsNew = ParsedArgs + ['-k RunSim=False', '-k RunDA=False']
+    ParsedArgsNew = ParsedArgs + ['RunSim=False', 'RunDA=False']
     Run = Popen(['VirtualLab','-f','{}/{}/Task1_Run.py'.format(TutorialsDir,TestName),*ParsedArgsNew])
     err = Run.wait()
     assert err==0

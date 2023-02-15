@@ -94,7 +94,7 @@ class VLSetup:
             if os.path.isfile("{}/config.py".format(script_path)):
                 mod_path = "{}.config".format(method_name)
             else:
-                mod_path = "Methods.{}".format(method_name)
+                mod_path = "Scripts.Methods.{}".format(method_name)
             method_mod = import_module(mod_path)
             # Try and import the method
             # try:
@@ -188,6 +188,7 @@ class VLSetup:
         save duplicating work.
         """
         self.debug = debug
+
         sys.excepthook = self.handle_except
         # ======================================================================
         # Check for updates to Simulation and Project in parsed arguments
@@ -313,6 +314,7 @@ class VLSetup:
         if not hasattr(self, "_CleanupFlag"):
             self._CleanupFlag = Cleanup
         else:
+            pass
             atexit.unregister(self._Cleanup)
         atexit.register(self._Cleanup, Cleanup)
 
@@ -333,7 +335,7 @@ class VLSetup:
         if Max_Containers <= 0:
             self.Exit(ErrorMessage("Max_Containers must be positive"))
 
-    @VLF.kwarg_update
+    #@VLF.kwarg_update
     def Settings(self, **kwargs):
         # Dont specify the kwarsg so that the defauls aren't overwritten if there
         # are multiple calls to settings
@@ -370,7 +372,7 @@ class VLSetup:
                 kw_fnc(kwargs[kw_name])
         self.settings_dict = kwargs
 
-    @VLF.kwarg_update
+    #@VLF.kwarg_update
     def Parameters(
         self,
         Parameters_Master,
@@ -404,8 +406,11 @@ class VLSetup:
         # Note: The call to GetParams converts params_master/var into Namespaces
         # however we need to original strings for passing into other containers.
         # So we will ned to get them here.
-        self.Parameters_Master_str = Parameters_Master
-        self.Parameters_Var_str = Parameters_Var
+        if type(Parameters_Master)==str: self.Parameters_Master_str = Parameters_Master
+        else: self.Parameters_Master_str = "None"
+        if type(Parameters_Var)==str: self.Parameters_Var_str = Parameters_Var
+        else: self.Parameters_Var_str = "None"        
+        #self.Parameters_Var_str = ""#Parameters_Var
 
         # update Parameters_master with parser (not covered by decorator)
         arg_dict = VLF.Parser_update(["Parameters_Master"])
@@ -422,6 +427,8 @@ class VLSetup:
             method_cls = getattr(self, method_name)
             # add flag to the instance
             method_cls.SetFlag(flags["Run{}".format(method_name)])
+            method_dicts = self._CreateParameters(method_name)
+            method_cls._MethodSetup(method_dicts)      
 
     def ImportParameters(self, Rel_Parameters, ParameterArgs=None):
         """

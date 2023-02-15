@@ -44,6 +44,7 @@ class VLModule(VLSetup):
         Utils.send_data(self.tcp_sock, ready_msg)
         while True:
             data = Utils.receive_data(self.tcp_sock, self.debug)
+
             if data:
                 if data["msg"] == "Container_runs":
                     self.Logger(
@@ -54,6 +55,45 @@ class VLModule(VLSetup):
                     self.run_list = data["tasks"]
                     self.settings_dict = data["settings"]
                     self.Settings(**self.settings_dict)
+                    self.run_args = data["run_args"]
+                    self.method_name = data["Method"]
+                    self.dry_run = data["dry_run"]
+                    break
+
+        # create dictionary of parameters associated with the method_name
+        # from the parameter file(s) using the namespace defined in the
+        # method config file.
+        method_cls = getattr(self, self.method_name)
+        VLnamespace = self.method_config[self.method_name]["Namespace"]
+        method_dicts = self._CreateParameters(VLnamespace)
+        if self.dry_run:
+            print(f"Performing dry run of {data['Method']}")
+            method_cls.SetFlag(False)
+        method_cls._MethodSetup(method_dicts)
+
+        # Start heartbeat thread to message back to the server once every n seconds
+        thread = threading.Thread(target=self.heartbeat, args=())
+        thread.daemon = True
+        thread.start()
+        return
+
+    def start_module2(self):
+        import threading
+
+        # send ready message then wait to receive runs to perform from the server
+        ready_msg = {"msg": "Ready", "Cont_id": self.Container}
+        Utils.send_data(self.tcp_sock, ready_msg)
+        while True:
+            data = Utils.receive_data(self.tcp_sock, self.debug)
+
+            if data:
+                if data["msg"] == "Container_runs":
+                    self.Logger(
+                        f"container {self.Container} received job list from server.",
+                        print=True,
+                    )
+                    # full_task_list = data['tasks']
+                    self.run_list = data["tasks"]
                     self.run_args = data["run_args"]
                     self.method_name = data["Method"]
                     self.dry_run = data["dry_run"]

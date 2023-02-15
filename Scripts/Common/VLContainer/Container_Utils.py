@@ -2,6 +2,7 @@ from email import message
 import socket
 import json
 import pickle
+import dill
 from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
@@ -47,6 +48,11 @@ def Spawn_Container(VL,**kwargs):
         kwargs['Parameters_Var'] = 'None'
 
     kwargs['msg'] = "Spawn_Container"
+    
+    kwargs2 = {}
+    for key in ['msg','Cont_id','Tool','Num_Cont','Cont_runs','run_args']:
+        kwargs2[key] = kwargs[key]
+
     # Long Note: we are fully expecting Parameters_Master and Parameters_Var to be strings 
     # pointing to Runfiles. However base VirtualLab supports passing in Namespaces.
     # (see virtualLab.py line 178 and GetParams for context). 
@@ -62,14 +68,28 @@ def Spawn_Container(VL,**kwargs):
     if isinstance( kwargs['Parameters_Master'],Namespace):
         raise Exception("Passing in Namespaces is not currently supported for Container tools. \
         These must be strings pointing to a Runfile.")
-    sock = kwargs['tcp_socket']
-    kwargs.pop('tcp_socket')
+    sock = kwargs.pop('tcp_socket')
+
     vltype = kwargs['Method_Name']
     #data_string = json.dumps(data)
     # send a signal to VL_server saying you want to spawn a container
-    send_data(sock, kwargs,VL.debug)
+   
+    import sys
+    if 'Test' in sys.argv: 
+        tmpfile = "{}/vlclas.pkl".format(VL.TEMP_DIR)
+        kwargs2['class_file'] = tmpfile  
+
+        with open(tmpfile,'wb') as f:
+            dill.dump(VL,f)
+        send_data(sock, kwargs2, VL.debug)
+    else:
+        send_data(sock, kwargs, VL.debug)
+
+
+
     target_ids = []
     #wait to receive message saying the tool is finished before continuing on.
+
     while True:
         rec_dict=receive_data(sock,VL.debug)
         if rec_dict:
@@ -84,6 +104,7 @@ def Spawn_Container(VL,**kwargs):
     #  calls to: Wait_For_Container, Cont_continue and Cont_Waiting.
     if VL.__class__.__name__ == 'VLModule':
         return target_ids
+
 
     while True:
         rec_dict = receive_data(sock,VL.debug)
@@ -211,6 +232,7 @@ def send_data(conn, payload,bigPayload=False,debug=False):
         adjustments to avoid errors caused by data overflows.
     '''
     # serialize payload
+
     if debug:
         print(f'sent:{payload}')
     serialized_payload = json.dumps(payload).encode('utf-8')
@@ -253,7 +275,40 @@ def receive_data(conn,debug,payload_size=2048):
             print(f'received:{payload}')
     return (payload)
 
+def Format_Call_Str2(Module,vlab_dir,class_file,use_Apptainer,cont_id,k_flag):
+
+
+    ''' Function to format string for bind points and container to call specified tool.'''
+    import os
+    import subprocess
+##### Format cmd argumants #########
+    filepath = '-m '+ class_file
+    ID = '-I '+ str(cont_id)
+#########################################
+# Format run string and script to run   #
+# container based on Module used.       #
+#########################################
+    if use_Apptainer:
+        update_container(Module,vlab_dir)
+        call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
+                        {str(vlab_dir)}/{Module["Apptainer_file"]} {k_flag}'
+    else:
+        #docker
+        call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} {k_flag}'
+    
+    # get custom command line arguments if specified in config.
+    arguments = Module.get("cmd_args",None)
+    if arguments == None:
+        command = f'{Module["Startup_cmd"]} \
+               {filepath} {ID}'
+    else:
+        command = f'{Module["Startup_cmd"]} {arguments}'
+
+    return call_string, command
+
 def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id,k_flag):
+
+
     ''' Function to format string for bind points and container to call specified tool.'''
     import os
     import subprocess
@@ -288,7 +343,7 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
         command = f'{Module["Startup_cmd"]} {arguments}'
 
     return call_string, command
-
+    
 def check_platform():
     '''Simple function to return True on Linux and false on Mac/Windows to
     allow the use of Apptainer instead of Docker on Linux systems.

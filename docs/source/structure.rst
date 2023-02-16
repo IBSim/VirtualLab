@@ -22,14 +22,22 @@ Scripts
 
 This directory includes the scripts required to install and launch **VirtualLab**.
 
-The directory :file:`Install` contains the scripts used by the `non-interactive installation <install.html#non-interactive-installation>`_, which will install and configure **VirtualLab** and its dependencies such as python, **Code_Aster**, **SALOME** and **ERMES**.
+Install
+~~~~~~~
+The directory :file:`Install` contains the scripts used by the `non-manual installation <install.html#installation-with-the-install-script>`_, which will install and configure **VirtualLab** and its dependencies such as python, **Code_Aster**, **SALOME** and **ERMES**.
 
+Methods
+~~~~~~~
 The directory :file:`Methods` contains files for the different methods available in **VirtualLab**, such as 'Mesh' and 'Sim'.
 
+Experiments
+~~~~~~~~~~~
 The directory :file:`Experiments` contain simulation-specific scripts for each experiment available, which currently are `Tensile <virtual_exp.html#tensile-testing>`_, `LFA <virtual_exp.html#laser-flash-analysis>`_ and `HIVE <virtual_exp.html#hive>`_. Inside the experiment directory are scripts, grouped by their method type, required to run that specific virtual experiment. In :file:`Mesh` you will find **SALOME** python scripts which create the mesh of the testpiece, while in :file:`Sim` you will find the **Code_Aster** command scripts which outline the steps followed to setup the FE simulation. Alongside these files used for PreAster and PostAster can be found. :file:`DA` contains scripts used for data analysis.
 
 Other simulation-specific sub-directories may also be included in the experiment directory here, such as *Laser* for the LFA simulation which contains different laser pulse profiles measured experimentally.
 
+Common
+~~~~~~
 :file:`Common` contains scripts used by **VirtualLab** for any type of experiment. These includes setting up the environment through creating directories and inerfacing with the various packages incorporated, such as **SALOME** and **Code_Aster**.
 
 Materials

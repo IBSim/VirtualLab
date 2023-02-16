@@ -153,6 +153,7 @@ def handle_messages(
     relay_list = ["Continue", "Waiting", "Error"]
     while True:
         rec_dict = receive_data(client_socket, debug)
+
         if rec_dict == None:
             log_net_info(net_logger, "Socket has been closed")
             return
@@ -165,15 +166,16 @@ def handle_messages(
         )
         if event == "Spawn_Container":
             Module = VL_MOD[rec_dict["Tool"]]
-            path = Module['Startup_cmd']
-            basename,ext = os.path.splitext(path)
-            
-            Module['Startup_cmd'] = "{}/VL_Runner{}".format(os.path.dirname(basename),ext)
-            #Module['Startup_cmd'] = "{}_N{}".format(*os.path.splitext(path))
+
+#            path = Module['Startup_cmd']
+#            basename,ext = os.path.splitext(path)
+#            Module['Startup_cmd'] = "{}/VL_Runner{}".format(os.path.dirname(basename),ext)
+
 
             num_containers = rec_dict["Num_Cont"]
             Cont_runs = rec_dict["Cont_runs"]
-            class_file = rec_dict["class_file"]
+            class_file = rec_dict.pop("class_file")
+            paths = rec_dict.pop("paths")
             
             # setup command to run docker or Apptainer
             if use_Apptainer:
@@ -198,7 +200,6 @@ def handle_messages(
                 target_ids.append(next_cnt_id)
                 list_of_runs = Container[1]
                 task_dict[str(next_cnt_id)] = list_of_runs
-                # settings_dict[str(next_cnt_id)] = rec_dict["Settings"]
                 run_arg_dict[str(next_cnt_id)] = rec_dict["run_args"]
                 Method_dict[str(next_cnt_id)] = Module["Method"]
                 next_cnt_id += 1
@@ -210,6 +211,7 @@ def handle_messages(
                     Module,
                     vlab_dir,
                     class_file,
+                    paths,
                     use_Apptainer,
                     target_ids[n],
                 )
@@ -266,7 +268,6 @@ def handle_messages(
             data2 = {
                 "msg": "Container_runs",
                 "tasks": task_dict[str(container_id)],
-                #"settings": settings_dict[str(container_id)],
                 "run_args": run_arg_dict[str(container_id)],
                 "Method": Method_dict[str(container_id)],
                 "dry_run": dry_run,
@@ -578,7 +579,7 @@ if __name__ == "__main__":
         proc = subprocess.Popen(
             f'apptainer exec --contain --writable-tmpfs \
                     -B /usr/share/glvnd:/usr/share/glvnd -B /tmp:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {vlab_dir}/{Manager["Apptainer_file"]} '
-            f'{Manager["Startup_cmd"]} {options} -f {path} -k Test',
+            f'{Manager["Startup_cmd"]} {options} -f {path} ',
             shell=True,
         )
     else:

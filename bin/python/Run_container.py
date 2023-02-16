@@ -4,7 +4,6 @@ import argparse
 import dill
 import types
 
-
 from Scripts.Common.VLContainer import Container_Utils as Utils
 from Scripts.Common.VLModules import VLModule2
 
@@ -24,11 +23,4 @@ Module_inst.Run()
 
 Module_inst.Terminate()
 
-#VirtualLab.Mesh(**args)
-
-# this step ensures the heartbeat stops
-#Utils.Cont_Finished(VirtualLab.Container, VirtualLab.tcp_sock)
-
-#VirtualLab.CP = types.MethodType(VLModule._Cleanup, VirtualLab)
-#VirtualLab.CP(False)
 

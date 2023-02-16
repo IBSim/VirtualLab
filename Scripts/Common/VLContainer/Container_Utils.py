@@ -7,7 +7,7 @@ from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
 
-def Spawn_Container(VL,**kwargs):
+def Spawn_Container(VL,sock,**kwargs):
     ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
         with another toll in separate container. At the moment this 
@@ -44,48 +44,19 @@ def Spawn_Container(VL,**kwargs):
         ''' 
     waiting_containers = {}
 
-    if kwargs['Parameters_Var'] == None:
-        kwargs['Parameters_Var'] = 'None'
-
     kwargs['msg'] = "Spawn_Container"
     
-    kwargs2 = {}
-    for key in ['msg','Cont_id','Tool','Num_Cont','Cont_runs','run_args']:
-        kwargs2[key] = kwargs[key]
-
-    # Long Note: we are fully expecting Parameters_Master and Parameters_Var to be strings 
-    # pointing to Runfiles. However base VirtualLab supports passing in Namespaces.
-    # (see virtualLab.py line 178 and GetParams for context). 
-    # For the sake of my sanity we assume you are using normal RunFiles, which most users 
-    # likely are.
-    #
-    # Therefore this check is here to catch any determined soul and let you know if you 
-    # want to pass in Namespaces for container tools you will need implement it yourself. 
-    # In principle this means converting Namespace to a dict with vars(Parameters_Master).
-    # Then sending it over as json string and converting it back on the other side.
-    # In practice you may run into issues with buffer sizes for sock.recv as the strings
-    # can get very long indeed.
-    if isinstance( kwargs['Parameters_Master'],Namespace):
-        raise Exception("Passing in Namespaces is not currently supported for Container tools. \
-        These must be strings pointing to a Runfile.")
-    sock = kwargs.pop('tcp_socket')
-
     vltype = kwargs['Method_Name']
     #data_string = json.dumps(data)
     # send a signal to VL_server saying you want to spawn a container
    
-    import sys
-    if 'Test' in sys.argv: 
-        tmpfile = "{}/vlclas.pkl".format(VL.TEMP_DIR)
-        kwargs2['class_file'] = tmpfile  
+    tmpfile = "{}/vlclass.pkl".format(VL.TEMP_DIR)
+    kwargs['class_file'] = tmpfile
+    kwargs['paths'] = VL._AddedPaths
+    with open(tmpfile,'wb') as f:
+        dill.dump(VL,f)
 
-        with open(tmpfile,'wb') as f:
-            dill.dump(VL,f)
-        send_data(sock, kwargs2, VL.debug)
-    else:
-        send_data(sock, kwargs, VL.debug)
-
-
+    send_data(sock, kwargs, VL.debug)
 
     target_ids = []
     #wait to receive message saying the tool is finished before continuing on.
@@ -275,7 +246,7 @@ def receive_data(conn,debug,payload_size=2048):
             print(f'received:{payload}')
     return (payload)
 
-def Format_Call_Str(Module,vlab_dir,class_file,use_Apptainer,cont_id):
+def Format_Call_Str(Module,vlab_dir,class_file,pythonpaths,use_Apptainer,cont_id):
 
 
     ''' Function to format string for bind points and container to call specified tool.'''
@@ -284,6 +255,8 @@ def Format_Call_Str(Module,vlab_dir,class_file,use_Apptainer,cont_id):
 ##### Format cmd argumants #########
     filepath = '-m '+ class_file
     ID = '-I '+ str(cont_id)
+    pypath = '-p ' + ':'.join(pythonpaths)
+
 #########################################
 # Format run string and script to run   #
 # container based on Module used.       #
@@ -300,7 +273,7 @@ def Format_Call_Str(Module,vlab_dir,class_file,use_Apptainer,cont_id):
     arguments = Module.get("cmd_args",None)
     if arguments == None:
         command = f'{Module["Startup_cmd"]} \
-               {filepath} {ID}'
+               {filepath} {ID} {pypath}'
     else:
         command = f'{Module["Startup_cmd"]} {arguments}'
 

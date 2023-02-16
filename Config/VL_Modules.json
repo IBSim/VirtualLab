@@ -31,21 +31,21 @@
         "Docker_url": "ibsim/vl_salomemeca",
         "Tag": "latest",
         "Apptainer_file": "Containers/VL_Salome.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Salome.sh",
+        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Runner.sh",
         "Method":"Mesh"
     },
     "DA": {
         "Docker_url": "ibsim/vl_salomemeca",
         "Tag": "latest",
         "Apptainer_file": "Containers/VL_Salome.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_DA.sh",
+        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Runner.sh",
         "Method":"DA"
     },
     "Aster": {
         "Docker_url": "ibsim/vl_salomemeca",
         "Tag": "latest",
         "Apptainer_file": "Containers/VL_Salome.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Aster.sh",
+        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Runner.sh",
         "Method":"Sim"
     },
     "Test_Comms": {

@@ -1,40 +1,14 @@
 #!/usr/bin/env python3
 
-import sys
-sys.dont_write_bytecode=True
 import os
-from subprocess import Popen, PIPE, STDOUT
 import uuid
 import pickle
 
-import VLconfig
+from Scripts.Common.VLContainer import Container_Utils as Utils
+import ContainerConfig
 
-Exec = getattr(VLconfig,'SalomeExec','salome')
+
 Dir = os.path.dirname(os.path.abspath(__file__))
-
-Container = getattr(VLconfig,'SalomeContainer',None)
-if Container:
-    import ContainerConfig
-    SalomeContainer = getattr(ContainerConfig,Container)
-
-def Kill(Port):
-    if type(Port) == int:
-        KillPort=Port
-    elif type(Port) == str:
-        with open(Port,'r') as f:
-            KillPort = int(f.readline())
-    else : KillPort = 0
-
-    if False:
-        cmlst = Exec.split() + ['kill', str(KillPort)]
-        SubProc = Popen(cmlst)
-    else :
-        if Container:
-            command = "{} {} kill {}".format(SalomeContainer.Call, SalomeContainer.SalomeExec,KillPort)
-        else:
-            command = "{} kill {}".format(Exec, KillPort)
-        SubProc = Popen(command, shell='TRUE')
-    SubProc.wait()
 
 def Run(Script, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = '/tmp'):
     '''
@@ -45,10 +19,14 @@ def Run(Script, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = 
     tempdir: Location where pickled object can be written to
     '''
 
+    # GetContainerInfo
+    SalomeContainer = getattr(ContainerConfig,'Salome')
+
+
     # Add paths provided to python path for subprocess
     AddPath = [AddPath] if type(AddPath) == str else AddPath
-    PyPath = ["{}:".format(path) for path in AddPath + [Dir]]
-    PyPath = "".join(PyPath)
+    PyPath = AddPath + ['/home/ibsim/VirtualLab',Dir]
+    PyPath = ":".join(PyPath)
 
     _argstr = []
     if DataDict:
@@ -58,26 +36,10 @@ def Run(Script, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = 
         _argstr.append('DataDict={}'.format(pth))
     argstr = ",".join(_argstr)
 
-
-    portfile = "{}/{}".format(tempdir,uuid.uuid4())
-    GUIflag = '-g' if GUI else '-t'
-    env = {**os.environ, 'PYTHONPATH': PyPath + os.environ.get('PYTHONPATH','')}
-
-    # Run mesh in Salome
-    if Container:
-        command = "{} {} {} --ns-port-log {} {} args:{} ".format(SalomeContainer.Call,
-                                                          SalomeContainer.SalomeExec,
-                                                          GUIflag, portfile, Script, argstr)
-    else:
-        command = "{} {} --ns-port-log {} {} args:{} ".format(Exec, GUIflag, portfile, Script, argstr)
-    if OutFile:
-        with open(OutFile,'w') as f:
-            SubProc = Popen(command, shell='TRUE',cwd=tempdir, stdout=f, stderr=f,env=env)
-    else :
-        SubProc = Popen(command, shell='TRUE',cwd=tempdir, stdout=sys.stdout, stderr=sys.stderr,env=env)
-
-    ReturnCode = SubProc.wait()
-
-    Kill(portfile)
-
-    return ReturnCode
+    GUIflag = 'g' if GUI else 't'
+   
+    Wrapscript = "{}/SalomeExec.sh".format(Dir)
+    command = "{} -c {} -f {} -a {} -p {} -r {} ".format(Wrapscript, SalomeContainer.Command, Script, argstr, PyPath, GUIflag)
+                                                         
+    RC = Utils.Exec_Container(SalomeContainer.ContainerFile,command,SalomeContainer.bind)
+    return RC

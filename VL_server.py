@@ -164,13 +164,32 @@ def handle_messages(
             net_logger,
             f'Server - received "{event}" event from container {container_id}',
         )
-        if event == "Spawn_Container":
+        
+        
+        
+
+            
+        if event == 'Exec':
+
+            if use_Apptainer:
+                container_cmd = "apptainer exec --contain --writable-tmpfs"
+                
+            command = rec_dict['command']
+            container_path = rec_dict['container_path']
+            bind = rec_dict['bind']
+            
+            if bind:
+                bind_str = ','.join(bind) # convert bind list to comma separated string
+                container_cmd += " --bind {}".format(bind_str)
+            
+            container_exec = "{} {} {}".format(container_cmd,container_path,command)
+            
+            container_process = subprocess.Popen(container_exec, shell=True)
+            err = container_process.wait()
+            send_data(client_socket, err, debug)        
+        
+        elif event == "Spawn_Container":
             Module = VL_MOD[rec_dict["Tool"]]
-
-#            path = Module['Startup_cmd']
-#            basename,ext = os.path.splitext(path)
-#            Module['Startup_cmd'] = "{}/VL_Runner{}".format(os.path.dirname(basename),ext)
-
 
             num_containers = rec_dict["Num_Cont"]
             Cont_runs = rec_dict["Cont_runs"]
@@ -386,6 +405,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,options):
         # by vl_manger we can use this to identify the socket for
         # the manger
         manager_socket, manager_address = sock.accept()
+
         log_net_info(net_logger, f"received request for connection.")
         rec_dict = receive_data(manager_socket, debug)
         event = rec_dict["msg"]
@@ -423,6 +443,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,options):
     while True:
         # check for new connections and them to list
         client_socket, client_address = sock.accept()
+
         waiting_cnt_sockets[str(next_cnt_id)] = {
             "socket": client_socket,
             "id": next_cnt_id,
@@ -592,6 +613,6 @@ if __name__ == "__main__":
         )
     lock.release()
     # wait until virtualLab is done before closing
-    proc.wait()
-    
+    err = proc.wait()
+
 

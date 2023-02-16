@@ -7,7 +7,19 @@ from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
 
+
+def Exec_Container(container_path,command,bind=[]):
+    sock = create_tcp_socket() # create new socket
+    # send data to relevant function in VLserver
+    info = {'msg':'Exec','Cont_id':123,'container_path':container_path, 'command':command,'bind':bind} 
+    send_data(sock,info)
+    # wait for data to come back to say how it went
+    ReturnCode = receive_data(sock, 0) # return code from subprocess
+    return ReturnCode
+
 def Spawn_Container(VL,sock,**kwargs):
+
+
     ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
         with another toll in separate container. At the moment this 

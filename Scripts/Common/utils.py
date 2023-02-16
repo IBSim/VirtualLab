@@ -1,4 +1,5 @@
 from Scripts.Common import VLFunctions as VLF
+from Scripts.Common.VLContainer import Container_Utils as Utils
 
 class Method_base():
     def __init__(self,VL):
@@ -49,6 +50,33 @@ class Method_base():
         else:
             for funcname in funcnames:
                 self._WrapVL2(VL,funcname)
+
+
+    def _SpawnBase(self, VL, MethodName,ContainerName, Cont_id=1, Num_Cont=1, run_kwargs={}):
+        Cont_runs = VL.container_list.get(MethodName, None)
+
+        if Cont_runs == None:
+            print(
+                f"Warning: Method {MethodName} was called in the inputfile but has no coresponding"
+                f" namespace in the parameters file. To remove this warning message please set Run{MethodName}=False."
+            )
+            return
+
+        return_value = Utils.Spawn_Container(
+                        VL,
+                        VL.tcp_sock,
+                        Method_Name=MethodName,
+                        Tool=ContainerName,
+                        Cont_id=Cont_id,
+                        Num_Cont=Num_Cont,
+                        Cont_runs=Cont_runs,
+                        run_args=run_kwargs,
+                        )
+
+        if return_value != "0":
+            # an error occurred so exit VirtualLab
+            VL.Exit("Error Occurred with Sim")
+        return
 
     def SetFlag(self,flag):
         self.RunFlag = flag

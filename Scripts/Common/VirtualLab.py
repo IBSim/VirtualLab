@@ -72,6 +72,14 @@ class VLSetup:
         attributes.pop("tcp_sock", None)
         return attributes
 
+    def AddToPath(self,path,ix=-1):
+        ''' A more robust way of adding paths as they will also be available inside 
+        every container'''
+        sys.path.insert(ix,path)
+        if not hasattr(self,'_AddedPaths'): self._AddedPaths = []
+        self._AddedPaths.append(path)
+
+
     def _AddMethod(self):
         """Add in the methods defined in Scripts/Methods to the VirtualLab class."""
         MethodsDir = "{}/Methods".format(self.SCRIPTS_DIR)
@@ -220,7 +228,8 @@ class VLSetup:
         self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
         # Add these to path
-        sys.path = [self.SCRIPTS_DIR, self.COM_SCRIPTS, self.SIM_SCRIPTS] + sys.path
+        for path in [self.SCRIPTS_DIR, self.COM_SCRIPTS, self.SIM_SCRIPTS]:
+            self.AddToPath(path)
 
         # =======================================================================
         # Define & create temporary directory for work to be saved to

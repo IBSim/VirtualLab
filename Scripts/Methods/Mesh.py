@@ -21,7 +21,7 @@ class Method(Method_base):
         # if either MeshDicts is empty or RunMesh is False we will return
         if not (self.RunFlag and MeshDicts):
             return
-        sys.path.insert(0, VL.SIM_MESH)
+        VL.AddToPath(VL.SIM_MESH,0)
 
         FileDict = {}  # Something we want to keep track of
         for MeshName, ParaDict in MeshDicts.items():
@@ -83,37 +83,37 @@ class Method(Method_base):
 
             self.Data[MeshName] = MeshDict.copy()
 
+#    def Spawn(self, VL, **kwargs):
+#        MethodName = "Mesh"
+#        ContainerName = "Salome"
+#        
+#        Cont_runs = VL.container_list.get(MethodName, None)
+#        if Cont_runs == None:
+#            print(
+#                f"Warning: Method {MethodName} was called in the inputfile but has no coresponding"
+#                f" namespace in the parameters file. To remove this warning message please set Run{MethodName}=False."
+#            )
+#            return
+
+#        return_value = Utils.Spawn_Container(
+#            VL,
+#            Cont_id=1,
+#            Tool=ContainerName,
+#            Method_Name=MethodName,
+#            Num_Cont=1,
+#            Cont_runs=Cont_runs,
+#            tcp_socket=VL.tcp_sock,
+#            run_args=kwargs,
+#        )
+
+#        if return_value != "0":
+#            # an error occurred so exit VirtualLab
+#            VL.Exit("Error Occurred with Mesh")
+#        return
+
     def Spawn(self, VL, **kwargs):
-        MethodName = "Mesh"
-        ContainerName = "Salome"
-        Cont_runs = VL.container_list.get(MethodName, None)
-        if Cont_runs == None:
-            print(
-                f"Warning: Method {MethodName} was called in the inputfile but has no coresponding"
-                f" namespace in the parameters file. To remove this warning message please set Run{MethodName}=False."
-            )
-            return
-
-        return_value = Utils.Spawn_Container(
-            VL,
-            Cont_id=1,
-            Tool=ContainerName,
-            Method_Name=MethodName,
-            Num_Cont=1,
-            Cont_runs=Cont_runs,
-            Parameters_Master=VL.Parameters_Master_str,
-            Parameters_Var=VL.Parameters_Var_str,
-            Project=VL.Project,
-            Simulation=VL.Simulation,
-            Settings=VL.settings_dict,
-            tcp_socket=VL.tcp_sock,
-            run_args=kwargs,
-        )
-
-        if return_value != "0":
-            # an error occurred so exit VirtualLab
-            VL.Exit("Error Occurred with Mesh")
-        return
+        self._SpawnBase(VL,"Mesh","Salome",run_kwargs=kwargs)
+         
 
     @staticmethod
     def PoolRun(VL, MeshDict, GUI=False):

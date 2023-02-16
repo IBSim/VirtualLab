@@ -377,33 +377,6 @@ class Method(Method_base):
         massively outweighs any minute performance gain.
 
         """
-        MethodName = "CT_Scan"
-        ContainerName = "GVXR"
-        Cont_runs = VL.container_list.get(MethodName, None)
-        if Cont_runs == None:
-            print(
-                f"Warning: Method {MethodName} was called in the inputfile but has no coresponding"
-                f" namespace in the parameters file. To remove this warning message please set Run{MethodName}=False."
-            )
-            return
 
-        return_value = Utils.Spawn_Container(
-            VL,
-            Cont_id=1,
-            Tool=ContainerName,
-            Method_Name=MethodName,
-            Num_Cont=len(VL.container_list[MethodName]),
-            Cont_runs=Cont_runs,
-            Parameters_Master=VL.Parameters_Master_str,
-            Parameters_Var=VL.Parameters_Var_str,
-            Project=VL.Project,
-            Simulation=VL.Simulation,
-            Settings=VL.settings_dict,
-            tcp_socket=VL.tcp_sock,
-            run_args=kwargs,
-        )
-
-        if return_value != "0":
-            # an error occurred so exit VirtualLab
-            VL.Exit("Error Occurred with GVXR")
-        return
+        self._SpawnBase(VL,"CT_Scan","GVXR", Num_Cont=len(VL.container_list[MethodName]), run_kwargs=kwargs) # method name and container name
+ 

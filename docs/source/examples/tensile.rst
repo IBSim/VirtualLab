@@ -159,7 +159,7 @@ The mesh generated for this simulation is ‘Notch1’, while the name for the s
 
 Since *Force* and *Displacement* are attributes of ``Sim`` a force-controlled simulation (with magnitude 1000000N) is run, along with a displacement controlled simulation (with enforced displacement 0.01m). The material properties of copper will be used for the simulation.
 
-With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`, when launching **VirtualLab** firstly you will see information relating to the mesh printed to the terminal, e.g. the number of nodes and location the mesh is saved, followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window.
+With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`, when launching **VirtualLab** firstly you will see information relating to the mesh printed to the terminal, e.g. the number of nodes and location the mesh is saved, followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window, see :numref:`Fig. %s <Xterm>`.
 
 .. admonition:: Action
    :class: Action
@@ -167,6 +167,13 @@ With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`
    Launch your first **VirtualLab** simulation by executing the following command from command line (CL) of the terminal whilst within the **VirtualLab** directory::
 
      VirtualLab -f RunFiles/RunTutorials.py
+
+
+.. _Xterm:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_02.png
+
+    Xterm window which opens if **VirtualLab** is set to run with *Mode* as 'Interactive'.
 
 Running this simulation will create the following outputs:
 
@@ -188,7 +195,7 @@ The file :file:`Aster/Export` was used to launch **Code_Aster** and contains inf
 .. note::
     The file extension :file:`.rmed` is short for 'results-MED' and is used for all **Code_Aster** results files.
 
-As *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_ :file:`TensileTest.rmed` is opened in **ParaVis** for visualisation automatically. Here you will be able to view the following fields:
+Because *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_, :file:`TensileTest.rmed` is opened in **ParaVis** for visualisation automatically. Here you will be able to view the following fields:
 
    | ``Force_Displacement`` - Displacement for constant force simulation.
    | ``Force_Stress``       - Stress for constant force simulation.

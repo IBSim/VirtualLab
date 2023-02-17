@@ -3,6 +3,9 @@ The RunFile Explained
 
 The *RunFile* contains all the necessary information to launch analyses using **VirtualLab**. The *RunFile* is executed in strict order such that it is possible to build up a complex workflow with conditional dependencies. This does mean that it is important to carefully consider the order of the *RunFile* sections and sub-sections.
 
+Template
+********
+
 .. admonition:: Template
    :class: action
 
@@ -70,6 +73,7 @@ The *RunFile* contains all the necessary information to launch analyses using **
 
         VirtualLab.Voxelize()
         
+
 Header
 ******
 
@@ -264,7 +268,7 @@ This function creates the parameter files defined using `Parameters_Master`_ and
                RunMesh=True,
                RunSim=True,
                RunDA=True,
-               RunVox=False
+               RunVox=True
                )
 
 
@@ -394,4 +398,69 @@ This function is the data analysis routine. The analyses, defined using the name
 ``VirtualLab.Voxelize``
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-This function is the routine to call Cad2Vox. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images are saved to :file:`Output/$SIMULATION/$PROJECT/Voxel-Images`. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
+This function is the routine to call **Cad2Vox**. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images are saved to :file:`Output/$SIMULATION/$PROJECT/Voxel-Images`. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
+
+Example
+*******
+
+.. admonition:: Example
+   :class: action
+
+   An example *RunFile* for **VirtualLab** which will run a virtual tensile test::
+
+        #!/usr/bin/env python3
+        #===============================================================================
+        # Header
+        #===============================================================================
+
+        import sys
+        sys.dont_write_bytecode=True
+        from Scripts.Common.VirtualLab import VLSetup
+        
+        #===============================================================================
+        # Definitions
+        #===============================================================================
+        
+        Simulation='Tensile'
+        Project='Tutorials'
+        Parameters_Master='TrainingParameters'
+        Parameters_Var=None
+        
+        #===============================================================================
+        # Environment
+        #===============================================================================
+
+        VirtualLab=VLSetup(
+                   Simulation,
+                   Project
+                   )
+
+        VirtualLab.Settings(
+                   Mode='Interactive',
+                   Launcher='Process',
+                   NbJobs=1
+                   )
+
+        VirtualLab.Parameters(
+                   Parameters_Master,
+                   Parameters_Var,
+                   RunMesh=True,
+                   RunSim=True,
+                   RunDA=False,
+                   RunVox=False
+                   )
+        
+        #===============================================================================
+        # Methods
+        #===============================================================================
+
+        VirtualLab.Mesh()
+
+        VirtualLab.Sim(
+                   ShowRes=True
+                   )
+
+        VirtualLab.DA()
+
+        VirtualLab.Voxelize()
+        

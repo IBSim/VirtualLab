@@ -198,62 +198,65 @@ As *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#v
 .. note::
     You will need to close the xterm window once the simulation has completed for the results to open in **ParaVis**.
 
-Some text here
+.. admonition:: File structure hierarchy
+   :class: action
 
-| VirtualLab
-| ├── .log
-| ├── Config
-| ├── Containers
-| ├── Input
-| │   ├── HIVE
-| │   ├── LFA
-| │   └── Tensile
-| │       └── Tutorials
-| │           └── TrainingParameters.py
-| ├── Materials
-| │   ├── Copper
-| │   │   ├── Alpha.dat
-| │   │   ├── Cp.dat
-| │   │   ├── Lambda.dat
-| │   │   ├── PoisRat.dat
-| │   │   ├── Rho.dat
-| │   │   └── Youngs.dat
-| │   ├── Copper_NL
-| │   ├── Tungsten
-| │   └── Tungsten_NL
-| ├── Output
-| │   └── Tensile
-| │       └── Tutorials
-| │           ├── Meshes
-| │           │   ├── Notch1.log
-| │           │   ├── Notch1.med
-| │           │   └── Notch1.py
-| │           └── Single
-| │               ├── Aster
-| │               │   ├── AsterLog
-| │               │   ├── Export
-| │               │   └── TensileTest.rmed
-| │               ├── Output.log
-| │               └── Parameters.py
-| ├── RunFiles
-| │   └── RunTutorials.py
-| ├── Scripts
-| │   ├── Common
-| │   ├── Experiments
-| │   │   ├── HIVE
-| │   │   ├── LFA
-| │   │   └── Tensile
-| │   │       ├── Mesh
-| │   │       │   └── DogBone.py
-| │   │       └── Sim
-| │   │           └── Tensile.comm
-| │   ├── Install
-| │   └── Methods
-| ├── bin
-| ├── docs
-| └── tests
-| 
-| 
+   Location of the key files and directories for Task 1 of this tutorial::
+
+        | VirtualLab
+        | ├── .log
+        | ├── Config
+        | ├── Containers
+        | ├── Input
+        | │   ├── HIVE
+        | │   ├── LFA
+        | │   └── Tensile
+        | │       └── Tutorials
+        | │           └── TrainingParameters.py
+        | ├── Materials
+        | │   ├── Copper
+        | │   │   ├── Alpha.dat
+        | │   │   ├── Cp.dat
+        | │   │   ├── Lambda.dat
+        | │   │   ├── PoisRat.dat
+        | │   │   ├── Rho.dat
+        | │   │   └── Youngs.dat
+        | │   ├── Copper_NL
+        | │   ├── Tungsten
+        | │   └── Tungsten_NL
+        | ├── Output
+        | │   └── Tensile
+        | │       └── Tutorials
+        | │           ├── Meshes
+        | │           │   ├── Notch1.log
+        | │           │   ├── Notch1.med
+        | │           │   └── Notch1.py
+        | │           └── Single
+        | │               ├── Aster
+        | │               │   ├── AsterLog
+        | │               │   ├── Export
+        | │               │   └── TensileTest.rmed
+        | │               ├── Output.log
+        | │               └── Parameters.py
+        | ├── RunFiles
+        | │   └── RunTutorials.py
+        | ├── Scripts
+        | │   ├── Common
+        | │   ├── Experiments
+        | │   │   ├── HIVE
+        | │   │   ├── LFA
+        | │   │   └── Tensile
+        | │   │       ├── Mesh
+        | │   │       │   └── DogBone.py
+        | │   │       └── Sim
+        | │   │           └── Tensile.comm
+        | │   ├── Install
+        | │   └── Methods
+        | ├── bin
+        | ├── docs
+        | └── tests
+        | 
+        | 
 
 Task 2: Running Multiple Simulations
 ************************************

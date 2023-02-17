@@ -8,38 +8,70 @@ The *RunFile* contains all the necessary information to launch analysis using **
 
    A template *RunFile* for **VirtualLab**::
 
-        Simulation='Tensile'
-        Project='Tutorials'
-        Parameters_Master='TrainingParameters'
-        Parameters_Var=None
+        #!/usr/bin/env python3
+        #===============================================================================
+        # Header
+        #===============================================================================
+
+        import sys
+        sys.dont_write_bytecode=True
+        from Scripts.Common.VirtualLab import VLSetup
+        
+        #===============================================================================
+        # Setup
+        #===============================================================================
+        
+        Simulation='$TYPE'
+        Project='$USER_STRING'
+        Parameters_Master='$FNAME'
+        Parameters_Var='$FNAME'/None
+        
+        #===============================================================================
+        # Environment
+        #===============================================================================
 
         VirtualLab=VLSetup(
         	       Simulation,
-        	       Project)
+        	       Project
+                 )
 
         VirtualLab.Settings(
-                   Mode='Interactive',
-                   Launcher='Process',
-                   NbJobs=1)
+                   Mode='$TYPE',
+                   Launcher='$TYPE',
+                   NbJobs=$INTEGER
+                   )
 
         VirtualLab.Parameters(
                    Parameters_Master,
                    Parameters_Var,
-                   RunMesh=True,
-                   RunSim=True,
-                   RunDA=True)
+                   RunMesh=bool,
+                   RunSim=bool,
+                   RunDA=bool,
+                   RunVox=bool
+                   )
+        
+        #===============================================================================
+        # Methods
+        #===============================================================================
 
         VirtualLab.Mesh(
-                   ShowMesh=False,
-                   MeshCheck=None)
+                   ShowMesh=bool,
+                   MeshCheck='$MESH_NAME'/None
+                   )
 
         VirtualLab.Sim(
-                   RunPreAster=True,
-                   RunAster=True,
-                   RunPostAster=True,
-                   ShowRes=True)
+                   RunPreAster=bool,
+                   RunAster=bool,
+                   RunPostAster=bool,
+                   ShowRes=bool
+                   )
 
         VirtualLab.DA()
+
+        VirtualLab.Voxelize()
+        
+Header
+******
 
 At the top of each *RunFile* is the header, common for all analysis, which includes various commands e.g. importing libraries. ::
 
@@ -48,6 +80,9 @@ At the top of each *RunFile* is the header, common for all analysis, which inclu
   import sys
   sys.dont_write_bytecode=True
   from Scripts.Common.VirtualLab import VLSetup
+
+Setup
+*****
 
 Following this is the setup section, where variables are defined which are compulsory to launch **VirtualLab** successfully.
 
@@ -194,7 +229,7 @@ NbJobs
 Usage:
 ::
   
-  NbJobs = '$INTEGER' (int, optional)
+  NbJobs = $INTEGER (int, optional)
 
 Defines how many of the studies that will run concurrently when using either the 'process' or 'MPI' launcher. Default is 1.
 
@@ -276,7 +311,7 @@ MeshCheck
 Usage:
 ::
   
-  MeshCheck = '$MESH_NAME' (optional)
+  MeshCheck = '$MESH_NAME'/None (optional)
 
 '$MESH_NAME' is constructed in the **SALOME** GUI for debugging. Default is None.
 

@@ -31,9 +31,9 @@ The *RunFile* contains all the necessary information to launch analyses using **
         #===============================================================================
 
         VirtualLab=VLSetup(
-        	       Simulation,
-        	       Project
-                 )
+        	         Simulation,
+        	         Project
+                   )
 
         VirtualLab.Settings(
                    Mode='$TYPE',
@@ -190,15 +190,22 @@ The next section is for setting the **VirtualLab** environment. That is, how the
 VLSetup
 ~~~~~~~
 
-``VLSetup`` takes the previously set `Definitions`_ to start building the environment. It is unlikely that you will need to amend this section.
+``VLSetup`` takes the previously set `Definitions`_ to start building the environment. It is unlikely that you will need to amend this section. ::
+
+    VirtualLab=VLSetup(
+        	     Simulation,
+        	     Project
+               )
 
 ``VirtualLab.Settings``
 ~~~~~~~~~~~~~~~~~~~~~~~
-This is an optional attribute of VirtualLab where settings can be changed. ::
+This is an optional attribute of **VirtualLab** where settings can be changed. ::
 
-    VirtualLab.Settings(Mode='Headless',
-                        Launcher='Process',
-                        NbJobs=1)
+    VirtualLab.Settings(
+               Mode='Headless',
+               Launcher='Process',
+               NbJobs=1
+               )
 
 Mode
 ####

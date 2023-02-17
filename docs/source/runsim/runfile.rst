@@ -233,7 +233,7 @@ Usage:
   
   Launcher = '$TYPE' (str, optional)
 
-This defines the method used to launch the VirtualLab study. Currently available options are:
+This defines the method used to launch the **VirtualLab** study. Currently available options are:
 
 *   'Sequential' - Each operation is run sequentially (no parallelism).
 *   'Process' - Parallelism for a single node only. (Default)
@@ -256,7 +256,7 @@ Defines how many of the studies that will run concurrently when using either the
 ``VirtualLab.Parameters``
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This function creates the parameter files defined using `Parameters_Master`_ and `Parameters_Var`_. It also performs some checks, such as checking defined files exist in their expected locations, i.e., Parameters_Master, Parameters_Var and the files specified therein (Mesh.File, Sim.AsterFile etc.). ::
+This function creates the parameter files defined using `Parameters_Master`_ and `Parameters_Var`_. It also performs some checks, such as checking defined files exist in their expected locations, i.e., *Parameters_Master*, *Parameters_Var* and the files specified therein (Mesh.File, Sim.AsterFile etc.). ::
 
     VirtualLab.Parameters(
                Parameters_Master,
@@ -277,7 +277,7 @@ Usage:
   
   Run$METHOD = bool (optional)
 
-Indicates whether or not the method will be run. Default is True. Currently available options are:
+Indicates whether or not the method will be run. Default is :code:`True`. Currently available options are:
 
 *   Mesh - For geometry creation and meshing.
 *   Sim - For running simulations.
@@ -287,7 +287,7 @@ Indicates whether or not the method will be run. Default is True. Currently avai
 Methods
 *******
 
-This section is where the bulk of the activity of **VirtualLab** occurs. That is, until now, we have only put in place the necessary information to initiate a task. The methods section controls precisely what tasks **VirtualLab** will perform. They can be simple one step sequential tasks or highly complex parallelised tasks making use of multiple software packages.
+This section is where the bulk of the activity of **VirtualLab** occurs. That is, until now, we have only put in place the necessary information to initiate a task. The methods section controls precisely which tasks **VirtualLab** will perform. They can be simple one step sequential tasks or highly complex parallelised tasks making use of multiple software packages.
 
 ``VirtualLab.Mesh``
 ~~~~~~~~~~~~~~~~~~~
@@ -310,7 +310,7 @@ Usage:
   
   ShowMesh = bool (optional)
 
-Indicates whether or not to open created mesh(es) in the **SALOME** GUI for visualisation to assess their suitability. **VirtualLab** will terminate once the GUI is closed and no simulation will be carried out. Default is False.
+Indicates whether or not to open created mesh(es) in the **SALOME** GUI for visualisation to assess their suitability. **VirtualLab** will terminate once the GUI is closed and no simulation will be carried out. Default is :code:`False`.
 
 MeshCheck
 #########
@@ -348,7 +348,7 @@ Usage:
   
   RunPreAster = bool (optional)
 
-Indicates whether or not to run the optional pre-processing script provided in `Sim.PreAsterFile`. Default is True.
+Indicates whether or not to run the optional pre-processing script provided in `Sim.PreAsterFile`. Default is :code:`True`.
 
 RunAster
 ########
@@ -360,7 +360,7 @@ Usage:
   
   RunAster = bool (optional)
 
-Indicates whether or not to run the **Code_Aster** script provided in ``Sim.AsterFile``. Default is True.
+Indicates whether or not to run the **Code_Aster** script provided in ``Sim.AsterFile``. Default is :code:`True`.
 
 RunPostAster
 ############
@@ -372,7 +372,7 @@ Usage:
   
   RunPostAster = bool (optional)
 
-Indicates whether or not to run the optional post-processing script provided in ``Sim.PostAsterFile``. Default is True.
+Indicates whether or not to run the optional post-processing script provided in ``Sim.PostAsterFile``. Default is :code:`True`.
 
 ShowRes
 #######
@@ -384,14 +384,14 @@ Usage:
   
   ShowRes = bool (optional)
 
-Visualises the .rmed results file(s) produced by **Code_Aster** through the **ParaVis** module in **SALOME**. Default is False.
+Visualises the .rmed results file(s) produced by **Code_Aster** through the **ParaVis** module in **SALOME**. Default is :code:`False`.
 
 ``VirtualLab.DA``
 ~~~~~~~~~~~~~~~~~
 
-This function is the data analysis routine. The analyses, defined using the namespace ``DA`` in *Parameters_Master* and *Parameters_Var*, are carried out. The results are saved to Output/$SIMULATION/$PROJECT. If RunDA is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
+This function is the data analysis routine. The analyses, defined using the namespace ``DA`` in *Parameters_Master* and *Parameters_Var*, are carried out. The results are saved to :file:`Output/$SIMULATION/$PROJECT`. If RunDA is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
 
 ``VirtualLab.Voxelize``
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-This function is the routine to call Cad2Vox. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images are saved to Output/$SIMULATION/$PROJECT/Voxel-Images. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
+This function is the routine to call Cad2Vox. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images are saved to :file:`Output/$SIMULATION/$PROJECT/Voxel-Images`. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.

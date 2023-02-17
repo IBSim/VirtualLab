@@ -17,9 +17,9 @@ import json
 import sys
 from pathlib import Path
 import time
-
-# import Scripts.Common.VLContainer.VL_Modules as VL_MOD
 import yaml
+
+import VLconfig
 from Scripts.Common.VLContainer.Container_Utils import (
     check_platform,
     Format_Call_Str,
@@ -27,9 +27,16 @@ from Scripts.Common.VLContainer.Container_Utils import (
     receive_data,
     setup_networking_log,
     log_net_info,
-    get_vlab_dir,
     host_to_container_path,
+    bind_list2string,
+    path_change_binder,
+    Exec_Container_Manager
 )
+
+bind_points_default = [['/usr/share/glvnd','/usr/share/glvnd'],
+                       ['/tmp','/tmp'],
+                       [VLconfig.VL_HOST_DIR,VLconfig.VL_DIR_CONT]
+                      ]
 
 
 def ContainerError(out, err):
@@ -165,28 +172,24 @@ def handle_messages(
             f'Server - received "{event}" event from container {container_id}',
         )
         
-        
-        
-
-            
+          
         if event == 'Exec':
-
             if use_Apptainer:
                 container_cmd = "apptainer exec --contain --writable-tmpfs"
+
+            args = rec_dict.get('args',())
+            kwargs = rec_dict.get('kwargs',{})
+            
+            stdout = kwargs.get('stdout', None)
+            if stdout is not None: 
+                # stdout is a file path within VL_Manager so need to get the path on the host
+                stdout = path_change_binder(stdout,bind_points_default)
+                kwargs['stdout'] = stdout
+            
+            RC = Exec_Container_Manager(container_cmd, *args, **kwargs)
+            send_data(client_socket, RC, debug) 
                 
-            command = rec_dict['command']
-            container_path = rec_dict['container_path']
-            bind = rec_dict['bind']
-            
-            if bind:
-                bind_str = ','.join(bind) # convert bind list to comma separated string
-                container_cmd += " --bind {}".format(bind_str)
-            
-            container_exec = "{} {} {}".format(container_cmd,container_path,command)
-            
-            container_process = subprocess.Popen(container_exec, shell=True)
-            err = container_process.wait()
-            send_data(client_socket, err, debug)        
+      
         
         elif event == "Spawn_Container":
             Module = VL_MOD[rec_dict["Tool"]]
@@ -545,7 +548,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     # get vlab_dir either from cmd args or environment
-    vlab_dir = get_vlab_dir()
+    vlab_dir = VLconfig.VL_HOST_DIR
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
     # set flag to run tests instate of the normal runfile
@@ -594,12 +597,13 @@ if __name__ == "__main__":
     # start VirtualLab
     lock.acquire()
 
-
+    # convert default bind points to container style string
+    bind_str = bind_list2string(bind_points_default) 
 
     if use_Apptainer:
         proc = subprocess.Popen(
             f'apptainer exec --contain --writable-tmpfs \
-                    -B /usr/share/glvnd:/usr/share/glvnd -B /tmp:/tmp -B {vlab_dir}:/home/ibsim/VirtualLab {vlab_dir}/{Manager["Apptainer_file"]} '
+                    --bind {bind_str} {vlab_dir}/{Manager["Apptainer_file"]} '
             f'{Manager["Startup_cmd"]} {options} -f {path} ',
             shell=True,
         )
@@ -612,7 +616,9 @@ if __name__ == "__main__":
             shell=True,
         )
     lock.release()
+    
     # wait until virtualLab is done before closing
     err = proc.wait()
+#    print(err)
 
 

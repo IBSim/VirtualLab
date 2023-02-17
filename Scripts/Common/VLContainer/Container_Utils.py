@@ -6,16 +6,92 @@ import dill
 from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
+import sys
+import subprocess
+
+                     
+def bind_list2string(bind_list):
+    ''' Returns a list of bind points in the format required by a container.'''
+    container_bind = []
+    for bind in bind_list:
+        container_bind.append(":".join(bind))
+    return ",".join(container_bind)
 
 
-def Exec_Container(container_path,command,bind=[]):
-    sock = create_tcp_socket() # create new socket
+def path_change_binder(path, bind_list, path_inside=True):
+    ''' Converts path based on the bindings to the container used.
+        This assumes that path is inside the container. 
+        Returns new path or None
+    '''
+    if path_inside: check_ix, swap_ix= 1,0
+    else: check_ix, swap_ix= 0, 1
+
+    
+    for bind in bind_list:
+        if len(bind)==1: bind = bind*2 # make in to two
+        
+        check_mount, swap_mount = bind[check_ix], bind[swap_ix]
+        if path.startswith(check_mount):
+
+            after_mount = path[len(check_mount):] # path after bind point
+            swap_path = swap_mount + after_mount # add this to swap_mount
+            
+            return swap_path
+            
+           
+def Exec_Container(container_path, command, bind=[]):
+    ''' Function called inside the VL_Manager container to pass information to VL_server
+        to run jobs in other containers.'''
+
+
+    # Find out what stdout is to decide where to send output (for different modes).
+    # This is updated on the server to give the filename on the host instead of the one inside VL_Manager
+    stdout = None if sys.stdout.name=='<stdout>' else sys.stdout.name
+
+    # create new socket                  
+    sock = create_tcp_socket() 
+    
+    # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
+    # on the server, where  'args' and 'kwargs' are passed to it.
+    info = {'msg':'Exec','Cont_id':123, 
+            'args':(container_path, command), 
+            'kwargs':{'bind':bind,'stdout':stdout}}
+
     # send data to relevant function in VLserver
-    info = {'msg':'Exec','Cont_id':123,'container_path':container_path, 'command':command,'bind':bind} 
     send_data(sock,info)
-    # wait for data to come back to say how it went
+    
+    # Get the information returned by Exec_Container_Manager, which is the returncode of the subprocess
     ReturnCode = receive_data(sock, 0) # return code from subprocess
     return ReturnCode
+
+
+def Exec_Container_Manager(container_cmd, container_path, command, stdout=None, bind=[]):
+    ''' Function called on VL_server to run jobs on other containers. '''
+
+    if bind:
+        bind_str = bind_list2string(bind) # convert bind list to string
+        container_cmd += " --bind {}".format(bind_str) # update command with bind points
+    
+    # SP_call is whats executed by the server. calls containers and passes commands to it
+    SP_call = "{} {} {}".format(container_cmd,container_path,command)
+    
+    if stdout is None:
+        # output just goes to stdout
+        container_process = subprocess.Popen(SP_call, shell=True)
+    else:
+        # output gets written to file instead
+        with open(stdout,'a') as outhandle:
+            container_process = subprocess.Popen(SP_call, shell=True,stdout=outhandle,stderr=outhandle)
+            
+    ReturnCode = container_process.wait() # wait for process to finish and return its return code
+    return ReturnCode
+ 
+    
+    
+       
+
+
+
 
 def Spawn_Container(VL,sock,**kwargs):
 

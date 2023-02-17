@@ -178,9 +178,14 @@ Please see the `Tutorials <../examples/index.html>`_ to see this in action.
 
 .. note:: Do not include the '.py' file extension as part of $FNAME.
 
+Environment
+***********
+
+VLSetup
+~~~~~~~
 
 ``VirtualLab.Settings``
-***********************
+~~~~~~~~~~~~~~~~~~~~~~~
 This is an optional attribute of VirtualLab where settings can be changed. ::
 
     VirtualLab.Settings(Mode='Headless',
@@ -188,7 +193,7 @@ This is an optional attribute of VirtualLab where settings can be changed. ::
                         NbJobs=1)
 
 Mode
-~~~~
+####
 
 .. _usage:
 
@@ -205,7 +210,7 @@ This dictates how much information is printed in the terminal during the running
 *   'Headless'  - Writes output to file at the end of the process. (Default)
 
 Launcher
-~~~~~~~~
+########
 
 .. _usage:
 
@@ -222,7 +227,7 @@ This defines the method used to launch the VirtualLab study. Currently available
 
 
 NbJobs
-~~~~~~~~~
+######
 
 .. _usage:
 
@@ -235,7 +240,7 @@ Defines how many of the studies that will run concurrently when using either the
 
 
 ``VirtualLab.Parameters``
-**************************
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This function creates the parameter files defined using `Parameters_Master`_ and `Parameters_Var`_. It also performs some checks, such as checking defined files exist in their expected locations, i.e., Parameters_Master, Parameters_Var and the files specified therein (Mesh.File, Sim.AsterFile etc.). ::
 
@@ -247,7 +252,7 @@ This function creates the parameter files defined using `Parameters_Master`_ and
 
 
 RunMesh
-~~~~~~~
+#######
 
 .. _usage:
 
@@ -259,7 +264,7 @@ Usage:
 Indicates whether or not the meshing routine will be run. Default is True.
 
 RunSim
-~~~~~~
+######
 
 .. _usage:
 
@@ -271,7 +276,7 @@ Usage:
 Indicates whether or not the simulation routine will be run. Default is True.
 
 RunDA
-~~~~~
+#####
 
 .. _usage:
 
@@ -282,8 +287,11 @@ Usage:
 
 Indicates whether or not the data analysis routine will be run. Default is True.
 
+Methods
+*******
+
 ``VirtualLab.Mesh``
-*******************
+~~~~~~~~~~~~~~~~~~~
 
 This is the meshing routine. The mesh(es) defined using ``Mesh`` in *Parameters_Master* and *Parameters_Var* are created and saved to the sub-directory 'Meshes' in the project directory along with a file detailing the variables used for their creation. If RunMesh is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped. This may be useful when different simulation parameters are to be used on a pre-existing mesh. ::
 
@@ -292,7 +300,7 @@ This is the meshing routine. The mesh(es) defined using ``Mesh`` in *Parameters_
 
 
 ShowMesh
-~~~~~~~~
+########
 
 .. _usage:
 
@@ -304,7 +312,7 @@ Usage:
 Indicates whether or not to open created mesh(es) in the **SALOME** GUI for visualisation to assess their suitability. **VirtualLab** will terminate once the GUI is closed and no simulation will be carried out. Default is False.
 
 MeshCheck
-~~~~~~~~~
+#########
 
 .. _usage:
 
@@ -316,7 +324,7 @@ Usage:
 '$MESH_NAME' is constructed in the **SALOME** GUI for debugging. Default is None.
 
 ``VirtualLab.Sim``
-******************
+~~~~~~~~~~~~~~~~~~
 
 This function is the simulation routine. The simulation(s) defined using ``Sim`` in *Parameters_Master* and *Parameters_Var* are carried out with the results saved to the project directory. This routine also runs the pre- and post-processing scripts, if they are provided. If RunSim is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped. ::
 
@@ -328,7 +336,7 @@ This function is the simulation routine. The simulation(s) defined using ``Sim``
 
 
 RunPreAster
-~~~~~~~~~~~
+###########
 
 .. _usage:
 
@@ -340,7 +348,7 @@ Usage:
 Indicates whether or not to run the optional pre-processing script provided in `Sim.PreAsterFile`. Default is True.
 
 RunAster
-~~~~~~~~
+########
 
 .. _usage:
 
@@ -352,7 +360,7 @@ Usage:
 Indicates whether or not to run the **Code_Aster** script provided in ``Sim.AsterFile``. Default is True.
 
 RunPostAster
-~~~~~~~~~~~~
+############
 
 .. _usage:
 
@@ -364,7 +372,7 @@ Usage:
 Indicates whether or not to run the optional post-processing script provided in ``Sim.PostAsterFile``. Default is True.
 
 ShowRes
-~~~~~~~
+#######
 
 .. _usage:
 
@@ -376,11 +384,11 @@ Usage:
 Visualises the .rmed results file(s) produced by **Code_Aster** through the **ParaVis** module in **SALOME**. Default is False.
 
 ``VirtualLab.DA``
-*****************
+~~~~~~~~~~~~~~~~~
 
 This function is the data analysis routine. The analyses, defined using the namespace ``DA`` in *Parameters_Master* and *Parameters_Var*, are carried out. The results are saved to Output/$SIMULATION/$PROJECT. If RunDA is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
 
 ``VirtualLab.Voxelize``
-***********************
+~~~~~~~~~~~~~~~~~~~~~~~
 
 This function is the routine to call Cad2Vox. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images are saved to Output/$SIMULATION/$PROJECT/Voxel-Images. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.

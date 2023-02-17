@@ -5,12 +5,11 @@ import uuid
 import pickle
 
 from Scripts.Common.VLContainer import Container_Utils as Utils
-import ContainerConfig
-
+from Scripts.Common.VLPackages.ContainerInfo import GetInfo
 
 Dir = os.path.dirname(os.path.abspath(__file__))
 
-def Run(Script, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = '/tmp'):
+def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = '/tmp'):
     '''
     AddPath: Additional paths that Salome will be able to import from
     DataDict: a dictionary of the arguments that Salome will get
@@ -19,8 +18,10 @@ def Run(Script, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = 
     tempdir: Location where pickled object can be written to
     '''
 
-    # GetContainerInfo
-    SalomeContainer = getattr(ContainerConfig,'Salome')
+    if ContainerInfo is None:
+        # Get default container info
+        ContainerInfo = GetInfo('Salome') 
+       
 
 
     # Add paths provided to python path for subprocess
@@ -39,7 +40,7 @@ def Run(Script, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = 
     GUIflag = 'g' if GUI else 't'
    
     Wrapscript = "{}/SalomeExec.sh".format(Dir)
-    command = "{} -c {} -f {} -a {} -p {} -r {} ".format(Wrapscript, SalomeContainer.Command, Script, argstr, PyPath, GUIflag)
+    command = "{} -c {} -f {} -a {} -p {} -r {} ".format(Wrapscript, ContainerInfo.Command, Script, argstr, PyPath, GUIflag)
                                                          
-    RC = Utils.Exec_Container(SalomeContainer.ContainerFile,command,SalomeContainer.bind)
+    RC = Utils.Exec_Container(ContainerInfo.ContainerFile,command,ContainerInfo.bind)
     return RC

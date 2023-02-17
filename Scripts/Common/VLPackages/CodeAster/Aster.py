@@ -5,13 +5,13 @@ sys.dont_write_bytecode=True
 import os
 from subprocess import Popen, PIPE, STDOUT
 import uuid
-
 import shutil
+
+from Scripts.Common.VLContainer import Container_Utils as Utils
+from Scripts.Common.VLPackages.ContainerInfo import GetInfo
 
 CADir = os.path.dirname(os.path.abspath(__file__))
 
-from Scripts.Common.VLContainer import Container_Utils as Utils
-import ContainerConfig
 
 def ExportWriter(ExportFile,CommFile,MeshFile,ResultsDir,MessFile,Settings):
     # Create export file and write to file
@@ -73,21 +73,25 @@ def ExportWriter(ExportFile,CommFile,MeshFile,ResultsDir,MessFile,Settings):
 def RunXterm(ExportFile, AddPath = [], OutFile=None, tempdir = '/tmp'):
     Run(ExportFile,AddPath=AddPath)
 
-def Run(ExportFile, AddPath = [], OutFile=None):
+def Run(ExportFile, ContainerInfo=None, AddPath = []):
 
+    if ContainerInfo is None:
+        # Get default container info
+        ContainerInfo = GetInfo('CodeAster') 
+        
     AddPath = [AddPath] if type(AddPath) == str else AddPath
     PyPath = ["{}:".format(path) for path in AddPath+[CADir]]
     PyPath = "".join(PyPath)
 
-    # GetContainerInfo
-    CAContainer = getattr(ContainerConfig,'CodeAster')
-
     WrapScript = "{}/AsterExec.sh".format(CADir)
-    command = "{} -c {} -f {} -p {} ".format(WrapScript,CAContainer.Command, ExportFile, PyPath)
+    command = "{} -c {} -f {} -p {} ".format(WrapScript,ContainerInfo.Command, ExportFile, PyPath)
     
-    RC = Utils.Exec_Container(CAContainer.ContainerFile,command,CAContainer.bind)
+    RC = Utils.Exec_Container(ContainerInfo.ContainerFile,command,ContainerInfo.bind)
 
     return RC
+
+
+
 
 def RunMPI(N, ExportFile, rep_trav, LogFile, ResDir, AddPath = [], OutFile=None):
 

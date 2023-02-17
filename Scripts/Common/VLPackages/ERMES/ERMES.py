@@ -1,16 +1,17 @@
 import os
 
 from Scripts.Common.VLContainer import Container_Utils as Utils
-import ContainerConfig
+from Scripts.Common.VLPackages.ContainerInfo import GetInfo
 
 Dir = os.path.dirname(os.path.abspath(__file__))
 
-def Run(AnalysisName, Append=False):
-
-    ERMESContainer = getattr(ContainerConfig,'ERMES')
+def Run(AnalysisName, ContainerInfo=None, Append=False):
+    if ContainerInfo is None:
+        # Get default container info
+        ContainerInfo = GetInfo('ERMES') 
 
     Wrapscript = "{}/ERMESExec.sh".format(Dir)
-    command = "{} -c {} -f {} ".format(Wrapscript, ERMESContainer.Command, AnalysisName)
+    command = "{} -c {} -f {} ".format(Wrapscript, ContainerInfo.Command, AnalysisName)
 
-    RC = Utils.Exec_Container(ERMESContainer.ContainerFile, command, ERMESContainer.bind)
+    RC = Utils.Exec_Container(ContainerInfo.ContainerFile, command, ContainerInfo.bind)
     return RC

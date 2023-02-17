@@ -18,7 +18,7 @@ The *RunFile* contains all the necessary information to launch analysis using **
         from Scripts.Common.VirtualLab import VLSetup
         
         #===============================================================================
-        # Setup
+        # Definitions
         #===============================================================================
         
         Simulation='$TYPE'
@@ -81,13 +81,13 @@ At the top of each *RunFile* is the header, common for all analysis, which inclu
   sys.dont_write_bytecode=True
   from Scripts.Common.VirtualLab import VLSetup
 
-Setup
-*****
+Definitions
+***********
 
-Following this is the setup section, where variables are defined which are compulsory to launch **VirtualLab** successfully.
+Following this is the definitions section, where variables are defined which are compulsory to launch **VirtualLab** successfully.
 
 Simulation
-**********
+~~~~~~~~~~
 
 .. _usage:
 
@@ -106,7 +106,7 @@ Types available:
 For further details on each simulation see `Virtual Experiments <../virtual_exp.html#virtual-experiments>`_.
 
 Project
-*******
+~~~~~~~
 
 .. _usage:
 
@@ -124,7 +124,7 @@ All data for a project is stored in the project directory located at :file:`Outp
    | :file:`Output/$SIMULATION/$PROJECT/$DA.Name`
 
 Parameters_Master
-*****************
+~~~~~~~~~~~~~~~~~
 
 .. _usage:
 
@@ -140,22 +140,22 @@ Name of the file which includes values for all the required variables for the se
 The variables in this file are assigned to different ``Namespaces``, which is essentially an empty class that variables can be assigned to.
 
 Mesh
-~~~~
+####
 The ``Mesh`` namespace defines the parameters required by **SALOME** to construct a mesh, such as geometric dimensions or mesh fineness. The script :file:`$Mesh.File.py` is executed in **SALOME** using the attributes of ``Mesh`` to create the geometry and subsequent mesh. This script must be in directory :file:`Scripts/Experiments/$SIMULATION/Mesh`. The meshes will be stored in ``MED`` format under the name ``Mesh.Name`` in the 'Meshes' directory of the `Project`_, i.e. :file:`Output/$SIMULATION/$PROJECT/Meshes`.
 
 Sim
-~~~
+###
 The ``Sim`` namespace define the parameters needed by **Code_Aster** to perform a FE simulation. The command file :file:`$Sim.AsterFile.comm` is executed in **Code_Aster** using the attributes of ``Sim`` to initiate the simulation. This script must be in directory :file:`Scripts/Experiments/$SIMULATION/Sim`. Optional pre- and post-processing scripts can be run by specifying them in ``Sim.PreAsterFile`` and ``Sim.PostAsterFile`` respectively. These scripts, which are executed before and after the **Code_Aster** are also found in :file:`Scripts/Experiments/$SIMULATION/Sim`. Simulation information and data will be stored in the sub-directory ``Sim.Name`` of the project directory, i.e. :file:`Output/$SIMULATION/$PROJECT/$Sim.Name`.
 
 DA
-~~~
+###
 The ``DA`` namespace define the parameters needed to perform data analysis (DA) on the data collected from simulations. These are generally python scripts. These files can be found in :file:`Scripts/Experiments/$SIMULATION/DA`. Like with the simulations, results for the data analysis is saved to :file:`Output/$SIMULATION/$PROJECT/$DA.Name`.
 
 .. note:: ``Mesh.Name``, ``Sim.Name`` and ``DA.Name`` can be written as paths to save in to sub folders of a project directory, i.e. ``Sim.Name`` = 'Test/Simulation' will create a sub-directory 'Test' in the project directory.
 
 
 Parameters_Var
-**************
+~~~~~~~~~~~~~~
 
 .. _usage:
 

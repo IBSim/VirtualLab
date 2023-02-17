@@ -147,8 +147,6 @@ class Method(Method_base):
 
         # ==========================================================================
 
-    def Spawn(self, VL, **kwargs):
-        self._SpawnBase(VL,"Sim","Aster",run_kwargs=kwargs) # method name and container name
         
     @staticmethod
     @VLF.kwarg_update

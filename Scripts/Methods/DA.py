@@ -75,9 +75,6 @@ class Method(Method_base):
 
             self.Data[DAName] = DADict
 
-    def Spawn(self, VL, **kwargs):
-        self._SpawnBase(VL,"DA","DA",run_kwargs=kwargs) # method name and container name
-
     @staticmethod
     def PoolRun(VL, DADict):
 

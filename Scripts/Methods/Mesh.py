@@ -8,8 +8,6 @@ from Scripts.Common.VLPackages.Salome import Salome
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
-from Scripts.Common.VLContainer import Container_Utils as Utils
-
 
 class Method(Method_base):
     def __init__(self, VL):
@@ -83,37 +81,6 @@ class Method(Method_base):
 
             self.Data[MeshName] = MeshDict.copy()
 
-#    def Spawn(self, VL, **kwargs):
-#        MethodName = "Mesh"
-#        ContainerName = "Salome"
-#        
-#        Cont_runs = VL.container_list.get(MethodName, None)
-#        if Cont_runs == None:
-#            print(
-#                f"Warning: Method {MethodName} was called in the inputfile but has no coresponding"
-#                f" namespace in the parameters file. To remove this warning message please set Run{MethodName}=False."
-#            )
-#            return
-
-#        return_value = Utils.Spawn_Container(
-#            VL,
-#            Cont_id=1,
-#            Tool=ContainerName,
-#            Method_Name=MethodName,
-#            Num_Cont=1,
-#            Cont_runs=Cont_runs,
-#            tcp_socket=VL.tcp_sock,
-#            run_args=kwargs,
-#        )
-
-#        if return_value != "0":
-#            # an error occurred so exit VirtualLab
-#            VL.Exit("Error Occurred with Mesh")
-#        return
-
-    def Spawn(self, VL, **kwargs):
-        self._SpawnBase(VL,"Mesh","Salome",run_kwargs=kwargs)
-         
 
     @staticmethod
     def PoolRun(VL, MeshDict, GUI=False):
@@ -133,6 +100,8 @@ class Method(Method_base):
             tempdir=MeshDict["TMP_CALC_DIR"],
             GUI=GUI,
         )
+        err=0
+
         if err:
             return "Error in Salome run"
 

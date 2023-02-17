@@ -159,7 +159,7 @@ The mesh generated for this simulation is ‘Notch1’, while the name for the s
 
 Since *Force* and *Displacement* are attributes of ``Sim`` a force-controlled simulation (with magnitude 1000000N) is run, along with a displacement controlled simulation (with enforced displacement 0.01m). The material properties of copper will be used for the simulation.
 
-With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`, when launching **VirtualLab** firstly you will see information relating to the mesh printed to the terminal, e.g. the number of nodes and location the mesh is saved, followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window, see :numref:`Fig. %s <Xterm>`.
+With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`, when launching **VirtualLab** firstly you will see information relating to the mesh printed to the terminal, e.g. the number of nodes and location the mesh is saved, followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window, see :numref:`Fig. %s <Xterm_01>`.
 
 .. admonition:: Action
    :class: Action
@@ -169,7 +169,7 @@ With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`
      VirtualLab -f RunFiles/RunTutorials.py
 
 
-.. _Xterm:
+.. _Xterm_01:
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/Xterm_01.png
 
@@ -210,6 +210,8 @@ Because *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.h
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_01.png
 
     **ParaVis** visualisation of sample as seen when opened automatically with *ShowRes* set to :code:`True`.
+
+
 
 .. _ParaVis_02:
 

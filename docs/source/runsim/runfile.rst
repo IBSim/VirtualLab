@@ -284,54 +284,6 @@ Indicates whether or not the method will be run. Default is True. Currently avai
 *   DA  - For data analysis of results.
 *   Vox  - For voxelisation of meshes.
 
-RunMesh
-#######
-
-.. _usage:
-
-Usage:
-::
-  
-  RunMesh = bool (optional)
-
-Indicates whether or not the meshing routine will be run. Default is True.
-
-RunSim
-######
-
-.. _usage:
-
-Usage:
-::
-  
-  RunSim = bool (optional)
-
-Indicates whether or not the simulation routine will be run. Default is True.
-
-RunDA
-#####
-
-.. _usage:
-
-Usage:
-::
-  
-  RunDA = bool (optional)
-
-Indicates whether or not the data analysis routine will be run. Default is True.
-
-RunVox
-######
-
-.. _usage:
-
-Usage:
-::
-  
-  RunVox = bool (optional)
-
-Indicates whether or not the voxelisation routine will be run. Default is True.
-
 Methods
 *******
 

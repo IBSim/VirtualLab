@@ -13,40 +13,56 @@ In this experiment a 'dog-bone' shaped sample is loaded either through constant 
 
    The *RunFile* ``RunTutorials.py`` should be set up correctly for this simulation::
 
+        #===============================================================================
+        # Definitions
+        #===============================================================================
         Simulation='Tensile'
         Project='Tutorials'
         Parameters_Master='TrainingParameters'
         Parameters_Var=None
 
+        #===============================================================================
+        # Environment
+        #===============================================================================
+
         VirtualLab=VLSetup(
         	       Simulation,
-        	       Project)
+        	       Project
+                   )
 
         VirtualLab.Settings(
                    Mode='Interactive',
                    Launcher='Process',
-                   NbJobs=1)
+                   NbJobs=1
+                   )
 
         VirtualLab.Parameters(
                    Parameters_Master,
                    Parameters_Var,
                    RunMesh=True,
                    RunSim=True,
-                   RunDA=True)
+                   RunDA=True
+                   )
+
+        #===============================================================================
+        # Methods
+        #===============================================================================
 
         VirtualLab.Mesh(
                    ShowMesh=False,
-                   MeshCheck=None)
+                   MeshCheck=None
+                   )
 
         VirtualLab.Sim(
                    RunPreAster=True,
                    RunAster=True,
                    RunPostAster=True,
-                   ShowRes=True)
+                   ShowRes=True
+                   )
 
         VirtualLab.DA()
 
-The setup above means that the path to the *Parameters_Master* file used is :file:`Inputs/Tensile/Tutorials/TrainingParameters.py`. Open this example python file in a text editor to browse its structure.
+The setup above means that the path to the *Parameters_Master* file used is :file:`Input/Tensile/Tutorials/TrainingParameters.py`. Open this example python file in a text editor to browse its structure.
 
 Before any definitions are made, you will notice the import statement::
 
@@ -128,7 +144,7 @@ The attribute *Force* specifies the magnitude, in Newtons, which is used to load
 
 .. note::
 
-    If both *Force* and *Displacement* are attributed to ``Sim`` then both force-controlled and displacement-controlled simulations are run. If, for example, only a constant force simulation you wish to run, then this can be achieved either by removing the attribute *Displacement* or by setting it to zero.
+    If both *Force* and *Displacement* are attributed to ``Sim`` then both force-controlled and displacement-controlled simulations are run. If, for example, you only wish to run a constant force simulation, then this can be achieved either by removing the attribute *Displacement* or by setting it to zero.
 
 The attribute *Materials* specifies the material the sample is composed of.
 
@@ -174,20 +190,77 @@ The file :file:`Aster/Export` was used to launch **Code_Aster** and contains inf
 
 As *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_ :file:`TensileTest.rmed` is opened in **ParaVis** for visualisation automatically. Here you will be able to view the following fields:
 
-   | ``Force_Displacement`` Displacement for constant force simulation.
-   | ``Force_Stress`` Stress for constant force simulation.
-   | ``Disp_Displacement`` Displacement for constant displacement simulation.
-   | ``Disp_Stress`` Stress for constant displacement simulation.
+   | ``Force_Displacement`` - Displacement for constant force simulation.
+   | ``Force_Stress``       - Stress for constant force simulation.
+   | ``Disp_Displacement``  - Displacement for constant displacement simulation.
+   | ``Disp_Stress``        - Stress for constant displacement simulation.
 
 .. note::
     You will need to close the xterm window once the simulation has completed for the results to open in **ParaVis**.
+
+Some text here
+
+| VirtualLab
+| ├── .log
+| ├── Config
+| ├── Containers
+| ├── Input
+| │   ├── HIVE
+| │   ├── LFA
+| │   └── Tensile
+| │       └── Tutorials
+| │           └── TrainingParameters.py
+| ├── Materials
+| │   ├── Copper
+| │   │   ├── Alpha.dat
+| │   │   ├── Cp.dat
+| │   │   ├── Lambda.dat
+| │   │   ├── PoisRat.dat
+| │   │   ├── Rho.dat
+| │   │   └── Youngs.dat
+| │   ├── Copper_NL
+| │   ├── Tungsten
+| │   └── Tungsten_NL
+| ├── Output
+| │   └── Tensile
+| │       └── Tutorials
+| │           ├── Meshes
+| │           │   ├── Notch1.log
+| │           │   ├── Notch1.med
+| │           │   └── Notch1.py
+| │           └── Single
+| │               ├── Aster
+| │               │   ├── AsterLog
+| │               │   ├── Export
+| │               │   └── TensileTest.rmed
+| │               ├── Output.log
+| │               └── Parameters.py
+| ├── RunFiles
+| │   └── RunTutorials.py
+| ├── Scripts
+| │   ├── Common
+| │   ├── Experiments
+| │   │   ├── HIVE
+| │   │   ├── LFA
+| │   │   └── Tensile
+| │   │       ├── Mesh
+| │   │       │   └── DogBone.py
+| │   │       └── Sim
+| │   │           └── Tensile.comm
+| │   ├── Install
+| │   └── Methods
+| ├── bin
+| ├── docs
+| └── tests
+| 
+| 
 
 Task 2: Running Multiple Simulations
 ************************************
 
 The next step is to run multiple simulations. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*.
 
-The *Parameters_Var* file :file:`Inputs/Tensile/Tutorials/Parametric_1.py` will be used to create two different meshes which are used for simulations. Firstly, you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b* along with the *Name* for each mesh::
+The *Parameters_Var* file :file:`Input/Tensile/Tutorials/Parametric_1.py` will be used to create two different meshes which are used for simulations. Firstly, you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b* along with the *Name* for each mesh::
 
     Mesh.Name = ['Notch2','Notch3']
     Mesh.Rad_a = [0.001,0.002]

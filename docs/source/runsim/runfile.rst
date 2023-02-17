@@ -31,8 +31,8 @@ The *RunFile* contains all the necessary information to launch analyses using **
         #===============================================================================
 
         VirtualLab=VLSetup(
-        	         Simulation,
-        	         Project
+                   Simulation,
+                   Project
                    )
 
         VirtualLab.Settings(

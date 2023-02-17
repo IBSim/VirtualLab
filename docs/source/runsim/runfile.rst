@@ -1,7 +1,47 @@
 The RunFile Explained
 =====================
 
-The *RunFile* contains all the necessary information to launch analysis using **VirtualLab**. At the top of each *RunFile* is the header, common for all analysis, which includes various commands e.g. importing libraries. ::
+The *RunFile* contains all the necessary information to launch analysis using **VirtualLab**. 
+
+.. admonition:: Template
+   :class: action
+
+   A template *RunFile* for **VirtualLab**::
+
+        Simulation='Tensile'
+        Project='Tutorials'
+        Parameters_Master='TrainingParameters'
+        Parameters_Var=None
+
+        VirtualLab=VLSetup(
+        	       Simulation,
+        	       Project)
+
+        VirtualLab.Settings(
+                   Mode='Interactive',
+                   Launcher='Process',
+                   NbJobs=1)
+
+        VirtualLab.Parameters(
+                   Parameters_Master,
+                   Parameters_Var,
+                   RunMesh=True,
+                   RunSim=True,
+                   RunDA=True)
+
+        VirtualLab.Mesh(
+                   ShowMesh=False,
+                   MeshCheck=None)
+
+        VirtualLab.Sim(
+                   RunPreAster=True,
+                   RunAster=True,
+                   RunPostAster=True,
+                   ShowRes=True)
+
+        VirtualLab.DA()
+
+At the top of each *RunFile* is the header, common for all analysis, which includes various commands e.g. importing libraries. ::
 
   #!/usr/bin/env python3
 

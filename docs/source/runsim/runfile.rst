@@ -14,7 +14,11 @@ Following this is the setup section, where variables are defined which are compu
 Simulation
 **********
 
+.. _usage:
+
 Usage:
+::
+  
   Simulation = '$TYPE'
 
 This is used to select the 'type' of virtual experiment to be conducted.
@@ -52,10 +56,16 @@ Name of the file which includes values for all the required variables for the se
 
 The variables in this file are assigned to different ``Namespaces``, which is essentially an empty class that variables can be assigned to.
 
+Mesh
+~~~~
 The ``Mesh`` namespace defines the parameters required by **SALOME** to construct a mesh, such as geometric dimensions or mesh fineness. The script :file:`$Mesh.File.py` is executed in **SALOME** using the attributes of ``Mesh`` to create the geometry and subsequent mesh. This script must be in directory :file:`Scripts/Experiments/$SIMULATION/Mesh`. The meshes will be stored in ``MED`` format under the name ``Mesh.Name`` in the 'Meshes' directory of the `Project`_, i.e. :file:`Output/$SIMULATION/$PROJECT/Meshes`.
 
+Sim
+~~~
 The ``Sim`` namespace define the parameters needed by **Code_Aster** to perform a FE simulation. The command file :file:`$Sim.AsterFile.comm` is executed in **Code_Aster** using the attributes of ``Sim`` to initiate the simulation. This script must be in directory :file:`Scripts/Experiments/$SIMULATION/Sim`. Optional pre- and post-processing scripts can be run by specifying them in ``Sim.PreAsterFile`` and ``Sim.PostAsterFile`` respectively. These scripts, which are executed before and after the **Code_Aster** are also found in :file:`Scripts/Experiments/$SIMULATION/Sim`. Simulation information and data will be stored in the sub-directory ``Sim.Name`` of the project directory, i.e. :file:`Output/$SIMULATION/$PROJECT/$Sim.Name`.
 
+DA
+~~~
 The ``DA`` namespace define the parameters needed to perform data analysis (DA) on the data collected from simulations. These are generally python scripts. These files can be found in :file:`Scripts/Experiments/$SIMULATION/DA`. Like with the simulations, results for the data analysis is saved to :file:`Output/$SIMULATION/$PROJECT/$DA.Name`.
 
 .. note:: ``Mesh.Name``, ``Sim.Name`` and ``DA.Name`` can be written as paths to save in to sub folders of a project directory, i.e. ``Sim.Name`` = 'Test/Simulation' will create a sub-directory 'Test' in the project directory.
@@ -92,7 +102,9 @@ This is an optional attribute of VirtualLab where settings can be changed. ::
 
 Mode
 ~~~~
-'$TYPE' (str, optional)
+
+Usage:
+  Mode = '$TYPE' (str, optional)
 
 This dictates how much information is printed in the terminal during the running of **VirtualLab**. Options available are:
 
@@ -103,7 +115,9 @@ This dictates how much information is printed in the terminal during the running
 
 Launcher
 ~~~~~~~~
-'$TYPE' (str, optional)
+
+Usage:
+  Launcher = '$TYPE' (str, optional)
 
 This defines the method used to launch the VirtualLab study. Currently available options are:
 
@@ -114,7 +128,9 @@ This defines the method used to launch the VirtualLab study. Currently available
 
 NbJobs
 ~~~~~~~~~
-'$INTEGER' (int, optional)
+
+Usage:
+  NbJobs = '$INTEGER' (int, optional)
 
 Defines how many of the studies that will run concurrently when using either the 'process' or 'MPI' launcher. Default is 1.
 
@@ -122,7 +138,7 @@ Defines how many of the studies that will run concurrently when using either the
 ``VirtualLab.Parameters``
 **************************
 
-This function creates the parameter files defined using `Parameters_Master`_ and `Parameters_Var`_. It also performs some checks, such as checking defined files exist in their expected locations i.e. Parameters_Master, Parameters_Var and the files specified therein (Mesh.File, Sim.AsterFile etc.). ::
+This function creates the parameter files defined using `Parameters_Master`_ and `Parameters_Var`_. It also performs some checks, such as checking defined files exist in their expected locations, i.e., Parameters_Master, Parameters_Var and the files specified therein (Mesh.File, Sim.AsterFile etc.). ::
 
     VirtualLab.Parameters(Parameters_Master,
                           Parameters_Var,
@@ -133,18 +149,25 @@ This function creates the parameter files defined using `Parameters_Master`_ and
 
 RunMesh
 ~~~~~~~
-bool (optional)
+
+Usage:
+  RunMesh = bool (optional)
 
 Indicates whether or not the meshing routine will be run. Default is True.
 
 RunSim
 ~~~~~~
-bool (optional)
+
+Usage:
+  RunSim = bool (optional)
 
 Indicates whether or not the simulation routine will be run. Default is True.
+
 RunDA
 ~~~~~
-bool (optional)
+
+Usage:
+  RunDA = bool (optional)
 
 Indicates whether or not the data analysis routine will be run. Default is True.
 
@@ -159,13 +182,17 @@ This is the meshing routine. The mesh(es) defined using ``Mesh`` in *Parameters_
 
 ShowMesh
 ~~~~~~~~
-bool (optional)
 
-Indicates whether or not to open created mesh(es) in the **SALOME** GUI for visualisation to assess their suitability. VirtualLab will terminate once the GUI is closed and no simulation will be carried out. Default is False.
+Usage:
+  ShowMesh = bool (optional)
+
+Indicates whether or not to open created mesh(es) in the **SALOME** GUI for visualisation to assess their suitability. **VirtualLab** will terminate once the GUI is closed and no simulation will be carried out. Default is False.
 
 MeshCheck
 ~~~~~~~~~
-'$MESH_NAME' (optional)
+
+Usage:
+  MeshCheck = '$MESH_NAME' (optional)
 
 '$MESH_NAME' is constructed in the **SALOME** GUI for debugging. Default is None.
 
@@ -184,34 +211,42 @@ This function is the simulation routine. The simulation(s) defined using ``Sim``
 
 RunPreAster
 ~~~~~~~~~~~
-bool (optional)
+
+Usage:
+  MeshCheck = bool (optional)
 
 Indicates whether or not to run the optional pre-processing script provided in `Sim.PreAsterFile`. Default is True.
 
 RunAster
 ~~~~~~~~
-bool (optional)
+
+Usage:
+  MeshCheck = bool (optional)
 
 Indicates whether or not to run the **Code_Aster** script provided in ``Sim.AsterFile``. Default is True.
 
 RunPostAster
 ~~~~~~~~~~~~
-bool (optional)
+
+Usage:
+  MeshCheck = bool (optional)
 
 Indicates whether or not to run the optional post-processing script provided in ``Sim.PostAsterFile``. Default is True.
 
 ShowRes
 ~~~~~~~
-bool (optional)
+
+Usage:
+  MeshCheck = bool (optional)
 
 Visualises the .rmed results file(s) produced by **Code_Aster** through the **ParaVis** module in **SALOME**. Default is False.
 
 ``VirtualLab.DA``
 *****************
 
-This function is the data analysis routine. The analysis, defined using the namespace ``DA`` in *Parameters_Master* and *Parameters_Var*, are carried out. The results are saved to Output/$SIMULATION/$PROJECT. If RunDA is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
+This function is the data analysis routine. The analyses, defined using the namespace ``DA`` in *Parameters_Master* and *Parameters_Var*, are carried out. The results are saved to Output/$SIMULATION/$PROJECT. If RunDA is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
 
 ``VirtualLab.Voxelize``
 ***********************
 
-This function is the routine to call Cad2Vox. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images saved to Output/$SIMULATION/$PROJECT/Voxel-Images. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
+This function is the routine to call Cad2Vox. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images are saved to Output/$SIMULATION/$PROJECT/Voxel-Images. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.

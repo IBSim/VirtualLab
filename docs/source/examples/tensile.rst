@@ -171,7 +171,7 @@ With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`
 
 .. _Xterm:
 
-.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_02.png
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/Xterm_01.png
 
     Xterm window which opens if **VirtualLab** is set to run with *Mode* as 'Interactive'.
 
@@ -195,7 +195,7 @@ The file :file:`Aster/Export` was used to launch **Code_Aster** and contains inf
 .. note::
     The file extension :file:`.rmed` is short for 'results-MED' and is used for all **Code_Aster** results files.
 
-Because *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_, :file:`TensileTest.rmed` is opened in **ParaVis** for visualisation automatically. Here you will be able to view the following fields:
+Because *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_, :file:`TensileTest.rmed` is opened in **ParaVis** for visualisation automatically. Here you will be able to view the following fields, see :numref:`Fig. %s <ParaVis_01>` and :numref:`Fig. %s <ParaVis_02>`:
 
    | ``Force_Displacement`` - Displacement for constant force simulation.
    | ``Force_Stress``       - Stress for constant force simulation.
@@ -204,6 +204,18 @@ Because *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.h
 
 .. note::
     You will need to close the xterm window once the simulation has completed for the results to open in **ParaVis**.
+
+.. _ParaVis_01:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_01.png
+
+    **ParaVis** visualisation of sample as seen when opened automatically with *ShowRes* set to :code:`True`.
+
+.. _ParaVis_02:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_02.png
+
+    **ParaVis** visualisation of Von Mises stress in the sample for a displacement controlled virtual experiment.
 
 .. admonition:: File structure hierarchy
    :class: action

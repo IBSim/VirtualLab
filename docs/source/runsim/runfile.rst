@@ -76,7 +76,6 @@ Header
 At the top of each *RunFile* is the header, common for all analyses, which includes various commands e.g. importing libraries. It is unlikely that you will need to amend this section. ::
 
   #!/usr/bin/env python3
-
   #===============================================================================
   # Header
   #===============================================================================
@@ -185,7 +184,7 @@ Please see the `Tutorials <../examples/index.html>`_ to see this in action.
 Environment
 ***********
 
-The next section is for setting the **VirtualLab** environment. That is, how the user would like to interact with **VirtualLab** and how it should make use of the available hardware.
+The next section is for setting the **VirtualLab** environment. That is, how the user would like to interact with **VirtualLab** and how it should make use of the available hardware. It is necessary to create the environment before starting any `Methods`_. However, it is possible to change the envrionment later in the *RunFile* as part of the workflow. For example, it may be desirable to only have a single job during meshing but multiple jobs for the simulation if performing a parameter sweep of boundary conditions with the same geometry.
 
 VLSetup
 ~~~~~~~
@@ -193,8 +192,8 @@ VLSetup
 ``VLSetup`` takes the previously set `Definitions`_ to start building the environment. It is unlikely that you will need to amend this section. ::
 
     VirtualLab=VLSetup(
-        	     Simulation,
-        	     Project
+               Simulation,
+               Project
                )
 
 ``VirtualLab.Settings``
@@ -259,11 +258,14 @@ Defines how many of the studies that will run concurrently when using either the
 
 This function creates the parameter files defined using `Parameters_Master`_ and `Parameters_Var`_. It also performs some checks, such as checking defined files exist in their expected locations, i.e., Parameters_Master, Parameters_Var and the files specified therein (Mesh.File, Sim.AsterFile etc.). ::
 
-    VirtualLab.Parameters(Parameters_Master,
-                          Parameters_Var,
-                          RunMesh=True,
-                          RunSim=True,
-                          RunDA=True)
+    VirtualLab.Parameters(
+               Parameters_Master,
+               Parameters_Var,
+               RunMesh=True,
+               RunSim=True,
+               RunDA=True,
+               RunVox=False
+               )
 
 
 RunMesh
@@ -302,16 +304,32 @@ Usage:
 
 Indicates whether or not the data analysis routine will be run. Default is True.
 
+RunVox
+######
+
+.. _usage:
+
+Usage:
+::
+  
+  RunVox = bool (optional)
+
+Indicates whether or not the voxelisation routine will be run. Default is True.
+
 Methods
 *******
+
+This section is where the bulk of the activity of **VirtualLab** occurs. That is, until now, we have only put in place the necessary information to initiate a task. The methods section controls precisely what tasks **VirtualLab** will perform. They can be simple one step sequential tasks or highly complex parallelised tasks making use of multiple software packages.
 
 ``VirtualLab.Mesh``
 ~~~~~~~~~~~~~~~~~~~
 
-This is the meshing routine. The mesh(es) defined using ``Mesh`` in *Parameters_Master* and *Parameters_Var* are created and saved to the sub-directory 'Meshes' in the project directory along with a file detailing the variables used for their creation. If RunMesh is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped. This may be useful when different simulation parameters are to be used on a pre-existing mesh. ::
+This is the meshing routine. In fact, this routine first generates the CAD geometry from a set of parameters and then meshes it ready for simulation. The mesh(es) defined using ``Mesh`` in *Parameters_Master* and *Parameters_Var* are created and saved to the sub-directory 'Meshes' in the project directory along with a file detailing the variables used for their creation. If RunMesh is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped. This may be useful when different simulation parameters are to be used on a pre-existing mesh. ::
 
-    VirtualLab.Mesh(ShowMesh=False,
-                    MeshCheck=None)
+    VirtualLab.Mesh(
+               ShowMesh=False,
+               MeshCheck=None
+               )
 
 
 ShowMesh
@@ -344,10 +362,12 @@ Usage:
 This function is the simulation routine. The simulation(s) defined using ``Sim`` in *Parameters_Master* and *Parameters_Var* are carried out with the results saved to the project directory. This routine also runs the pre- and post-processing scripts, if they are provided. If RunSim is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped. ::
 
 
-    VirtualLab.Sim(RunPreAster=True,
-                   RunAster=True,
-                   RunPostAster=True,
-                   ShowRes=False)
+    VirtualLab.Sim(
+               RunPreAster=True,
+               RunAster=True,
+               RunPostAster=True,
+               ShowRes=False
+               )
 
 
 RunPreAster

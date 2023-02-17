@@ -1,7 +1,7 @@
 The RunFile Explained
 =====================
 
-The *RunFile* contains all the necessary information to launch analysis using **VirtualLab**. 
+The *RunFile* contains all the necessary information to launch analyses using **VirtualLab**. The *RunFile* is executed in strict order such that it is possible to build up a complex workflow with conditional dependencies. This does mean that it is important to carefully consider the order of the *RunFile* sections and sub-sections.
 
 .. admonition:: Template
    :class: action
@@ -73,10 +73,14 @@ The *RunFile* contains all the necessary information to launch analysis using **
 Header
 ******
 
-At the top of each *RunFile* is the header, common for all analysis, which includes various commands e.g. importing libraries. ::
+At the top of each *RunFile* is the header, common for all analyses, which includes various commands e.g. importing libraries. It is unlikely that you will need to amend this section. ::
 
   #!/usr/bin/env python3
 
+  #===============================================================================
+  # Header
+  #===============================================================================
+  
   import sys
   sys.dont_write_bytecode=True
   from Scripts.Common.VirtualLab import VLSetup
@@ -117,7 +121,7 @@ Usage:
 
 User-defined field to specify the name of the project being worked on.
 
-All data for a project is stored in the project directory located at :file:`Output/$SIMULATION/$PROJECT`. Here you will find the sub-directory 'Meshes' which contain the meshes generated for the project, alongside results from simulations and data analysis conducted. The output generated would be:
+All data for a project is stored in the project directory located at :file:`Output/$SIMULATION/$PROJECT`. Here you will find the sub-directory 'Meshes' which contain the meshes generated for the project, alongside results from simulations and data analyses conducted. The output generated would be:
 
    | :file:`Output/$SIMULATION/$PROJECT/Meshes/$Mesh.Name`
    | :file:`Output/$SIMULATION/$PROJECT/$Sim.Name`
@@ -149,7 +153,7 @@ The ``Sim`` namespace define the parameters needed by **Code_Aster** to perform 
 
 DA
 ###
-The ``DA`` namespace define the parameters needed to perform data analysis (DA) on the data collected from simulations. These are generally python scripts. These files can be found in :file:`Scripts/Experiments/$SIMULATION/DA`. Like with the simulations, results for the data analysis is saved to :file:`Output/$SIMULATION/$PROJECT/$DA.Name`.
+The ``DA`` namespace define the parameters needed to perform data analyses (DA) on the data collected from simulations. These are generally python scripts. These files can be found in :file:`Scripts/Experiments/$SIMULATION/DA`. Like with the simulations, results for the data analyses are saved to :file:`Output/$SIMULATION/$PROJECT/$DA.Name`.
 
 .. note:: ``Mesh.Name``, ``Sim.Name`` and ``DA.Name`` can be written as paths to save in to sub folders of a project directory, i.e. ``Sim.Name`` = 'Test/Simulation' will create a sub-directory 'Test' in the project directory.
 
@@ -181,8 +185,12 @@ Please see the `Tutorials <../examples/index.html>`_ to see this in action.
 Environment
 ***********
 
+The next section is for setting the **VirtualLab** environment. That is, how the user would like to interact with **VirtualLab** and how it should make use of the available hardware.
+
 VLSetup
 ~~~~~~~
+
+``VLSetup`` takes the previously set `Definitions`_ to start building the environment. It is unlikely that you will need to amend this section.
 
 ``VirtualLab.Settings``
 ~~~~~~~~~~~~~~~~~~~~~~~

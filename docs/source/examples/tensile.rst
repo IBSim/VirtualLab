@@ -317,7 +317,7 @@ Simulations will then be performed for each of these samples::
 
 In this instance, only the simulation geometry (hole radii) will differ between 'ParametricSim1' and 'ParametricSim2'.
 
-The results for both simulations will be opened in **ParaVis**. The results will be prefixed with the simulation name for clarity.
+The results for both simulations will be opened in **ParaVis**. The results will be prefixed with the simulation name for clarity, see :numref:`Fig. %s <ParaVis_03>`.
 
 .. admonition:: Action
    :class: Action
@@ -329,6 +329,12 @@ The results for both simulations will be opened in **ParaVis**. The results will
    Launch **VirtualLab**::
 
         VirtualLab -f RunFiles/RunTutorials.py
+
+.. _ParaVis_03:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_03.png
+
+    **ParaVis** visualisation of parametric analysis of sample where the dimensions of the void in its centre were varied.
 
 Compare :file:`Notch2.py` and :file:`Notch3.py` in the *Meshes* directory. You should see that only the values for *Rad_a* and *Rad_b* differ. Similarly, only ``Mesh`` will be different between :file:`ParametricSim1/Parameters.py` and :file:`ParametricSim2/Parameters.py` in the project directory.
 

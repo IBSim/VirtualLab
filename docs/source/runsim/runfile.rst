@@ -268,6 +268,22 @@ This function creates the parameter files defined using `Parameters_Master`_ and
                )
 
 
+In addition to the parameter files and performing checks of associated file, it is possible to define whether particular `Methods`_ should run or not. By default, any method which is included in the later method section will run unless explicitly defined not to here.
+
+.. _usage:
+
+Usage:
+::
+  
+  Run$METHOD = bool (optional)
+
+Indicates whether or not the method will be run. Default is True. Currently available options are:
+
+*   Mesh - For geometry creation and meshing.
+*   Sim - For running simulations.
+*   DA  - For data analysis of results.
+*   Vox  - For voxelisation of meshes.
+
 RunMesh
 #######
 

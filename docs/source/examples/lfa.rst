@@ -15,6 +15,9 @@ This example introduces some of the post-processing capabilities available in **
 
    Because this is a different simulation type, *Simulation* will need to be changed::
 
+       #===============================================================================
+       # Definitions
+       #===============================================================================
        Simulation='LFA'
        Project='Tutorials'
        Parameters_Master='TrainingParameters'
@@ -22,29 +25,38 @@ This example introduces some of the post-processing capabilities available in **
 
        VirtualLab=VLSetup(
                   Simulation,
-                  Project)
+                  Project
+                  )
 
        VirtualLab.Settings(
                   Mode='Interactive',
                   Launcher='Process',
-                  NbJobs=2)
+                  NbJobs=2
+                  )
 
        VirtualLab.Parameters(
                   Parameters_Master,
                   Parameters_Var,
                   RunMesh=True,
                   RunSim=True,
-                  RunDA=True)
+                  RunDA=True
+                  )
+
+       #===============================================================================
+       # Methods
+       #===============================================================================
 
        VirtualLab.Mesh(
                   ShowMesh=False,
-                  MeshCheck=None)
+                  MeshCheck=None
+                  )
 
        VirtualLab.Sim(
                   RunPreAster=True,
                   RunAster=True,
                   RunPostAster=True,
-                  ShowRes=True)
+                  ShowRes=True
+                  )
 
        VirtualLab.DA()
 
@@ -53,7 +65,7 @@ In the *Parameters_Master* file :file:`Inputs/LFA/Tutorials/TrainingParameters.p
 Sample
 ******
 
-The file used by **SALOME** to create the geometry and generate the mesh is :file:`Scripts/Experiments/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry, referenced in :numref:`Fig. %s <LFA_Disc>` are::
+The file used by **SALOME** to create the geometry and generate the mesh is :file:`Scripts/Experiments/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry, referenced in :numref:`Fig. %s <LFA_Disc>`, are::
 
     Mesh.Radius = 0.0063
     Mesh.HeightB = 0.00125
@@ -65,6 +77,7 @@ The file used by **SALOME** to create the geometry and generate the mesh is :fil
 .. _LFA_Disc:
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LFA_Disc.png
+    :width: 400
 
     Drawing of the disc shaped sample with the attirubtes of ``Mesh`` used to specify the dimensions.
 

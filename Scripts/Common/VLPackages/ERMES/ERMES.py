@@ -11,7 +11,7 @@ def Run(AnalysisName, ContainerInfo=None, Append=False):
         ContainerInfo = GetInfo('ERMES') 
 
     Wrapscript = "{}/ERMESExec.sh".format(Dir)
-    command = "{} -c {} -f {} ".format(Wrapscript, ContainerInfo.Command, AnalysisName)
+    command = "{} -c {} -f {} ".format(Wrapscript, ContainerInfo['Command'], AnalysisName)
 
-    RC = Utils.Exec_Container(ContainerInfo.ContainerFile, command, ContainerInfo.bind)
+    RC = Utils.Exec_Container(ContainerInfo, command)
     return RC

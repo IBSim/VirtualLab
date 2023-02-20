@@ -40,7 +40,7 @@ def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, OutFile=None, G
     GUIflag = 'g' if GUI else 't'
    
     Wrapscript = "{}/SalomeExec.sh".format(Dir)
-    command = "{} -c {} -f {} -a {} -p {} -r {} ".format(Wrapscript, ContainerInfo.Command, Script, argstr, PyPath, GUIflag)
+    command = "{} -c {} -f {} -a {} -p {} -r {} ".format(Wrapscript, ContainerInfo['Command'], Script, argstr, PyPath, GUIflag)
                                                          
-    RC = Utils.Exec_Container(ContainerInfo.ContainerFile,command,ContainerInfo.bind)
+    RC = Utils.Exec_Container(ContainerInfo, command)
     return RC

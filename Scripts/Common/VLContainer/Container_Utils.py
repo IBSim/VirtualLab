@@ -2,7 +2,7 @@ from email import message
 import socket
 import json
 import pickle
-import dill
+
 from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
@@ -39,7 +39,7 @@ def path_change_binder(path, bind_list, path_inside=True):
             return swap_path
             
            
-def Exec_Container(container_path, command, bind=[]):
+def Exec_Container(package_info, command):
     ''' Function called inside the VL_Manager container to pass information to VL_server
         to run jobs in other containers.'''
 
@@ -53,9 +53,9 @@ def Exec_Container(container_path, command, bind=[]):
     
     # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
     # on the server, where  'args' and 'kwargs' are passed to it.
-    info = {'msg':'Exec','Cont_id':123, 
-            'args':(container_path, command), 
-            'kwargs':{'bind':bind,'stdout':stdout}}
+    info = {'msg':'Exec','Cont_id':123, 'Cont_name':package_info['ContainerName'],
+            'args':(package_info,command), 
+            'kwargs':{'stdout':stdout}}
 
     # send data to relevant function in VLserver
     send_data(sock,info)
@@ -65,15 +65,17 @@ def Exec_Container(container_path, command, bind=[]):
     return ReturnCode
 
 
-def Exec_Container_Manager(container_cmd, container_path, command, stdout=None, bind=[]):
+def Exec_Container_Manager(container_info, package_info, command, stdout=None):
     ''' Function called on VL_server to run jobs on other containers. '''
 
-    if bind:
-        bind_str = bind_list2string(bind) # convert bind list to string
+    container_cmd = container_info['container_cmd']
+
+    if 'bind' in package_info:
+        bind_str = bind_list2string(package_info['bind']) # convert bind list to string
         container_cmd += " --bind {}".format(bind_str) # update command with bind points
     
     # SP_call is whats executed by the server. calls containers and passes commands to it
-    SP_call = "{} {} {}".format(container_cmd,container_path,command)
+    SP_call = "{} {} {}".format(container_cmd,container_info['container_path'],command)
     
     if stdout is None:
         # output just goes to stdout
@@ -95,7 +97,7 @@ def Exec_Container_Manager(container_cmd, container_path, command, stdout=None, 
 
 def Spawn_Container(VL,sock,**kwargs):
 
-
+    import dill
     ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
         with another toll in separate container. At the moment this 
@@ -367,45 +369,7 @@ def Format_Call_Str(Module,vlab_dir,class_file,pythonpaths,use_Apptainer,cont_id
 
     return call_string, command
 
-def Format_Call_Str_old(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id):
-
-
-    ''' Function to format string for bind points and container to call specified tool.'''
-    import os
-    import subprocess
-##### Format cmd argumants #########
-    if param_var is None:
-        param_var = ''
-    else:
-        param_var = '-v ' + param_var
-
-    param_master = '-m '+ param_master
-    Simulation = '-s ' + Simulation
-    Project = '-p ' + Project
-    ID = '-I '+ str(cont_id)
-#########################################
-# Format run string and script to run   #
-# container based on Module used.       #
-#########################################
-    if use_Apptainer:
-        update_container(Module,vlab_dir)
-        call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
-                        {str(vlab_dir)}/{Module["Apptainer_file"]} '
-
-    else:
-        #docker
-        call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} {k_flag}'
-    
-    # get custom command line arguments if specified in config.
-    arguments = Module.get("cmd_args",None)
-    if arguments == None:
-        command = f'{Module["Startup_cmd"]} \
-               {param_master} {param_var} {Project} {Simulation} {ID}'
-    else:
-        command = f'{Module["Startup_cmd"]} {arguments}'
-
-    return call_string, command
-    
+   
 def check_platform():
     '''Simple function to return True on Linux and false on Mac/Windows to
     allow the use of Apptainer instead of Docker on Linux systems.

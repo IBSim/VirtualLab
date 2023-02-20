@@ -77,16 +77,16 @@ def Run(ExportFile, ContainerInfo=None, AddPath = []):
 
     if ContainerInfo is None:
         # Get default container info
-        ContainerInfo = GetInfo('CodeAster') 
+        ContainerInfo = GetInfo('CodeAster')
         
     AddPath = [AddPath] if type(AddPath) == str else AddPath
     PyPath = ["{}:".format(path) for path in AddPath+[CADir]]
     PyPath = "".join(PyPath)
 
     WrapScript = "{}/AsterExec.sh".format(CADir)
-    command = "{} -c {} -f {} -p {} ".format(WrapScript,ContainerInfo.Command, ExportFile, PyPath)
+    command = "{} -c {} -f {} -p {} ".format(WrapScript,ContainerInfo['Command'], ExportFile, PyPath)
     
-    RC = Utils.Exec_Container(ContainerInfo.ContainerFile,command,ContainerInfo.bind)
+    RC = Utils.Exec_Container(ContainerInfo, command)
 
     return RC
 

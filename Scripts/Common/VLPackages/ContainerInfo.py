@@ -16,6 +16,7 @@ def _GetInfo(PackageName):
 #        continue
         
     sys.path.insert(0,path)
+
     contconfig = reload(import_module(config_fname))
     sys.path.pop(0)
     
@@ -25,7 +26,7 @@ def _GetInfo(PackageName):
     for container_name in containers_avail:
         # check container_name is in contconfig
         info = getattr(contconfig,container_name)
-        cont_dict[container_name] = SN(**info)
+        cont_dict[container_name] = info 
         
     return cont_dict
     

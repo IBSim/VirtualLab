@@ -25,16 +25,19 @@ if not os.path.isfile(mesh_fname):
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=1)
+           NbJobs=1
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
-           Parameters_Var)
+           Parameters_Var
+           )
 
 #===============================================================================
 # Methods
@@ -42,6 +45,8 @@ VirtualLab.Parameters(
 
 VirtualLab.Mesh()
 
-VirtualLab.Sim(ShowRes=True)
+VirtualLab.Sim(
+           ShowRes=True
+           )
 
 VirtualLab.DA()

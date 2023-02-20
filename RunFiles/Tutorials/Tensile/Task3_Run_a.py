@@ -27,26 +27,37 @@ Parameters_Var=None
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=2)
+           NbJobs=2
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
-           Parameters_Var
+           Parameters_Var,
+           RunMesh=True,
+           RunSim=True,
+           RunDA=True
            )
 
 #===============================================================================
 # Methods
 #===============================================================================
 
-VirtualLab.Mesh()
+VirtualLab.Mesh(
+           ShowMesh=False,
+           MeshCheck=None
+           )
 
 VirtualLab.Sim(
-    ShowRes=True
-    )
+           RunPreAster=True,
+           RunAster=True,
+           RunPostAster=True,
+           ShowRes=True
+           )
 
 VirtualLab.DA()

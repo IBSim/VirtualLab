@@ -25,19 +25,23 @@ N = int(os.environ.get('SLURM_NTASKS',NbThreads))
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Headless',
            Launcher='MPI',
-           NbJobs=N)
+           NbJobs=N
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunMesh=True,
            RunSim=True,
-           RunDA=True)
+           RunDA=True,
+           RunVox=False
+           )
 
 #===============================================================================
 # Methods
@@ -45,12 +49,14 @@ VirtualLab.Parameters(
 
 VirtualLab.Mesh(
            ShowMesh=False,
-           MeshCheck=None)
+           MeshCheck=None
+           )
 
 VirtualLab.Sim(
            RunPreAster=True,
            RunAster=True,
            RunPostAster=True,
-           ShowRes=True)
+           ShowRes=True
+           )
 
 VirtualLab.DA()

@@ -22,19 +22,22 @@ Parameters_Var=None
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=1)
+           NbJobs=1
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunMesh=False,
            RunSim=False,
-           RunDA=False)
+           RunDA=False
+           )
 
 #===============================================================================
 # Methods

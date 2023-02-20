@@ -22,18 +22,21 @@ Parameters_Var='TrainingParameters_GVXR_var'
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Headless',
            Launcher='Sequential',
-           NbJobs=1)
+           NbJobs=1
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunCT_Scan=True,
-           RunCT_Recon=True)
+           RunCT_Recon=True
+           )
 
 #===============================================================================
 # Methods

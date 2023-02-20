@@ -27,12 +27,14 @@ Parameters_Var='Parametric_1'
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=2)
+           NbJobs=2
+           )
 
 # Import Parameters_Master and Var files and make changes here
 # e.g. Master.Mesh.Thickness = 0.005
@@ -41,15 +43,26 @@ Var = VirtualLab.ImportParameters(Parameters_Var)
 
 VirtualLab.Parameters(
            Master,
-           Var
+           Var,
+           RunMesh=True,
+           RunSim=True,
+           RunDA=True
            )
 
 #===============================================================================
 # Methods
 #===============================================================================
 
-VirtualLab.Mesh()
+VirtualLab.Mesh(
+           ShowMesh=False,
+           MeshCheck=None
+           )
 
-VirtualLab.Sim(ShowRes=True)
+VirtualLab.Sim(
+           RunPreAster=True,
+           RunAster=True,
+           RunPostAster=True,
+           ShowRes=True
+           )
 
 VirtualLab.DA()

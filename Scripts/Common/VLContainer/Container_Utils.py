@@ -3,11 +3,102 @@ import socket
 import json
 import tempfile
 import pickle
+
 from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
+import sys
+import subprocess
 
-def Spawn_Container(VL,**kwargs):
+                     
+def bind_list2string(bind_list):
+    ''' Returns a list of bind points in the format required by a container.'''
+    container_bind = []
+    for bind in bind_list:
+        container_bind.append(":".join(bind))
+    return ",".join(container_bind)
+
+
+def path_change_binder(path, bind_list, path_inside=True):
+    ''' Converts path based on the bindings to the container used.
+        This assumes that path is inside the container. 
+        Returns new path or None
+    '''
+    if path_inside: check_ix, swap_ix= 1,0
+    else: check_ix, swap_ix= 0, 1
+
+    
+    for bind in bind_list:
+        if len(bind)==1: bind = bind*2 # make in to two
+        
+        check_mount, swap_mount = bind[check_ix], bind[swap_ix]
+        if path.startswith(check_mount):
+
+            after_mount = path[len(check_mount):] # path after bind point
+            swap_path = swap_mount + after_mount # add this to swap_mount
+            
+            return swap_path
+            
+           
+def Exec_Container(package_info, command):
+    ''' Function called inside the VL_Manager container to pass information to VL_server
+        to run jobs in other containers.'''
+
+
+    # Find out what stdout is to decide where to send output (for different modes).
+    # This is updated on the server to give the filename on the host instead of the one inside VL_Manager
+    stdout = None if sys.stdout.name=='<stdout>' else sys.stdout.name
+
+    # create new socket                  
+    sock = create_tcp_socket() 
+    
+    # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
+    # on the server, where  'args' and 'kwargs' are passed to it.
+    info = {'msg':'Exec','Cont_id':123, 'Cont_name':package_info['ContainerName'],
+            'args':(package_info,command), 
+            'kwargs':{'stdout':stdout}}
+
+    # send data to relevant function in VLserver
+    send_data(sock,info)
+    
+    # Get the information returned by Exec_Container_Manager, which is the returncode of the subprocess
+    ReturnCode = receive_data(sock, 0) # return code from subprocess
+    return ReturnCode
+
+
+def Exec_Container_Manager(container_info, package_info, command, stdout=None):
+    ''' Function called on VL_server to run jobs on other containers. '''
+
+    container_cmd = container_info['container_cmd']
+
+    if 'bind' in package_info:
+        bind_str = bind_list2string(package_info['bind']) # convert bind list to string
+        container_cmd += " --bind {}".format(bind_str) # update command with bind points
+    
+    # SP_call is whats executed by the server. calls containers and passes commands to it
+    SP_call = "{} {} {}".format(container_cmd,container_info['container_path'],command)
+    
+    if stdout is None:
+        # output just goes to stdout
+        container_process = subprocess.Popen(SP_call, shell=True)
+    else:
+        # output gets written to file instead
+        with open(stdout,'a') as outhandle:
+            container_process = subprocess.Popen(SP_call, shell=True,stdout=outhandle,stderr=outhandle)
+            
+    ReturnCode = container_process.wait() # wait for process to finish and return its return code
+    return ReturnCode
+ 
+    
+    
+       
+
+
+
+
+def Spawn_Container(VL,sock,**kwargs):
+
+    import dill
     ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
         with another toll in separate container. At the moment this 
@@ -44,33 +135,23 @@ def Spawn_Container(VL,**kwargs):
         ''' 
     waiting_containers = {}
 
-    if kwargs['Parameters_Var'] == None:
-        kwargs['Parameters_Var'] = 'None'
-
     kwargs['msg'] = "Spawn_Container"
-    # Long Note: we are fully expecting Parameters_Master and Parameters_Var to be strings 
-    # pointing to Runfiles. However base VirtualLab supports passing in Namespaces.
-    # (see virtualLab.py line 178 and GetParams for context). 
-    # For the sake of my sanity we assume you are using normal RunFiles, which most users 
-    # likely are.
-    #
-    # Therefore this check is here to catch any determined soul and let you know if you 
-    # want to pass in Namespaces for container tools you will need implement it yourself. 
-    # In principle this means converting Namespace to a dict with vars(Parameters_Master).
-    # Then sending it over as json string and converting it back on the other side.
-    # In practice you may run into issues with buffer sizes for sock.recv as the strings
-    # can get very long indeed.
-    if isinstance( kwargs['Parameters_Master'],Namespace):
-        raise Exception("Passing in Namespaces is not currently supported for Container tools. \
-        These must be strings pointing to a Runfile.")
-    sock = kwargs['tcp_socket']
-    kwargs.pop('tcp_socket')
+    
     vltype = kwargs['Method_Name']
     #data_string = json.dumps(data)
     # send a signal to VL_server saying you want to spawn a container
-    send_data(sock, kwargs,VL.debug)
+   
+    tmpfile = "{}/vlclass.pkl".format(VL.TEMP_DIR)
+    kwargs['class_file'] = tmpfile
+    kwargs['paths'] = VL._AddedPaths
+    with open(tmpfile,'wb') as f:
+        dill.dump(VL,f)
+
+    send_data(sock, kwargs, VL.debug)
+
     target_ids = []
     #wait to receive message saying the tool is finished before continuing on.
+
     while True:
         rec_dict=receive_data(sock,VL.debug)
         if rec_dict:
@@ -85,6 +166,7 @@ def Spawn_Container(VL,**kwargs):
     #  calls to: Wait_For_Container, Cont_continue and Cont_Waiting.
     if VL.__class__.__name__ == 'VLModule':
         return target_ids
+
 
     while True:
         rec_dict = receive_data(sock,VL.debug)
@@ -212,6 +294,7 @@ def send_data(conn, payload,bigPayload=False,debug=False):
         adjustments to avoid errors caused by data overflows.
     '''
     # serialize payload
+
     if debug:
         print(f'sent:{payload}')
     serialized_payload = json.dumps(payload).encode('utf-8')
@@ -254,20 +337,17 @@ def receive_data(conn,debug,payload_size=2048):
             print(f'received:{payload}')
     return (payload)
 
-def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id,tmp_dir):
+def Format_Call_Str(Module,vlab_dir,class_file,pythonpaths,use_Apptainer,cont_id):
+
+
     ''' Function to format string for bind points and container to call specified tool.'''
     import os
     import subprocess
 ##### Format cmd argumants #########
-    if param_var is None:
-        param_var = ''
-    else:
-        param_var = '-v ' + param_var
-
-    param_master = '-m '+ param_master
-    Simulation = '-s ' + Simulation
-    Project = '-p ' + Project
+    filepath = '-m '+ class_file
     ID = '-I '+ str(cont_id)
+    pypath = '-p ' + ':'.join(pythonpaths)
+
 #########################################
 # Format run string and script to run   #
 # container based on Module used.       #
@@ -275,9 +355,8 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
     if use_Apptainer:
         import random
         update_container(Module,vlab_dir)
-        #make a dir in /tmp on host with random name to avoid issues on shared systems
-        call_string = f' -B /run:/run -B /dev:/dev -B {tmp_dir.name}:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
-                        {str(vlab_dir)}/{Module["Apptainer_file"]}'
+        call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
+                        {str(vlab_dir)}/{Module["Apptainer_file"]} '
     else:
         #docker
         call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]}'
@@ -286,12 +365,13 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
     arguments = Module.get("cmd_args",None)
     if arguments == None:
         command = f'{Module["Startup_cmd"]} \
-               {param_master} {param_var} {Project} {Simulation} {ID}'
+               {filepath} {ID} {pypath}'
     else:
         command = f'{Module["Startup_cmd"]} {arguments}'
 
     return call_string, command
 
+   
 def check_platform():
     '''Simple function to return True on Linux and false on Mac/Windows to
     allow the use of Apptainer instead of Docker on Linux systems.

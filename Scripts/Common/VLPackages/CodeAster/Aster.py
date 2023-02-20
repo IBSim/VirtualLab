@@ -5,17 +5,13 @@ sys.dont_write_bytecode=True
 import os
 from subprocess import Popen, PIPE, STDOUT
 import uuid
-
-import VLconfig
 import shutil
 
-Exec = VLconfig.ASTER_DIR
+from Scripts.Common.VLContainer import Container_Utils as Utils
+from Scripts.Common.VLPackages.ContainerInfo import GetInfo
+
 CADir = os.path.dirname(os.path.abspath(__file__))
 
-Container = getattr(VLconfig,'AsterContainer',None)
-if Container:
-    import ContainerConfig
-    AsterContainer = getattr(ContainerConfig,Container)
 
 def ExportWriter(ExportFile,CommFile,MeshFile,ResultsDir,MessFile,Settings):
     # Create export file and write to file
@@ -54,40 +50,48 @@ def ExportWriter(ExportFile,CommFile,MeshFile,ResultsDir,MessFile,Settings):
     with open(ExportFile,'w+') as e:
     	e.write(Settings+Paths)
 
-def RunXterm(ExportFile, AddPath = [], tempdir = '/tmp'):
+#def RunXterm(ExportFile, AddPath = [], OutFile=None, tempdir = '/tmp'):
+
+#    AddPath = [AddPath] if type(AddPath) == str else AddPath
+#    PyPath = ["{}:".format(path) for path in AddPath+[CADir]]
+#    PyPath = "".join(PyPath)
+
+#    # GetContainerInfo
+#    CAContainer = getattr(ContainerConfig,'CodeAster')
+
+#    WrapScript = "{}/AsterExec.sh".format(CADir)
+#    
+#    errfile = "{}/{}".format(tempdir, uuid.uuid4())
+#    xterm_command = "xterm -hold -T 'Study: {0}' -sb -si -sl 2000 "\
+#    "-e '{1} {0}; echo $? >{2}';exit $(cat {2})".format(ExportFile, CAContainer.Command, errfile)
+#    command = '''{} -c "{}" -p {} '''.format(WrapScript, xterm_command, PyPath)
+#    print(command)
+#    command=ExportFile
+#    RC = Utils.Exec_Container(CAContainer.ContainerFile,command,CAContainer.bind)
+#    return RC
+
+def RunXterm(ExportFile, AddPath = [], OutFile=None, tempdir = '/tmp'):
+    Run(ExportFile,AddPath=AddPath)
+
+def Run(ExportFile, ContainerInfo=None, AddPath = []):
+
+    if ContainerInfo is None:
+        # Get default container info
+        ContainerInfo = GetInfo('CodeAster')
+        
     AddPath = [AddPath] if type(AddPath) == str else AddPath
     PyPath = ["{}:".format(path) for path in AddPath+[CADir]]
     PyPath = "".join(PyPath)
-    env = {**os.environ, 'PYTHONPATH': PyPath + os.environ.get('PYTHONPATH','')}
 
-    errfile = "{}/{}".format(tempdir, uuid.uuid4())
-    command = "xterm -hold -T 'Study: {0}' -sb -si -sl 2000 "\
-    "-e '{1} {2}; echo $? >{3}';exit $(cat {3})".format(ExportFile,Exec, ExportFile, errfile)
+    WrapScript = "{}/AsterExec.sh".format(CADir)
+    command = "{} -c {} -f {} -p {} ".format(WrapScript,ContainerInfo['Command'], ExportFile, PyPath)
+    
+    RC = Utils.Exec_Container(ContainerInfo, command)
 
-    proc = Popen(command , shell='TRUE', env=env)
-    err = proc.wait()
-    return err
+    return RC
 
-def Run(ExportFile, AddPath = [], OutFile=None):
 
-    AddPath = [AddPath] if type(AddPath) == str else AddPath
-    PyPath = ["{}:".format(path) for path in AddPath+[CADir]]
-    PyPath = "".join(PyPath)
-    env = {**os.environ, 'PYTHONPATH': PyPath + os.environ.get('PYTHONPATH','')}
-    Output = ">>{} 2>&1".format(OutFile) if OutFile else ""
 
-    if Container:
-        command = "{} {} {}".format(AsterContainer.Call,AsterContainer.AsterExec,ExportFile)
-    else:
-        command = "{} {} ".format(Exec,ExportFile)
-
-    if OutFile:
-        with open(OutFile,'w') as f:
-            proc = Popen(command, shell='TRUE', stdout=f, stderr=f, env=env)
-    else:
-        proc = Popen(command, shell='TRUE', stdout=sys.stdout, stderr=sys.stderr, env=env)
-    err = proc.wait()
-    return err
 
 def RunMPI(N, ExportFile, rep_trav, LogFile, ResDir, AddPath = [], OutFile=None):
 

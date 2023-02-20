@@ -6,8 +6,8 @@ from Scripts.Common.VirtualLab import VLSetup
 #===============================================================================
 # Setup
 
-Simulation='Tensile'
-Project='.dev'
+Simulation='HIVE'
+Project='Tutorials'
 Parameters_Master='TrainingParameters'
 Parameters_Var=None
 
@@ -19,7 +19,7 @@ VirtualLab=VLSetup(
            Project)
 
 VirtualLab.Settings(
-           Mode='Interactive',
+           Mode='Headless',
            Launcher='Process',
            NbJobs=1)
 
@@ -28,7 +28,7 @@ VirtualLab.Parameters(
            Parameters_Var,
            RunMesh=True,
            RunSim=True,
-           RunDA=True)
+           RunDA=False)
 
 VirtualLab.Mesh(
            ShowMesh=False,
@@ -38,6 +38,6 @@ VirtualLab.Sim(
            RunPreAster=True,
            RunAster=True,
            RunPostAster=True,
-           ShowRes=True)
+           ShowRes=False)
 
 VirtualLab.DA()

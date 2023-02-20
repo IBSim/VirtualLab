@@ -1,22 +1,14 @@
 #!/usr/bin/env python3
-#===============================================================================
-# Header
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 
-'''
-You will need to download the image-based dog bone sample from the following link
-https://ibsim.co.uk/VirtualLab/downloads/Tensile_IBSim.med
-This will need to be saved to Output/Tensile/Tutorials/Meshes
-'''
-
 #===============================================================================
 # Setup
 
-Simulation='Tensile'
+Simulation='HIVE'
 Project='Tutorials'
-Parameters_Master='TrainingParameters_IBSim'
+Parameters_Master='TrainingParameters_Cad2Vox'
 Parameters_Var=None
 
 #===============================================================================
@@ -33,10 +25,9 @@ VirtualLab.Settings(
 
 VirtualLab.Parameters(
            Parameters_Master,
-           Parameters_Var)
+           Parameters_Var,
+           RunMesh=False,
+           RunSim=False,
+           RunDA=False)
 
-VirtualLab.Mesh()
-
-VirtualLab.Sim(ShowRes=True)
-
-VirtualLab.DA()
+ VirtualLab.Voxelise()

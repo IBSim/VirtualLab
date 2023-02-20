@@ -14,23 +14,17 @@
 set -e
 # cmd arguments to get the master, var, project, 
 # simulation and container ID from the manager.
-while getopts "m:v:p:s:I:" options; do
+while getopts "m:I:p" options; do
   case "${options}" in
       m)
-	  master="-m ${OPTARG}"
-	  ;;
-      v)
-	  Var="-v ${OPTARG}"
-	  ;;
-      p)
-	  Project="-p ${OPTARG}"
-	  ;;
-      s)
-	  Simulation="-s ${OPTARG}"
+	  pklfile="-m ${OPTARG}"
 	  ;;
 	  I)
 	  ID="-I ${OPTARG}"
 	  ;;
+      p)
+	  pypaths="${OPTARG}"
+	  ;;  
 esac
 done
 # We bind the virtualLab code to this directory by default.
@@ -38,8 +32,8 @@ cd /home/ibsim/VirtualLab
 # if using conda
 # source /home/ibsim/miniconda3/etc/profile.d/conda.sh
 # conda activate "MY env"
-export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH
+export PYTHONPATH=/home/ibsim/VirtualLab:$pypaths:$PYTHONPATH
 # call python
-python "python/My_wonderful_python_script.py" $master $Var $Project $Simulation $ID
+python "python/My_wonderful_python_script.py" $pklfile $ID
 # again its good pracrtice to provide a return value in case of error
 exit $?

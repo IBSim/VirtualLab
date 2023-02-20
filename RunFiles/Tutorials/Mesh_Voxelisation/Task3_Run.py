@@ -6,9 +6,9 @@ from Scripts.Common.VirtualLab import VLSetup
 #===============================================================================
 # Setup
 
-Simulation='HIVE'
+Simulation='Dragon'
 Project='Tutorials'
-Parameters_Master='TrainingParameters'
+Parameters_Master='TrainingParameters_Dragon'
 Parameters_Var=None
 
 #===============================================================================
@@ -19,27 +19,15 @@ VirtualLab=VLSetup(
            Project)
 
 VirtualLab.Settings(
-           Mode='Headless',
+           Mode='Interactive',
            Launcher='Process',
            NbJobs=1)
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=True,
-           RunSim=True,
+           RunMesh=False,
+           RunSim=False,
            RunDA=False)
 
-VirtualLab.Mesh(
-           ShowMesh=False,
-           MeshCheck=None)
-
-VirtualLab.Sim(
-           RunPreAster=True,
-           RunAster=True,
-           RunPostAster=True,
-           ShowRes=False)
-
-VirtualLab.DA()
-
-VirtualLab.Cleanup()
+ VirtualLab.Voxelise()

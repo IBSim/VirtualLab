@@ -37,6 +37,8 @@ DefaultSettings = {
 
 class VLSetup:
     def __init__(self, Simulation, Project, Cont_id=1, debug=False):
+        self._parsed_kwargs = VLF.parsed_kwargs(sys.argv[1:]) # may need to be more robust than sys.argv
+
         # perform setup steps that are common to both VLModule and VL_manger
         self._Common_init(Simulation, Project, DefaultSettings, Cont_id, debug)
         # Unique ID
@@ -70,6 +72,14 @@ class VLSetup:
         attributes.pop("tcp_sock", None)
         return attributes
 
+    def AddToPath(self,path,ix=-1):
+        ''' A more robust way of adding paths as they will also be available inside 
+        every container'''
+        sys.path.insert(ix,path)
+        if not hasattr(self,'_AddedPaths'): self._AddedPaths = []
+        self._AddedPaths.append(path)
+
+
     def _AddMethod(self):
         """Add in the methods defined in Scripts/Methods to the VirtualLab class."""
         MethodsDir = "{}/Methods".format(self.SCRIPTS_DIR)
@@ -94,7 +104,7 @@ class VLSetup:
             if os.path.isfile("{}/config.py".format(script_path)):
                 mod_path = "{}.config".format(method_name)
             else:
-                mod_path = "Methods.{}".format(method_name)
+                mod_path = "Scripts.Methods.{}".format(method_name)
             method_mod = import_module(mod_path)
             # Try and import the method
             # try:
@@ -188,12 +198,13 @@ class VLSetup:
         save duplicating work.
         """
         self.debug = debug
+
         sys.excepthook = self.handle_except
         # ======================================================================
         # Check for updates to Simulation and Project in parsed arguments
-        arg_dict = VLF.Parser_update(["Simulation", "Project"])
-        self.Simulation = arg_dict.get("Simulation", Simulation)
-        self.Project = arg_dict.get("Project", Project)
+        # Use given Simulation and project if not in self._parsed_kwargs
+        self.Simulation = self._parsed_kwargs.get('Simulation', Simulation)
+        self.Project = self._parsed_kwargs.get('Project', Project)
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
         self.Container = Cont_id
@@ -209,15 +220,16 @@ class VLSetup:
         if not os.path.isdir(self.SIM_SCRIPTS):
             self.Exit(
                 VLF.ErrorMessage(
-                    f"Simulation type {self.Simulation} does not exist."
-                    / f" Please check you have created a directory named {self.Simulation}"
-                    / f" inside the Scripts/Experiments directory."
+                    "Simulation type '{0}' does not exist.\n" \
+                    "Please check you have created a directory named '{0}' "
+                    "inside the Scripts/Experiments directory.".format(self.Simulation) \
                 )
             )
         self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
         self.VLRoutine_SCRIPTS = "{}/VLRoutines".format(self.COM_SCRIPTS)
         # Add these to path
-        sys.path = [self.SCRIPTS_DIR, self.COM_SCRIPTS, self.SIM_SCRIPTS] + sys.path
+        for path in [self.SCRIPTS_DIR, self.COM_SCRIPTS, self.SIM_SCRIPTS]:
+            self.AddToPath(path)
 
         # =======================================================================
         # Define & create temporary directory for work to be saved to
@@ -313,6 +325,7 @@ class VLSetup:
         if not hasattr(self, "_CleanupFlag"):
             self._CleanupFlag = Cleanup
         else:
+            pass
             atexit.unregister(self._Cleanup)
         atexit.register(self._Cleanup, Cleanup)
 
@@ -360,9 +373,8 @@ class VLSetup:
                 )
             )
 
-        # pick up the kwargs passed in the parser
-        parsed_kwargs = VLF.Parser_update(kwargs_fnc.keys())
-        kwargs.update(parsed_kwargs)
+        updated_kwargs = VLF.Parser_update(kwargs_fnc.keys(),self._parsed_kwargs)
+        kwargs.update(updated_kwargs)
 
         for kw_name, kw_fnc in kwargs_fnc.items():
             # if kw_name is in kwargs then we set it using kw_fnc
@@ -394,23 +406,15 @@ class VLSetup:
                     )
                 )
             )
-
-        # update run_flags keywords (not covered by decorator)
-        parsed_flags = VLF.Parser_update(flags.keys())
-        run_flags.update(parsed_flags)
-        # update default flags
         flags.update(run_flags)
+        
+        # update run_flags keywords (not covered by decorator as they depend on the files in methods directory)
+        updated_flags = VLF.Parser_update(flags.keys(),self._parsed_kwargs)
+        flags.update(updated_flags)
 
-        # Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to original strings for passing into other containers.
-        # So we will ned to get them here.
-        self.Parameters_Master_str = Parameters_Master
-        self.Parameters_Var_str = Parameters_Var
-
-        # update Parameters_master with parser (not covered by decorator)
-        arg_dict = VLF.Parser_update(["Parameters_Master"])
-        Parameters_Master = arg_dict.get("Parameters_Master", Parameters_Master)
-
+        # update Parameters_master with parser (not covered by decorator as its an argument)
+        Parameters_Master = self._parsed_kwargs.get('Parameters_Master',Parameters_Master) 
+        
         self._SetParams(Parameters_Master, Parameters_Var, ParameterArgs=ParameterArgs)
         # get the number of runs defined in params for each module
         self.Num_runs = self._get_Num_Runs(flags, self.Methods)
@@ -422,6 +426,9 @@ class VLSetup:
             method_cls = getattr(self, method_name)
             # add flag to the instance
             method_cls.SetFlag(flags["Run{}".format(method_name)])
+            _NS_name = self.method_config[method_name]['Namespace']
+            method_dicts = self._CreateParameters(_NS_name)
+            method_cls._MethodSetup(method_dicts)      
 
     def ImportParameters(self, Rel_Parameters, ParameterArgs=None):
         """
@@ -790,3 +797,4 @@ class VLSetup:
         except:
             pass
         return "{}_{}".format(version, branch)
+

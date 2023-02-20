@@ -27,27 +27,6 @@
         "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_CIL.sh",
         "Method":"CT_Recon"
     },
-    "Salome": {
-        "Docker_url": "ibsim/vl_salomemeca",
-        "Tag": "latest",
-        "Apptainer_file": "Containers/VL_Salome.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Salome.sh",
-        "Method":"Mesh"
-    },
-    "DA": {
-        "Docker_url": "ibsim/vl_salomemeca",
-        "Tag": "latest",
-        "Apptainer_file": "Containers/VL_Salome.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_DA.sh",
-        "Method":"DA"
-    },
-    "Aster": {
-        "Docker_url": "ibsim/vl_salomemeca",
-        "Tag": "latest",
-        "Apptainer_file": "Containers/VL_Salome.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Aster.sh",
-        "Method":"Sim"
-    },
     "Test_Comms": {
         "Docker_url": "ibsim/vl_coms_test",
         "Tag": "latest",
@@ -55,11 +34,12 @@
         "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Test.sh",
         "Method":"Test"
     },
-    "Aster_mpi": {
-        "Docker_url": "ibsim/aster_mpi",
+    "SalomeMeca": {
+        "Docker_url": "ibsim/vl_salomemeca",
         "Tag": "latest",
-        "Apptainer_file": "Containers/VL_Aster_mpi.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Aster_mpi.sh",
-        "Method":"Sim"
-    }
+        "Apptainer_file": "Containers/VL_Salome.sif"
+    },    
+    "Aster_test": {
+        "Apptainer_file": "Containers/code_aster_v14.sif"
+    }    
 }

@@ -15,21 +15,25 @@ def test_Task1(TutorialsDir,ParsedArgs):
     assert err==0
 
 def test_Task2(TutorialsDir,ParsedArgs):
-    Run = Popen(['VirtualLab','-f','{}/{}/Task2_Run.py'.format(TutorialsDir,TestName),*ParsedArgs])
+    ParsedArgsNew = ParsedArgs + ['RunDA=False']
+    Run = Popen(['VirtualLab','-f','{}/{}/Task2_Run.py'.format(TutorialsDir,TestName),*ParsedArgsNew])
     err = Run.wait()
     assert err==0
 
 def test_Task3(TutorialsDir,ParsedArgs):
-    Run = Popen(['VirtualLab','-f','{}/{}/Task3_Run.py'.format(TutorialsDir,TestName),*ParsedArgs])
+    ParsedArgsNew = ParsedArgs + ['RunDA=False']
+    Run = Popen(['VirtualLab','-f','{}/{}/Task3_Run.py'.format(TutorialsDir,TestName),*ParsedArgsNew])
     err = Run.wait()
     assert err==0
 
 def test_Task4(TutorialsDir,ParsedArgs):
-    Run = Popen(['VirtualLab','-f','{}/{}/Task4_Run.py'.format(TutorialsDir,TestName),*ParsedArgs])
+    ParsedArgsNew = ParsedArgs + ['RunDA=False']
+    Run = Popen(['VirtualLab','-f','{}/{}/Task4_Run.py'.format(TutorialsDir,TestName),*ParsedArgsNew])
     err = Run.wait()
     assert err==0
 
 def test_Task5(TutorialsDir,ParsedArgs):
-    Run = Popen(['VirtualLab','-f','{}/{}/Task5_Run.py'.format(TutorialsDir,TestName),*ParsedArgs])
+    ParsedArgsNew = ParsedArgs + ['RunDA=False']
+    Run = Popen(['VirtualLab','-f','{}/{}/Task5_Run.py'.format(TutorialsDir,TestName),*ParsedArgsNew])
     err = Run.wait()
     assert err==0

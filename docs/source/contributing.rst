@@ -30,7 +30,7 @@ Containers and Methods
 **********************
 In **VirtualLab**, 'Containers' and 'Methods' are closely linked and are the heart of how **VirtualLab** can pull together many different pieces of software. The **VirtualLab** executable actually starts out as a tcp (networking) sever running on the host machine defined by the script :file:`VL_server.py`. The server first spawns a manager container, **VL_Manager**, and passes in the RunFile. **VL_Manager** then executes the RunFile in a python environment. The RunFile itself begins by creating an instance of the VLSetup class. This then acts to spawn, control and co-ordinate all the other containers that will run the software to perform the actual task/analysis.
 
-.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png?inline=false
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png
   :width: 400
   :alt: Diagram of VirtualLab container setup
   :align: center

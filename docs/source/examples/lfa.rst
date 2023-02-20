@@ -64,7 +64,7 @@ The file used by **SALOME** to create the geometry and generate the mesh is :fil
 
 .. _LFA_Disc:
 
-.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LFA_Disc.png?inline=false
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LFA_Disc.png
 
     Drawing of the disc shaped sample with the attirubtes of ``Mesh`` used to specify the dimensions.
 

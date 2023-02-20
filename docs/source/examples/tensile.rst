@@ -85,7 +85,7 @@ The interpretation of these attributes in relation to the sample is shown in :nu
 
 .. _DogBone:
 
-.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/DogBone.png?inline=false
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/DogBone.png
 
     Drawing of the 'dog-bone' sample with the attributes of ``Mesh`` used to specify the dimensions.
 

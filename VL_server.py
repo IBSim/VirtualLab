@@ -143,9 +143,40 @@ def load_module_config(vlab_dir):
         config = json.load(file)
     return config
 
+def correct_typecasting(arg):
+    '''
+    This function is here to correct type casting mistakes made by the -k cmd option.
+    The short version is arguments are passed in as strings but they may be ints 
+    floats or bools. This is particular problem for bool values as bool("False")
+    evaluates as True in python. Thus this function exits to, hopefully, convert
+    arguments to the expected/appropriate type.
+    '''
+    # check for bool disguised as string
+    if arg == 'True':
+        return True
+    elif arg == 'False':
+        return False
+    else:
+        pass
+
+    try :
+        int(arg)
+        return int(arg)
+    except ValueError:
+    # cant be cast as int but may be float
+        pass    
+    # Check for float string
+    try :
+        float(arg)
+        return float(arg)
+    except ValueError:
+        # assume arg is a string
+        pass
+    
+    return arg
 
 def handle_messages(
-    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, dry_run, options
+    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, dry_run, kOptions,tmp_dir
 ):
     global waiting_cnt_sockets
     global target_ids
@@ -238,7 +269,11 @@ def handle_messages(
                     '--env="DISPLAY" --env="QT_X11_NO_MITSHM=1" '
                     '--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" '
                 )
-
+            # update kwaargs from -k cmd options if set
+            for K in kOptions.keys():
+                if K in rec_dict["run_args"]:
+                    kOptions[K] = correct_typecasting(kOptions[K])
+                    rec_dict["run_args"][K]=kOptions[K]
             # loop over containers once to create a dict of final container ids
             # and associated runs to output to file
             sock_lock.acquire()
@@ -410,7 +445,7 @@ def check_pulse(client_socket, sock_lock, net_logger, debug):
             )
 
 
-def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,options):
+def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions,tmp_dir):
     """Function that runs in a thread to handle communication ect."""
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -453,7 +488,8 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,options):
                     debug,
                     gpu_flag,
                     dry_run,
-                    options
+                    koptions,
+                    tmp_dir,
                 ),
             )
             thread.daemon = True
@@ -490,16 +526,18 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,options):
                 debug,
                 gpu_flag,
                 dry_run,
-                options
+                options,
+                tmp_dir,
             ),
         )
         thread.daemon = True
         thread.start()
 
-def check_file_in_container(vlab_dir,Run_file):
+def check_file_in_container(vlab_dir,Run_file,tmp_dir):
     """
     Function to check that the given runfile is accessible by the container i.e it is inside 
-    the virtualLab directory. If not the file is copied to /tmp which is accessible. 
+    the virtualLab directory. If not the file is copied to the temporary directory, previously
+    created by the tempfile library which is accessible and bound to /tmp in the container. 
     """
     from pathlib import Path
     import shutil
@@ -522,6 +560,19 @@ def check_file_in_container(vlab_dir,Run_file):
     
     return Run_file
 
+def check_k_options(option):
+    ''' 
+    check that the options given to -K are of the form Name=Value 
+    '''
+    import re
+    # look for a single = sign that is not at the beging or end of the string.
+    # Note: this coves a blank string and '='. 
+    matches = re.findall(r'\b=\b',option)
+    if len(matches)!=1 or matches == []:
+        print(f"invaid option {option} passed into -K this must be of the form Name=Value.")
+        sys.exit(1)
+    return
+
 ##########################################################################################
 ####################  ACTUAL CODE STARTS HERE !!!! #######################################
 ##########################################################################################
@@ -531,17 +582,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "-f",
         "--Run_file",
-        help="Runfile to use (default is assumed to \
-        be current working directory).",
-        default="Run.py",
+        help="Where "'RUN_FILE'" is the path of the python run file.",
+        default=None,
     )
-    parser.add_argument(
-        "-D",
-        "--Docker",
-        help="Flag to use docker on Linux host instead of \
-        defaulting to Apptainer.This will be ignored on Mac/Windows as Docker is the default.",
-        action="store_true",
-    )
+    # parser.add_argument(
+    #     "-D",
+    #     "--Docker",
+    #     help="Flag to use docker on Linux host instead of \
+    #     defaulting to Apptainer.This will be ignored on Mac/Windows as Docker is the default.",
+    #     action="store_true",
+    # )
     parser.add_argument(
         "-U",
         "--dry-run",
@@ -563,6 +613,12 @@ if __name__ == "__main__":
         help="Flag to turn on/off nvidia support.",
         action="store_false",
     )
+    # parser.add_argument(
+    #     "-C",
+    #     "--nvccli",
+    #     help="Flag to use nvidia continer toolkit instead of default --nv.",
+    #     action="store_true",
+    # )
     parser.add_argument(
         "-K",
         "--options",
@@ -570,37 +626,91 @@ if __name__ == "__main__":
         default=None,
         action='append',
         nargs='*',
-    )  
+    )
+   # parser.add_argument(
+   #     "-V",
+   #     "--version",
+   #     help="Display version number and citation information",
+   #     action="store_false",
+   # )   
 
     args = parser.parse_args()
+    ################################################################
+    # Note: Docker and nvcclli are work in progress options. As such
+    # I don't want to totally remove them since they will be needed 
+    # if/when we fix the issues. However, I also don't want them to
+    # appear as valid options with --help so when they are needed 
+    # simply delete/uncomment the appropriate lines.
+    ###############################################################
+    args.Docker=False
+    args.nvccli=False
+    ###############################################################
+    if len(sys.argv)==1:
+        print('***************************************')
+        print("A script to run VirtualLab simulations.")
+        print('***************************************')
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
+# #print version and citation info then exit
+#     if args.version:
+#         print('***************************************')
+#         print("            VirtualLab-V2.0            ")
+#         print(" If you use this code in your publication\n" )
+#         print(" Please site it in the following way:") 
+
+#     R. Lewis, B.J. Thorpe, Ll.M. Evans (2020) VirtualLab source code (Version !!!) [Source code]. https://gitlab.com/ibsim/virtuallab/-/commit/3c1d7727987def758df32a34933c964f54579325
+
+
+# NOTE: You will need to update the version number and url to the commit version you used.
+#         print('***************************************')
+#         sys.exit(1)
+    
     # get vlab_dir either from cmd args or environment
     vlab_dir = VLconfig.VL_HOST_DIR
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
-    # set flag to run tests instate of the normal runfile
+
+    # make a dir in /tmp on host with random name to avoid issues on shared systems
+    # the tempfile library ensures this directory is deleted on exiting python.
+    tmp_dir = tempfile.TemporaryDirectory()
+    # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
+    elif args.Run_file == None:
+        print('****************************************************************')
+        print("Error: you must specify a path to a valid RunFile with option -f")
+        print('****************************************************************')
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     else:
         Run_file = args.Run_file
     Run_file = check_file_in_container(vlab_dir,Run_file)
 
     ######################################
     # formatting for optional -K cmd option
-    if args.options !=None:
+    if args.options != None:
         options = ""
         #Note: -K can be set multiple times so we need these loops to format them correctly to be passed on
         for N,opt in enumerate(args.options):
             for n,_ in enumerate(opt):
+                check_k_options(opt[n])
                 options = options + " -k " + opt[n]
+                key = opt[n].split('=')[0]
+                value = opt[n].split('=')[1]
+                kOption_dict[key] = value
     else:
         options = ""
     #####################################    
     # turn on/off gpu support with a flag
     gpu_support = args.no_nvidia
-    if gpu_support:
+    if gpu_support and args.nvccli:
+        gpu_flag = "--nvccli"
+    elif gpu_support:
         gpu_flag = "--nv"
     else:
         gpu_flag = ""
+
         print("##############################################")
         print("VirtualLab Running in software rendering mode.")
         print("##############################################")
@@ -611,7 +721,7 @@ if __name__ == "__main__":
     lock = threading.Lock()
     thread = threading.Thread(
         target=process,
-        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, args.dry_run,options),
+        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, args.dry_run,kOption_dict,tmp_dir),
     )
     thread.daemon = True
 

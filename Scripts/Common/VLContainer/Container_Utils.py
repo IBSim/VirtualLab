@@ -1,6 +1,7 @@
 from email import message
 import socket
 import json
+import tempfile
 import pickle
 
 from types import SimpleNamespace as Namespace
@@ -352,12 +353,13 @@ def Format_Call_Str(Module,vlab_dir,class_file,pythonpaths,use_Apptainer,cont_id
 # container based on Module used.       #
 #########################################
     if use_Apptainer:
+        import random
         update_container(Module,vlab_dir)
         call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
                         {str(vlab_dir)}/{Module["Apptainer_file"]} '
     else:
         #docker
-        call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} {k_flag}'
+        call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]}'
     
     # get custom command line arguments if specified in config.
     arguments = Module.get("cmd_args",None)
@@ -478,7 +480,7 @@ def get_vlab_dir(parsed_dir=None):
         
     if not vlab_dir.is_dir():
         raise ValueError(f'Could not find VirtualLab install directory. The directory {str(vlab_dir)} does not appear to exist. \n' \
-        ' Please specify where to find the VirtualLab install directory using the -d option.')
+        ' Please specify where to find the VirtualLab install directory by setting the environment variable VL_DIR.')
 
     return vlab_dir
 

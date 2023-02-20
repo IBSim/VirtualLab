@@ -38,7 +38,7 @@ Containers
 
 The only other prerequisite for using **VirtualLab** on your system is a containerisation tool. We currently only support `Apptainer <https://apptainer.org/>`_ (currently this is Linux only, hence Linux being the only officially supported OS). [3]_ 
 
-If you're unfamiliar with containers, here's a quick overview from `opensource.com <https://opensource.com/resources/what-are-linux-containers>`_ :cite:`containers`:
+If you're unfamiliar with containers, here's a quick overview from `opensource.com <https://opensource.com/resources/what-are-linux-containers>`_\ :footcite:`containers`:
 
     *"Containers, in short, contain applications in a way that keep them isolated from the host system that they run on. Containers allow a developer to package up an application with all of the parts it needs, such as libraries and other dependencies, and ship it all out as one package. And they are designed to make it easier to provide a consistent experience as developers and system administrators move code from development environments into production in a fast and replicable way.*
 
@@ -108,14 +108,14 @@ The :bash:`--test` option downloads a minimal test container and runs a series o
 
   To fix this you have two options. Firstly, you can use the ``-N`` option to turn off the nvidia libraries. The drawback to this is that you will be running in 'software rendering mode' and thus you will not benefit from any GPU acceleration.
 
-  The second option is to use the following workaround. But please note that it only works when `installing Apptainer from source <https://github.com/apptainer/apptainer/blob/main/INSTALL.md>`_. After cloning the repo and before compiling Apptainer, please do the following:
+  The second option is to use the following workaround.
 
   1. Search for a file named ``nvliblist.conf`` in your installation. It should be under your Apptainer installation directory. By default this is under ``/etc/apptainer``.
   2. Make a back-up of this file ``mv nvliblist.conf nvliblist.conf.bak``.
   3. Open the file ``nvliblist.conf`` using a text editor.
   4. Delete all of the following lines that appear ``libGLX.so``, ``libGLX.so.0``, ``libglx.so``, ``libglx.so.0`` and ``libGLdispatch.so``. Note, depending on you exact system, the file may not contain all of them.
 
-  Complete the installation by compiling Apptainer. Apptainer should be installed now. Now try running the Salome container again, it should work this time.
+  Try running the Salome container again, it should work this time.
 
   Reference: https: //github.com/apptainer/apptainer/issues/598
   
@@ -150,7 +150,4 @@ To do this run the following commands:
 
 References
 **********
-.. bibliography:: refs.bib
-   :style: plain
-   :filter: docname in docnames
-
+.. footbibliography::

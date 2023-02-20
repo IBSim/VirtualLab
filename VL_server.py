@@ -177,6 +177,32 @@ def handle_messages(
             if use_Apptainer:
                 container_cmd = "apptainer exec --contain --writable-tmpfs"
 
+            cont_name = rec_dict['Cont_name']
+            cont_info = VL_MOD[cont_name]
+
+            container_path = "{}/{}".format(VLconfig.VL_HOST_DIR,cont_info['Apptainer_file'])
+            cont_info['container_path'] = container_path
+            cont_info['container_cmd'] = container_cmd
+            
+            # check apptainer sif file exists and if not build from docker version
+            if not os.path.exists(container_path):
+                # sif file doesn't exist
+                print('here')
+                if 'Docker_url' in cont_info:
+                    print(f"Apptainer file {container_path} does not appear to exist so building. This may take a while.")
+                    try:
+                        proc=subprocess.check_call(f'apptainer build '\
+                           f'{container_path} docker://{cont_info["Docker_url"]}:{cont_info["Tag"]}', shell=True)
+                    except subprocess.CalledProcessError as E:
+                        print(E.stderr)
+                        raise E
+                        
+                else:
+                    print(f"Apptainer file {container_path} does not exist and no information about its location is provided.\n Exiting")
+                    sys.exit()
+
+
+
             args = rec_dict.get('args',())
             kwargs = rec_dict.get('kwargs',{})
             
@@ -186,7 +212,7 @@ def handle_messages(
                 stdout = path_change_binder(stdout,bind_points_default)
                 kwargs['stdout'] = stdout
             
-            RC = Exec_Container_Manager(container_cmd, *args, **kwargs)
+            RC = Exec_Container_Manager(cont_info, *args, **kwargs)
             send_data(client_socket, RC, debug) 
                 
       

@@ -24,8 +24,6 @@ Simulations are initiated by launching **VirtualLab** in the command line with a
 
 	VirtualLab -f </PATH/TO/RUNFILE>
 
-If running **VirtualLab** with a container, follow the `appropriate guidance <../runsim/launch.html#containers>`_ for your setup.
-
 :file:`Run.py` in the **VirtualLab** top level directory is a template of a *RunFile* which is used to launch **VirtualLab**. Additional examples of *RunFiles* are available in the `RunFiles <../structure.html#runfiles>`_ directory, where the file :file:`RunTutorials.py` is located which will be used for these tutorials.
 
 .. note::

@@ -13,40 +13,56 @@ In this experiment a 'dog-bone' shaped sample is loaded either through constant 
 
    The *RunFile* ``RunTutorials.py`` should be set up correctly for this simulation::
 
+        #===============================================================================
+        # Definitions
+        #===============================================================================
         Simulation='Tensile'
         Project='Tutorials'
         Parameters_Master='TrainingParameters'
         Parameters_Var=None
 
+        #===============================================================================
+        # Environment
+        #===============================================================================
+
         VirtualLab=VLSetup(
         	       Simulation,
-        	       Project)
+        	       Project
+                   )
 
         VirtualLab.Settings(
                    Mode='Interactive',
                    Launcher='Process',
-                   NbJobs=1)
+                   NbJobs=1
+                   )
 
         VirtualLab.Parameters(
                    Parameters_Master,
                    Parameters_Var,
                    RunMesh=True,
                    RunSim=True,
-                   RunDA=True)
+                   RunDA=True
+                   )
+
+        #===============================================================================
+        # Methods
+        #===============================================================================
 
         VirtualLab.Mesh(
                    ShowMesh=False,
-                   MeshCheck=None)
+                   MeshCheck=None
+                   )
 
         VirtualLab.Sim(
                    RunPreAster=True,
                    RunAster=True,
                    RunPostAster=True,
-                   ShowRes=True)
+                   ShowRes=True
+                   )
 
         VirtualLab.DA()
 
-The setup above means that the path to the *Parameters_Master* file used is :file:`Inputs/Tensile/Tutorials/TrainingParameters.py`. Open this example python file in a text editor to browse its structure.
+The setup above means that the path to the *Parameters_Master* file used is :file:`Input/Tensile/Tutorials/TrainingParameters.py`. Open this example python file in a text editor to browse its structure.
 
 Before any definitions are made, you will notice the import statement::
 
@@ -128,7 +144,7 @@ The attribute *Force* specifies the magnitude, in Newtons, which is used to load
 
 .. note::
 
-    If both *Force* and *Displacement* are attributed to ``Sim`` then both force-controlled and displacement-controlled simulations are run. If, for example, only a constant force simulation you wish to run, then this can be achieved either by removing the attribute *Displacement* or by setting it to zero.
+    If both *Force* and *Displacement* are attributed to ``Sim`` then both force-controlled and displacement-controlled simulations are run. If, for example, you only wish to run a constant force simulation, then this can be achieved either by removing the attribute *Displacement* or by setting it to zero.
 
 The attribute *Materials* specifies the material the sample is composed of.
 
@@ -143,7 +159,7 @@ The mesh generated for this simulation is ‘Notch1’, while the name for the s
 
 Since *Force* and *Displacement* are attributes of ``Sim`` a force-controlled simulation (with magnitude 1000000N) is run, along with a displacement controlled simulation (with enforced displacement 0.01m). The material properties of copper will be used for the simulation.
 
-With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`, when launching **VirtualLab** firstly you will see information relating to the mesh printed to the terminal, e.g. the number of nodes and location the mesh is saved, followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window.
+With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`, when launching **VirtualLab** firstly you will see information relating to the mesh printed to the terminal, e.g. the number of nodes and location the mesh is saved, followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window, see :numref:`Fig. %s <Xterm_01>`.
 
 .. admonition:: Action
    :class: Action
@@ -151,6 +167,13 @@ With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`
    Launch your first **VirtualLab** simulation by executing the following command from command line (CL) of the terminal whilst within the **VirtualLab** directory::
 
      VirtualLab -f RunFiles/RunTutorials.py
+
+
+.. _Xterm_01:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/Xterm_01.png
+
+    Xterm window which opens if **VirtualLab** is set to run with *Mode* as 'Interactive'.
 
 Running this simulation will create the following outputs:
 
@@ -172,22 +195,96 @@ The file :file:`Aster/Export` was used to launch **Code_Aster** and contains inf
 .. note::
     The file extension :file:`.rmed` is short for 'results-MED' and is used for all **Code_Aster** results files.
 
-As *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_ :file:`TensileTest.rmed` is opened in **ParaVis** for visualisation automatically. Here you will be able to view the following fields:
+Because *ShowRes* is set to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_, :file:`TensileTest.rmed` is opened in **ParaVis** for visualisation automatically. Here you will be able to view the following fields, see :numref:`Fig. %s <ParaVis_01>` and :numref:`Fig. %s <ParaVis_02>`:
 
-   | ``Force_Displacement`` Displacement for constant force simulation.
-   | ``Force_Stress`` Stress for constant force simulation.
-   | ``Disp_Displacement`` Displacement for constant displacement simulation.
-   | ``Disp_Stress`` Stress for constant displacement simulation.
+   | ``Force_Displacement`` - Displacement for constant force simulation.
+   | ``Force_Stress``       - Stress for constant force simulation.
+   | ``Disp_Displacement``  - Displacement for constant displacement simulation.
+   | ``Disp_Stress``        - Stress for constant displacement simulation.
 
 .. note::
     You will need to close the xterm window once the simulation has completed for the results to open in **ParaVis**.
+
+.. _ParaVis_01:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_01.png
+
+    **ParaVis** visualisation of sample as seen when opened automatically with *ShowRes* set to :code:`True`.
+
+
+
+.. _ParaVis_02:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_02.png
+
+    **ParaVis** visualisation of Von Mises stress in the sample for a displacement controlled virtual experiment.
+
+.. admonition:: File structure hierarchy
+   :class: action
+
+   Location of the key files and directories for Task 1 of this tutorial::
+
+        | VirtualLab
+        | ├── .log
+        | ├── Config
+        | ├── Containers
+        | ├── Input
+        | │   ├── HIVE
+        | │   ├── LFA
+        | │   └── Tensile
+        | │       └── Tutorials
+        | │           └── TrainingParameters.py
+        | ├── Materials
+        | │   ├── Copper
+        | │   │   ├── Alpha.dat
+        | │   │   ├── Cp.dat
+        | │   │   ├── Lambda.dat
+        | │   │   ├── PoisRat.dat
+        | │   │   ├── Rho.dat
+        | │   │   └── Youngs.dat
+        | │   ├── Copper_NL
+        | │   ├── Tungsten
+        | │   └── Tungsten_NL
+        | ├── Output
+        | │   └── Tensile
+        | │       └── Tutorials
+        | │           ├── Meshes
+        | │           │   ├── Notch1.log
+        | │           │   ├── Notch1.med
+        | │           │   └── Notch1.py
+        | │           └── Single
+        | │               ├── Aster
+        | │               │   ├── AsterLog
+        | │               │   ├── Export
+        | │               │   └── TensileTest.rmed
+        | │               ├── Output.log
+        | │               └── Parameters.py
+        | ├── RunFiles
+        | │   └── RunTutorials.py
+        | ├── Scripts
+        | │   ├── Common
+        | │   ├── Experiments
+        | │   │   ├── HIVE
+        | │   │   ├── LFA
+        | │   │   └── Tensile
+        | │   │       ├── Mesh
+        | │   │       │   └── DogBone.py
+        | │   │       └── Sim
+        | │   │           └── Tensile.comm
+        | │   ├── Install
+        | │   └── Methods
+        | ├── bin
+        | ├── docs
+        | └── tests
+        | 
+        | 
 
 Task 2: Running Multiple Simulations
 ************************************
 
 The next step is to run multiple simulations. This is achieved using *Parameters_Var* in conjunction with *Parameters_Master*.
 
-The *Parameters_Var* file :file:`Inputs/Tensile/Tutorials/Parametric_1.py` will be used to create two different meshes which are used for simulations. Firstly, you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b* along with the *Name* for each mesh::
+The *Parameters_Var* file :file:`Input/Tensile/Tutorials/Parametric_1.py` will be used to create two different meshes which are used for simulations. Firstly, you will see value ranges for *Mesh.Rad_a* and *Mesh.Rad_b* along with the *Name* for each mesh::
 
     Mesh.Name = ['Notch2','Notch3']
     Mesh.Rad_a = [0.001,0.002]
@@ -220,7 +317,7 @@ Simulations will then be performed for each of these samples::
 
 In this instance, only the simulation geometry (hole radii) will differ between 'ParametricSim1' and 'ParametricSim2'.
 
-The results for both simulations will be opened in **ParaVis**. The results will be prefixed with the simulation name for clarity.
+The results for both simulations will be opened in **ParaVis**. The results will be prefixed with the simulation name for clarity, see :numref:`Fig. %s <ParaVis_03>`.
 
 .. admonition:: Action
    :class: Action
@@ -232,6 +329,12 @@ The results for both simulations will be opened in **ParaVis**. The results will
    Launch **VirtualLab**::
 
         VirtualLab -f RunFiles/RunTutorials.py
+
+.. _ParaVis_03:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_03.png
+
+    **ParaVis** visualisation of parametric analysis of sample where the dimensions of the void in its centre were varied.
 
 Compare :file:`Notch2.py` and :file:`Notch3.py` in the *Meshes* directory. You should see that only the values for *Rad_a* and *Rad_b* differ. Similarly, only ``Mesh`` will be different between :file:`ParametricSim1/Parameters.py` and :file:`ParametricSim2/Parameters.py` in the project directory.
 

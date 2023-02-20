@@ -97,10 +97,3 @@ While this platform has been written for use from the command line, some capabil
    examples/index
    contributing
    about
-
-Indices and tables
-******************
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

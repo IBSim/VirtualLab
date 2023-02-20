@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 #===============================================================================
 # Header
+#===============================================================================
+
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 
-
 '''
-Same behaviout as Task3_Run, however Parameters_Master & Var are both imported,
+Same behaviour as Task3_Run, however Parameters_Master & Var are both imported,
 so that changes can be made to their values in this file on the fly.
 '''
 
 #===============================================================================
-# Setup
+# Definitions
+#===============================================================================
 
 Simulation='Tensile'
 Project='Tutorials'
@@ -21,6 +23,7 @@ Parameters_Var='Parametric_1'
 
 #===============================================================================
 # Environment
+#===============================================================================
 
 VirtualLab=VLSetup(
            Simulation,
@@ -40,6 +43,10 @@ VirtualLab.Parameters(
            Master,
            Var
            )
+
+#===============================================================================
+# Methods
+#===============================================================================
 
 VirtualLab.Mesh()
 

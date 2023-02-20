@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 #===============================================================================
 # Header
+#===============================================================================
+
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 
 #===============================================================================
-# Setup
+# Definitions
+#===============================================================================
 
 Simulation='HIVE'
 Project='Tutorials'
 Parameters_Master='TrainingParameters_Task4'
 Parameters_Var=None
 
-
 #===============================================================================
 # Environment
+#===============================================================================
 
 VirtualLab=VLSetup(
            Simulation,
@@ -30,6 +33,10 @@ VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunMesh=False)
+
+#===============================================================================
+# Methods
+#===============================================================================
 
 VirtualLab.Mesh()
 

@@ -10,7 +10,7 @@ Input
 
 Input has a sub-directory for each `simulation <runsim/runfile.html#simulation>`_ type, and within those are sub-directories for each `Project <runsim/runfile.html#project>`_, e.g. :file:`Input/$SIMULATON/$PROJECT`.
 
-Here you will find :file:`$PARAMETERS_MASTER.py` and :file:`$PARAMETERS_VAR.py` files, which are explained in more detail in `Running a Simulation <runsim.html>`_.
+Here you will find :file:`$PARAMETERS_MASTER.py` and :file:`$PARAMETERS_VAR.py` files, which are explained in more detail `here <runsim/runfile.html#parameters-master>`_.
 
 For the example of :file:`Input/Tensile/Tutorials`:
 

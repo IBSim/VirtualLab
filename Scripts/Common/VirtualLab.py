@@ -415,18 +415,6 @@ class VLSetup:
         # update Parameters_master with parser (not covered by decorator as its an argument)
         Parameters_Master = self._parsed_kwargs.get('Parameters_Master',Parameters_Master) 
         
-        # Note: The call to GetParams converts params_master/var into Namespaces
-        # however we need to original strings for passing into other containers.
-        # So we will ned to get them here.
-        # Remove this       
-        if type(Parameters_Master)==str: self.Parameters_Master_str = Parameters_Master
-        else: self.Parameters_Master_str = "None"
-        if type(Parameters_Var)==str: self.Parameters_Var_str = Parameters_Var
-        else: self.Parameters_Var_str = "None"        
-        #self.Parameters_Var_str = ""#Parameters_Var
-
-
-
         self._SetParams(Parameters_Master, Parameters_Var, ParameterArgs=ParameterArgs)
         # get the number of runs defined in params for each module
         self.Num_runs = self._get_Num_Runs(flags, self.Methods)
@@ -438,7 +426,8 @@ class VLSetup:
             method_cls = getattr(self, method_name)
             # add flag to the instance
             method_cls.SetFlag(flags["Run{}".format(method_name)])
-            method_dicts = self._CreateParameters(method_name)
+            _NS_name = self.method_config[method_name]['Namespace']
+            method_dicts = self._CreateParameters(_NS_name)
             method_cls._MethodSetup(method_dicts)      
 
     def ImportParameters(self, Rel_Parameters, ParameterArgs=None):

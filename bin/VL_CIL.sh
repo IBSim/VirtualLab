@@ -2,19 +2,13 @@
 while getopts "m:v:p:s:I:" options; do
   case "${options}" in
       m)
-	  master="-m ${OPTARG}"
+	  pklfile="-m ${OPTARG}"
 	  ;;
-      v)
-	  Var="-v ${OPTARG}"
+	  I)
+	  ID="-I ${OPTARG}"
 	  ;;
       p)
-	  Project="-p ${OPTARG}"
-	  ;;
-      s)
-	  Simulation="-s ${OPTARG}"
-	  ;;
-      I)
-	  ID="-I ${OPTARG}"
+	  pypaths="${OPTARG}"
 	  ;;
 esac
 done
@@ -22,7 +16,7 @@ export QT_QPA_PLATFORM=minimal
 cd /home/ibsim/VirtualLab
 source /home/user/miniconda/etc/profile.d/conda.sh
 conda activate VirtualLab
-export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH
+export PYTHONPATH=/home/ibsim/VirtualLab:$pypath:$PYTHONPATH
 conda config --set report_errors false
-python bin/python/Run_CIL_container.py $master $Var $Project $Simulation $ID
+python bin/python/Run_container.py $pklfile $ID
 exit $?

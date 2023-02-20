@@ -2,11 +2,12 @@ from email import message
 import socket
 import json
 import pickle
+import dill
 from types import SimpleNamespace as Namespace
 from ast import Raise
 import struct
 
-def Spawn_Container(VL,**kwargs):
+def Spawn_Container(VL,sock,**kwargs):
     ''' Function to enable communication with host script from container.
         This will be called from the VirtualLab container to Run a job 
         with another toll in separate container. At the moment this 
@@ -43,33 +44,23 @@ def Spawn_Container(VL,**kwargs):
         ''' 
     waiting_containers = {}
 
-    if kwargs['Parameters_Var'] == None:
-        kwargs['Parameters_Var'] = 'None'
-
     kwargs['msg'] = "Spawn_Container"
-    # Long Note: we are fully expecting Parameters_Master and Parameters_Var to be strings 
-    # pointing to Runfiles. However base VirtualLab supports passing in Namespaces.
-    # (see virtualLab.py line 178 and GetParams for context). 
-    # For the sake of my sanity we assume you are using normal RunFiles, which most users 
-    # likely are.
-    #
-    # Therefore this check is here to catch any determined soul and let you know if you 
-    # want to pass in Namespaces for container tools you will need implement it yourself. 
-    # In principle this means converting Namespace to a dict with vars(Parameters_Master).
-    # Then sending it over as json string and converting it back on the other side.
-    # In practice you may run into issues with buffer sizes for sock.recv as the strings
-    # can get very long indeed.
-    if isinstance( kwargs['Parameters_Master'],Namespace):
-        raise Exception("Passing in Namespaces is not currently supported for Container tools. \
-        These must be strings pointing to a Runfile.")
-    sock = kwargs['tcp_socket']
-    kwargs.pop('tcp_socket')
+    
     vltype = kwargs['Method_Name']
     #data_string = json.dumps(data)
     # send a signal to VL_server saying you want to spawn a container
-    send_data(sock, kwargs,VL.debug)
+   
+    tmpfile = "{}/vlclass.pkl".format(VL.TEMP_DIR)
+    kwargs['class_file'] = tmpfile
+    kwargs['paths'] = VL._AddedPaths
+    with open(tmpfile,'wb') as f:
+        dill.dump(VL,f)
+
+    send_data(sock, kwargs, VL.debug)
+
     target_ids = []
     #wait to receive message saying the tool is finished before continuing on.
+
     while True:
         rec_dict=receive_data(sock,VL.debug)
         if rec_dict:
@@ -84,6 +75,7 @@ def Spawn_Container(VL,**kwargs):
     #  calls to: Wait_For_Container, Cont_continue and Cont_Waiting.
     if VL.__class__.__name__ == 'VLModule':
         return target_ids
+
 
     while True:
         rec_dict = receive_data(sock,VL.debug)
@@ -211,6 +203,7 @@ def send_data(conn, payload,bigPayload=False,debug=False):
         adjustments to avoid errors caused by data overflows.
     '''
     # serialize payload
+
     if debug:
         print(f'sent:{payload}')
     serialized_payload = json.dumps(payload).encode('utf-8')
@@ -253,7 +246,42 @@ def receive_data(conn,debug,payload_size=2048):
             print(f'received:{payload}')
     return (payload)
 
-def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id,k_flag):
+def Format_Call_Str(Module,vlab_dir,class_file,pythonpaths,use_Apptainer,cont_id):
+
+
+    ''' Function to format string for bind points and container to call specified tool.'''
+    import os
+    import subprocess
+##### Format cmd argumants #########
+    filepath = '-m '+ class_file
+    ID = '-I '+ str(cont_id)
+    pypath = '-p ' + ':'.join(pythonpaths)
+
+#########################################
+# Format run string and script to run   #
+# container based on Module used.       #
+#########################################
+    if use_Apptainer:
+        update_container(Module,vlab_dir)
+        call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
+                        {str(vlab_dir)}/{Module["Apptainer_file"]} '
+    else:
+        #docker
+        call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} {k_flag}'
+    
+    # get custom command line arguments if specified in config.
+    arguments = Module.get("cmd_args",None)
+    if arguments == None:
+        command = f'{Module["Startup_cmd"]} \
+               {filepath} {ID} {pypath}'
+    else:
+        command = f'{Module["Startup_cmd"]} {arguments}'
+
+    return call_string, command
+
+def Format_Call_Str_old(Module,vlab_dir,param_master,param_var,Project,Simulation,use_Apptainer,cont_id):
+
+
     ''' Function to format string for bind points and container to call specified tool.'''
     import os
     import subprocess
@@ -274,7 +302,8 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
     if use_Apptainer:
         update_container(Module,vlab_dir)
         call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
-                        {str(vlab_dir)}/{Module["Apptainer_file"]} {k_flag}'
+                        {str(vlab_dir)}/{Module["Apptainer_file"]} '
+
     else:
         #docker
         call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]} {k_flag}'
@@ -288,7 +317,7 @@ def Format_Call_Str(Module,vlab_dir,param_master,param_var,Project,Simulation,us
         command = f'{Module["Startup_cmd"]} {arguments}'
 
     return call_string, command
-
+    
 def check_platform():
     '''Simple function to return True on Linux and false on Mac/Windows to
     allow the use of Apptainer instead of Docker on Linux systems.

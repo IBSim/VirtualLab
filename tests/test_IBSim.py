@@ -5,19 +5,9 @@ import shutil
 sys.dont_write_bytecode=True
 from subprocess import Popen
 
-VLdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0,VLdir)
-import VLconfig
-sys.path.pop(0)
+TestName='IBSim' # sub direcotry within TutorialsDir where test scripts are kept
 
-Name='IBSim'
-
-TutorialsDir = "{}/RunFiles/Tutorials/{}".format(VLdir,Name)
-ParsedArgs = '-K Mode=T -K ShowMesh=False -K ShowRes=False'
-
-def test_Task1():
-    Run = Popen(['VirtualLab','-f','{}/Task1_Run.py'.format(TutorialsDir),ParsedArgs])
+def test_Task1(TutorialsDir,ParsedArgs):
+    Run = Popen(['VirtualLab','-f','{}/{}/Task1_Run.py'.format(TutorialsDir,TestName),*ParsedArgs])
     err = Run.wait()
     assert err==0
-
-

@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 import time
 import yaml
+import tempfile
 
 import VLconfig
 from Scripts.Common.VLContainer.Container_Utils import (

@@ -258,7 +258,13 @@ You will notice in the *Parameters_Var* file :file:`Input/LFA/Tutorials/Parametr
                   MeshCheck=None
                   )
 
-You will notice a sub-directory named 'Linear' has been created in the project directory which contains the 3 simulations which ran.
+You will notice a sub-directory named 'Linear' has been created in the project directory which contains the 3 simulations which ran. See :numref:`Fig. %s <ParaVis_03>` for an example visualisation of the results.
+
+.. _ParaVis_03:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_03.png
+
+    Visualisation of three instances of the LFA simulation results, showing a cross-sectional view for a comparison of the internal temperature profile.
 
 In the *Aster* directory for each of the 3 simulations, you will find: :file:`AsterLog`; :file:`Export`; and **Code_Aster** :file:`.rmed` files, as seen in the first tutorial. You will also find the file :file:`TimeSteps.dat` which lists the timesteps used in the simulation.
 
@@ -272,9 +278,7 @@ In the *PostAster* directory for each simulation you will find the following fil
 
 :file:`AvgTempBase.png` shows the average temperature on the base of the sample over time. If values have been specified in *Sim.Rvalues* then this plot will also contain the average temperature on differently sized areas of the bottom surface. An R value of 0.5 takes the average temperatures of nodes within a half radius of the centre point on the bottom surface. An R value of 1 would be the entire bottom surface.
 
-The curves for an Rvalue of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample, i.e., directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical, which is due to the different spatial profile of the laser.
-
-These images are created using the python package `matplotlib <https://matplotlib.org/>`_.
+The curves for an Rvalue of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample, i.e., directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical, which is due to the different spatial profile of the laser. These images are created using the python package `matplotlib <https://matplotlib.org/>`_.
 
 :file:`Summary.txt` contains the calculated thermal conductivity, along with the accuracy of the spatial (mesh fineness) and temporal discretisation (timestep sizes) used by the simulation.
 

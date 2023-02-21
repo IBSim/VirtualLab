@@ -103,7 +103,6 @@ The centre of the pipe is offset from the centre of the co-planar block face by 
 The attributes *Length1D*-*3D* again specify the global mesh sizes. The mesh on the pipe is refined using *PipeSegmentN*, while *SubTile* specifies the mesh size on the tile. This is the part of the component which the coil interacts with, therefore the mesh needs to be finer here. *Deflection* refers to the mesh refinement along the fillet.
 
 
-
 Simulation
 ***********
 
@@ -131,7 +130,7 @@ The attribute *CoilType* specifies the coil design to be used. Currently availab
 * 'HIVE'
 * 'Pancake'
 
-*CoilDisplacement* dictates the x, y and z components of the displacement of the coil with respect to the sample. The z-component indicates the gap between the upper surface of the sample and the coil and must be positive. The x and y components indicate the coil's offset about the centre of the sample.
+*CoilDisplacement* dictates the x, y and z components of the displacement of the coil with respect to the sample. The z-component indicates the gap between the upper surface of the sample and the coil and must be positive. The x and y components indicate the coil's offset about the centre of the sample, see :numref:`Fig. %s <HIVE_Params>`.
 
 *Frequency* is used by **ERMES** to produce a range of EM results, such as the Electric field (E), the Current density (J) and Joule heating. These results are stored in the sub-directory *PreAster* within the simulation directory.
 
@@ -139,17 +138,23 @@ The Joule heating profile is used by **Code_Aster** to apply the thermal loads. 
 
 To speed this step up the Joule heating values are clustered into N-number of 'bins'. The 1D k-means algorithm (also known as the Jenks optimisation method) find the N optimal value to group the distribution in to. The Goodness of Fit Value (GFV) describes how well the clustering represents the data, ranging from 0 (worst) to 1 (best).
 
-The attribute *NbClusters* specifies the number of groups to cluster the data in to. In this analysis 100 clusters are used. The attribute *Current* specifies the current in the input terminal of the induction coil. Although this parameter technically relates to the **ERMES** analysis the results scale linearly with this, therefore this value can be altered without having to re-run the entire ERMES analysis.::
+The attribute *NbClusters* specifies the number of groups to cluster the data in to. In this analysis 100 clusters are used. The attribute *Current* specifies the current in the input terminal of the induction coil. Although this parameter technically relates to the **ERMES** analysis the results scale linearly with this, therefore this value can be altered without having to re-run the entire ERMES analysis. ::
 
     Sim.Current = 1000
     Sim.NbClusters = 100
 
-As the loads are not time-dependent this can be treated as a steady state thermal problem, with the command file :file:`Monoblock_Steady.comm` used (Steady State). A transient version of this simulation is also available, :file:`Monoblock_Transient.comm`.
+Because the loads are not time-dependent this can be treated as a steady state thermal problem, with the command file :file:`Monoblock_Steady.comm` used (Steady State). A transient version of this simulation is also available, :file:`Monoblock_Transient.comm`.
+
+.. _HIVE_Params:
+
+.. figure :: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/HIVE_Parameters.png
+
+    Schematic of the HIVE simulation setup, showing some of the variable parameters.
 
 Task 1: Running 1D Coolant
 ***************************
 
-In this task firstly the mesh is created of the AMAZE sample. This will be saved to the meshes directory under the name 'AMAZE'.
+In this task, firstly, the mesh of the AMAZE sample is created. This will be saved to the meshes directory under the name 'AMAZE'.
 
 Following this the coolant analysis will be performed. A sub-directory named 'Examples' will have been created in the project directory, inside which a results directory 'Test_Coil'' can be found. The boiling curve is shown in :file:`PreAster/HeatTransfer.png`, with important values highlighted. This data is also saved to :file:`PreAster/HeatTransfer.dat` to be passed to CodeAster during the analysis.
 

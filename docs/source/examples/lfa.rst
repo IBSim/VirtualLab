@@ -382,7 +382,7 @@ The images :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used 
 
 .. note::
 
-   If errors have occurred when creating images in **ParaVis** uncomment *DA.PVGUI* in :file:`TrainingParameters.py` as advised in the :ref:`Warning <PVGUI_warning>` 'Action' section for VMs above.
+   If errors have occurred when creating images in **ParaVis** uncomment *DA.PVGUI* in :file:`TrainingParameters.py` as advised in the :ref:`Warning <PVGUI_warning>` section for VMs above.
 
    Also feel free to uncomment this attribute if you are interested in seeing how **ParaVis** is used to generate images.
 

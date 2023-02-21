@@ -5,9 +5,11 @@ sys.dont_write_bytecode = True
 from types import SimpleNamespace as Namespace
 from importlib import import_module
 import copy
-import Scripts.Common.VLFunctions as VLF
+
+import Scripts.Common.VLFunctions as VLF          
+from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
-from Scripts.Common.VLContainer import Container_Utils as Utils
+from Scripts.Common.VLPackages.Vox.API import Run as cad2vox, Dir as VoxDir
 
 
 def Check_Threads(num_threads):
@@ -102,15 +104,33 @@ class Method(Method_base):
 
             self.Data[VoxName] = VoxDict.copy()
 
-    def Run(self, VL):
-        from Scripts.Common.VLPackages import Vox as cad2vox
+    @staticmethod
+    def PoolRun(VL,VoxDict):
+        funcname = "voxelise" # function to be executed within container
+        funcfile = "{}/main.py".format(VoxDir) # python file where 'funcname' is located
 
+        RC = cad2vox(funcfile, funcname, fnc_kwargs=VoxDict)
+        return RC
+    
+
+
+    def Run(self, VL):
         if not self.Data:
             return
         VL.Logger("\n### Starting Voxelisation ###\n", Print=True)
 
+
+#        Errorfnc = VLPool(VL, self.GetPoolRun(), self.Data)
+#        if Errorfnc:
+#            VL.Exit(
+#                VLF.ErrorMessage(
+#                    "\nThe following Cad2Vox routine(s) finished with errors:\n{}".format(Errorfnc)
+#                ),
+#                Cleanup=False,
+#            )
+            
         for key in self.Data.keys():
-            Errorfnc = cad2vox.voxelise(**self.Data[key])
+            Errorfnc = self.PoolRun(VL,self.Data[key])
             if Errorfnc:
                 VL.Exit(
                     VLF.ErrorMessage(
@@ -122,7 +142,11 @@ class Method(Method_base):
 
         VL.Logger("\n### Voxelisation Complete ###", Print=True)
 
-    def Spawn(self, VL, **kwargs):
-        self._SpawnBase(VL,"Voxelise","Cad2Vox",run_kwargs=kwargs) # method name and container name
-        
 
+   
+
+
+    
+    
+    
+    

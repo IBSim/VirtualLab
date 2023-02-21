@@ -10,8 +10,7 @@ import tifffile as tf
 import meshio
 from CudaVox import run
 import pandas as pd
-from .utill import check_greyscale,find_the_key,check_voxinfo
-
+from utill import check_greyscale,find_the_key,check_voxinfo
 
 
 def voxelise(input_file,output_file,greyscale_file=None,gridsize=[0,0,0],unit_length=[0.0,0.0,0.0],use_tetra=False,

@@ -36,6 +36,7 @@ Simulations are initiated by launching **VirtualLab** in the command line with a
 
 .. toctree::
     :maxdepth: 2
+    :numbered:
 
     tensile
     lfa

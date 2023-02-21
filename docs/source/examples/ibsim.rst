@@ -1,4 +1,4 @@
-04 Image-Based Simulation
+Image-Based Simulation
 ====================================
 
 Introduction

@@ -1,6 +1,6 @@
 .. include:: ../substitutions.rst
 
-02 Thermal
+Thermal
 =================================
 
 Introduction

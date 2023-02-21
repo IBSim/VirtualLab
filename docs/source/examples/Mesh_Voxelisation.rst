@@ -1,4 +1,4 @@
-05 Mesh Voxelisation
+Mesh Voxelisation
 ====================================
 
 Introduction

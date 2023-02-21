@@ -1,4 +1,4 @@
-01 Mechanical
+Mechanical
 ===============================
 
 Introduction

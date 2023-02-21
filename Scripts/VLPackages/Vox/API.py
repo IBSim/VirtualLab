@@ -3,7 +3,7 @@ import uuid
 import pickle
 
 from Scripts.Common.VLContainer import Container_Utils as Utils
-from Scripts.Common.VLPackages.ContainerInfo import GetInfo
+from Scripts.VLPackages.ContainerInfo import GetInfo
 
 Dir = os.path.dirname(os.path.abspath(__file__))
 

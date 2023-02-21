@@ -4,7 +4,7 @@ import sys
 sys.dont_write_bytecode = True
 from types import SimpleNamespace as Namespace
 
-from Scripts.Common.VLPackages.Salome import Salome
+from Scripts.VLPackages.Salome import API as Salome
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base

@@ -10,7 +10,7 @@ from cil.processors import TransmissionAbsorptionConverter
 from cil.utilities.display import show_geometry
 from cil.recon import FDK
 from cil.io import TIFFStackReader, NikonDataReader
-from Scripts.Common.VLPackages.GVXR.GVXR_utils import write_image
+from Scripts.VLPackages.GVXR.GVXR_utils import write_image
 class GPUError(Exception): 
     def __init__(self, value): 
         self.value = value

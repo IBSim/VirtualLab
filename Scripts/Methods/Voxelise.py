@@ -9,7 +9,7 @@ import copy
 import Scripts.Common.VLFunctions as VLF          
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
-from Scripts.Common.VLPackages.Vox.API import Run as cad2vox, Dir as VoxDir
+from Scripts.VLPackages.Vox.API import Run as cad2vox, Dir as VoxDir
 
 
 def Check_Threads(num_threads):

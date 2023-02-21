@@ -1,6 +1,6 @@
 import os
 
-from Scripts.Common.VLPackages.Salome import Salome
+from Scripts.VLPackages.Salome import API as Salome
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Methods.Mesh import Method as Method_default

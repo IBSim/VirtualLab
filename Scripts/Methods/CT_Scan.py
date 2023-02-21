@@ -32,8 +32,8 @@ class Method(Method_base):
         import pydantic
         from pydantic.dataclasses import dataclass, Field
         from typing import Optional, List
-        from Scripts.Common.VLPackages.GVXR.Utils_IO import ReadNikonData
-        from Scripts.Common.VLPackages.GVXR.GVXR_utils import (
+        from Scripts.VLPackages.GVXR.Utils_IO import ReadNikonData
+        from Scripts.VLPackages.GVXR.GVXR_utils import (
             Check_Materials,
             InitSpectrum,
             dump_to_json,
@@ -294,7 +294,7 @@ class Method(Method_base):
         Note: This must have the decorator @staticmethod as it does not take the
         argument 'self'.
         """
-        from Scripts.Common.VLPackages.GVXR.CT_Scan import CT_scan
+        from Scripts.VLPackages.GVXR.CT_Scan import CT_scan
 
         Errorfnc = CT_scan(**AnalysisDict)
         if Errorfnc:

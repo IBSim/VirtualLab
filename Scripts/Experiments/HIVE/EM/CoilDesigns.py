@@ -4,7 +4,7 @@ from salome.geom import geomBuilder
 from salome.smesh import smeshBuilder
 import  SMESH
 import salome_version
-from Scripts.Common.VLPackages.Salome import SalomeFunc
+from Scripts.VLPackages.Salome import SalomeFunc
 import numpy as np
 
 if salome_version.getVersions()[0] < 9:

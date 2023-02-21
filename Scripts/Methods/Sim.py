@@ -5,12 +5,11 @@ sys.dont_write_bytecode = True
 from types import SimpleNamespace as Namespace
 import pickle
 
-from Scripts.Common.VLPackages.Salome import Salome
-from Scripts.Common.VLPackages.CodeAster import Aster
+from Scripts.VLPackages.Salome import API as Salome
+from Scripts.VLPackages.CodeAster import API as Aster
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
-
 
 
 class Method(Method_base):

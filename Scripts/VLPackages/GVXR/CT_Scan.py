@@ -5,7 +5,7 @@ from gvxrPython3 import gvxr
 import numpy as np
 import math
 import meshio
-from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
+from Scripts.VLPackages.GVXR.GVXR_utils import *
 
 class GVXRError(Exception):
     '''Custom error class to format error message in a pretty way.'''

@@ -115,7 +115,7 @@ class Method(Method_base):
         argument 'self'.
 
         """
-        from Scripts.Common.VLPackages.CIL.CT_reconstruction import CT_Recon
+        from Scripts.VLPackages.CIL.CT_reconstruction import CT_Recon
         Errorfnc = CT_Recon(**AnalysisDict)
         if Errorfnc:
             return Errorfnc
@@ -153,7 +153,7 @@ class Method(Method_base):
                 "you are running in the correct container?"
             )
         #########################################
-        from Scripts.Common.VLPackages.CIL.CT_reconstruction import CT_Recon
+        from Scripts.VLPackages.CIL.CT_reconstruction import CT_Recon
 
         VL.Logger('\n### Starting CIL ###\n', Print=True)
 

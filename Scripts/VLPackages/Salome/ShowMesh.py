@@ -1,37 +1,32 @@
-#!/usr/bin/env python
-
-###
-### This file is generated automatically by SALOME v9.3.0 with dump python functionality
-###
-
 import sys
 import os
+sys.dont_write_bytecode=True
 import salome
+import numpy as np
+from SalomeFunc import GetArgs
 import SalomePyQt
-salome.salome_init()
-import  SMESH, SALOMEDS
-from salome.smesh import smeshBuilder
-import SalomeFunc
 
-Meshes = SalomeFunc.GetArgs()
+kwargs = GetArgs()
 
-smesh = smeshBuilder.New()
+# Connect to ParaVis server
+from pvsimple import *
 
-MeshDict = {}
-for Name, Path in Meshes.items():
-    (lstMesh, status) = smesh.CreateMeshesFromMED(Path)
-    for M in lstMesh:
-        if len(lstMesh)==1: nm=Name
-        else: nm = "{}_{}".format(Name,M.GetName())
-        M.SetName(nm)
-        MeshDict[nm] = M
+renderView1 = GetActiveViewOrCreate('RenderView')
 
-sg = SalomePyQt.SalomePyQt()
-sg.activateModule("Mesh") # Activate mesh module
-sg.getObjectBrowser().expandToDepth(1) #  expand Mesh objects
-# Get a ObjectID to show
-smeshComp = salome.myStudy.FindComponent('SMESH') # search for component SMESH in active salome study
-ID = '{}:{}'.format(smeshComp.GetID(),smeshComp.GetLastChildTag())
-# Display and fit to view
-salome.sg.Display(ID)
-salome.sg.FitAll()
+ResDict = {}
+for name, path in kwargs.items():
+    if os.path.isfile(path):
+        Res = MEDReader(FileName=path)
+        RenameSource(name, Res)
+        ResDict[name]=Res
+        
+        
+        Display = GetDisplayProperties(Res, view=renderView1)
+        Display.SetRepresentationType('Surface With Edges')
+        Hide(Res,renderView1)
+
+
+Display = Show(Res, renderView1)
+renderView1.ResetCamera()
+
+SalomePyQt.SalomePyQt().activateModule('ParaViS')

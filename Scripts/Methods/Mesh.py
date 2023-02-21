@@ -100,7 +100,6 @@ class Method(Method_base):
             tempdir=MeshDict["TMP_CALC_DIR"],
             GUI=GUI,
         )
-        err=0
 
         if err:
             return "Error in Salome run"

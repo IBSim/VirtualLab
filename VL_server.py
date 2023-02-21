@@ -18,8 +18,8 @@ import sys
 from pathlib import Path
 import time
 import yaml
+import tempfile
 
-import VLconfig
 from Scripts.Common.VLContainer.Container_Utils import (
     check_platform,
     Format_Call_Str,
@@ -30,12 +30,13 @@ from Scripts.Common.VLContainer.Container_Utils import (
     host_to_container_path,
     bind_list2string,
     path_change_binder,
-    Exec_Container_Manager
+    Exec_Container_Manager,
+    get_vlab_dir,
 )
-
+vlab_dir = get_vlab_dir()
 bind_points_default = [['/usr/share/glvnd','/usr/share/glvnd'],
                        ['/tmp','/tmp'],
-                       [VLconfig.VL_HOST_DIR,VLconfig.VL_DIR_CONT]
+                       [str(vlab_dir),'/home/ibsim/VirtualLab']
                       ]
 
 
@@ -211,7 +212,7 @@ def handle_messages(
             cont_name = rec_dict['Cont_name']
             cont_info = VL_MOD[cont_name]
 
-            container_path = "{}/{}".format(VLconfig.VL_HOST_DIR,cont_info['Apptainer_file'])
+            container_path = "{}/{}".format(vlab_dir,cont_info['Apptainer_file'])
             cont_info['container_path'] = container_path
             cont_info['container_cmd'] = container_cmd
             
@@ -533,7 +534,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions,tmp_dir):
         thread.daemon = True
         thread.start()
 
-def check_file_in_container(vlab_dir,Run_file,tmp_dir):
+def check_file_in_container(vlab_dir,Run_file):
     """
     Function to check that the given runfile is accessible by the container i.e it is inside 
     the virtualLab directory. If not the file is copied to the temporary directory, previously
@@ -587,17 +588,8 @@ if __name__ == "__main__":
     )
     # parser.add_argument(
     #     "-D",
-    #     "--Docker",
-    #     help="Flag to use docker on Linux host instead of \
-    #     defaulting to Apptainer.This will be ignored on Mac/Windows as Docker is the default.",
-    #     action="store_true",
-    # )
-    parser.add_argument(
-        "-U",
-        "--dry-run",
-        help="Flag to update containers without running.",
-        action="store_true",
-    )
+    #     "--Docker",VLconfig.VL_HOST_DIR
+    #)
     parser.add_argument(
         "-X",
         "--debug",
@@ -612,6 +604,12 @@ if __name__ == "__main__":
         "--no_nvidia",
         help="Flag to turn on/off nvidia support.",
         action="store_false",
+    )
+    parser.add_argument(
+        "-d",
+        "--dry_run",
+        help="Flag to perform dry run.",
+        action="store_true",
     )
     # parser.add_argument(
     #     "-C",
@@ -667,7 +665,7 @@ if __name__ == "__main__":
 #         sys.exit(1)
     
     # get vlab_dir either from cmd args or environment
-    vlab_dir = VLconfig.VL_HOST_DIR
+    vlab_dir = get_vlab_dir()
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
 
@@ -686,7 +684,7 @@ if __name__ == "__main__":
     else:
         Run_file = args.Run_file
     Run_file = check_file_in_container(vlab_dir,Run_file)
-
+    kOption_dict={}
     ######################################
     # formatting for optional -K cmd option
     if args.options != None:

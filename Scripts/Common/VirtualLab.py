@@ -38,7 +38,6 @@ DefaultSettings = {
 class VLSetup:
     def __init__(self, Simulation, Project, Cont_id=1, debug=False):
         self._parsed_kwargs = VLF.parsed_kwargs(sys.argv[1:]) # may need to be more robust than sys.argv
-
         # perform setup steps that are common to both VLModule and VL_manger
         self._Common_init(Simulation, Project, DefaultSettings, Cont_id, debug)
         # Unique ID

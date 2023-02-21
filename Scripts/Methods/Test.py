@@ -15,13 +15,6 @@ _ are ignored.
 """
 
 class Method(Method_base):
-    def __init__(self, VL):
-        self.Data = {}
-        self.RunFlag = True
-        self._checks(VL.Exit)
-        self._WrapVL(VL, ["Setup", "Run"])
-        self.clsname = str(VL.__class__.__name__)
-
     def Setup(self, VL, TestDicts, Import=False):
         """
         Setup for Tests of container communications

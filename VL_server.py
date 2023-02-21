@@ -534,7 +534,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions,tmp_dir):
         thread.daemon = True
         thread.start()
 
-def check_file_in_container(vlab_dir,Run_file,tmp_dir):
+def check_file_in_container(vlab_dir,Run_file):
     """
     Function to check that the given runfile is accessible by the container i.e it is inside 
     the virtualLab directory. If not the file is copied to the temporary directory, previously
@@ -687,7 +687,7 @@ if __name__ == "__main__":
     else:
         Run_file = args.Run_file
     Run_file = check_file_in_container(vlab_dir,Run_file)
-
+    kOption_dict={}
     ######################################
     # formatting for optional -K cmd option
     if args.options != None:

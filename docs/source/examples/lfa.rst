@@ -339,6 +339,7 @@ In the *Parameters_Master* file :file:`TrainingParameters.py` you will see the N
 The data analysis will be performed on the results in the directory specified by *DA.Name*. The file :file:`Scripts/Experiments/LFA/DA/Images.py` captures images of the simulations at time *CaptureTime*.
 
 .. warning::
+    .. _PVGUI_warning:
     Due to issues with the **ParaVis** module incorporated in **SALOME**, off-screen rendering is not possible with the use of VMs. The commented attribute *PVGUI* forces **ParaVis** to run the script in the GUI where the rendering works fine. If you're using a VM, uncomment this line by deleting the hash character, i.e., `#`.
     
     However, both off-screen and GUI rendering will currently fail for systems without a screen, e.g., HPC clusters. We hope to apply a fix for this in future.
@@ -381,7 +382,7 @@ The images :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used 
 
 .. note::
 
-   If errors have occurred when creating images in **ParaVis** uncomment *DA.PVGUI* in :file:`TrainingParameters.py` as advised in the 'Action' section for VMs above.
+   If errors have occurred when creating images in **ParaVis** uncomment *DA.PVGUI* in :file:`TrainingParameters.py` as advised in the :ref:`Warning <PVGUI_warning>` 'Action' section for VMs above.
 
    Also feel free to uncomment this attribute if you are interested in seeing how **ParaVis** is used to generate images.
 

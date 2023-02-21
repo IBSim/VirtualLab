@@ -154,7 +154,7 @@ The sample is set to initially have a uniform temperature profile of 20 |deg| C.
     Sim.LaserT= 'Trim'
     Sim.LaserS = 'Gauss'
 
-*Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/Experiments/LFA/Laser`, see :numref:`Fig. %s <LaserT>`. 'Coarse', 'Fine' and 'Trim' are versions of experimentally measured data whereas 'Hat' and 'HatMid' are idealised profiles. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian'.
+*Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/Experiments/LFA/Laser`, see :numref:`Fig. %s <LaserT>`. 'Coarse', 'Fine' and 'Trim' are versions of experimentally measured data whereas 'Hat' and 'HatMid' are idealised profiles. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian', see :numref:`Fig. %s <LaserS>`.
 
 .. _LaserT:
 
@@ -162,6 +162,12 @@ The sample is set to initially have a uniform temperature profile of 20 |deg| C.
     :width: 400
 
     Plot of various laser temporal profiles available.
+
+.. _LaserS:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LaserS.png
+
+    Plot of laser spatial profiles available.
 
 A convective boundary condition (BC) is also applied by defining the heat transfer coefficient (HTC) and the external temperature::
 

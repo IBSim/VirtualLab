@@ -31,7 +31,8 @@ from Scripts.Common.VLContainer.Container_Utils import (
     host_to_container_path,
     bind_list2string,
     path_change_binder,
-    Exec_Container_Manager
+    Exec_Container_Manager,
+    get_vlab_dir,
 )
 
 bind_points_default = [['/usr/share/glvnd','/usr/share/glvnd'],
@@ -588,17 +589,8 @@ if __name__ == "__main__":
     )
     # parser.add_argument(
     #     "-D",
-    #     "--Docker",
-    #     help="Flag to use docker on Linux host instead of \
-    #     defaulting to Apptainer.This will be ignored on Mac/Windows as Docker is the default.",
-    #     action="store_true",
-    # )
-    parser.add_argument(
-        "-U",
-        "--dry-run",
-        help="Flag to update containers without running.",
-        action="store_true",
-    )
+    #     "--Docker",VLconfig.VL_HOST_DIR
+    #)
     parser.add_argument(
         "-X",
         "--debug",
@@ -613,6 +605,12 @@ if __name__ == "__main__":
         "--no_nvidia",
         help="Flag to turn on/off nvidia support.",
         action="store_false",
+    )
+    parser.add_argument(
+        "-d",
+        "--dry_run",
+        help="Flag to perform dry run.",
+        action="store_true",
     )
     # parser.add_argument(
     #     "-C",
@@ -668,7 +666,7 @@ if __name__ == "__main__":
 #         sys.exit(1)
     
     # get vlab_dir either from cmd args or environment
-    vlab_dir = VLconfig.VL_HOST_DIR
+    vlab_dir = get_vlab_dir()
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
 

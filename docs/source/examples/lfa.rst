@@ -258,11 +258,11 @@ You will notice in the *Parameters_Var* file :file:`Input/LFA/Tutorials/Parametr
                   MeshCheck=None
                   )
 
-You will notice a sub-directory named 'Linear' has been created in the project directory which contains the 3 simulations which ran. See :numref:`Fig. %s <ParaVis_03>` for an example visualisation of the results.
+You will notice a sub-directory named 'Linear' has been created in the project directory which contains the 3 simulations which ran. See :numref:`Fig. %s <ParaVis_04>` for an example visualisation of the results.
 
-.. _ParaVis_03:
+.. _ParaVis_04:
 
-.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_03.png
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_04.png
 
     Visualisation of three instances of the LFA simulation results, showing a cross-sectional view for a comparison of the internal temperature profile.
 
@@ -351,7 +351,8 @@ The data analysis will be performed on the results in the directory specified by
                   Parameters_Var,
                   RunMesh=False,
                   RunSim=False,
-                  RunDA=True)
+                  RunDA=True
+                  )
 
    You will need to manually close the GUI once the imaging is complete.
 

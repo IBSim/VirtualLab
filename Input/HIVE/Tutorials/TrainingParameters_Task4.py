@@ -44,7 +44,7 @@ Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}
 #############
 # HTC between coolant and pipe (need Coolant and Pipe properties)
 Sim.Pipe = {'Type':'smooth tube', 'Diameter':0.01, 'Length':0.05}
-Sim.Coolant = {'Temperature':20, 'Pressure':2, 'Velocity':10}
+Sim.Coolant = {'Temperature':30, 'Pressure':1, 'Velocity':10}
 # Pre-processing to create EMLoads from ERMES output
 
 #############

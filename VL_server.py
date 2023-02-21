@@ -20,7 +20,6 @@ import time
 import yaml
 import tempfile
 
-import VLconfig
 from Scripts.Common.VLContainer.Container_Utils import (
     check_platform,
     Format_Call_Str,
@@ -34,10 +33,10 @@ from Scripts.Common.VLContainer.Container_Utils import (
     Exec_Container_Manager,
     get_vlab_dir,
 )
-
+vlab_dir = get_vlab_dir()
 bind_points_default = [['/usr/share/glvnd','/usr/share/glvnd'],
                        ['/tmp','/tmp'],
-                       [VLconfig.VL_HOST_DIR,VLconfig.VL_DIR_CONT]
+                       [str(vlab_dir),'/home/ibsim/VirtualLab']
                       ]
 
 
@@ -213,7 +212,7 @@ def handle_messages(
             cont_name = rec_dict['Cont_name']
             cont_info = VL_MOD[cont_name]
 
-            container_path = "{}/{}".format(VLconfig.VL_HOST_DIR,cont_info['Apptainer_file'])
+            container_path = "{}/{}".format(vlab_dir,cont_info['Apptainer_file'])
             cont_info['container_path'] = container_path
             cont_info['container_cmd'] = container_cmd
             

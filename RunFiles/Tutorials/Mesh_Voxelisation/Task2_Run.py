@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
+#===============================================================================
+# Header
+#===============================================================================
+
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 
 #===============================================================================
-# Setup
+# Definitions
+#===============================================================================
 
 Simulation='HIVE'
 Project='Tutorials'
@@ -13,21 +18,29 @@ Parameters_Var=None
 
 #===============================================================================
 # Environment
+#===============================================================================
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=1)
+           NbJobs=1
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunMesh=False,
            RunSim=False,
-           RunDA=False)
+           RunDA=False
+           )
+
+#===============================================================================
+# Methods
+#===============================================================================
 
  VirtualLab.Voxelise()

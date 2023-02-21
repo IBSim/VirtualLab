@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #===============================================================================
 # Header
+#===============================================================================
+
 import sys
 import os
 import requests
@@ -17,25 +19,34 @@ if not os.path.isfile(mesh_fname):
     with open(mesh_fname,'wb') as f:
         f.write(r.content)
 
-
 #===============================================================================
 # Environment
+#===============================================================================
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=1)
+           NbJobs=1
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
-           Parameters_Var)
+           Parameters_Var
+           )
+
+#===============================================================================
+# Methods
+#===============================================================================
 
 VirtualLab.Mesh()
 
-VirtualLab.Sim(ShowRes=True)
+VirtualLab.Sim(
+           ShowRes=True
+           )
 
 VirtualLab.DA()

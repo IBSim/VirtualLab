@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #===============================================================================
 # Header
+#===============================================================================
+
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
@@ -11,7 +13,8 @@ Same behaviout as Task3_Run, however Parameters_Var is created in this file.
 '''
 
 #===============================================================================
-# Setup
+# Definitions
+#===============================================================================
 
 Simulation='Tensile'
 Project='Tutorials'
@@ -20,33 +23,60 @@ Parameters_Var=None
 
 #===============================================================================
 # Environment
+#===============================================================================
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=2)
+           NbJobs=2
+           )
 
 # Create namespace containing varying mesh parameters
-Mesh = Namespace(Name = ['Notch2','Notch3'],
-                 Rad_a = [0.001,0.002],
-                Rad_b = [0.001,0.0005])
+Mesh = Namespace(
+       Name = ['Notch2','Notch3'],
+       Rad_a = [0.001,0.002],
+       Rad_b = [0.001,0.0005]
+       )
+
 # Create namespace containing varying sim parameters
-Sim = Namespace(Name = ['ParametricSim1', 'ParametricSim2'],
-                Mesh = ['Notch2', 'Notch3'])
+Sim = Namespace(
+      Name = ['ParametricSim1', 'ParametricSim2'],
+      Mesh = ['Notch2', 'Notch3']
+      )
+
 # Attach Mesh and Sim to Var namespace (so it behaves like a module)
-Var = Namespace(Mesh=Mesh,Sim=Sim)
+Var = Namespace(
+      Mesh=Mesh,
+      Sim=Sim
+      )
 
 VirtualLab.Parameters(
            Parameters_Master,
-           Var
+           Var,
+           RunMesh=True,
+           RunSim=True,
+           RunDA=True
            )
 
-VirtualLab.Mesh()
+#===============================================================================
+# Methods
+#===============================================================================
 
-VirtualLab.Sim(ShowRes=True)
+VirtualLab.Mesh(
+           ShowMesh=False,
+           MeshCheck=None
+           )
+
+VirtualLab.Sim(
+           RunPreAster=True,
+           RunAster=True,
+           RunPostAster=True,
+           ShowRes=True
+           )
 
 VirtualLab.DA()

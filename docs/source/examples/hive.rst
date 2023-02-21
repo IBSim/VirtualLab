@@ -285,7 +285,7 @@ The **ERMES** and **CodeAster** results should both be opened in **ParaVis** to 
 
 .. _ParaVis_06:
 
-.. figure :: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_05.png
+.. figure :: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_06.png
 
     Visualisation of simulation results from **ERMES** and **Code_Aster** for both coil types.
 

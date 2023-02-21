@@ -166,6 +166,7 @@ The sample is set to initially have a uniform temperature profile of 20 |deg| C.
 .. _LaserS:
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LaserS.png
+    :width: 600
 
     Plot of laser spatial profiles available.
 
@@ -204,7 +205,10 @@ Suppose you are interested in seeing the meshes prior to running the simulation.
 
    In the *RunFile* change the ``kwargs`` *ShowMesh* to :code:`True`::
 
-        VirtualLab.Mesh(ShowMesh=True,MeshCheck=None)
+        VirtualLab.Mesh(
+                   ShowMesh=True,
+                   MeshCheck=None
+                   )
 
    *NbJobs* should still be set to 2 from the Tensile tutorial.
 
@@ -238,18 +242,23 @@ You will notice in the *Parameters_Var* file :file:`Input/LFA/Tutorials/Parametr
        VirtualLab.Settings(
                   Mode='Interactive',
                   Launcher='Process',
-                  NbJobs=3)
+                  NbJobs=3
+                  )
 
        VirtualLab.Parameters(
                   Parameters_Master,
                   Parameters_Var,
                   RunMesh=False,
                   RunSim=True,
-                  RunDA=False)
+                  RunDA=False
+                  )
 
-       VirtualLab.Mesh(ShowMesh=False,MeshCheck=None)
+       VirtualLab.Mesh(
+                  ShowMesh=False,
+                  MeshCheck=None
+                  )
 
-You will notice a sub-directory named 'Linear' has been created in the project directory which contains the 3 simulations run.
+You will notice a sub-directory named 'Linear' has been created in the project directory which contains the 3 simulations which ran.
 
 In the *Aster* directory for each of the 3 simulations, you will find: :file:`AsterLog`; :file:`Export`; and **Code_Aster** :file:`.rmed` files, as seen in the first tutorial. You will also find the file :file:`TimeSteps.dat` which lists the timesteps used in the simulation.
 
@@ -263,7 +272,7 @@ In the *PostAster* directory for each simulation you will find the following fil
 
 :file:`AvgTempBase.png` shows the average temperature on the base of the sample over time. If values have been specified in *Sim.Rvalues* then this plot will also contain the average temperature on differently sized areas of the bottom surface. An R value of 0.5 takes the average temperatures of nodes within a half radius of the centre point on the bottom surface. An R value of 1 would be the entire bottom surface.
 
-The curves for an Rvale of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample i.e. directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical, which is due to the different spatial profile of the laser.
+The curves for an Rvalue of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample, i.e., directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical, which is due to the different spatial profile of the laser.
 
 These images are created using the python package `matplotlib <https://matplotlib.org/>`_.
 
@@ -310,11 +319,11 @@ You should see only the simulation 'SimNoVoid' running. From the temperature res
 Task 4: Collective Post-Processing
 ***********************************
 
-We would like to create images of the simulation we have run using **ParaViS**. Given that we want to compare the 3 simulations it is essential that all are plotted using the same temperature range for the colour bar.
+We would like to create images of the simulation we have run using **ParaVis**. Given that we want to compare the 3 simulations it is essential that all are plotted using the same temperature range for the colour bar.
 
 Up until now the post-processing carried out has been for each simulation individually as we've used *PostAsterFile* within ``Sim``, however sometimes we will need access to multiple sets of results simultaneously, e.g. for comparison.
 
-This is possible using the `VirtualLab.DA <../runsim/runfile.html#virtuallab-da>`_ branch of **VirtualLab**. This is primarily used to analyse data collected from simulations, where machine learning could be used to gain insight, for example.
+This is possible using the `VirtualLab.DA <../runsim/runfile.html#virtuallab-da>`_ Method. This is primarily used to analyse data collected from simulations, where machine learning could be used to gain insight, for example.
 
 In the *Parameters_Master* file :file:`TrainingParameters.py` you will see the Namespace *DA* with the following attributes. ::
 
@@ -325,7 +334,8 @@ In the *Parameters_Master* file :file:`TrainingParameters.py` you will see the N
 
 The data analysis will be performed on the results in the directory specified by *DA.Name*. The file :file:`Scripts/Experiments/LFA/DA/Images.py` captures images of the simulations at time *CaptureTime*.
 
-Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using the containers. The attribute *PVGUI* forces **ParaVis** to run the script in the GUI where the rendering works fine.
+.. warning::
+    Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using the containers. The attribute *PVGUI* forces **ParaVis** to run the script in the GUI where the rendering works fine. However, this will currently fail for systems without a screen, e.g., HPC clusters.
 
 .. admonition:: Action
    :class: Action

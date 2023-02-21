@@ -156,27 +156,29 @@ Task 1: Running 1D Coolant
 
 In this task, firstly, the mesh of the AMAZE sample is created. This will be saved to the meshes directory under the name 'AMAZE'.
 
-Following this the coolant analysis will be performed. A sub-directory named 'Examples' will have been created in the project directory, inside which a results directory 'Test_Coil'' can be found. The boiling curve is shown in :file:`PreAster/HeatTransfer.png`, with important values highlighted. This data is also saved to :file:`PreAster/HeatTransfer.dat` to be passed to CodeAster during the analysis.
+Following this, the coolant analysis will be performed. A sub-directory named 'Examples' will have been created in the project directory, inside which a results directory 'Test_Coil' can be found. The boiling curve is shown in :file:`PreAster/HeatTransfer.png`, with important values highlighted. This data is also saved to :file:`PreAster/HeatTransfer.dat` to be passed to CodeAster during the analysis.
 
 .. admonition:: Action
    :class: Action
 
-   Change the *RunERMES* and *RunAster* ``kwarg`` to :code:`False` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_ as we are only interested in the coolant aspect of the work at this stage::
+   Change the *RunERMES* and *RunAster* ``kwarg`` to :code:`False` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_ because we are only interested in the coolant aspect of the work at this stage::
 
         VirtualLab.Parameters(
-                 Parameters_Master,
-                 Parameters_Var,
-                 RunMesh=True,
-                 RunSim=True,
-                 RunDA=True)
+                   Parameters_Master,
+                   Parameters_Var,
+                   RunMesh=True,
+                   RunSim=True,
+                   RunDA=True
+                   )
 
         VirtualLab.Sim(
-                 RunPreAster=True,
-                 RunCoolant=True,
-                 RunERMES=False,
-                 RunAster=False,
-                 RunPostAster=True,
-                 ShowRes=True)
+                   RunPreAster=True,
+                   RunCoolant=True,
+                   RunERMES=False,
+                   RunAster=False,
+                   RunPostAster=True,
+                   ShowRes=True
+                   )
 
    Launch **VirtualLab**.
 
@@ -187,22 +189,24 @@ Task 2: Running an ERMES simulation
 .. admonition:: Action
    :class: Action
 
-   Change *RunMesh* to :code:`False` in `VirtualLab.Parameters <../runsim/runfile.html#virtuallab-parameters>`_ as we are using the same mesh. As we don't need to perform the coolant analysis again change *RunCoolant* to :code:`False` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_. Finally, change RunERMES to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_ as we want to run the **ERMES** solver:: 
+   Change *RunMesh* to :code:`False` in `VirtualLab.Parameters <../runsim/runfile.html#virtuallab-parameters>`_ because we are using the same mesh. As we don't need to perform the coolant analysis again change *RunCoolant* to :code:`False` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_. Finally, change RunERMES to :code:`True` in `VirtualLab.Sim <../runsim/runfile.html#virtuallab-sim>`_ as we want to run the **ERMES** solver:: 
 
         VirtualLab.Parameters(
-                 Parameters_Master,
-                 Parameters_Var,
-                 RunMesh=False,
-                 RunSim=True,
-                 RunDA=True)
+                   Parameters_Master,
+                   Parameters_Var,
+                   RunMesh=False,
+                   RunSim=True,
+                   RunDA=True
+                   )
 
         VirtualLab.Sim(
-                RunPreAster=True,
-                RunCoolant=False,
-                RunERMES=True,
-                RunAster=False,
-                RunPostAster=True,
-                ShowRes=True)
+                  RunPreAster=True,
+                  RunCoolant=False,
+                  RunERMES=True,
+                  RunAster=False,
+                  RunPostAster=True,
+                  ShowRes=True
+                  )
 
    Launch **VirtualLab**.
 

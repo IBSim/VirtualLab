@@ -325,7 +325,7 @@ Task 4: Collective Post-Processing
 
 We would like to create images of the simulation we have run using **ParaVis**. Given that we want to compare the 3 simulations it is essential that all are plotted using the same temperature range for the colour bar.
 
-Up until now the post-processing carried out has been for each simulation individually as we've used *PostAsterFile* within ``Sim``, however sometimes we will need access to multiple sets of results simultaneously, e.g. for comparison.
+Up until now the post-processing carried out has been for each simulation individually as we've used *PostAsterFile* within ``Sim``, however sometimes we will need access to multiple sets of results simultaneously, e.g., for comparison.
 
 This is possible using the `VirtualLab.DA <../runsim/runfile.html#virtuallab-da>`_ Method. This is primarily used to analyse data collected from simulations, where machine learning could be used to gain insight, for example.
 
@@ -334,12 +334,14 @@ In the *Parameters_Master* file :file:`TrainingParameters.py` you will see the N
     DA.Name = 'Linear'
     DA.File = 'Images'
     DA.CaptureTime = 0.01
-    DA.PVGUI = True
+    # DA.PVGUI = True
 
 The data analysis will be performed on the results in the directory specified by *DA.Name*. The file :file:`Scripts/Experiments/LFA/DA/Images.py` captures images of the simulations at time *CaptureTime*.
 
 .. warning::
-    Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using the containers. The attribute *PVGUI* forces **ParaVis** to run the script in the GUI where the rendering works fine. However, this will currently fail for systems without a screen, e.g., HPC clusters.
+    Due to issues with the **ParaVis** module incorporated in **SALOME**, off-screen rendering is not possible with the use of VMs. The commented attribute *PVGUI* forces **ParaVis** to run the script in the GUI where the rendering works fine. If you're using a VM, uncomment this line by deleting the hash character, i.e., `#`.
+    
+    However, both off-screen and GUI rendering will currently fail for systems without a screen, e.g., HPC clusters. We hope to apply a fix for this in future.
 
 .. admonition:: Action
    :class: Action
@@ -369,9 +371,13 @@ You should now see the following images added to the :file:`PostAster` directory
  * :file:`Mesh.png`
  * :file:`MeshCrossSection.png`
 
-The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the *CaptureTime*. The colour bar range used in these image uses the min and max temperature over all the simulations for consistency.
+The images :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used in the simulation and its cross-section, respectively. The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the *CaptureTime*. The colour bar range used in these image uses the min and max temperature over all the simulations for consistency, see :numref:`Fig. %s <LFA_Task4>`.
 
-The images :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used in the simulation and its cross-section, respectively.
+.. _LFA_Task4:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LFA_Task4.png
+
+    Images generated for the LFA virtual experiment as part of the DA method.
 
 .. note::
 

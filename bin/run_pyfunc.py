@@ -13,6 +13,10 @@ argfile (arg3) - path to pickled file which contains args and kwargs to be passe
 funcfile = sys.argv[1]
 funcname = sys.argv[2]
 argfile = sys.argv[3]
+if len(sys.argv)==5:
+    outfile = sys.argv[4]
+else:
+    outfile = None
 
 # get directory of funcile to add to sys.path
 func_dir = os.path.dirname(funcfile) 
@@ -32,6 +36,9 @@ with open(argfile,'rb') as handle:
     args,kwargs = pickle.load(handle)
 
 # execute python function
-func(*args,**kwargs) 
+return_data = func(*args,**kwargs) 
 
+if outfile:
+    with open(outfile,'wb') as handle:
+        pickle.dump(return_data,handle)
 

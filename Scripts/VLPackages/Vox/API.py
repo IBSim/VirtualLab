@@ -19,14 +19,13 @@ def Run(funcfile, funcname, fnc_args=(), fnc_kwargs = {}, ContainerInfo = None, 
         # Get default container info
         ContainerInfo = GetInfo('Vox') 
 
-    pth = "{}/{}.pkl".format(tempdir,uuid.uuid4())
-    with open(pth,'wb') as f:
-        pickle.dump((fnc_args,fnc_kwargs),f)
-
-    container_bash = "{}/VL_Vox.sh".format(Dir) # bash script executed by container
-    # command passed to container bash (done this way for more flexibility)
-    container_command = "python3 /home/ibsim/VirtualLab/bin/run_pyfunc.py {} {} {}".format(funcfile,funcname,pth)
-
-    command = "{} -c '{}' ".format(container_bash,container_command)
-    RC = Utils.Exec_Container(ContainerInfo, command)
+    # get python executable and temporary files created to run funcname as standalone
+    python_exe, files = Utils.run_pyfunc_setup(funcfile,funcname,args=fnc_args,kwargs=fnc_kwargs)
+    
+    # need to set up certain parameters so create bash script (VL_Vox.sh) where python_exe is executed
+    container_bash = "{}/VL_Vox.sh".format(Dir) 
+    command = "{} -c '{}' ".format(container_bash,python_exe) # pass python_exe as argument to script 
+    # run the above bash script. RC specifies whether the run was a success and func_return are the values returned by funcname
+    RC, func_return = Utils.run_pyfunc_launch(ContainerInfo,command,files)    
+ 
     return RC

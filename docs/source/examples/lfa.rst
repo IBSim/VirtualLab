@@ -81,7 +81,7 @@ The file used by **SALOME** to create the geometry and generate the mesh is :fil
 
     Drawing of the disc shaped sample with the attirubtes of ``Mesh`` used to specify the dimensions.
 
-The centre of the void is offset from the centre of the disc by *VoidCentre*. Entering a negative number for *VoidHeight* will create a void in the bottom half of the disc as appose to the top half.
+The centre of the void is offset from the centre of the disc by *VoidCentre*. Entering a negative number for *VoidHeight* will create a void in the bottom half of the disc as apposed to the top half.
 
 The attributes used for the mesh refinement are similar to those used in the `Tutorial #1 <tensile.html#sample>`_ tutorial::
 
@@ -154,7 +154,14 @@ The sample is set to initially have a uniform temperature profile of 20 |deg| C.
     Sim.LaserT= 'Trim'
     Sim.LaserS = 'Gauss'
 
-*Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/Experiments/LFA/Laser`. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian'.
+*Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/Experiments/LFA/Laser`, see :numref:`Fig. %s <LaserT>`. 'Coarse', 'Fine' and 'Trim' are versions of experimentally measured data whereas 'Hat' and 'HatMid' are idealised profiles. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian'.
+
+.. _LaserT:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LaserT.png
+    :width: 400
+
+    Plot of various laser temporal profiles available.
 
 A convective boundary condition (BC) is also applied by defining the heat transfer coefficient (HTC) and the external temperature::
 

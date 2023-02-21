@@ -26,8 +26,8 @@ In this experiment a 'dog-bone' shaped sample is loaded either through constant 
         #===============================================================================
 
         VirtualLab=VLSetup(
-        	       Simulation,
-        	       Project
+                   Simulation,
+                   Project
                    )
 
         VirtualLab.Settings(
@@ -363,7 +363,8 @@ In `VirtualLab.Settings <../runsim/runfile.html#virtuallab-settings>`_ you will 
         VirtualLab.Settings(
                    Mode='Interactive',
                    Launcher='Process',
-                   NbJobs=2)
+                   NbJobs=2
+                   )
 
    Launch **VirtualLab**.
 
@@ -395,7 +396,8 @@ This can be accomplished by using the *RunMesh* ``kwarg`` in `VirtualLab.Paramet
                    Parameters_Var,
                    RunMesh=False,
                    RunSim=True,
-                   RunDA=True)
+                   RunDA=True
+                   )
 
    Launch **VirtualLab**.
 

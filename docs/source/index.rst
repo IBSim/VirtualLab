@@ -8,11 +8,8 @@
 
 :hide-toc:
 
-Introduction
-============
-
 Welcome to VirtualLab's documentation!
-**************************************
+======================================
 
 .. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Logo.png
   :width: 800
@@ -93,7 +90,7 @@ While this platform has been written for use from the command line, some capabil
    :caption: Contents:
    :hidden:
 
-   index
+   Introduction <index>
    install
    structure
    virtual_exp

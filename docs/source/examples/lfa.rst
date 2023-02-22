@@ -341,6 +341,7 @@ The data analysis will be performed on the results in the directory specified by
 .. warning::
     
     .. _PVGUI_warning:
+    
     Due to issues with the **ParaVis** module incorporated in **SALOME**, off-screen rendering is not possible with the use of VMs. The commented attribute *PVGUI* forces **ParaVis** to run the script in the GUI where the rendering works fine. If you're using a VM, uncomment this line by deleting the hash character, i.e., `#`.
     
     However, both off-screen and GUI rendering will currently fail for systems without a screen, e.g., HPC clusters. We hope to apply a fix for this in future.

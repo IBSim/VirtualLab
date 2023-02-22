@@ -91,7 +91,7 @@ While this platform has been written for use from the command line, some capabil
    :caption: Contents:
    :hidden:
 
-   Introduction </>
+   Introduction </index.html>
    install
    structure
    virtual_exp

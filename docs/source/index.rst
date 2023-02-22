@@ -89,7 +89,7 @@ While this platform has been written for use from the command line, some capabil
 
 .. toctree::
    :caption: Contents:
-   :caption: `Introduction <index.html>`_
+   :caption: Introduction
    :hidden:
 
    :maxdepth: 2

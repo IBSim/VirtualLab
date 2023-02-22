@@ -6,7 +6,13 @@ Introduction
 
 Image-based simulation is a technique which enables more accurate geometries of components to be modelled. Imaging techniques, such as X-ray computed tomography (CT) scanning, enable the characterisation of internal features within a component, from which a more accurate mesh can be generated compared with an idealised CAD-based equivalent. These methods are able to capture features present due to manufacturing methods, such as asymmetry or micro-cracks, yielding simulations with increased accuracy. That is, image-based meshes allow simulations of components 'as manufacutred' rather than 'as designed'.
 
+Sample & Simulation
+*******************
+
 In this example, a CT scan of a `dog-bone <tensile.html#sample>`_ sample is used in a `tensile test <../virtual_exp.html#tensile-testing>`_. The image-based mesh used for this simulation can be downloaded `here <https://ibsim.co.uk/VirtualLab/downloads/Tensile_IBSim.med>`_. See `www.ibsim.co.uk <https://ibsim.co.uk/what-is-ibsim/>`_ for further information on the image-based simulation methodology.
+
+Task 1
+******
 
 .. admonition:: Action
    :class: Action

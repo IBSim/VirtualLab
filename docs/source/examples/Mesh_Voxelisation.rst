@@ -15,6 +15,7 @@ Prerequisites
 
 The examples provided here are mostly self-contained. However, in order to understand this tutorial, at a minimum you will need to have completed `the first tutorial <tensile.html>`_ to obtain a grounding in how **VirtualLab** is setup. Also, although not strictly necessary, we also recommend completing `the third tutorial <hive.html>`_ because we will be using the **Salome** mesh generated from the HIVE analysis as part of one of the examples. All the other tutorials (that is tutorials 2 and 4) are useful but not required if your only interest is the voxelisation features.
 
+.. _Example1:
 Example 1: Running in an existing analysis workflow
 ***************************************************
 
@@ -200,20 +201,21 @@ Unfortunately, **Salome** does not use the most descriptive names for each regio
 
    * Set the greyscale values so the regions are distinct from one another.
 
-Example 3: Using none Salome med mesh files
+.. _Example3:
+Example 3: Using non **Salome** med mesh files
 *******************************************
 
-Our final example involves using mesh formats other than Salome med. **CAD2Vox** itself actually uses the python package `meshio. <https://pypi.org/project/meshio/>`_ to read in mesh data. This package officially supports more than 30 common mesh formats so if you have your mesh geometry in another format there is a good chance **CAD2Vox** will just work.
+This example involves using mesh formats other than Salome med. **CAD2Vox** itself actually uses the python package `meshio. <https://pypi.org/project/meshio/>`_ to read in mesh data. This package officially supports more than 30 common mesh formats. Therefore, if you have your mesh geometry in another format there is a good chance **CAD2Vox** will work 'out-of-the-box'.
 
 There are however, 3 caveats to bear in mind:
 
 #. We have not tested every possible format. We know that ``.med``, ``.stl``, ``.ply``, and ``.obj`` all work as expected. You are welcome to try other formats as they should work however, your results may vary.
 
-#. **CAD2Vox** can only work on meshes containing Triangles or Tetrahedrons no other cell shapes are currently supported.
+#. **CAD2Vox** can only work on meshes containing Triangles or Tetrahedrons. No other cell shapes are currently supported.
 
-#. Greyscale values from material data are only officially supported with ``.med`` since ``.obj``, ``.ply`` and ``.stl`` meshes don't contain material data. As such for other mesh formats the greyscale is just set to white (255) for the entire mesh. You can change this value in ``greyscale_Welsh-Dragon.csv`` where you will find the "region" listed as "Undefined".
+#. Greyscale values from material data are only officially supported with ``.med`` since ``.obj``, ``.ply`` and ``.stl`` meshes don't contain material data. As such, for other mesh formats the greyscale is just set to white (255) for the entire mesh. You can change this value in ``greyscale_Welsh-Dragon.csv`` where you will find the "region" listed as "Undefined".
 
-With these in mind actually using a different mesh format through **VirtualLab** is as simple as setting ``Vox.mesh`` to a string containing the name of the file you wish to use including the file extension. You can then place the mesh in the same default directory as you would for a ``.med`` mesh. Or as discussed earlier you can use the absolute path to the file, again including the extension.
+With these in mind, using a different mesh format through **VirtualLab** is as simple as setting ``Vox.mesh`` to a string containing the name of the file you wish to use including the file extension. You can then place the mesh in the same default directory as you would for a ``.med`` mesh. Or, as discussed earlier, you can use the absolute path to the file, again including the extension.
 
 For our example we will use the Welsh Dragon Model which was released by `Bangor university <http://vmg.cs.bangor.ac.uk/downloads>`_, UK, for Eurographics 2011. The model can be downloaded `from here <https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_. This file should be placed in ``Output/Dragon/Tutorials/Meshes`` (or again you can set ``Vox.mesh`` inside ``Input/Dragon/Tutorials/TrainingParameters_Dragon.py`` to the path of the mesh file).
 
@@ -227,37 +229,39 @@ For our example we will use the Welsh Dragon Model which was released by `Bangor
        Parameters_Master='TrainingParameters_Dragon'
        Parameters_Var=None
 
-        VirtualLab=VLSetup(
-        	       Simulation,
-        	       Project)
+       VirtualLab=VLSetup(
+                  Simulation,
+                  Project
+                  )
 
-        VirtualLab.Settings(
-                   Mode='Interactive',
-                   Launcher='Process',
-                   NbThreads=1)
+       VirtualLab.Settings(
+                  Mode='Interactive',
+                  Launcher='Process',
+                  NbThreads=1
+                  )
 
-        VirtualLab.Parameters(
-                   Parameters_Master,
-                   Parameters_Var,
-                   RunMesh=False,
-                   RunSim=False,
-                   RunDA=False)
+       VirtualLab.Parameters(
+                  Parameters_Master,
+                  Parameters_Var,
+                  RunMesh=False,
+                  RunSim=False,
+                  RunDA=False
+                  )
 
-	VirtualLab.Voxelise()
-        VirtualLab.Cleanup()
+       VirtualLab.Voxelise()
 
 
    We can then once again launch **VirtualLab** using the following command::
 
         VirtualLab -f RunFiles/RunTutorials.py
 
-The output is located in ``Output/Dragon/Tutorials/Voxel-Images/Welsh-Dragon.Tiff``. You may notice that since this mesh only contains triangle data the resulting voxel image is only colours voxels on the surface of the model. You will also notice that much like the dog bone in example 1 the model surface defaults to white (greyscale value of 255). This is because ``.stl`` files contain no information on materials so as such the entire mesh is set to a single greyscale value. Once again you can change this value in ``greyscale_Welsh-Dragon.csv`` if desired.
+The output is located in ``Output/Dragon/Tutorials/Voxel-Images/Welsh-Dragon.Tiff``. You may notice that, since this mesh only contains triangle data, the resulting voxel image only contains coloured voxels on the surface of the model. You will also notice that, much like the dog bone in :ref:`example 1 <Example1>`, the model surface defaults to white (greyscale value of 255). This is because ``.stl`` files contain no information on materials. Therefore, as such, the entire mesh is set to a single greyscale value. Once again you can change this value in ``greyscale_Welsh-Dragon.csv`` if desired.
 
 .. admonition:: Auto-filling surface meshes
 
-   Because this final example uses a triangle mesh one final thing you can try is changing the option ``Vox.solid`` to True. This will use a different algorithm to auto-fill the interior volume. This works well on this particular mesh. However, if you wish to use this on your own surface meshes you will need to be aware of a few caveats:
+   Because this final example uses a triangle mesh, one final thing you can try is changing the option ``Vox.solid`` to :code:`True`. This will use a different algorithm to auto-fill the interior volume. This works well on this particular mesh. However, if you wish to use this on your own surface meshes you will need to be aware of a few caveats:
 
-   #. The algorithm used is not robust so depending on the geometry it may work well but can sometimes leave holes in the mesh.
+   #. The algorithm used is not robust. Therefore, depending on the geometry, it may work well but can sometimes leave holes in the mesh.
 
    #. The algorithm used is also much slower than the normal surface algorithm.
 

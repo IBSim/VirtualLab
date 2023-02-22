@@ -97,7 +97,7 @@ class Method(Method_base):
 
             if hasattr(Parameters, "Num_Threads"):
                 Check_Threads(Parameters.Num_Threads)
-                os.environ["OMP_NUM_THREADS"] = Parameters.Num_Threads
+                VoxDict["Num_Threads"] = Parameters.Num_Threads
 
             if hasattr(Parameters, "image_format"):
                 VoxDict["im_format"] = Parameters.image_format
@@ -108,7 +108,7 @@ class Method(Method_base):
     def PoolRun(VL,VoxDict):
         funcname = "voxelise" # function to be executed within container
         funcfile = "{}/main.py".format(VoxDir) # python file where 'funcname' is located
-
+        
         RC = cad2vox(funcfile, funcname, fnc_kwargs=VoxDict)
         return RC
     
@@ -119,26 +119,14 @@ class Method(Method_base):
             return
         VL.Logger("\n### Starting Voxelisation ###\n", Print=True)
 
-
-#        Errorfnc = VLPool(VL, self.GetPoolRun(), self.Data)
-#        if Errorfnc:
-#            VL.Exit(
-#                VLF.ErrorMessage(
-#                    "\nThe following Cad2Vox routine(s) finished with errors:\n{}".format(Errorfnc)
-#                ),
-#                Cleanup=False,
-#            )
-            
-        for key in self.Data.keys():
-            Errorfnc = self.PoolRun(VL,self.Data[key])
-            if Errorfnc:
-                VL.Exit(
-                    VLF.ErrorMessage(
-                        "The following Cad2Vox routine(s) finished with errors:\n{}".format(
-                            Errorfnc
-                        )
-                    )
-                )
+        Errorfnc = VLPool(VL, self.GetPoolRun(), self.Data)
+        if Errorfnc:
+            VL.Exit(
+               VLF.ErrorMessage(
+                   "\nThe following Cad2Vox routine(s) finished with errors:\n{}".format(Errorfnc)
+               ),
+               Cleanup=False,
+            )
 
         VL.Logger("\n### Voxelisation Complete ###", Print=True)
 

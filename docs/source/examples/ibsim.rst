@@ -67,6 +67,12 @@ Looking at :file:`Input/Tensile/Tutorials/TrainingParameters_IBSim.py` you will 
 
 From the results shown in **ParaViS** you should notice the asymmetric nature of the displacement, stress and strain profiles. These are as a result of the subtle imperfections in the non-idealised Tensile_IBSim mesh compared with an idealised CAD-based mesh.
 
+.. _IBSim_Tensile:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/IBSim_Tensile.png
+    :width: 600
+
+    Comparison of CAD-based (idealised) and image-based simulation results.
 
 .. bibliography:: ../refs.bib
    :style: plain

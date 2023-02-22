@@ -90,14 +90,6 @@ While this platform has been written for use from the command line, some capabil
 .. toctree::
    :caption: Contents:
    :hidden:
-   :maxdepth: 0
-
-   Introduction <index>
-
-
-.. toctree::
-   :hidden:
-   :maxdepth: 2
 
    install
    structure

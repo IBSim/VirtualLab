@@ -89,10 +89,9 @@ While this platform has been written for use from the command line, some capabil
 
 .. toctree::
    :caption: Contents:
-   :caption: Introduction
    :hidden:
 
-   :maxdepth: 2
+   Introduction </>
    install
    structure
    virtual_exp

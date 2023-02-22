@@ -29,6 +29,11 @@ The software is mostly written in python, and is fully parametrised such that it
 
 Due to the modularity of the platform, by nature, **VirtualLab** is continually expanding. The bulk of the 'virtual experiments' currently included are carried out in the FE solver `Code_Aster <https://www.code-aster.org/>`_. However, there are also modules to simulate `X-ray computed tomography <https://gvirtualxray.fpvidal.net/>`_, `irradiation damage of materials <https://github.com/giacomo-po/MoDELib>`_ and `electromagnetics <https://ruben-otin.blogspot.com/2015/04/ruben-otin-software-ruben-otin-april-19.html>`_.
 
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/Intro_01.png
+  :width: 600
+  :alt: VirtualLab Logo
+  :align: center
+
 The pre and post processing is carried out using various software, for example:
 
 * `SALOME <https://www.salome-platform.org/>`_: Mesh generation

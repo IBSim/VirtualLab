@@ -16,6 +16,7 @@ Prerequisites
 The examples provided here are mostly self-contained. However, in order to understand this tutorial, at a minimum you will need to have completed `the first tutorial <tensile.html>`_ to obtain a grounding in how **VirtualLab** is setup. Also, although not strictly necessary, we also recommend completing `the third tutorial <hive.html>`_ because we will be using the **Salome** mesh generated from the HIVE analysis as part of one of the examples. All the other tutorials (that is tutorials 2 and 4) are useful but not required if your only interest is the voxelisation features.
 
 .. _Example1:
+
 Example 1: Running in an existing analysis workflow
 ***************************************************
 
@@ -131,8 +132,9 @@ In this folder you will also find the file ``greyscale_Notch1.csv``. This file c
 
 
 .. _Example2:
+
 Example 2: Running **CAD2Vox** Standalone
-*************************************
+*****************************************
 
 **CAD2Vox** can be run on an existing mesh file separate from any other analysis within **VirtualLab**. This may be useful if, for example, you have previously performed some long running simulation and now wish to voxelise the CAD mesh without having to needlessly repeat the work in **Code_Aster**.
 
@@ -213,8 +215,9 @@ Unfortunately, **Salome** does not use the most descriptive names for each regio
    * Set the greyscale values so the regions are distinct from one another.
 
 .. _Example3:
+
 Example 3: Using non **Salome** med mesh files
-*******************************************
+**********************************************
 
 This example involves using mesh formats other than Salome med. **CAD2Vox** itself actually uses the python package `meshio. <https://pypi.org/project/meshio/>`_ to read in mesh data. This package officially supports more than 30 common mesh formats. Therefore, if you have your mesh geometry in another format there is a good chance **CAD2Vox** will work 'out-of-the-box'.
 

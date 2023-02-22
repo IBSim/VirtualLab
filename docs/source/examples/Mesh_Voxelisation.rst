@@ -106,8 +106,7 @@ There are also a number of options we have not used in this file. They are liste
 
 The output from the voxelisation can now be found under ``Output/Tensile/Tutorials/Voxel-Images/Notch1.tiff`` this can be viewed with appropriate software such as `ImageJ <https://imagej.nih.gov/ij/>`_.
 
-In this folder you will also find the file ``greyscale_Notch1.csv``. This file contains in csv format all the materials that were read from the mesh file and the corresponding 8-bit greyscale values used in the output images. We will go into this file in detail with the next example because it's not really interesting in this case due to there only being one material, that is "Copper". Hence, the entire dog-bone is coloured white (that is the max greyscale value of 255 for an 8-bit dataset). Please note that the first column is the region name as read from the mesh file by **CAD2Vox**, in this case there is only one region. Therfore, you should see ``Un-Defined`` in the first column. See the `next tutorial <Example 2: Running **CAD2Vox** Standalone>`_ for further details.
-
+In this folder you will also find the file ``greyscale_Notch1.csv``. This file contains in csv format all the materials that were read from the mesh file and the corresponding 8-bit greyscale values used in the output images. We will go into this file in detail with the next example because it's not really interesting in this case due to there only being one material, that is "Copper". Hence, the entire dog-bone is coloured white (that is, the max greyscale value of 255 for an 8-bit dataset). Please note that the first column is the region name as read from the mesh file by **CAD2Vox**, in this case there is only one region. Therfore, you should see ``Un-Defined`` in the first column. See the :ref:`next example <Example2>` for further details.
 
 
 .. admonition:: Action
@@ -125,6 +124,7 @@ In this folder you will also find the file ``greyscale_Notch1.csv``. This file c
    * If you have CUDA installed and access to a GPU try using it to see how it effects the run time.
 
 
+.. _Example2:
 Example 2: Running **CAD2Vox** Standalone
 *************************************
 

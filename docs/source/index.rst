@@ -87,11 +87,14 @@ While this platform has been written for use from the command line, some capabil
 .. |build-status_mn| image:: https://img.shields.io/docker/cloud/build/ibsim/virtuallab_monolith
 
 .. toctree::
+   :maxdepth: 1
+   Introduction <index>
+
+   
+.. toctree::
    :caption: Contents:
    :hidden:
 
-   :maxdepth: 1
-   Introduction <index>
    :maxdepth: 2
    install
    structure

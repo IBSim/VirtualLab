@@ -86,13 +86,10 @@ While this platform has been written for use from the command line, some capabil
 .. |build-status_co| image:: https://img.shields.io/docker/cloud/build/ibsim/vl_coms_test
 .. |build-status_mn| image:: https://img.shields.io/docker/cloud/build/ibsim/virtuallab_monolith
 
-.. toctree::
-   :maxdepth: 1
-   Introduction <index>
 
-   
 .. toctree::
    :caption: Contents:
+   :caption: `Introduction <index.html>`_
    :hidden:
 
    :maxdepth: 2

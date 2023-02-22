@@ -90,7 +90,7 @@ While this platform has been written for use from the command line, some capabil
 .. toctree::
    :caption: Contents:
    :hidden:
-   :maxdepth: 1
+   :maxdepth: 0
 
    Introduction <index>
 

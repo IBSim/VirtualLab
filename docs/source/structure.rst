@@ -68,4 +68,4 @@ This directory will be created when the first **VirtualLab** analysis is perform
 
 This directory is structured similarly to the `Input`_ directory, where you will find a directory for the *Simulation* type followed by one of the *Project* name.
 
-The 'project directory' (:file:`Output/$SIMULATON/$PROJECT`) will hold all data generated for the *Project*, such as: meshes; simulation results; visualisation images; analysis reports. The structure of the project directory is detailed `here <runsim/runfile.html#project>`_.
+The 'project directory' (:file:`Output/$SIMULATON/$PROJECT`) will hold all data generated for the *Project*, such as: meshes; simulation results; visualisation images; analysis reports. The structure of the project directory is detailed in `this section <runsim/runfile.html#project>`_.

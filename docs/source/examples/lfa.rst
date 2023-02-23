@@ -1,6 +1,6 @@
 .. include:: ../substitutions.rst
 
-02 Thermal
+Thermal
 =================================
 
 Introduction
@@ -15,6 +15,9 @@ This example introduces some of the post-processing capabilities available in **
 
    Because this is a different simulation type, *Simulation* will need to be changed::
 
+       #===============================================================================
+       # Definitions
+       #===============================================================================
        Simulation='LFA'
        Project='Tutorials'
        Parameters_Master='TrainingParameters'
@@ -22,29 +25,38 @@ This example introduces some of the post-processing capabilities available in **
 
        VirtualLab=VLSetup(
                   Simulation,
-                  Project)
+                  Project
+                  )
 
        VirtualLab.Settings(
                   Mode='Interactive',
                   Launcher='Process',
-                  NbJobs=2)
+                  NbJobs=2
+                  )
 
        VirtualLab.Parameters(
                   Parameters_Master,
                   Parameters_Var,
                   RunMesh=True,
                   RunSim=True,
-                  RunDA=True)
+                  RunDA=True
+                  )
+
+       #===============================================================================
+       # Methods
+       #===============================================================================
 
        VirtualLab.Mesh(
                   ShowMesh=False,
-                  MeshCheck=None)
+                  MeshCheck=None
+                  )
 
        VirtualLab.Sim(
                   RunPreAster=True,
                   RunAster=True,
                   RunPostAster=True,
-                  ShowRes=True)
+                  ShowRes=True
+                  )
 
        VirtualLab.DA()
 
@@ -53,7 +65,7 @@ In the *Parameters_Master* file :file:`Inputs/LFA/Tutorials/TrainingParameters.p
 Sample
 ******
 
-The file used by **SALOME** to create the geometry and generate the mesh is :file:`Scripts/Experiments/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry, referenced in :numref:`Fig. %s <LFA_Disc>` are::
+The file used by **SALOME** to create the geometry and generate the mesh is :file:`Scripts/Experiments/LFA/Mesh/Disc.py`. The attributes required to create the sample geometry, referenced in :numref:`Fig. %s <LFA_Disc>`, are::
 
     Mesh.Radius = 0.0063
     Mesh.HeightB = 0.00125
@@ -65,10 +77,11 @@ The file used by **SALOME** to create the geometry and generate the mesh is :fil
 .. _LFA_Disc:
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LFA_Disc.png
+    :width: 400
 
     Drawing of the disc shaped sample with the attirubtes of ``Mesh`` used to specify the dimensions.
 
-The centre of the void is offset from the centre of the disc by *VoidCentre*. Entering a negative number for *VoidHeight* will create a void in the bottom half of the disc as appose to the top half.
+The centre of the void is offset from the centre of the disc by *VoidCentre*. Entering a negative number for *VoidHeight* will create a void in the bottom half of the disc as apposed to the top half.
 
 The attributes used for the mesh refinement are similar to those used in the `Tutorial #1 <tensile.html#sample>`_ tutorial::
 
@@ -141,7 +154,21 @@ The sample is set to initially have a uniform temperature profile of 20 |deg| C.
     Sim.LaserT= 'Trim'
     Sim.LaserS = 'Gauss'
 
-*Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/Experiments/LFA/Laser`. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian'.
+*Energy* dictates the energy (J) that the laser will provide to the sample. The temporal profile of the laser is defined by *LaserT*, where the different profiles can be found in :file:`Scripts/Experiments/LFA/Laser`, see :numref:`Fig. %s <LaserT>`. 'Coarse', 'Fine' and 'Trim' are versions of experimentally measured data whereas 'Hat' and 'HatMid' are idealised profiles. The spatial profile, *LaserS*, can be either 'Uniform' or 'Gaussian', see :numref:`Fig. %s <LaserS>`.
+
+.. _LaserT:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LaserT.png
+    :width: 400
+
+    Plot of various laser temporal profiles available.
+
+.. _LaserS:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LaserS.png
+    :width: 600
+
+    Plot of laser spatial profiles available.
 
 A convective boundary condition (BC) is also applied by defining the heat transfer coefficient (HTC) and the external temperature::
 
@@ -178,7 +205,10 @@ Suppose you are interested in seeing the meshes prior to running the simulation.
 
    In the *RunFile* change the ``kwargs`` *ShowMesh* to :code:`True`::
 
-        VirtualLab.Mesh(ShowMesh=True,MeshCheck=None)
+        VirtualLab.Mesh(
+                   ShowMesh=True,
+                   MeshCheck=None
+                   )
 
    *NbJobs* should still be set to 2 from the Tensile tutorial.
 
@@ -212,18 +242,29 @@ You will notice in the *Parameters_Var* file :file:`Input/LFA/Tutorials/Parametr
        VirtualLab.Settings(
                   Mode='Interactive',
                   Launcher='Process',
-                  NbJobs=3)
+                  NbJobs=3
+                  )
 
        VirtualLab.Parameters(
                   Parameters_Master,
                   Parameters_Var,
                   RunMesh=False,
                   RunSim=True,
-                  RunDA=False)
+                  RunDA=False
+                  )
 
-       VirtualLab.Mesh(ShowMesh=False,MeshCheck=None)
+       VirtualLab.Mesh(
+                  ShowMesh=False,
+                  MeshCheck=None
+                  )
 
-You will notice a sub-directory named 'Linear' has been created in the project directory which contains the 3 simulations run.
+You will notice a sub-directory named 'Linear' has been created in the project directory which contains the 3 simulations which ran. See :numref:`Fig. %s <ParaVis_04>` for an example visualisation of the results.
+
+.. _ParaVis_04:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ParaVis_04.png
+
+    Visualisation of three instances of the LFA simulation results, showing a cross-sectional view for a comparison of the internal temperature profile.
 
 In the *Aster* directory for each of the 3 simulations, you will find: :file:`AsterLog`; :file:`Export`; and **Code_Aster** :file:`.rmed` files, as seen in the first tutorial. You will also find the file :file:`TimeSteps.dat` which lists the timesteps used in the simulation.
 
@@ -237,9 +278,7 @@ In the *PostAster* directory for each simulation you will find the following fil
 
 :file:`AvgTempBase.png` shows the average temperature on the base of the sample over time. If values have been specified in *Sim.Rvalues* then this plot will also contain the average temperature on differently sized areas of the bottom surface. An R value of 0.5 takes the average temperatures of nodes within a half radius of the centre point on the bottom surface. An R value of 1 would be the entire bottom surface.
 
-The curves for an Rvale of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample i.e. directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical, which is due to the different spatial profile of the laser.
-
-These images are created using the python package `matplotlib <https://matplotlib.org/>`_.
+The curves for an Rvalue of 0.1 show the rise in average temperature with respect to time over the central most area of the disc's bottom surface. It can be seen that this temperature rises more rapidly for the ‘SimNoVoid’ simulation compared with the ‘SimVoid1’ and ‘SimVoid2’ simulations. This is due to the void creating a thermal barrier in the centre-line of the sample, i.e., directly between the thermal load and the area where the average temperature is being measured. Differences can also be observed between the profiles for the ‘SimVoid1’ and ‘SimVoid2’ simulations despite the geometries being identical, which is due to the different spatial profile of the laser. These images are created using the python package `matplotlib <https://matplotlib.org/>`_.
 
 :file:`Summary.txt` contains the calculated thermal conductivity, along with the accuracy of the spatial (mesh fineness) and temporal discretisation (timestep sizes) used by the simulation.
 
@@ -284,22 +323,28 @@ You should see only the simulation 'SimNoVoid' running. From the temperature res
 Task 4: Collective Post-Processing
 ***********************************
 
-We would like to create images of the simulation we have run using **ParaViS**. Given that we want to compare the 3 simulations it is essential that all are plotted using the same temperature range for the colour bar.
+We would like to create images of the simulation we have run using **ParaVis**. Given that we want to compare the 3 simulations it is essential that all are plotted using the same temperature range for the colour bar.
 
-Up until now the post-processing carried out has been for each simulation individually as we've used *PostAsterFile* within ``Sim``, however sometimes we will need access to multiple sets of results simultaneously, e.g. for comparison.
+Up until now the post-processing carried out has been for each simulation individually as we've used *PostAsterFile* within ``Sim``, however sometimes we will need access to multiple sets of results simultaneously, e.g., for comparison.
 
-This is possible using the `VirtualLab.DA <../runsim/runfile.html#virtuallab-da>`_ branch of **VirtualLab**. This is primarily used to analyse data collected from simulations, where machine learning could be used to gain insight, for example.
+This is possible using the `VirtualLab.DA <../runsim/runfile.html#virtuallab-da>`_ Method. This is primarily used to analyse data collected from simulations, where machine learning could be used to gain insight, for example.
 
 In the *Parameters_Master* file :file:`TrainingParameters.py` you will see the Namespace *DA* with the following attributes. ::
 
     DA.Name = 'Linear'
     DA.File = 'Images'
     DA.CaptureTime = 0.01
-    DA.PVGUI = True
+    # DA.PVGUI = True
 
 The data analysis will be performed on the results in the directory specified by *DA.Name*. The file :file:`Scripts/Experiments/LFA/DA/Images.py` captures images of the simulations at time *CaptureTime*.
 
-Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen rendering is not possible using the containers. The attribute *PVGUI* forces **ParaVis** to run the script in the GUI where the rendering works fine.
+.. warning::
+    
+    .. _PVGUI_warning:
+    
+    Due to issues with the **ParaVis** module incorporated in **SALOME**, off-screen rendering is not possible with the use of VMs. The commented attribute *PVGUI* forces **ParaVis** to run the script in the GUI where the rendering works fine. If you're using a VM, uncomment this line by deleting the hash character, i.e., `#`.
+    
+    However, both off-screen and GUI rendering will currently fail for systems without a screen, e.g., HPC clusters. We hope to apply a fix for this in future.
 
 .. admonition:: Action
    :class: Action
@@ -311,7 +356,8 @@ Due to issues with the **ParaVis** module incorporated in **SALOME** off-screen 
                   Parameters_Var,
                   RunMesh=False,
                   RunSim=False,
-                  RunDA=True)
+                  RunDA=True
+                  )
 
    You will need to manually close the GUI once the imaging is complete.
 
@@ -328,13 +374,17 @@ You should now see the following images added to the :file:`PostAster` directory
  * :file:`Mesh.png`
  * :file:`MeshCrossSection.png`
 
-The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the *CaptureTime*. The colour bar range used in these image uses the min and max temperature over all the simulations for consistency.
+The images :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used in the simulation and its cross-section, respectively. The images :file:`Capture.png` and :file:`ClipCapture.png` show the heat distribution in the sample at the time specified by the *CaptureTime*. The colour bar range used in these image uses the min and max temperature over all the simulations for consistency, see :numref:`Fig. %s <LFA_Task4>`.
 
-The images :file:`Mesh.png` and :file:`MeshCrossSection.png` show the mesh used in the simulation and its cross-section, respectively.
+.. _LFA_Task4:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/LFA_Task4.png
+
+    Images generated for the LFA virtual experiment as part of the DA method.
 
 .. note::
 
-   If errors have occurred when creating images in **ParaVis** uncomment *DA.PVGUI* in :file:`TrainingParameters.py` as advised in the 'Action' section for VMs above.
+   If errors have occurred when creating images in **ParaVis** uncomment *DA.PVGUI* in :file:`TrainingParameters.py` as advised in the :ref:`Warning <PVGUI_warning>` section for VMs above.
 
    Also feel free to uncomment this attribute if you are interested in seeing how **ParaVis** is used to generate images.
 

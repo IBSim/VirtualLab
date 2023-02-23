@@ -59,13 +59,13 @@ Heat by Induction to Verify Extremes (HIVE) is an experimental facility at the `
     :width: 600
     :align: center
 
-    (left) Photograph of sample mounted under induction coil within HIVE; (right) photograph of sample heated during a physical test.
+    (left) Photograph of sample mounted under induction coil within HIVE; (right) photograph of sample heated during a physical test.  |br|
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualTesting_06.png
     :width: 600
     :align: center
 
-    (left) Schematic of sample manufactured for parameterised physical and virtual testing within HIVE; (right) photograph of a batch of manufactured HIVE samples.
+    (left) Schematic of sample manufactured for parameterised physical and virtual testing within HIVE; (right) photograph of a batch of manufactured HIVE samples.  |br|
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualTesting_07.png
     :width: 600

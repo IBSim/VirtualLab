@@ -5,7 +5,7 @@ from gvxrPython3 import gvxr
 import numpy as np
 import math
 import meshio
-from Scripts.Common.VLPackages.GVXR.GVXR_utils import *
+from Scripts.VLPackages.GVXR.GVXR_utils import *
 
 class GVXRError(Exception):
     '''Custom error class to format error message in a pretty way.'''
@@ -17,14 +17,30 @@ class GVXRError(Exception):
         "=========================\n\n"
         return Errmsg
 
-def CT_scan(mesh_file,output_file,Beam,Detector,Model,Material_list,_Name=None,Headless=False,
-num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=False):
+def CT_scan(**kwargs):
     ''' Main run function for GVXR'''
-    
+    #get kwargs or set defaults
+    Material_list = kwargs['Material_list']
+    Headless = kwargs.get('Headless',False)
+    num_projections = kwargs.get('num_projections',180)
+    angular_step = kwargs.get('angular_step',1)
+    im_format = kwargs.get('im_format','tiff')
+    use_tetra = kwargs.get('use_tetra',False)
+
+    print(gvxr.getVersionOfSimpleGVXR())
+    print(gvxr.getVersionOfCoreGVXR())
+    # Create an OpenGL context
+    print("Create an OpenGL context")
+    if Headless:
+    # headless
+        gvxr.createWindow(-1, 0, "EGL", 4, 5)
+    else:
+        gvxr.createWindow(-1, 1, "OPENGL", 4, 5)
+
     # Load the data
-    print("Load the data");
+    print("Loading the data");
     
-    mesh = meshio.read(mesh_file)
+    mesh = meshio.read(kwargs['mesh_file'])
 
     #extract np arrays of mesh data from meshio
     points = mesh.points
@@ -81,7 +97,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
 
     if len(tags) != len(Material_list):
         Errormsg = (f"Error: The number of Materials read in from Input file is {len(Material_list)} "
-        f"this does not match \nthe {len(mat_tag_dict)} materials in {mesh_file}.\n\n" 
+        f"this does not match \nthe {len(mat_tag_dict)} materials in {kwargs['mesh_file']}.\n\n" 
         f"The meshfile contains: \n {mat_tag_dict} \n\n The Input file contains:\n {Material_list}.")
         gvxr.destroyAllWindows();
         raise GVXRError(Errormsg)
@@ -109,32 +125,32 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     # Set up the beam
     print("Set up the beam")
     #gvxr.setSourcePosition(15,-40.0, 12.5, "mm");
-    gvxr.setSourcePosition(Beam.Beam_PosX,Beam.Beam_PosY, Beam.Beam_PosZ, Beam.Beam_Pos_units);
-    if (Beam.Beam_Type == 'point'):
+    gvxr.setSourcePosition(kwargs['Beam_PosX'],kwargs['Beam_PosY'], kwargs['Beam_PosZ'], kwargs['Beam_Pos_units']);
+    if (kwargs['Beam_Type'] == 'point'):
         gvxr.usePointSource();
-    elif (Beam.Beam_Type == 'parallel'):
+    elif (kwargs['Beam_Type'] == 'parallel'):
         gvxr.useParallelBeam();
     else:
-        raise GVXRError(f"Invalid beam type {Beam.Beam_Type} defined in Input File, must be either point or parallel")
+        raise GVXRError(f"Invalid beam type {kwargs['Beam_Type']} defined in Input File, must be either point or parallel")
 
     gvxr.resetBeamSpectrum()
-    for energy, count in zip(Beam.Energy,Beam.Intensity):
-        gvxr.addEnergyBinToSpectrum(energy, Beam.Energy_units, count);
+    for energy, count in zip(kwargs['Energy'],kwargs['Intensity']):
+        gvxr.addEnergyBinToSpectrum(energy, kwargs['Energy_units'], count);
     # Set up the detector
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
-    gvxr.setDetectorPosition(Detector.Det_PosX,Detector.Det_PosY, Detector.Det_PosZ, Detector.Det_Pos_units);
+    gvxr.setDetectorPosition(kwargs['Det_PosX'],kwargs['Det_PosY'], kwargs['Det_PosZ'], kwargs['Det_Pos_units']);
     gvxr.setDetectorUpVector(0, 0, -1);
-    gvxr.setDetectorNumberOfPixels(Detector.Pix_X, Detector.Pix_Y);
-    gvxr.setDetectorPixelSize(Detector.Spacing_X, Detector.Spacing_Y, Detector.Spacing_units);
+    gvxr.setDetectorNumberOfPixels(kwargs['Pix_X'], kwargs['Pix_Y']);
+    gvxr.setDetectorPixelSize(kwargs['Spacing_X'], kwargs['Spacing_Y'], kwargs['Spacing_units']);
     for i,mesh in enumerate(meshes):
         label = mesh_names[i];
     ### BLOCK #####
-        gvxr.makeTriangularMesh(label,points.flatten(),mesh.flatten(),str(Model.Model_Pos_units));
+        gvxr.makeTriangularMesh(label,points.flatten(),mesh.flatten(),str(kwargs['Model_Pos_units']));
         # place mesh at the origin then translate it according to the defined offset
         gvxr.moveToCentre(label);
-        gvxr.translateNode(label,Model.Model_PosX,Model.Model_PosY,Model.Model_PosZ,Model.Model_Pos_units)
-        gvxr.scaleNode(label, Model.Model_ScaleX, Model.Model_ScaleY, Model.Model_ScaleZ)
+        gvxr.translateNode(label,kwargs['Model_PosX'],kwargs['Model_PosY'],kwargs['Model_PosZ'],kwargs['Model_Pos_units'])
+        gvxr.scaleNode(label, kwargs['Model_ScaleX'], kwargs['Model_ScaleY'], kwargs['Model_ScaleZ'])
         gvxr.setElement(label, Material_list[i]);
         gvxr.addPolygonMeshAsInnerSurface(label)
         
@@ -146,16 +162,16 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     for i,label in enumerate(mesh_names):
             # Gloabal X-axis rotation:
             global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[1,0,0]) # caculate vector along global x-axis in object co-odinates
-            gvxr.rotateNode(label, Model.rotation[0], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom x rotation axis
-            total_rotation[0,i] += Model.rotation[0]# track total rotation
+            gvxr.rotateNode(label, kwargs['rotation'][0], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom x rotation axis
+            total_rotation[0,i] += kwargs['rotation'][0]# track total rotation
             # Gloabal Y-axis rotation:
             global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[0,1,0]) # caculate vector along global Y-axis in object co-odinates
-            gvxr.rotateNode(label, Model.rotation[1], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Y rotation axis
-            total_rotation[1,i] += Model.rotation[1]# track total rotation
+            gvxr.rotateNode(label, kwargs['rotation'][1], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Y rotation axis
+            total_rotation[1,i] += kwargs['rotation'][1]# track total rotation
             # Global Z-axis Rotaion:
             global_axis_vec = world_to_model_axis(total_rotation[:,i],global_axis=[0,0,1]) # caculate vector along global Z-axis in object co-odinates
-            gvxr.rotateNode(label, Model.rotation[2], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Z rotation axis
-            total_rotation[2,i] += Model.rotation[2]# track total rotation
+            gvxr.rotateNode(label, kwargs['rotation'][2], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Z rotation axis
+            total_rotation[2,i] += kwargs['rotation'][2]# track total rotation
     # Update the 3D visualisation
     gvxr.displayScene();       
     # Compute an X-ray image
@@ -200,7 +216,7 @@ num_projections = 180,angular_step=1,im_format='tiff',use_tetra=False,Vulkan=Fal
     #convert from transmission to absorbsion data.
     #projections = - np.log(projections)
     #projections = normalise_uint(projections)
-    write_image(output_file,projections,im_format=im_format);
+    write_image(kwargs['output_file'],projections,im_format=im_format);
     
     if (not Headless):
         controls_msg = ('### GVXR Window Controls ###\n'

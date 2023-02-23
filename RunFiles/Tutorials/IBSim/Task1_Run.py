@@ -10,6 +10,12 @@ sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 import VLconfig
 
+Simulation='Tensile'
+Project='Tutorials'
+Parameters_Master='TrainingParameters_IBSim'
+Parameters_Var=None
+
+
 # path to IBSim mesh file
 mesh_fname = "{}/Tensile/Tutorials/Meshes/Tensile_IBSim.med".format(VLconfig.OutputDir)
 if not os.path.isfile(mesh_fname):

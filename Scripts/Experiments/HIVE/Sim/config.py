@@ -6,7 +6,7 @@ import pickle
 import numpy as np
 import shutil
 
-from Scripts.Common.VLPackages.CodeAster import Aster
+from Scripts.VLPackages.CodeAster import API as Aster
 import Scripts.Common.VLFunctions as VLF
 
 from Scripts.Methods.Sim import Method as Method_default

@@ -46,3 +46,4 @@ Containers/*.sif
 !VL_Modules.yaml
 # ignore any exisiting vlab binary
 bin/VirtualLab
+VLconfig.py

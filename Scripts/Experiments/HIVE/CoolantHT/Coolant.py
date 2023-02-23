@@ -21,7 +21,7 @@ class Properties(IAPWS97,IAPWS95):
         [_type = [IAPWS97] = source database]
     """
     def __init__(self,_type = 'IAPWS97',**kwargs):
-        if _type is 'IAPWS97':
+        if _type == 'IAPWS97':
             IAPWS97.__init__(self,**kwargs)
             self._type = _type
             if hasattr(self,'P') is True:
@@ -29,7 +29,7 @@ class Properties(IAPWS97,IAPWS95):
                 self.rho_vsat = IAPWS97(P = self.P,x = 1).rho
                 self.ifg = (IAPWS97(P = self.P, x = 1).h
                             - IAPWS97(P = self.P, x = 0).h)*1000
-        elif _type is 'IAPWS95':
+        elif _type == 'IAPWS95':
             IAPWS95.__init__(self,**kwargs)
             self._type = _type
         else:
@@ -116,7 +116,7 @@ class Properties(IAPWS97,IAPWS95):
         return Nusselt
 
     def mu_w(self,T_w):
-        if self._type is 'IAPWS97':
+        if self._type == 'IAPWS97':
             self.mu_w = IAPWS97(P = self.P, T = T_w).mu
         else:
             pass

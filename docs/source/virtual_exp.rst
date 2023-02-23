@@ -20,7 +20,7 @@ To accompany the virtual offering of the platform, the research group have also 
     :width: 600
     :align: center
 
-    (left) ‘Dog bone’ shaped sample designed according to BS EN ISO 6892-1:2016; (right) sample loaded into testing apparatus with strain measured by a gauge and digital image correlation. |br|
+    **(left)** ‘Dog bone’ shaped sample designed according to BS EN ISO 6892-1:2016; **(right)** sample loaded into testing apparatus with strain measured by a gauge and digital image correlation. |br|
 
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualTesting_02.png

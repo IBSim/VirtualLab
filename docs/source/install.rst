@@ -29,6 +29,8 @@ You may run the following 'one line' command on a fresh installation of a suppor
 .. warning::
   If you are not using a fresh OS it is highly recommended that you read the rest of this page before trying this method, to better understand how the installation is carried out in case you have pre-installed dependencies which might brake.
 
+  This 'one line' commant has only been tested on Ubuntu 20.04 LTS.
+
 Terminal::
 
     cd && wget https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Install_VLplus.sh && chmod 755 Install_VLplus.sh && sudo ./Install_VLplus.sh -B d -y && source ~/.VLprofile && rm Install_VLplus.sh

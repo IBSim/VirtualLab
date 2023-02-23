@@ -1,13 +1,19 @@
 # VirtualLab
 
-Series of simulations to replicate laboratory experiments as part of a 'digital twin' initiative between Swansea University and the UK Atomic Energy Authority (UKAEA). Scripts are mostly in python to run EdF's simulation packages SALOME and Code_Aster.
+**VirtualLab** is a modular platform which enables the user to run simulations of physical laboratory experiments, i.e., their 'virtual counterparts'.
 
-To set up VirtualLab you must first run 'SetupConfig.sh' from the directory to which you have downloaded the source code. If you would like to change any of the default configuration you can do this from VLconfig_DEFAULT.sh.
+The motivation for creating a virtual laboratory is manyfold, for example:
 
-It is possible to install VirtualLab and its dependencies by running the following command in the terminal.
-`cd ~ && wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_VirtualLab.sh?inline=false && chmod 755 Install_VirtualLab.sh && sudo ~/./Install_VirtualLab.sh -P c -S y -E y -y && source ~/.bashrc`
+* Planning and optimisation of physical experiments.
+* Ability to directly compare experimental and simulation data, useful to better understand both physical and virtual methods.
+* Augment sparse experimental data with simulation data for increased insight.
+* Generating synthetic data to train machine learning models.
 
-See VirtualLab/docs for documentation.
+The software is mostly written in python, and is fully parametrised such that it can be run in 'batch mode', i.e., non-interactively, via the command line. This is in order to facilitate automation and so that many virtual experiments can be conducted in parallel.
+
+Due to the modularity of the platform, by nature, **VirtualLab** is continually expanding. The bulk of the 'virtual experiments' currently included are carried out in the FE solver [Code_Aster](https://www.code-aster.org/). However, there are also modules to simulate [X-ray computed tomography](https://gvirtualxray.fpvidal.net/), [irradiation damage of materials](https://github.com/giacomo-po/MoDELib) and [electromagnetics](https://ruben-otin.blogspot.com/2015/04/ruben-otin-software-ruben-otin-april-19.html).
+
+For installation instructions please see the [documentation pages](https://virtuallab.readthedocs.io/).
 
    Copyright 2020 IBSim Group (c/o Llion Marc Evans)
 

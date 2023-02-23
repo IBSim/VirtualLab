@@ -10,6 +10,10 @@ sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 import VLconfig
 
+#===============================================================================
+# Definitions
+#===============================================================================
+
 Simulation='Tensile'
 Project='Tutorials'
 Parameters_Master='TrainingParameters_IBSim'

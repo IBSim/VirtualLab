@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
+#===============================================================================
+# Header
+#===============================================================================
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 
 #===============================================================================
-# Setup
+# Definitions
+#===============================================================================
 
 Simulation='GVXR'
 Project='Tutorials'
@@ -13,22 +17,30 @@ Parameters_Var='TrainingParameters_GVXR_var'
 
 #===============================================================================
 # Environment
+#===============================================================================
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Headless',
-        #    Mode = 'Interactive',
+            #Mode = 'Interactive',
            Launcher='Sequential',
-           NbJobs=1)
+           NbJobs=1
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunCT_Scan=False,
-           RunCT_Recon=True)
+           RunCT_Recon=True
+           )
+
+#===============================================================================
+# Methods
+#===============================================================================
 
 VirtualLab.CT_Scan()
 

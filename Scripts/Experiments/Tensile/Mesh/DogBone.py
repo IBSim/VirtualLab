@@ -93,7 +93,7 @@ def Create(Parameters):
     from salome.smesh import smeshBuilder
     import  SMESH
     import salome_version
-    from Scripts.Common.VLPackages.Salome import SalomeFunc
+    from Scripts.VLPackages.Salome import SalomeFunc
 
     if salome_version.getVersions()[0] < 9:
         import salome

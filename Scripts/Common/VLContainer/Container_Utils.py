@@ -10,7 +10,41 @@ import struct
 import sys
 import subprocess
 
-                     
+
+def _tmpfile_pkl(tempdir='/tmp'):
+    import uuid
+    return "{}/{}.pkl".format(tempdir,uuid.uuid4())    
+
+def _pyfunctorun(funcfile,funcname,in_path,out_path):
+    return "python3 /home/ibsim/VirtualLab/bin/run_pyfunc.py {} {} {} {}".format(funcfile,funcname,in_path,out_path)
+
+def run_pyfunc_setup(funcfile,funcname,args=(),kwargs={}):
+
+    arg_path = _tmpfile_pkl() # temp file for arguments
+    with open(arg_path,'wb') as f:
+        pickle.dump((args,kwargs),f)
+        
+    ret_val_path = _tmpfile_pkl() # temp file for return of function
+
+    python_exe = _pyfunctorun(funcfile,funcname,arg_path,ret_val_path)
+    
+    return python_exe, [arg_path,ret_val_path]
+
+def run_pyfunc_launch(ContainerInfo, command, pkl_files):
+
+    RC = Exec_Container(ContainerInfo, command)
+
+    arg_path,ret_val_path = pkl_files
+    with open(ret_val_path,'rb') as f:
+        func_results = pickle.load(f)
+
+    return RC, func_results
+        
+def run_pyfunc(ContainerInfo,funcfile,funcname,args=(),kwargs={}):
+    python_exe, files = run_pyfunc_setup(funcfile,funcname,args=args,kwargs=kwargs)    
+    return run_pyfunc_launch(ContainerInfo,python_exe,files)
+        
+                
 def bind_list2string(bind_list):
     ''' Returns a list of bind points in the format required by a container.'''
     container_bind = []

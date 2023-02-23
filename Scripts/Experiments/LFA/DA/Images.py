@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import h5py
-from Scripts.Common.VLPackages import SalomeRun
+from Scripts.VLPackages.Salome import API as SalomeRun
 
 def Single(VL,DADict):
     Parameters = DADict['Parameters']

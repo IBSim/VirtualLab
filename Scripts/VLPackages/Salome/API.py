@@ -5,9 +5,14 @@ import uuid
 import pickle
 
 from Scripts.Common.VLContainer import Container_Utils as Utils
-from Scripts.Common.VLPackages.ContainerInfo import GetInfo
+from Scripts.VLPackages.ContainerInfo import GetInfo
 
 Dir = os.path.dirname(os.path.abspath(__file__))
+
+''' 
+This is an API for the VL_Manager container to send information to the server
+to run analysis using the Salome package (which is installed in a different container). 
+'''
 
 def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = '/tmp'):
     '''

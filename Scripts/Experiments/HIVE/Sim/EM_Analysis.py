@@ -10,8 +10,8 @@ from bisect import bisect_left as bl
 from sklearn.cluster import KMeans
 
 from Scripts.Common.tools import MEDtools
-from Scripts.Common.VLPackages.Salome.Salome import Run as SalomeRun
-from Scripts.Common.VLPackages.ERMES.ERMES import Run as ERMESRun
+from Scripts.VLPackages.Salome.API import Run as SalomeRun
+from Scripts.VLPackages.ERMES.API import Run as ERMESRun
 
 def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, tempdir='/tmp', AddPath=[], LogFile=None):
     '''

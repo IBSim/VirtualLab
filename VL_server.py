@@ -753,6 +753,7 @@ if __name__ == "__main__":
     
     # wait until virtualLab is done before closing
     err = proc.wait()
+    sys.exit(err)
 #    print(err)
 
 

@@ -14,15 +14,7 @@ which is the name of the new method, and edit as desired. Any file starting with
 _ are ignored.
 """
 
-
 class Method(Method_base):
-    def __init__(self, VL):
-        self.Data = {}
-        self.RunFlag = True
-        self._checks(VL.Exit)
-        self._WrapVL(VL, ["Setup", "Run"])
-        self.clsname = str(VL.__class__.__name__)
-
     def Setup(self, VL, TestDicts, Import=False):
         """
         Setup for Tests of container communications
@@ -62,6 +54,7 @@ class Method(Method_base):
         Note: This must have the decorator @staticmethod as it does not take the
         argument 'self'.
         """
+        pass
 
     def Run(self, VL, **kwargs):
         """
@@ -87,7 +80,6 @@ class Method(Method_base):
             "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
             Print=True,
         )
-        import subprocess
 
         if not self.Data:
             return
@@ -95,13 +87,13 @@ class Method(Method_base):
 
         for key in self.Data.keys():
             data = self.Data[key]
-            msg = data["Message"]
-            container_process = subprocess.run(
-                f"bash /usr/bin/jokes.sh {msg}",
-                check=True,
-                stderr=subprocess.PIPE,
-                shell=True,
-            )
+            
+            ContainerInfo = {'ContainerName':'Test_Comms',
+                            }
+            command = "bash /usr/bin/jokes.sh {}".format(data["Message"])
+                            
+                                            
+            RC = Utils.Exec_Container(ContainerInfo, command)
 
         VL.Logger(
             "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
@@ -110,45 +102,4 @@ class Method(Method_base):
             Print=True,
         )
 
-    def Spawn(self, VL, **kwargs):
-        """
-        This is the function called when running VirtualLab.#MethodName in the
-        run file with the command line option Module=False (or not set at all
-        as False is the default value).
 
-        If this option if set to True Function "Run" is called instead.
-
-        This Function sends a message to the host to spawn a container
-        "#ContainerName". This refers to one of the Containers defined
-        in VL_modules.yaml.
-        """
-        MethodName = "Test"
-        ContainerName = "Test_Comms"
-        Cont_runs = VL.container_list.get(MethodName, None)
-        if Cont_runs == None:
-            print(
-                f"Warning: Method {MethodName} was called in the inputfile but has no coresponding"
-                f" namespace in the parameters file. To remove this warning message please set Run{MethodName}=False."
-            )
-            return
-
-        return_value = Utils.Spawn_Container(
-            VL,
-            Cont_id=1,
-            Tool=ContainerName,
-            Method_Name=MethodName,
-            Num_Cont=1,
-            Cont_runs=Cont_runs,
-            Parameters_Master=VL.Parameters_Master_str,
-            Parameters_Var=VL.Parameters_Var_str,
-            Project=VL.Project,
-            Simulation=VL.Simulation,
-            Settings=VL.settings_dict,
-            tcp_socket=VL.tcp_sock,
-            run_args=kwargs,
-        )
-
-        if return_value != "0":
-            # an error occurred so exit VirtualLab
-            VL.Exit("Error Occurred with Test")
-        return

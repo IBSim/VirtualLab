@@ -19,7 +19,7 @@ GVXR = Namespace()
 # name for the GVXR run.
 GVXR.Name = 'AMAZE'
 # name of the mesh(es) you wish to virtually CT scan
-GVXR.mesh = 'AMAZE_Sample'
+GVXR.mesh = 'AMAZE'
 # Flag to use specpy to gentrate a beam spectrum
 GVXR.use_spekpy = True
 GVXR.Tube_Voltage = 50

@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-###
-### This file is generated automatically by SALOME v9.3.0 with dump python functionality
-###
-
 import sys
 import os
 import salome
@@ -12,6 +8,11 @@ salome.salome_init()
 import  SMESH, SALOMEDS
 from salome.smesh import smeshBuilder
 import SalomeFunc
+
+'''
+Original ShowMesh file, however mesh plugin doesn't work in container currently. ShowMesh.py opens the mesh in ParaViS instead currently.
+
+'''
 
 Meshes = SalomeFunc.GetArgs()
 

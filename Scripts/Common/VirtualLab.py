@@ -85,14 +85,11 @@ class VLSetup:
         self.Methods = []
         self.method_config = self.load_config(self.CONF_DIR, "VL_Methods.json")
         # Loop through directory contents
-        for _method in os.listdir(MethodsDir):
+        for method_name in self.method_config.keys():
             # skip directiories, files that start with '_' and those that aren't python
-            if _method.startswith("_"):
+            if method_name.startswith("_"):
                 continue
-            if not os.path.isfile("{}/{}".format(MethodsDir, _method)):
-                continue
-            method_name, ext = os.path.splitext(_method)
-            if ext != ".py":
+            if not os.path.isfile("{}/{}.py".format(MethodsDir, method_name)):
                 continue
 
             # define the path to the scripts for a certain method & add to class

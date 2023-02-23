@@ -207,7 +207,7 @@ def handle_messages(
           
         if event == 'Exec':
             if use_Apptainer:
-                container_cmd = "apptainer exec --contain --writable-tmpfs"
+                container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs"
 
             cont_name = rec_dict['Cont_name']
             cont_info = VL_MOD[cont_name]
@@ -219,7 +219,6 @@ def handle_messages(
             # check apptainer sif file exists and if not build from docker version
             if not os.path.exists(container_path):
                 # sif file doesn't exist
-                print('here')
                 if 'Docker_url' in cont_info:
                     print(f"Apptainer file {container_path} does not appear to exist so building. This may take a while.")
                     try:

@@ -27,14 +27,14 @@ To accompany the virtual offering of the platform, the research group have also 
     :width: 600
     :align: center
 
-    (left) Photograph of batch of samples manufactured with varying parameters to test physically and compare directly with their virtual counterparts; (right) experimental results from digital image correlation measurements. |br|
+    **(left)** Photograph of batch of samples manufactured with varying parameters to test physically and compare directly with their virtual counterparts; **(right)** experimental results from digital image correlation measurements. |br|
 
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualTesting_03.png
     :width: 600
     :align: center
 
-    Direct comparison of test results from the physical (left) and virtual (right) labs.
+    Direct comparison of test results from the physical **(left)** and virtual **(right)** labs.
 
 
 Laser Flash Analysis
@@ -48,7 +48,7 @@ We based our implementation on the testing standards `ASTM E1461 <https://www.as
     :width: 600
     :align: center
 
-    (left) Schematic of LFA experimental setup; (centre) photograph of LFA apparatus from a physical laboratory; (top-right) batch of LFA samples; (bottom-right) results from a parameterised virtual LFA experiment.
+    **(left)** Schematic of LFA experimental setup; **(centre)** photograph of LFA apparatus from a physical laboratory; **(top-right)** batch of LFA samples; **(bottom-right)** results from a parameterised virtual LFA experiment.
 
 HIVE
 ****
@@ -59,16 +59,16 @@ Heat by Induction to Verify Extremes (HIVE) is an experimental facility at the `
     :width: 600
     :align: center
 
-    (left) Photograph of sample mounted under induction coil within HIVE; (right) photograph of sample heated during a physical test.  |br|
+    **(left)** Photograph of sample mounted under induction coil within HIVE; **(right)** photograph of sample heated during a physical test.  |br|
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualTesting_06.png
     :width: 600
     :align: center
 
-    (left) Schematic of sample manufactured for parameterised physical and virtual testing within HIVE; (right) photograph of a batch of manufactured HIVE samples.  |br|
+    **(left)** Schematic of sample manufactured for parameterised physical and virtual testing within HIVE; **(right)** photograph of a batch of manufactured HIVE samples.  |br|
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualTesting_07.png
     :width: 600
     :align: center
 
-    (top-left & top-right) virtual testing results for temperature and stress respectively; (bottom) physical testing results for temperature measured by an infra-red camera.
+    **(top-left & top-right)** virtual testing results for temperature and stress respectively; **(bottom)** physical testing results for temperature measured by an infra-red camera.

@@ -1,3 +1,8 @@
+.. # define a hard line break for HTML
+.. |br| raw:: html
+
+   <br />
+
 Virtual Experiments
 ===================
 
@@ -15,14 +20,14 @@ To accompany the virtual offering of the platform, the research group have also 
     :width: 600
     :align: center
 
-    (left) ‘Dog bone’ shaped sample designed according to `BS EN ISO 6892-1:2016 <https://www.iso.org/standard/61856.html#:~:text=ISO%206892-1%3A2016>`_; (right) sample loaded into testing apparatus with strain measured by a gauge and digital image correlation.
+    (left) ‘Dog bone’ shaped sample designed according to BS EN ISO 6892-1:2016; (right) sample loaded into testing apparatus with strain measured by a gauge and digital image correlation.|br|
 
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualTesting_02.png
     :width: 600
     :align: center
 
-    (left) Photograph of batch of samples manufactured with varying parameters to test physically and compare directly with their virtual counterparts; (right) experimental results from digital image correlation measurements.
+    (left) Photograph of batch of samples manufactured with varying parameters to test physically and compare directly with their virtual counterparts; (right) experimental results from digital image correlation measurements.|br|
 
 
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualTesting_03.png

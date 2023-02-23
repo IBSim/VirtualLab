@@ -1,27 +1,17 @@
-from subprocess import Popen
-import sys
 import os
-import VLconfig
 
-Exec = getattr(VLconfig,'ERMESExec','ERMESv12.5')
+from Scripts.Common.VLContainer import Container_Utils as Utils
+from Scripts.Common.VLPackages.ContainerInfo import GetInfo
 
-Container = getattr(VLconfig,'ERMESContainer',None)
-if Container:
-    import ContainerConfig
-    ERMESContainer = getattr(ContainerConfig,Container)
-def Run(Name, Append=False):
-    dirname = os.path.dirname(Name)
-    LogFile = "{}/ERMESLog".format(dirname)
-    if Append:
-        tee = "| tee -a {}".format(LogFile)
-    else:
-        tee = "| tee {}".format(LogFile)
+Dir = os.path.dirname(os.path.abspath(__file__))
 
-    if Container:
-        command = "{} {} {} {}".format(ERMESContainer.Call,ERMESContainer.ERMESExec,Name,tee)
-    else:
-        command = "{} {} {}".format(Exec,Name,tee)
+def Run(AnalysisName, ContainerInfo=None, Append=False):
+    if ContainerInfo is None:
+        # Get default container info
+        ContainerInfo = GetInfo('ERMES') 
 
-    ERMES_run = Popen(command,stdout=sys.stdout,stderr=sys.stderr,cwd=dirname,shell='TRUE')
-    err = ERMES_run.wait()
-    return err
+    Wrapscript = "{}/ERMESExec.sh".format(Dir)
+    command = "{} -c {} -f {} ".format(Wrapscript, ContainerInfo['Command'], AnalysisName)
+
+    RC = Utils.Exec_Container(ContainerInfo, command)
+    return RC

@@ -11,10 +11,10 @@ from Scripts.Common.VirtualLab import VLSetup
 # Definitions
 #===============================================================================
 
-Simulation='LFA'
+Simulation='GVXR'
 Project='Tutorials'
-Parameters_Master='TrainingParameters'
-Parameters_Var='Parametric_1'
+Parameters_Master='TrainingParameters_GVXR'
+Parameters_Var=None
 
 #===============================================================================
 # Environment
@@ -26,26 +26,19 @@ VirtualLab=VLSetup(
            )
 
 VirtualLab.Settings(
-           Mode='Interactive',
+           Mode='Headless',
            Launcher='Process',
-           NbJobs=3
+           NbJobs=1
            )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=False,
-           RunDA=False
+           RunCT_Scan=True
            )
 
 #===============================================================================
 # Methods
 #===============================================================================
 
-VirtualLab.Mesh()
-
-VirtualLab.Sim(
-           ShowRes=True
-           )
-
-VirtualLab.DA()
+VirtualLab.CT_Scan()

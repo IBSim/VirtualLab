@@ -20,7 +20,7 @@ class Method(Method_base):
         self.Data = {}
         self.RunFlag = True
         self._checks(VL.Exit)
-        self._WrapVL(VL, ["Setup", "Run", "Spawn"])
+        self._WrapVL(VL, ["Setup", "Run"])
         self.clsname = str(VL.__class__.__name__)
 
     def Setup(self, VL, TestDicts, Import=False):

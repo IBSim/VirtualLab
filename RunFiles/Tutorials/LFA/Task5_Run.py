@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 #===============================================================================
 # Header
+#===============================================================================
+
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 
 #===============================================================================
-# Header
+# Definitions
+#===============================================================================
 
 Simulation='LFA'
 Project='Tutorials'
@@ -14,21 +17,29 @@ Parameters_Master='TrainingParameters_Task5'
 Parameters_Var='Parametric_1_Task5'
 
 #===============================================================================
-# Header
+# Environment
+#===============================================================================
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=3)
+           NbJobs=3
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=False)
+           RunMesh=False
+           )
+
+#===============================================================================
+# Methods
+#===============================================================================
 
 VirtualLab.Mesh()
 

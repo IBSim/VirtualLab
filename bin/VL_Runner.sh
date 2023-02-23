@@ -1,22 +1,16 @@
 #!/bin/bash
 set -e
-while getopts "m:v:p:s:I:" options; do
+while getopts "m:I:p" options; do
   case "${options}" in
       m)
-	  master="-m ${OPTARG}"
-	  ;;
-      v)
-	  Var="-v ${OPTARG}"
-	  ;;
-      p)
-	  Project="-p ${OPTARG}"
-	  ;;
-      s)
-	  Simulation="-s ${OPTARG}"
+	  pklfile="-m ${OPTARG}"
 	  ;;
 	  I)
 	  ID="-I ${OPTARG}"
 	  ;;
+      p)
+	  pypaths="${OPTARG}"
+	  ;;  
 esac
 done
 export QT_X11_NO_MITSHM=1
@@ -25,6 +19,6 @@ cd /home/ibsim/VirtualLab
 unset SESSION_MANAGER
 source /home/ibsim/miniconda3/etc/profile.d/conda.sh
 conda activate VirtualLab
-export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH
-python bin/python/Run_Salome_container.py $master $Var $Project $Simulation $ID
+export PYTHONPATH=/home/ibsim/VirtualLab:$pypaths:$PYTHONPATH
+python bin/python/Run_container.py $pklfile $ID
 exit $?

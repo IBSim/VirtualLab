@@ -3,6 +3,8 @@ USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+export MPLBACKEND='Agg' # temporary bug fix
+
 usage() {
   echo
   echo "Usage:"

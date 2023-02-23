@@ -11,10 +11,10 @@ from Scripts.Common.VirtualLab import VLSetup
 # Definitions
 #===============================================================================
 
-Simulation='LFA'
+Simulation='Tensile'
 Project='Tutorials'
-Parameters_Master='TrainingParameters'
-Parameters_Var='Parametric_1'
+Parameters_Master='TrainingParameters_Cad2Vox'
+Parameters_Var=None
 
 #===============================================================================
 # Environment
@@ -28,24 +28,32 @@ VirtualLab=VLSetup(
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=3
+           NbJobs=1
            )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=False,
-           RunDA=False
+           RunMesh=True,
+           RunSim=True,
+           RunDA=True
            )
 
 #===============================================================================
 # Methods
 #===============================================================================
 
-VirtualLab.Mesh()
+VirtualLab.Mesh(
+           ShowMesh=False,
+           MeshCheck=None
+           )
 
 VirtualLab.Sim(
+           RunPreAster=True,
+           RunAster=True,
+           RunPostAster=True,
            ShowRes=True
            )
 
 VirtualLab.DA()
+VirtualLab.Voxelise()

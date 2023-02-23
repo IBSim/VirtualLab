@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
+#===============================================================================
+# Header
+#===============================================================================
+
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 
 #===============================================================================
-# Setup
+# Definitions
+#===============================================================================
 
 Simulation='Test'
 Project='Coms'
@@ -13,21 +18,29 @@ Parameters_Var=None
 
 #===============================================================================
 # Environment
+#===============================================================================
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Headless',
            Launcher='Sequential',
-           NbJobs=1)
+           NbJobs=1
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunMesh=True,
            RunSim=True,
-           RunDA=True)
+           RunDA=True
+           )
+
+#===============================================================================
+# Methods
+#===============================================================================
 
 VirtualLab.Test()

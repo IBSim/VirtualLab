@@ -123,33 +123,6 @@ class Method(Method_base):
         VL.Logger("\n### Voxelisation Complete ###", Print=True)
 
     def Spawn(self, VL, **kwargs):
-        MethodName = "Voxelise"
-        ContainerName = "Cad2Vox"
-        Cont_runs = VL.container_list.get(MethodName, None)
-        if Cont_runs == None:
-            print(
-                f"Warning: Method {MethodName} was called in the inputfile but has no coresponding"
-                f" namespace in the parameters file. To remove this warning message please set Run{MethodName}=False."
-            )
-            return
+        self._SpawnBase(VL,"Voxelise","Cad2Vox",run_kwargs=kwargs) # method name and container name
+        
 
-        return_value = Utils.Spawn_Container(
-            VL,
-            Cont_id=1,
-            Tool=ContainerName,
-            Method_Name=MethodName,
-            Num_Cont=1,
-            Cont_runs=Cont_runs,
-            Parameters_Master=VL.Parameters_Master_str,
-            Parameters_Var=VL.Parameters_Var_str,
-            Project=VL.Project,
-            Simulation=VL.Simulation,
-            Settings=VL.settings_dict,
-            tcp_socket=VL.tcp_sock,
-            run_args=kwargs,
-        )
-
-        if return_value != "0":
-            # an error occurred so exit VirtualLab
-            VL.Exit("Error Occurred with Voxelise")
-        return

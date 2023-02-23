@@ -10,7 +10,7 @@ from Scripts.Common.VLPackages.CodeAster import Aster
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
-from Scripts.Common.VLContainer import Container_Utils as Utils
+
 
 
 class Method(Method_base):
@@ -23,8 +23,8 @@ class Method(Method_base):
 
         if not (self.RunFlag and SimDicts):
             return
-
-        sys.path.insert(0, VL.SIM_SIM)
+            
+        VL.AddToPath(VL.SIM_SIM,0)
 
         AsterFiles, PFiles, AsterFileInfo, PFileInfo = [], [], [], []
         AsterFileDict, PFileDict = {}, {}
@@ -147,38 +147,7 @@ class Method(Method_base):
 
         # ==========================================================================
 
-    def Spawn(self, VL, **kwargs):
-        MethodName = "Sim"
-        ContainerName = "Aster"
-        Cont_runs = VL.container_list.get(MethodName, None)
-        if Cont_runs == None:
-            print(
-                f"Warning: Method {MethodName} was called in the inputfile but has no coresponding"
-                f" namespace in the parameters file. To remove this warning message please set Run{MethodName}=False."
-            )
-            return
-
-        return_value = Utils.Spawn_Container(
-            VL,
-            Cont_id=1,
-            Tool=ContainerName,
-            Method_Name=MethodName,
-            Num_Cont=1,
-            Cont_runs=Cont_runs,
-            Parameters_Master=VL.Parameters_Master_str,
-            Parameters_Var=VL.Parameters_Var_str,
-            Project=VL.Project,
-            Simulation=VL.Simulation,
-            Settings=VL.settings_dict,
-            tcp_socket=VL.tcp_sock,
-            run_args=kwargs,
-        )
-
-        if return_value != "0":
-            # an error occurred so exit VirtualLab
-            VL.Exit("Error Occurred with Sim")
-        return
-
+        
     @staticmethod
     @VLF.kwarg_update
     def PoolRun(VL, SimDict, RunPreAster=True, RunAster=True, RunPostAster=True):

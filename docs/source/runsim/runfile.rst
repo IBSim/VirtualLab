@@ -115,8 +115,6 @@ For further details on each simulation see `Virtual Experiments <../virtual_exp.
 Project
 ~~~~~~~
 
-.. _usage:
-
 Usage:
 ::
   
@@ -132,8 +130,6 @@ All data for a project is stored in the project directory located at :file:`Outp
 
 Parameters_Master
 ~~~~~~~~~~~~~~~~~
-
-.. _usage:
 
 Usage:
 ::
@@ -163,8 +159,6 @@ The ``DA`` namespace define the parameters needed to perform data analyses (DA) 
 
 Parameters_Var
 ~~~~~~~~~~~~~~
-
-.. _usage:
 
 Usage:
 ::
@@ -213,8 +207,6 @@ This is an optional attribute of **VirtualLab** where settings can be changed. :
 Mode
 ####
 
-.. _usage:
-
 Usage:
 ::
   
@@ -230,8 +222,6 @@ This dictates how much information is printed in the terminal during the running
 Launcher
 ########
 
-.. _usage:
-
 Usage:
 ::
   
@@ -246,8 +236,6 @@ This defines the method used to launch the **VirtualLab** study. Currently avail
 
 NbJobs
 ######
-
-.. _usage:
 
 Usage:
 ::
@@ -273,8 +261,6 @@ This function creates the parameter files defined using `Parameters_Master`_ and
 
 
 In addition to the parameter files and performing checks of associated file, it is possible to define whether particular `Methods`_ should run or not. By default, any method which is included in the later method section will run unless explicitly defined not to here.
-
-.. _usage:
 
 Usage:
 ::
@@ -307,8 +293,6 @@ This is the meshing routine. In fact, this routine first generates the CAD geome
 ShowMesh
 ########
 
-.. _usage:
-
 Usage:
 ::
   
@@ -318,8 +302,6 @@ Indicates whether or not to open created mesh(es) in the **SALOME** GUI for visu
 
 MeshCheck
 #########
-
-.. _usage:
 
 Usage:
 ::
@@ -345,8 +327,6 @@ This function is the simulation routine. The simulation(s) defined using ``Sim``
 RunPreAster
 ###########
 
-.. _usage:
-
 Usage:
 ::
   
@@ -356,8 +336,6 @@ Indicates whether or not to run the optional pre-processing script provided in `
 
 RunAster
 ########
-
-.. _usage:
 
 Usage:
 ::
@@ -369,8 +347,6 @@ Indicates whether or not to run the **Code_Aster** script provided in ``Sim.Aste
 RunPostAster
 ############
 
-.. _usage:
-
 Usage:
 ::
   
@@ -380,8 +356,6 @@ Indicates whether or not to run the optional post-processing script provided in 
 
 ShowRes
 #######
-
-.. _usage:
 
 Usage:
 ::

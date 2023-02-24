@@ -18,10 +18,16 @@ _ are ignored.
 class Method(Method_base):
     def __init__(self, VL):
         """
-        Otional class initiation function. If this is used you will also need
-        initiate Method_base using 'super().__init__(VL)' (see Mesh method for
-        more details).
+        Class initiation function. At minimum you will need
+        initiate Method_base using 'super().__init__(VL)' and set
+        a Self.MethodName. If using Containers you will also need 
+        to set self.Containers_used to a list of all the containers
+        you have used. The names of which are defined in 
+        config/VL_Modules.json. You can also use this to set anything 
+        specific to your method (see Mesh method for more details).
         """
+        super().__init__(VL)
+        self.MethodName="#MethodName"
 
     def Setup(self, VL, MethodDicts, Import=False):
         """

@@ -30,6 +30,10 @@ def Check_Threads(num_threads):
 
 
 class Method(Method_base):
+    def __init__(self, VL):
+        super().__init__(VL)  # rune __init__ of Method_base
+        self.MethodName = "Vox"
+        self.Containers_used = ["Cad2Vox"]
     def Setup(self, VL, VoxDicts, Import=False):
         """
         Vox - Mesh Voxelisation using Cuda or OpenMP

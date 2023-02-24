@@ -32,14 +32,16 @@ DefaultSettings = {
     "OutputDir": VLconfig.OutputDir,
     "MaterialDir": VLconfig.MaterialsDir,
     "Cleanup": True,
+    "dry_run": False,
+    "debug":False,
 }
 
 
 class VLSetup:
-    def __init__(self, Simulation, Project, Cont_id=1, debug=False):
+    def __init__(self, Simulation, Project, Cont_id=1):
         self._parsed_kwargs = VLF.parsed_kwargs(sys.argv[1:]) # may need to be more robust than sys.argv
         # perform setup steps that are common to both VLModule and VL_manger
-        self._Common_init(Simulation, Project, DefaultSettings, Cont_id, debug)
+        self._Common_init(Simulation, Project, DefaultSettings, Cont_id)
         # Unique ID
         git_id = self._git()
         self._ID = "{}_{}".format(git_id, self._time)
@@ -186,14 +188,13 @@ class VLSetup:
         return config
 
     def _Common_init(
-        self, Simulation, Project, DefaultSettings, Cont_id=1, debug=False
+        self, Simulation, Project, DefaultSettings, Cont_id=1
     ):
         """
         init steps that are common between both VLSetup and VLModule.
         These are here since it makes sense to have them in one place and
         save duplicating work.
         """
-        self.debug = debug
 
         sys.excepthook = self.handle_except
         # ======================================================================
@@ -327,20 +328,34 @@ class VLSetup:
 
     def _SetMax_Containers(
         self,
-        Max_Containers=1,
-    ):
-        if type(Max_Containers) == int:
-            self._Max_Containers = Max_Containers
-        elif type(Max_Containers) == float:
-            if Max_Containers.is_integer():
-                self._Max_Containers = Max_Containers
-            else:
-                self.Exit(ErrorMessage("Max_Containers must be an integer"))
-        else:
-            self.Exit(ErrorMessage("Max_Containers must be an integer"))
+        Max_Containers=1
+        ):
+        self._Max_Containers = Max_Containers
+        return
 
-        if Max_Containers <= 0:
-            self.Exit(ErrorMessage("Max_Containers must be positive"))
+    def _SetDryrun(
+        self,
+        dry_run=False,
+    ):
+        if type(dry_run) == bool:
+            self._dry_run = dry_run
+        elif str(dry_run).lower() in ["true", "false","0","1"]:
+            self._dry_run = dry_run
+        else:
+            self.Exit(VLF.ErrorMessage(f"Invalid option: {dry_run} for Dry_run. Must a boolean value"))
+        return
+
+    def _SetDebug(
+        self,
+        debug=False,
+    ):
+        if type(debug) == bool:
+            self._debug = debug
+        elif str(debug).lower() in ["true", "false","0","1"]:
+            self._debug = debug
+        else:
+            self.Exit(VLF.ErrorMessage(f"Invalid option:{debug} for debug. Must a boolean value"))
+        return
 
     @VLF.kwarg_update
     def Settings(self, **kwargs):
@@ -354,8 +369,10 @@ class VLSetup:
             "InputDir": self._SetInputDir,
             "OutputDir": self._SetOutputDir,
             "MaterialDir": self._SetMaterialDir,
-            "Max_Containers": self._SetMax_Containers,
             "Cleanup": self._SetCleanup,
+            "dry_run":self._SetDryrun,
+            "debug":self._SetDebug,
+            "Max_Containers":self._SetMax_Containers,
         }
 
         # check no incorrect kwargs given
@@ -732,7 +749,8 @@ class VLSetup:
             shutil.rmtree(self.TEMP_DIR)
         if hasattr(self, "tcp_sock"):
             import socket
-            print("closing tcp connection")
+            if self._debug:
+                print("closing tcp connection")
             self.tcp_sock.shutdown(socket.SHUT_RDWR)
             self.tcp_sock.close()
         print(exitstr)

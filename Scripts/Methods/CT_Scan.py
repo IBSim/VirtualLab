@@ -11,7 +11,12 @@ from Scripts.VLPackages.GVXR.API import Run as CT_Scan, Dir as GVXRDir
 from Scripts.VLPackages.ContainerInfo import GetInfo
 
 class Method(Method_base):
+
     def Setup(self, VL, GVXRDicts, RunGVXR=True):
+        def __init__(self, VL):
+            super().__init__(VL)  # rune __init__ of Method_base
+            self.MethodName = "GVXR"
+            self.Containers_used = ["GVXR"]
         """
         GVXR - Simulation of X-ray CT scans
         """

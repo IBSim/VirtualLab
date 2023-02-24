@@ -15,6 +15,10 @@ _ are ignored.
 """
 
 class Method(Method_base):
+    def __init__(self, VL):
+        super().__init__(VL)  # rune __init__ of Method_base
+        self.MethodName = "Test"
+
     def Setup(self, VL, TestDicts, Import=False):
         """
         Setup for Tests of container communications

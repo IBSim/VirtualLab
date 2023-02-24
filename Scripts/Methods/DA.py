@@ -15,6 +15,10 @@ DA - Data Analysis
 
 
 class Method(Method_base):
+    def __init__(self, VL):
+        super().__init__(VL)  # run __init__ of Method_base
+        self.MethodName = "DA"
+
     def Setup(self, VL, DADicts, Import=False):
         # if either DADicts is empty or RunDA is False we will return
         if not (self.RunFlag and DADicts):

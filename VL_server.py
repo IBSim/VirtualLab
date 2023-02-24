@@ -32,6 +32,7 @@ from Scripts.Common.VLContainer.Container_Utils import (
     path_change_binder,
     Exec_Container_Manager,
     get_vlab_dir,
+    update_container,
 )
 vlab_dir = get_vlab_dir()
 bind_points_default = [['/usr/share/glvnd','/usr/share/glvnd'],
@@ -177,7 +178,7 @@ def correct_typecasting(arg):
     return arg
 
 def handle_messages(
-    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, dry_run, kOptions,tmp_dir
+    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, kOptions,tmp_dir
 ):
     global waiting_cnt_sockets
     global target_ids
@@ -242,129 +243,28 @@ def handle_messages(
                 # stdout is a file path within VL_Manager so need to get the path on the host
                 stdout = path_change_binder(stdout,bind_points_default)
                 kwargs['stdout'] = stdout
-            
+
             RC = Exec_Container_Manager(cont_info, *args, **kwargs)
-            send_data(client_socket, RC, debug) 
-                
-      
-        
-        elif event == "Spawn_Container":
-            Module = VL_MOD[rec_dict["Tool"]]
+            send_data(client_socket, RC, debug)
 
-            num_containers = rec_dict["Num_Cont"]
-            Cont_runs = rec_dict["Cont_runs"]
-            class_file = rec_dict.pop("class_file")
-            paths = rec_dict.pop("paths")
-            
-            # setup command to run docker or Apptainer
-            if use_Apptainer:
-                container_cmd = f"apptainer exec {gpu_flag} --writable-tmpfs"
+        elif event == 'Build':
+            # recive list of containers to be built
+            cont_names = rec_dict['Cont_names']
+            dont_exist = []
+            for Cont in cont_names:
+                print(f'Build {Cont}')
+                Module = VL_MOD.get(Cont,None)
+                if Module == None:
+                    # add to list of containers not found.
+                    dont_exist.append(Cont)
+                else:
+                    update_container(Module,vlab_dir)
+            if dont_exist == []:
+                message ={"msg":"Done Building"}
             else:
-                # this monstrosity logs the user in as "themself" to allow safe access top x11 graphical apps"
-                # see http://wiki.ros.org/docker/Tutorials/GUI for more details
-
-                container_cmd = (
-                    "docker run "
-                    "--rm -it --network=host"
-                    '--env="DISPLAY" --env="QT_X11_NO_MITSHM=1" '
-                    '--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" '
-                )
-            # update kwaargs from -k cmd options if set
-            for K in kOptions.keys():
-                if K in rec_dict["run_args"]:
-                    kOptions[K] = correct_typecasting(kOptions[K])
-                    rec_dict["run_args"][K]=kOptions[K]
-            # loop over containers once to create a dict of final container ids
-            # and associated runs to output to file
-            sock_lock.acquire()
-            target_ids = []
-
-            for Container in Cont_runs:
-                target_ids.append(next_cnt_id)
-                list_of_runs = Container[1]
-                task_dict[str(next_cnt_id)] = list_of_runs
-                run_arg_dict[str(next_cnt_id)] = rec_dict["run_args"]
-                Method_dict[str(next_cnt_id)] = Module["Method"]
-                next_cnt_id += 1
-
-            # loop over containers again to spawn them this time
-
-            for n, Container in enumerate(Cont_runs):
-                options, command = Format_Call_Str(
-                    Module,
-                    vlab_dir,
-                    class_file,
-                    paths,
-                    use_Apptainer,
-                    target_ids[n],
-                )
-
-                log_net_info(
-                    net_logger,
-                    f"Server - starting a new container with ID: {target_ids[n]} "
-                    f"as requested by container {container_id}",
-                )
-
-                # spawn the container
-                container_process = subprocess.Popen(
-                    f"{container_cmd} {options} {command}", shell=True
-                )
-                # add it to the list of waiting sockets
-                waiting_cnt_sockets[str(target_ids[n])] = {
-                    "socket": client_socket,
-                    "id": str(target_ids[n]),
-                }
-
-                running_processes[str(target_ids[n])] = container_process
-
-                # send message to tell manager container what id the new containers will have
-                data = {"msg": "Running", "Cont_id": target_ids[n]}
-                send_data(client_socket, data, debug)
-            sock_lock.release()
-            # cont_ready should be set by another thread when the container messages to say its ready to go.
-            # This loop essentially checks to see if the container started correctly by waiting for 10 seconds
-            #  and if cont_ready is not set it will raise an error.
-            ready = cont_ready.wait(timeout=30)
-            # we've heard nothing from the container so we have
-            # to assume it has hung. Thus send error to manger
-            # and client (if client is not the manger)
-            # to kill process.
-            # Note: to this should also kill the server.
-            if not ready:
-                data = {"msg": "Error", "stderr": "-1"}
-                if client_socket != manager_socket:
-                    send_data(client_socket, data, debug)
-                send_data(manager_socket, data)
-                raise TimeoutError(
-                    "The container appears to have have not started correctly."
-                )
-
-        elif event == "Ready":
-            cont_ready.set()
-            log_net_info(
-                net_logger,
-                f"Server - Received message to say container {container_id} "
-                f"is ready to start runs.",
-            )
-            # containers are ready so send the list of tasks and id's to run
-            sock_lock.acquire()
-            data2 = {
-                "msg": "Container_runs",
-                "tasks": task_dict[str(container_id)],
-                "run_args": run_arg_dict[str(container_id)],
-                "Method": Method_dict[str(container_id)],
-                "dry_run": dry_run,
-            }
-            sock_lock.release()
-            send_data(client_socket, data2, debug)
-
-            # This function will run until the server receives "finished"
-            #  or an error occurs in the container.
-            check_pulse(client_socket, sock_lock, net_logger, debug)
-            # client_socket.shutdown(socket.SHUT_RDWR)
-            # client_socket.close()
-
-            break
+                message ={"msg":"Build Error","Cont_names":dont_exist}
+            send_data(client_socket, message)
+            
         elif event in relay_list:
             Target_id = str(rec_dict["Target_id"])
             Target_socket = waiting_cnt_sockets[Target_id]
@@ -445,7 +345,7 @@ def check_pulse(client_socket, sock_lock, net_logger, debug):
             )
 
 
-def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions,tmp_dir):
+def process(vlab_dir, use_Apptainer, debug, gpu_flag,koptions,tmp_dir):
     """Function that runs in a thread to handle communication ect."""
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -487,7 +387,6 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions,tmp_dir):
                     cont_ready,
                     debug,
                     gpu_flag,
-                    dry_run,
                     koptions,
                     tmp_dir,
                 ),
@@ -525,7 +424,6 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, dry_run,koptions,tmp_dir):
                 cont_ready,
                 debug,
                 gpu_flag,
-                dry_run,
                 options,
                 tmp_dir,
             ),
@@ -698,6 +596,15 @@ if __name__ == "__main__":
                 kOption_dict[key] = value
     else:
         options = ""
+    
+    ####################################################
+    # pass debug and dry_run flags in as k options if set
+    ####################################################
+    if args.dry_run:
+        options = options + " -k dry_run=True"
+    if args.debug:
+        options = options + " -k debug=True"
+           
     #####################################    
     # turn on/off gpu support with a flag
     gpu_support = args.no_nvidia
@@ -718,7 +625,7 @@ if __name__ == "__main__":
     lock = threading.Lock()
     thread = threading.Thread(
         target=process,
-        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, args.dry_run,kOption_dict,tmp_dir),
+        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag,kOption_dict,tmp_dir),
     )
     thread.daemon = True
 

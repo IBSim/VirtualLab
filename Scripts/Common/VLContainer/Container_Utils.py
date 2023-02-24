@@ -344,7 +344,7 @@ def send_data(conn, payload,bigPayload=False,debug=False):
         "###################################################")
     conn.sendall(serialized_payload)
     
-def receive_data(conn,debug,payload_size=2048):
+def receive_data(conn,debug=False,payload_size=2048):
     '''
     @brief: receive data from the connection assuming that data is a json string
     @args[in]: 

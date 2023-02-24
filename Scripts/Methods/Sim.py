@@ -13,6 +13,10 @@ from Scripts.Common.utils import Method_base
 
 
 class Method(Method_base):
+    def __init__(self, VL):
+        super().__init__(VL)  # rune __init__ of Method_base
+        self.MethodName = "Sim"
+        self.Containers_used = ["SalomeMeca"]
     def Setup(self, VL, SimDicts, Import=False):
         """
         Default setup function for Sim routine. Here paths are defined and checks are

@@ -48,7 +48,7 @@ In this first example we will use the same analysis performed in Tutorial 1 usin
                    Parameters_Var,
                    RunMesh=True,
                    RunSim=True,
-                   RunVox=True,
+                   RunVoxelise=True,
                    RunDA=True
                    )
 
@@ -72,7 +72,7 @@ In this first example we will use the same analysis performed in Tutorial 1 usin
 
         VirtualLab -f RunFiles/RunTutorials.py
 
-The main change to note in the *Runfile* is the call to ``VirtualLab.Voxelise()``. This is the function that initiates the voxelisation using the parameters defined in *Parameters_Master*``* and *Parameters_Var*. Additionally, within the Environment section, RunVox is explicitly set to run with :code:`True` in ``VirtualLab.Parameters``. This isn't technically necessary because the inclusion of ``VirtualLab.Voxelise()`` in the methods section means it is :code:`True` by default, but explicitly stating this is good practice.
+The main change to note in the *Runfile* is the call to ``VirtualLab.Voxelise()``. This is the function that initiates the voxelisation using the parameters defined in *Parameters_Master*``* and *Parameters_Var*. Additionally, within the Environment section, RunVoxelise is explicitly set to run with :code:`True` in ``VirtualLab.Parameters``. This isn't technically necessary because the inclusion of ``VirtualLab.Voxelise()`` in the methods section means it is :code:`True` by default, but explicitly stating this is good practice.
 
 Looking at the file ``Input/Tensile/Tutorials/TrainingParameters_Cad2Vox.py`` you will notice that the ``Namespaces`` ``Mesh``  and ``Sim`` are setup the same as in the previous tutorial. That is, they generate the CAD geometry and mesh using ``Scripts/Experiments/Tensile/Mesh/DogBone.py`` and then run two simulations, first force controlled then displacement controlled. Also, since ``DA`` is not defined in *Parameters_Master*, no data analysis will take place.
 

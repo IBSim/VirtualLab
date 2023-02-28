@@ -20,7 +20,7 @@
 #import os
 #import sys
 #sys.path.insert(0, os.path.abspath('../../'))
-
+import datetime
 
 # -- General configuration ------------------------------------------------
 
@@ -32,7 +32,7 @@
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 
-extensions = ['sphinx.ext.autodoc','sphinxcontrib.bibtex']
+extensions = ['sphinx.ext.autodoc','sphinxcontrib.bibtex', 'sphinx_copybutton']
 # extensions = [
 #    # Sphinx's own extensions
 #    "sphinx.ext.autodoc",
@@ -63,8 +63,9 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'VirtualLab'
-copyright = '2020, Rhydian Lewis; Llion Marc Evans'
-author = 'Rhydian Lewis; Llion Marc Evans'
+#copyright = '2020, IBSim Group'
+copyright = '2020-'+str(datetime.datetime.now().year)+', IBSim Group'
+author = 'Rhydian Lewis; Benjamin Thorpe; Llion Marc Evans'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -80,7 +81,8 @@ release = ''
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+#language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -103,6 +105,14 @@ todo_include_todos = False
 
 html_theme = 'furo'
 html_title = 'VirtualLab'
+#html_logo = "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_dark.png?inline=false"
+html_logo = "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_light.png"
+#html_static_path = ["_static"]
+#html_static_path = [""]
+#html_theme_options = {
+#    "light_logo": "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_light.png?inline=false",
+#    "dark_logo": "https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VirtualLab_Icon_dark.png?inline=false",
+#}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

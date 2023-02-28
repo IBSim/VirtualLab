@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
@@ -23,7 +24,7 @@ sudo apt install -y build-essential
 source "$VL_DIR/VLconfig.py" # Enables this script to be run seperately
 
 ### Install salome related libs
-sudo ubuntu-drivers autoinstall
+#sudo ubuntu-drivers autoinstall
 sudo apt install -y libcanberra-gtk-module libcanberra-gtk3-module net-tools xterm libopenblas-dev tcl8.5 tk8.5 gfortran libgfortran3 python-tk
 
 OS_v=$(eval lsb_release -r -s)
@@ -113,10 +114,10 @@ else
       echo "Salome now exists in PATH"
       ### ADD TEST HERE TO CHECK WORKING AS EXPECTED
       ### If all working rm salome download files
-      search_var="*salome_meca*.desktop"
-      SALOME_Desktop=$(basename $(eval find $USER_HOME/Desktop/ -name $search_var))
-      sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/Desktop/$SALOME_Desktop
-      sudo chown -R $SUDO_USER:$SUDO_USER $USER_HOME/.config/salome/
+      #search_var="*salome_meca*.desktop"
+      #SALOME_Desktop=$(basename $(eval find $USER_HOME/Desktop/ -name $search_var))
+      #sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/Desktop/$SALOME_Desktop
+      #sudo chown -R $SUDO_USER:$SUDO_USER $USER_HOME/.config/salome/
     else
       ### salome still not installed
       echo "There has been a problem installing salome"

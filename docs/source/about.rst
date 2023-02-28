@@ -1,7 +1,7 @@
 About
 =====
 
-**VirtualLab** is the ouput of a collaboration between the `Image-Based Simulation <https://ibsim.co.uk>`_ (IBSim) Group at `Swansea University <https://www.swansea.ac.uk>`_ and `UK Atomic Energy Authority <https://ccfe.ukaea.uk/>`_. The majority of the initial work was carried out by Rhydian Lewis during his PhD on *"Using machine learning to maximise impact of fusion energy experimental facility virtual twin"*.
+**VirtualLab** is the ouput of a collaboration between the `Image-Based Simulation <https://ibsim.co.uk>`_ (IBSim) Group at `Swansea University <https://www.swansea.ac.uk>`_ and `UK Atomic Energy Authority <https://ccfe.ukaea.uk/>`_ led by Llion Evans. The majority of the initial work was carried out by Rhydian Lewis, during his PhD on *"Simulation driven machine-learning methods to optimise design of physical experiment and enhance data analysis for testing of fusion energy heat exchanger components"*, and Benjamin Thorpe, as Research Software Engineer on the EPSRC project *"Inline virtual qualification from 3D X-ray imaging for high-value manufacturing"* (EP/R012091/1).
 
 Support
 *******
@@ -19,7 +19,7 @@ The **VirtualLab** code is licensed under the Apache License, Version 2.0. That 
 
 To cite this code in your publication please use the format below:
 
-  R. Lewis, Ll.M. Evans (2020) VirtualLab source code (Version !!!) [Source code]. https://gitlab.com/ibsim/virtuallab/-/commit/3c1d7727987def758df32a34933c964f54579325
+  R. Lewis, Ll.M. Evans, B.J. Thorpe (2020) VirtualLab source code (Version !!!) [Source code]. https://gitlab.com/ibsim/virtuallab/-/commit/3c1d7727987def758df32a34933c964f54579325
 
 **NOTE:** You will need to update the version number and url to the commit version you used.
 
@@ -36,12 +36,16 @@ There are several ways to contribute to **VirtualLab**, all of which require a G
 
   https://gitlab.com/ibsim/virtuallab/-/tree/master
 
+Further instructions on developmental contributions are `available here <contributing.html>`_.
+
 3. Similarly, this web-based documentation is also publicly available from the **VirtualLab** repository. New content for the documentation, correction typos or new tutorials in the form of PR are very welcome.
 
 License
 *******
 
-Copyright 2020 IBSim Group (c/o Llion Marc Evans).
+.. |date| date:: %Y
+
+Copyright 2020-|date| IBSim Group (c/o Llion Marc Evans).
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,4 +59,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-

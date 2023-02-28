@@ -23,6 +23,9 @@ PYTHON_INST="n"
 SALOME_INST="n"
 ERMES_INST="n"
 CAD2VOX_INST="n"
+GVXR_INST="n"
+
+ALL="n"
 ASTER_SUBDIR="/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
 
 ################################################################################
@@ -32,12 +35,20 @@ ASTER_SUBDIR="/V2019.0.3_universal/tools/Code_aster_frontend-20190/bin/as_run"
 usage() {
   echo
   echo "Usage:"
-  echo " $0 [-d <path>] [-P {y/c/n}] [-S \"{y/n} <path>\"] [-E {y/n}]"
+  echo " $0 [-d <path>] [-A] [-P {y/c/n}] [-S \"{y/n} <path>\"] [-E {y/n}] [-C {y/n}] [-G {y/n}]"
   echo
   echo "A script to install VirtualLab and its dependencies."
   echo
   echo "Options:"
   echo "   '-d <path>' Specify the installation path for VirtualLab"
+  echo "   '-A ' Install all packages. Note: This option repects other" 
+  echo "    options so you can explicitly opt-out of packages you don't want by" 
+  echo "    setting the appropriate arguments. For example -A -E n will install"
+  echo "    everything except ERMES (ensure you put option A first)."
+  echo "    Also note: This option simply sets the argument to y for all cases"
+  echo "    Thus if you need other options eg. using conda for -P or setting"
+  echo "    custom path for Salome you will need to use their specific arguments."
+  echo "    "
   echo "   '-P y' Install python using local installation"
   echo "   '-P c' Install python using conda environment"
   echo "   '-P n' Do not install python"
@@ -48,6 +59,8 @@ usage() {
   echo "   '-E n' Do not install ERMES"
   echo "   '-C y' Install Cad2Vox"
   echo "   '-C n' Do not install Cad2Vox"
+  echo "   '-G y' Install GVXR"
+  echo "   '-G n' Do not install GVXR"
   echo "   '-y' Skip install confirmation dialogue."
   echo
   echo "Default behaviour is to not install python, salome or ERMES."
@@ -121,6 +134,13 @@ function banner() {
     tput sgr 0
     echo
   }
+
+function exists_in_list() {
+    LIST=$1
+    DELIMITER=$2
+    VALUE=$3
+    echo $LIST | tr "$DELIMITER" '\n' | grep -F -q -x "$VALUE"
+}
 ################################################################################
 #                    Parse CMD Arguments
 ################################################################################
@@ -129,16 +149,27 @@ if [[ $EUID -ne 0 ]]; then
    echo 'Re-run with "sudo ./Install_VirtualLab.sh {options}".'
    exit_abnormal
 fi
-while getopts ":d:P:S:E:C:yh" options; do
+while getopts "d:AP:S:E:C:G:yh" options; do
   case "${options}" in
     d)
       VL_DIR=$(readlink -m ${OPTARG})
       echo " - VirtualLab will be installed in '$VL_DIR'."
       ;;
+    A)
+	ALL="y"
+	PYTHON_INST="y"
+	SALOME_INST="y"
+	ERMES_INST="y"
+	CAD2VOX_INST="y"
+      ;;
     P)
       PYTHON_INST=${OPTARG}
       if [ "$PYTHON_INST" == "y" ]; then
-        echo " - Python will be installed/updated and configured as part of VirtualLab install."
+### skip displaying message if using -A to avoid doubling up install messages.
+      	if [ "$ALL" != "y" ]; then
+        	echo " - Python will be installed/updated and configured as part of VirtualLab install."
+	fi
+      
       elif [ "$PYTHON_INST" == "c" ]; then
         echo " - Conda will be installed/updated and configured as part of VirtualLab install."
       elif [ "$PYTHON_INST" == "n" ]; then
@@ -152,7 +183,11 @@ while getopts ":d:P:S:E:C:yh" options; do
     S)
       SALOME_INST=${OPTARG}
       if [[ "$SALOME_INST" == "y" ]]; then
-        echo " - Salome-Meca will be installed in the default directory and configured as part of VirtualLab install."
+	### skip displaying message if using -A to avoid doubling up install messages.
+         if [ $ALL != "y" ]; then
+            echo " - Salome-Meca will be installed in the default directory and configured as part of VirtualLab install."
+     	 fi
+
       elif [[ "$SALOME_INST" == "n" ]]; then
         echo " - Salome-Meca will not be installed or configured during setup,"
         echo "   please do this manually or by sourcing Install_Salome.sh."
@@ -179,7 +214,11 @@ while getopts ":d:P:S:E:C:yh" options; do
     E)
       ERMES_INST=${OPTARG}
       if [ "$ERMES_INST" == "y" ]; then
-        echo " - ERMES will be installed in the default directory and configured as part of VirtualLab install."
+      ### skip displaying message if using -A to avoid doubling up install messages.
+         if [ $ALL != "y" ]; then
+        	echo " - ERMES will be installed in the default directory and configured as part of VirtualLab install."
+	 fi
+
       elif [ "$ERMES_INST" == "n" ]; then
         echo " - ERMES will not be installed or configured during setup,"
         echo "   please do this manually or by sourcing Install_ERMES.sh."
@@ -191,12 +230,32 @@ while getopts ":d:P:S:E:C:yh" options; do
     C)
 	CAD2VOX_INST=${OPTARG}
       if [ "$CAD2VOX_INST" == "y" ]; then
-        echo " - Cad2Vox will be installed in the default directory and configured as part of VirtualLab install."
+      ### skip displaying message if using -A to avoid doubling up install messages.
+         if [ $ALL != "y" ]; then
+        	echo " - Cad2Vox will be installed in the default directory and configured as part of VirtualLab install."
+         fi
+
       elif [ "$CAD2VOX_INST" == "n" ]; then
         echo " - Cad2Vox will not be installed or configured during setup,"
         echo "   please do this manually or by sourcing Install_Cad2Vox.sh."
       else
         echo "Error: Invalid option argument $CAD2VOX_INST" >&2
+        exit_abnormal
+      fi
+      ;;
+    G)
+	GVXR_INST=${OPTARG}
+      if [ "$GVXR_INST" == "y" ]; then
+      ### skip displaying message if using -A to avoid doubling up install messages.
+         if [ $ALL != "y" ]; then
+        	echo " - GVXR will be installed in the default directory and configured as part of VirtualLab install."
+         fi
+
+      elif [ "$GVXR_INST" == "n" ]; then
+        echo " - GVXR will not be installed or configured during setup,"
+        echo "   please do this manually or by sourcing Install_Cad2Vox.sh."
+      else
+        echo "Error: Invalid option argument $GVXR_INST" >&2
         exit_abnormal
       fi
       ;;	
@@ -216,7 +275,30 @@ while getopts ":d:P:S:E:C:yh" options; do
       ;;
   esac
 done
+### All this just to make -A respect other options and not duplicate confirmation messages.
+if [ "$ALL" == "y" ]; then
+	if [ "$PYTHON_INST" == "y" ]; then
+        	echo " - Python will be installed/updated and configured as part of VirtualLab install."
+	fi
 
+	if [[ "$SALOME_INST" == "y" ]]; then
+		if ! [[ -v STRING_TMP ]]; then
+			echo " - Salome-Meca will be installed in the default directory and configured as part of VirtualLab install."
+		fi
+	fi
+
+	if [ "$ERMES_INST" == "y" ]; then
+        	echo " - ERMES will be installed in the default directory and configured as part of VirtualLab install."
+     	fi
+	
+	if [ "$CAD2VOX_INST" == "y" ]; then
+        	echo " - Cad2Vox will be installed in the default directory and configured as part of VirtualLab install."
+	fi
+	
+	if [ "$GVXR_INST" == "y" ]; then
+        	echo " - GVXR will be installed in the default directory and configured as part of VirtualLab install."
+	fi
+fi
 ### Check that no additional args were given that weren't caught.
 shift $(($OPTIND - 1))
 if [[ $@ ]]; then
@@ -296,13 +378,16 @@ fi
 ### Download latest VirtualLab code
 cd $VL_DIR
 if test -d ".git"; then
-  sudo -u ${SUDO_USER:-$USER} git pull https://gitlab.com/ibsim/virtuallab.git
+    sudo -u ${SUDO_USER:-$USER} git fetch
+    sudo -u ${SUDO_USER:-$USER} git reset --hard HEAD
+    sudo -u ${SUDO_USER:-$USER} git merge '@{u}'
 else
   sudo -u ${SUDO_USER:-$USER} git clone https://gitlab.com/ibsim/virtuallab.git .
   sudo chown -R ${SUDO_USER:-$USER} $VL_DIR
 fi
 #END
 
+sudo -u ${SUDO_USER:-$USER} git checkout BT-Container
 ### Run initial VirtualLab setup
 echo
 
@@ -352,6 +437,13 @@ if [ "$CAD2VOX_INST" == "y" ]; then
   source $VL_DIR/Scripts/Install/Install_Cad2Vox.sh
 else
   banner "Skipping Cad2Vox installation" "blue" "*"
+fi
+### Install GVXR if flagged
+if [ "$GVXR_INST" == "y" ]; then
+  banner "Installing GVXR" "green" "*"
+  source $VL_DIR/Scripts/Install/Install_GVXR.sh
+else
+  banner "Skipping GVXR installation" "blue" "*"
 fi
 
 sudo chown -R ${SUDO_USER:-$USER} $VL_DIR

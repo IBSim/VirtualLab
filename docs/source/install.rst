@@ -4,14 +4,43 @@
 Installation
 ============
 
-To use **VirtualLab** there are a number of prerequisites. **VirtualLab** has only been tested to work on the operating system (OS) `Ubuntu 18.04 LTS (Bionic Beaver) <https://releases.ubuntu.com/18.04/>`_. Your mileage may vary on other OS's.
+To use **VirtualLab** there are very few prerequisites. To use VirtualLab only Apptainer is strictly required. However git is required for the installation.
+
+**VirtualLab** Supports the following operating systems:
+
+.. list-table:: Supported OS's
+  :widths: 25 25 50
+  :header-rows: 1
+  
+  * - Operating System
+    - Version
+    - Notes
+  * - Linux
+    - Mint 19/Ubuntu 18.04+
+    - Any reasonably modern distro should work. **VirtualLab** has been tested on various desktops and laptops running ubuntu 18.04 and 20.04 LTS and a supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
+  
+.. [1] Note: Builds are made with pyinstaller which can be downloaded `here <https://github.com/pyinstaller/pyinstaller>`_. For linux this can generate builds for Arm64 (Raspberry Pi) and IBM PowerPc. These aren't officially supported, due to lack of demand/resources but it's there should the need arise.
+
+Quick Installation
+******************
+
+You may run the following 'one line' command on a fresh installation of a supported Linux distro to install **VirtualLab** and the containerisation tool.
+
+.. warning::
+  If you are not using a fresh OS it is highly recommended that you read the rest of this page before trying this method, to better understand how the installation is carried out in case you have pre-installed dependencies which might brake.
+
+  This 'one line' commant has only been tested on Ubuntu 20.04 LTS.
+
+Terminal::
+
+    cd && wget https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Install_VLplus.sh && chmod 755 Install_VLplus.sh && sudo ./Install_VLplus.sh -B d -y && source ~/.VLprofile && rm Install_VLplus.sh
 
 Containers
 **********
 
-The recommended way of using **VirtualLab** on your system is via a container. It has been tested and works with both `Docker <https://www.docker.com/>`_ and `Singularity <https://sylabs.io/singularity/>`_.
+The only other prerequisite for using **VirtualLab** on your system is a containerisation tool. We currently only support `Apptainer <https://apptainer.org/>`_ (currently this is Linux only, hence Linux being the only officially supported OS). [3]_ 
 
-If you're unfamiliar with containers, here's a quick overview from `opensource.com <https://opensource.com/resources/what-are-linux-containers>`_ :cite:`containers`:
+If you're unfamiliar with containers, here's a quick overview from `opensource.com <https://opensource.com/resources/what-are-linux-containers>`_\ :footcite:`containers`:
 
     *"Containers, in short, contain applications in a way that keep them isolated from the host system that they run on. Containers allow a developer to package up an application with all of the parts it needs, such as libraries and other dependencies, and ship it all out as one package. And they are designed to make it easier to provide a consistent experience as developers and system administrators move code from development environments into production in a fast and replicable way.*
 
@@ -23,126 +52,104 @@ We have chosen containers as the main way of distributing **VirtualLab** for a n
 * The portability of containers means that, whether working on a laptop or a HPC cluster, a container pull (or download) is all that's required and users' workflows can be easily moved from machine to machine when scaling up to a larger resource is required.
 * The small impact on performance is far outweighed by the benefits of easy installation compared with a local installation.
 * Containers offer superior performance compared with virtual machines and can make use of hardware acceleration with GPUs.
+* Containers allow us to install external modules each with their own dependencies isolated from one another.
 
-To use **VirtualLab** with a container you must first install your platform of choice. Is it suggested that you follow the most up-to-date instructions from their websites:
+For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on your local machine (we will go into more details on exactly how this all works later).
 
-* `Install Docker <https://docs.docker.com/get-docker/>`_
-* `Install Singularity v3.6 <https://sylabs.io/guides/3.6/user-guide/quick_start.html#quick-installation-steps>`_
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png
+  :width: 400
+  :alt: Diagram of VirtualLab container setup
+  :align: center
 
-Then run the appropriate command below:
+To use **VirtualLab** you must first install Apptainer. It is suggested that you follow the most up-to-date instructions from their website:
 
-Docker::
+* `Quick start <https://apptainer.org/docs/user/main/quick_start.html>`_
+* `Install Apptainer <https://apptainer.org/docs/admin/main/installation.html>`_
 
-    sudo docker pull ibsim/virtuallab:latest
+.. [3] Apptainer's website does contain instructions for using it Windows and MacOs. However, this through a virtual machine which prevents the use of GPUs for modules that support them. It also has a negative impact on performance as such we don't recommend using Apptainer on non Linux systems. 
 
-Singularity::
+Installation with the install script:
+*************************************
 
-    singularity pull VirtualLab.sif docker://ibsim/virtuallab:latest
+To use the install/update script you will need to install git. This can be easily done by either following the instructions on `git's website <https://git-scm.com/download/linux>`_ or, on Ubuntu based distros, you can run the following in a terminal.
 
-Docker supports Windows, Mac and Linux whereas Singularity primarily only supports Linux. The **VirtualLab** container has only been tested with these platforms on `Ubuntu 18.04 LTS (Bionic Beaver) <https://releases.ubuntu.com/18.04/>`_ and with Singularity on the `Supercomputing Wales <https://www.supercomputing.wales/>`_ HPC resource.
+:bash:`sudo apt install git`
 
-The following commands will work with a fresh installation of `Ubuntu 18.04 LTS (Bionic Beaver) <https://releases.ubuntu.com/18.04/>`_ to install your container platform of choice and pull **VirtualLab**.
+Once you have git and Apptainer installed you can download the automated install/update `script <https://gitlab.com/ibsim/virtuallab_bin/-/raw/main/Install_VirtualLab?inline=false>`_:
 
-Docker::
+Both the Installer and **VirtualLab** itself are primarily command line only so you will need to run the following commands in a terminal.
 
-    cd ~ && wget -O https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_Docker.sh?inline=false && chmod 755 Install_Docker.sh && sudo ~/./Install_Docker.sh && source ~/.bashrc && sudo docker pull ibsim/virtuallab:latest
+:bash:`chmod +x Install_VirtualLab`
 
-Singularity::
+:bash:`./Install_VirtualLab` 
 
-    cd ~ && wget -O https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_Singularity.sh?inline=false && chmod 755 Install_Singularity.sh && sudo ~/./Install_Singularity.sh && source ~/.bashrc && singularity pull VirtualLab.sif docker://ibsim/virtuallab:latest
+The installer will then take you through a series of menus and download the latest version of the code as well as pulling the latest **VirtualLab** Manager container from Dockerhub (converting it to an apptainer container).
 
-+--------------------------------------------------------------------------+----------------+---------------+-------------+---------+
-| Image name                                                               | Build          | Description   | Salome-Meca | ERMES   |
-|                                                                          | Status         |               | Version     | Version |
-+==========================================================================+================+===============+=============+=========+
-| `docker://ibsim/virtuallab <https://hub.docker.com/r/ibsim/virtuallab>`_ | |build-status| | alpha release | 2019.0.3    | 12.5    |
-+--------------------------------------------------------------------------+----------------+---------------+-------------+---------+
+.. note:: You may see lots of warning messages appear on screen during the install, similar to: :bash:`warn rootless {path/to/file} ignoring (usually) harmless EPERM on setxattr`. As the messages suggests these are harmless and just a bi-product of building containers from sif files without root privileges on Linux. Thus, as long as you get a "build complete" message at the end they can be safely ignored.
 
-.. |build-status| image:: https://img.shields.io/docker/cloud/build/ibsim/virtuallab
+We note at this stage that only the 'Server' and 'Manager' have been downloaded. The remaining modules are not immediately installed but instead will be downloaded and installed dynamically when used for the first time. This means that the first run of any module will take significantly longer because it has to download and install the required files. This is an intentional trade off to save disk space because it means you only have installed the exact tools you need/use.
 
-Virtual Machines
-****************
+The **VirtualLab** executable can then be found in the bin directory inside the **VirtualLab** install directory (you may want to add this to your system path).
 
-The next most straightforward method to use **VirtualLab** is to download the preprepared virtual machine (VM) image. This is a complete Ubuntu OS desktop environment with all the necessary software and dependencies pre-installed that can be run on your current computing setup. There are three steps to this method:
+.. note:: Unless you changed it during the install the default install directory is :bash:`/home/$USER/VirtualLab` where $USER is your username.
 
-#. Download and install the virtual machine platform `VirtualBox <https://www.virtualbox.org/wiki/Downloads>`_ following the appropriate instructions for your OS (Windows, Mac or Linux).
-#. Download the |VM_link|.
-#. Load the image :file:`File > Import Appliance...`
-#. (Optional) Amend the VM settings for your specific hardware e.g. increase allocation of CPU cores or RAM.
+We recommend you run a quick test to ensure everything is working this can be done with the following command:
 
-.. |VM_link| raw:: html
+:bash:`VirtualLab --test`
 
-   <a href="https://ibsim.co.uk/VirtualLab/downloads/VM.html" target="_blank">VirtualLab image</a>
+The :bash:`--test` option downloads a minimal test container and runs a series of tests to check everything is working. It also spits out a randomly selected programming joke as a nice whimsical bonus. For more on how to use **VirtualLab** we recommend the `Tutorials <examples/index.html>`_ section.
 
-These are the login details for the VM:
+.. warning:: **GlibC issues with Ubuntu 22.04+**
+  
+  We note, at this stage, that there is a known bug with Salome-Meca Running in VirtualLab with Ubuntu 22.04, along with some newer versions of Fedora. 
+  If you are using these you may find you get an error containing something similar to the following:
+  ``version `GLIBC_2.34' not found (required by /.singularity.d/libs/libGLX.so.0)``
+  
+  The issue is a bug in the way that the ``--nv`` flag loads nvidia libraries. The short version is that the ``--nv`` flag isn't very sophisticated when it comes to libraries. It looks for a list of library files on the host which is defined in ``nvliblist.conf``. 
+  The issue is that the latest version(s) of Ubuntu are compiled against a newer version of libGLX than is included within the Salome container. This causes problems in Apptainer.
 
-* username = ibsim
-* password = ibsim
+  To fix this you have two options. Firstly, you can use the ``-N`` option to turn off the nvidia libraries. The drawback to this is that you will be running in 'software rendering mode' and thus you will not benefit from any GPU acceleration.
 
-The limitation of VMs is that they cannot access your GPU for graphical acceleration and there will be a non-negligible impact to performance. However, this is a sufficiently smooth user experience for the majority of use-cases.
+  The second option is to use the following workaround.
 
-Non-interactive Installation
-****************************
+  1. Search for a file named ``nvliblist.conf`` in your installation. It should be under your Apptainer installation directory. By default this is under ``/etc/apptainer``.
+  2. Make a back-up of this file ``mv nvliblist.conf nvliblist.conf.bak``.
+  3. Open the file ``nvliblist.conf`` using a text editor.
+  4. Delete all of the following lines that appear ``libGLX.so``, ``libGLX.so.0``, ``libglx.so``, ``libglx.so.0`` and ``libGLdispatch.so``. Note, depending on you exact system, the file may not contain all of them.
 
-The easiest way to download & install **VirtualLab** and its dependencies in a conda environment on **Ubuntu** is by running the following command in a terminal::
+  Try running the Salome container again, it should work this time.
 
-    cd ~ && wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_VirtualLab.sh?inline=false && chmod 755 Install_VirtualLab.sh && sudo ~/./Install_VirtualLab.sh -P c -S y -E y -C y -y && source ~/.bashrc
+  Reference: https: //github.com/apptainer/apptainer/issues/598
+  
+  One caveat with this workaround, however, is that involves messing with configs that apply system wide. As such, it may have unintended side-effects with other software/containers that use Apptainer. Our team have not yet reported any issues. 
+  However, this does not mean they do not exist. Therefore, we cannot 100% guarantee you won't have any issues. This is also the reason we recommend backing up your original config in step 2, just in case. Also, for future 
+  reference, these fixes where applied to ubuntu 22.04 with Apptainer version 1.0.5. Your millage may vary with future updates.
 
+Installation from source code
+*****************************
 
-Usage of 'Install_VirtualLab.sh':
-  Install_VirtualLab.sh [-d <path>] [-P {y/c/n}] [-S \"{y/n} <path>\"] [-E {y/n}] [-C {y/n}]
+If you choose to perform the installation manually, in addition to Apptainer you will need both `git <https://git-scm.com/download/linux>`_, `python <https://www.python.org/>`_ version 3.9+ and optionally the pip package `pyinstaller <https://pyinstaller.org/en/stable/>`_. 
 
-Options:
-   | :bash:`-d <path>` Specify the installation path for **VirtualLab**.
-   | :bash:`-P y` Install python3 using system python installation.
-   | :bash:`-P c` Install python3 using conda environment.
-   | :bash:`-P n` Do not install python.
-   | :bash:`-S y <path>` Install **Salome-Meca** at *<path>* location.
-   | :bash:`-S y` Install **Salome-Meca** at default location *'/opt/SalomeMeca'*.
-   | :bash:`-S n` Do not install **Salome-Meca**.
-   | :bash:`-E y` Install **ERMES** at default location *'/opt/ERMES`*
-   | :bash:`-E n` Do not install **ERMES**
-   | :bash:`-C y` Install **Cad2Vox**
-   | :bash:`-C n` Do not install **Cad2Vox**
-   | :bash:`-y` Skip install confirmation dialogue.
+First, you will need to clone our git repository with:
+:bash:`git clone https://gitlab.com/ibsim/virtuallab.git`
 
-* The default behaviour (with no flags) is to not install any version of python, **Salome-Meca** (which includes **Code_Aster**), **ERMES**, or **Cad2Vox**.
-* If creating a conda environment, it will be named the same as the installation directory for **VirtualLab** (which is 'VirtualLab' by default).
-* The default installation locations are:
+Next, you need to download the latest version of the manager container from dockerhub. To do this run :bash:`apptainer build VL_Manager.sif docker://ibsim/virtuallab:latest` then place the generated VLManager.sif file into the Containers directory of the **VirtualLab** repository which you cloned in the previous step.
 
-  + **VirtualLab** in the user's home directory :bash:`$HOME`.
-  + **Salome-Meca** in *'/opt/SalomeMeca'*.
-  + **ERMES** in *'/opt/ERMES`*.
-  + **Cad2Vox** inside the **VirtualLab** directory
-  + python/conda in the conventional locations.
+The next step is to generate an executable. The original script the executable is based on is VL_server.py. So from here you have essentially 2 options:
 
-If you have a pre-existing installation of any of the components the script will attempt to detect this and only update necessary components in order to ensure that dependencies are met.
+1. Run the script directly with :bash:`python3 VL_server.py --test`
+2. Build an executable yourself using pyinstaller by running :bash:`pyinstaller -n VirtualLab -F VL_server.py`
 
-Manual Installation
-*******************
+.. note:: As mentioned previously, all the other container modules get downloaded automatically the first time they are used. However, regardless of your container choice they are all hosted on dockerhub under `ibsim <https://hub.docker.com/u/ibsim>`_. You could always pull/build them from there if desired. Alternatively, the dockerfiles used to create the containers can be found in a separate github `repo <https://github.com/IBSim/VirtualLab>`_ that is itself linked to Dockerhub.
 
-If you choose to perform the installation manually, you will need to install each of the various components and ensure that **VirtualLab**, **Salome-Meca** and **ERMES** are added to your system :bash:`$PATH`. Additionally, **VirtualLab** will need to be added to your :bash:`$PYTHONPATH`.
+The final step is to add **VirtualLab** to the system path and set the VL_DIR environment variable to tell **VirtualLab** where the code is installed.
 
-The python package requirements are found at the code's `git repository <https://gitlab.com/ibsim/virtuallab/-/raw/master/requirements.txt>`_.
+To do this run the following commands:
+:bash:`export VL_DIR=Path/to/repo`
+:bash:`export PATH=$PATH:{Path/to/repo}/bin`
 
-To complete the installation you will need to run *'SetupConfig.sh'*. If you have used any non-default installation options, you will first need to modify *'VLconfig_DEFAULT.sh'*. *'SetupConfig.sh'* will attempt to locate non-default options, but manually modifying *'VLconfig_DEFAULT.sh'* is a fail-safe way of ensuring configuration completes successfully.
-
-Then run the following command in the location where you have installed **VirtualLab**::
-
-  ./SetupConfig.sh
-
-Usage of 'SetupConfig.sh':
-  SetupConfig.sh [ -f "$FNAME" ]
-
-Options:
-   | :bash:`-f "$FNAME"` Where "$FNAME" is the name of the config options file (e.g. *'VLconfig_DEFAULT.sh'*).
-
- * The default behaviour is to setup using VLconfig_DEFAULT.sh.
- * If you change any of the config options you will need to re-run *'SetupConfig.sh'* for changes to be applied.
+.. note:: You may want to automate this by adding these lines to ~/.bashrc, ~/.zshrc or similar.
 
 References
 **********
-
-.. bibliography:: refs.bib
-   :style: plain
-   :filter: docname in docnames
+.. footbibliography::

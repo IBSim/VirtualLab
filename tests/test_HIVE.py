@@ -10,29 +10,24 @@ sys.path.insert(0,VLdir)
 import VLconfig
 sys.path.pop(0)
 
-Name='HIVE'
+TestName='HIVE'
 
-TutorialsDir = "{}/RunFiles/Tutorials/{}".format(VLdir,Name)
-OutputDir = '{}/VLTutorial_{}'.format(VLconfig.TEMP_DIR,Name)
-ParsedArgs = '-k Mode=T -f ShowMesh=False -k ShowRes=False -k OutputDir={}'.format(OutputDir)
-
-def test_Task1():
-    # Run = Popen('VirtualLab -f {}/Task1_Run.py {}'.format(TutorialsDir,ParsedArgs),shell='TRUE')
-    Run = Popen(['VirtualLab','-f','{}/Task1_Run.py'.format(TutorialsDir),ParsedArgs])
+def test_Task1(TutorialsDir,ParsedArgs):
+    Run = Popen(['VirtualLab','-f','{}/{}/Task1_Run.py'.format(TutorialsDir,TestName),*ParsedArgs])
     err = Run.wait()
     assert err==0
 
-def test_Task2():
-    Run = Popen(['VirtualLab','-f','{}/Task2_Run.py'.format(TutorialsDir),ParsedArgs])
+def test_Task2(TutorialsDir,ParsedArgs):
+    Run = Popen(['VirtualLab','-f','{}/{}/Task2_Run.py'.format(TutorialsDir,TestName),*ParsedArgs])
     err = Run.wait()
     assert err==0
 
-def test_Task3():
-    Run = Popen(['VirtualLab','-f','{}/Task3_Run.py'.format(TutorialsDir),ParsedArgs])
+def test_Task3(TutorialsDir,ParsedArgs):
+    Run = Popen(['VirtualLab','-f','{}/{}/Task3_Run.py'.format(TutorialsDir,TestName),*ParsedArgs])
     err = Run.wait()
     assert err==0
-
-def test_Task4():
-    Run = Popen(['VirtualLab','-f','{}/Task4_Run.py'.format(TutorialsDir),ParsedArgs])
+    
+def test_Task4(TutorialsDir,ParsedArgs):
+    Run = Popen(['VirtualLab','-f','{}/{}/Task4_Run.py'.format(TutorialsDir,TestName),*ParsedArgs])
     err = Run.wait()
     assert err==0

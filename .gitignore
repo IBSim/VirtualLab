@@ -1,6 +1,8 @@
 # Ignore all files and folder then chose the ones we want to sync
 # Blacklist all files and folders
 /*
+# Ignore readthedocs HTML builds
+docs/source/_build
 
 # Blacklist all .pyc files
 *.pyc
@@ -9,7 +11,9 @@
 !.gitignore
 !README.md
 !Run.py
+!VLconfig.py
 !VLconfig_DEFAULT.sh
+!VL_server.py
 !SetupConfig.sh
 !requirements.txt
 !LICENSE
@@ -19,16 +23,27 @@
 !bin/
 !docs/
 docs/build
+!Config/
+Config/*.yaml
+Config/*.py
 !Scripts/
 !Materials/
 # Ensure that only the Example and .dev sub-directory will be included in the whitelist
 !Input/
 Input/*/*
 !Input/*/Tutorials/
+!Input/Test/*
 !Input/*/.dev/
 !Input/Unit/*
 !tests/
-
+!Containers/
+Containers/*.sif
 # Ensure that only some Run files will be included in the RunFiles directory
 !RunFiles/
-
+# ignore logfiles but not directory
+!.log
+.log/*.log
+!VL_Modules.yaml
+# ignore any exisiting vlab binary
+bin/VirtualLab
+VLconfig.py

@@ -1,0 +1,23 @@
+{
+    "Mesh": {
+        "Namespace": "Mesh"
+    },
+    "Sim": {
+        "Namespace": "Sim"
+    },
+    "DA": {
+        "Namespace": "DA"
+    },
+    "Test": {
+        "Namespace": "Test"
+    },
+    "Voxelise": {
+        "Namespace": "Vox"
+    },
+    "CT_Scan": {
+        "Namespace": "GVXR"
+    },
+    "CT_Recon": {
+        "Namespace": "GVXR"
+    }
+}

@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
+#===============================================================================
+# Header
+#===============================================================================
+
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 
 #===============================================================================
-# Setup
+# Definitions
+#===============================================================================
 
 Simulation='Tensile'
 Project='Tutorials'
@@ -13,34 +18,45 @@ Parameters_Var=None
 
 #===============================================================================
 # Environment
+#===============================================================================
 
 NbThreads = 5
 N = int(os.environ.get('SLURM_NTASKS',NbThreads))
 
 VirtualLab=VLSetup(
            Simulation,
-           Project)
+           Project
+           )
 
 VirtualLab.Settings(
            Mode='Headless',
            Launcher='MPI',
-           NbJobs=N)
+           NbJobs=N
+           )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunMesh=True,
            RunSim=True,
-           RunDA=True)
+           RunDA=True,
+           RunVoxelise=False
+           )
+
+#===============================================================================
+# Methods
+#===============================================================================
 
 VirtualLab.Mesh(
            ShowMesh=False,
-           MeshCheck=None)
+           MeshCheck=None
+           )
 
 VirtualLab.Sim(
            RunPreAster=True,
            RunAster=True,
            RunPostAster=True,
-           ShowRes=True)
+           ShowRes=True
+           )
 
 VirtualLab.DA()

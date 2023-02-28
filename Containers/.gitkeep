@@ -1,0 +1,3 @@
+# igonre everything in this folder but keep the dir in git. 
+#This is directory is used as the default location for apptainer sif files which we dont want git to track. 
+*

@@ -61,7 +61,7 @@ Vox.Name = 'Notch1'
 # name of the mesh(es) you wish to voxelise
 Vox.mesh = 'Notch1'
 # Number of voxels in each dimension
-Vox.gridsize = 250
+Vox.gridsize = [250,250,250]
 
 #### Optional Arguments #############
 # Skip the check for GPU and fallback to CPU

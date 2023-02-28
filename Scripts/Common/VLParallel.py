@@ -1,27 +1,29 @@
 import sys
-sys.dont_write_bytecode=True
-import numpy as np
 import os
 import traceback
 import copy
 from types import SimpleNamespace as Namespace
 import pickle
-from importlib import reload
-import inspect
 from contextlib import redirect_stderr, redirect_stdout
-import pathos.multiprocessing as pathosmp
-from pyina.launchers import MpiPool
-
-from Scripts.Common import Analytics
+import numpy as np
+import time
+from Scripts.Common.tools import Paralleliser
 import VLconfig
 
-def PoolWrap(fn,VL,Dict,*args):
-    # This function assumes that the first argument of args is the VL instance and
-    # the second is a dictionary of relevant information created in Setup
+def _time_fn(fn,*args,**kwargs):
+    st = time.time()
+    err = fn(*args,**kwargs)
+    end = time.time()
+    walltime = time.strftime("%H:%M:%S",time.gmtime(end-st))
+    print("\n################################\n\n"\
+          "Wall time for analysis: {}\n\n"\
+          "################################".format(walltime))
+    return err
+
+def PoolWrap(fn,VL,Dict,*args,**kwargs):
     # Try and get name & log file if standard convention has been followed
-    # the relevant dictionary will be the second argument
     if type(Dict)==dict:
-        Name = Dict.get('Name',None)
+        Name = Dict.get('_Name',None)
         LogFile = Dict.get('LogFile',None)
     else : Name, LogFile = None, None
 
@@ -36,10 +38,10 @@ def PoolWrap(fn,VL,Dict,*args):
             os.makedirs(LogDir,exist_ok=True)
             with open(LogFile,'w') as f:
                 with redirect_stdout(f), redirect_stderr(f):
-                    err = fn(VL,Dict,*args)
+                    err = _time_fn(fn,VL,Dict,*args,**kwargs)
         else:
             print("Running {}.\n".format(Name),flush=True)
-            err = fn(VL,Dict,*args)
+            err = _time_fn(fn,VL,Dict,*args,**kwargs)
 
         if not err: mess = "{} completed successfully.\n".format(Name)
         else: mess = "{} finishes with errors.\n".format(Name)
@@ -73,96 +75,71 @@ def PoolWrap(fn,VL,Dict,*args):
         print(mess)
 
 def PoolReturn(Dicts,Returners):
+    '''
+    Check what's been returned by 'PoolWrap' to see if it has been successful.
+    '''
     cpDicts = copy.deepcopy(Dicts)
     PlError = []
     for i, (Dict,Returner) in enumerate(zip(cpDicts,Returners)):
-        Name = Dict['Name']
+        Name = Dict['_Name']
         if isinstance(Returner,Exception) or isinstance(Returner,SystemExit):
+            # Exception thrown
             PlError.append(Name)
             continue
         if Returner.Error:
+            # Error message returned by the function 'fnc' used by PoolWrap.
             PlError.append(Name)
         if hasattr(Returner,'Dict'):
+            # If a dictionary is attached to Returner it means new
+            # information has been added, so we update the original dictionary.
             Dicts[i].update(Returner.Dict)
 
     return PlError
 
-def VLPool(VL,fnc,Dicts,Args=[],launcher=None,N=None):
+def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
 
-    fnclist = [fnc]*len(Dicts)
-    PoolArgs = [[VL]*len(Dicts),Dicts] + Args
+    if args_list:
+        assert len(args_list)==len(Dicts)
+    if kwargs_list:
+        assert len(kwargs_list)==len(Dicts)
+
+    analysis_names = list(Dicts.keys())
+    analysis_data = []
+    for analysis_name in analysis_names:
+        Dicts[analysis_name]['_Name'] = analysis_name
+        analysis_data.append(Dicts[analysis_name])
 
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
 
+    # create list fof arguments
+    PoolArgs = []
+    for i,_dict in enumerate(analysis_data):
+        a = [fnc,VL,_dict]
+        # add args_list info, if it exists
+        if args_list:
+            _arg = args_list[i]
+            if type(_arg) in (list,tuple): a.extend(_arg)
+            else: a.append(_arg)
+        PoolArgs.append(a)
+
     try:
-        if launcher == 'Sequential' or len(Dicts)==1:
-            # Run studies one after the other
-            Res = []
-            for args in zip(*PoolArgs):
-                ret = PoolWrap(fnc,*args)
-                Res.append(ret)
-        elif launcher == 'Process':
-            # Run studies in parallel of N using pathos. Only works on single nodes.
-            # Reloading pathos ensures any new paths added to sys.path are included
-            pmp = reload(pathosmp)
-            pool = pmp.ProcessPool(nodes=N, workdir=VL.TEMP_DIR)
-            Res = pool.map(PoolWrap,fnclist, *PoolArgs)
-            Res=list(Res)
-            pool.terminate()
-        elif launcher in ('MPI','MPI_Worker'):
-            # Run studies in parallel of N using pyina. Works for multi-node clusters.
-            # onall specifies if there is a worker. True = no worker
-            if launcher == 'MPI' or N==1: onall = True # Cant have worker if N is 1
-            else: onall = False
-
-            # Ensure that sys.path is the same for pyinas MPI subprocess
-            PyPath_orig = os.environ.get('PYTHONPATH',"")
-            addpath = set(sys.path) - set(VL._pypath) # group subtraction
-            addpath = ":".join(addpath) # write in unix style
-            # Update PYTHONPATH is os
-            os.environ["PYTHONPATH"] = "{}:{}".format(addpath,PyPath_orig)
-
-            # Run functions in parallel of N using pyina
-            pool = MpiPool(nodes=N,source=True, workdir=VL.TEMP_DIR)
-            Res = pool.map(PoolWrap,fnclist, *PoolArgs, onall=onall)
-            Res=list(Res)
-
-            # Reset environment back to original
-            os.environ["PYTHONPATH"] = PyPath_orig
-
+        if launcher.lower()=='process':
+            kwargs = {'workdir':VL.TEMP_DIR}
+        elif launcher.lower() in ('mpi','mpi_worker'):
+            kwargs = {'workdir':VL.TEMP_DIR,
+                      'addpath':set(sys.path)-set(VL._pypath)}
+        else: kwargs = {}
+        Res = Paralleliser(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, method=launcher, nb_parallel=N,**kwargs)
     except KeyboardInterrupt as e:
         VL.Cleanup()
 
-        if launcher=='Process': pool.terminate()
-
         exc = e
         trb = traceback.format_exception(etype=type(exc), value=exc, tb = exc.__traceback__)
-        err = "".join(trb)
 
-        sys.exit(err)
-
-
-	# Function to analyse usage of VirtualLab to evidence impact for
-	# use in future research grant applications. Can be turned off via
-	# VLconfig.py. See Scripts/Common/Analytics.py for more details.
-    if VLconfig.VL_ANALYTICS=="True":
-        frame = inspect.stack()[1]
-        module = inspect.getmodule(frame[0])
-        name = os.path.splitext(os.path.basename(module.__file__))[0]
-
-        Category = "{}_{}".format(VL.Simulation,name)
-        Action = "{}_{}_1".format(len(Dicts),N)
-
-        Analytics.Run(Category,Action,VL._ID)
-
-        if not hasattr(VL,'_Analytics'):
-            VL._Analytics = {'Mesh':0,'Sim':0,'DA':0}
-        if name in VL._Analytics:
-            VL._Analytics[name]+=len(Dicts)
+        sys.exit("".join(trb))
 
     # Check if errors have been returned & update dictionaries
-    Errorfnc = PoolReturn(Dicts,Res)
-
+    Errorfnc = PoolReturn(analysis_data,Res)
 
     return Errorfnc

@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 #########################
@@ -8,7 +8,7 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 ### For VirtualLab, the default config values are as below.
 ### These can be changed in $VL_DIR/VLconfig_DEFAULT.sh if needed.
 ###  - Installation location
-### CAD2VOX_DIR='$HOME/VirtualLab/Cad2Vox'
+### CAD2VOX_DIR='$HOME/VirtualLab/third_party/Cad2Vox'
 ###  - Git tag, used to identify where to pull from within
 ###    the Cad2Vox git Repo. 
 ### CAD2VOX_TAG='VirtualLab_V1.55'
@@ -23,6 +23,7 @@ if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
 ### Standard update
 export DEBIAN_FRONTEND=noninteractive
+
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential cmake python3-pybind11
@@ -60,22 +61,22 @@ else
     USE_CONDA=false
 fi
 
-if ${CAD2VOX_WITH_CUDA}; then
-    echo "Installing CUDA"
-wget https://developer.download.nvidia.com/compute/cuda/11.4.4/local_installers/cuda_11.4.4_470.82.01_linux.run
-sudo sh cuda_11.4.4_470.82.01_linux.run --silent
-sudo rm cuda_11.4.4_470.82.01_linux.run
-else
-    echo "Skiping CUDA install"
-fi
 # Install GLM, OpenMP and other libraries
-sudo apt install -y libglm-dev libgomp1 git mesa-common-dev libglu1-mesa-dev libxi-dev
+#sudo apt install -y libglm-dev libgomp1 git mesa-common-dev libglu1-mesa-dev libxi-dev
 
 cd ${VL_DIR}
+if [ -d "${CAD2VOX_DIR}" ]; then
+	cd ${CAD2VOX_DIR}
+	git pull
+else 
+	mkdir -p ${VL_DIR}/third_party
+        sudo chown ${USER}:${USER} ${VL_DIR}/third_party
+	cd ${VL_DIR}/third_party
+        git clone https://github.com/bjthorpe/Cad2vox.git
+	sudo chown ${USER}:${USER} Cad2vox/*
+	cd ${CAD2VOX_DIR}
+fi
 
-git clone https://github.com/bjthorpe/Cad2vox.git
-sudo chown ${USER}:${USER} Cad2vox/*
-cd Cad2vox
 
 git checkout ${CAD2VOX_TAG} 
 
@@ -83,31 +84,13 @@ if ${USE_CONDA}; then
     conda install -y cmake numpy pybind11 tifffile pytest pillow pandas
     conda install -y -c conda-forge xtensor xtl meshio xtensor-python
 else
-    pip3 install --user -r requirements.txt
-    # Build xtl, xtensor and xtensor-python
-    mkdir -p libs && cd libs
-    #xtl
-    git clone https://github.com/xtensor-stack/xtl.git
-    sudo chown ${SUDO_USER:-$USER} xtl/*
-    cd xtl && cmake . && sudo make install && cd ${CAD2VOX_DIR}/libs
-    #xtensor
-    git clone https://github.com/xtensor-stack/xtensor.git
-     sudo chown ${SUDO_USER:-$USER} xtensor/*
-    cd xtensor && cmake . && sudo make install && cd ${CAD2VOX_DIR}/libs
-    #xtensor-python
-    git clone https://github.com/xtensor-stack/xtensor-python.git
-    sudo chown ${SUDO_USER:-$USER} xtensor-python/*
-    cd xtensor-python && cmake . && sudo make install && cd ${CAD2VOX_DIR}
+    sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install --user -r requirements.txt
 fi
 
-cd ${CAD2VOX_DIR}/CudaVox
-python3 -m pip install --user .
-cd ${CAD2VOX_DIR}
-python3 -m pip install --user .
-
+sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install cad2vox
 # Run Test Suite
-if ${CAD2VOX_WITH_CUDA}; then
-pytest
-else
-pytest -K "not CUDA"
-fi
+#if ${CAD2VOX_WITH_CUDA}; then
+#pytest
+#else
+python3 -m pytest -k "not CUDA"
+#fi

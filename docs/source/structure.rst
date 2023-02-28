@@ -10,7 +10,7 @@ Input
 
 Input has a sub-directory for each `simulation <runsim/runfile.html#simulation>`_ type, and within those are sub-directories for each `Project <runsim/runfile.html#project>`_, e.g. :file:`Input/$SIMULATON/$PROJECT`.
 
-Here you will find :file:`$PARAMETERS_MASTER.py` and :file:`$PARAMETERS_VAR.py` files, which are explained in more detail in `Running a Simulation <runsim.html>`_.
+Here you will find :file:`$PARAMETERS_MASTER.py` and :file:`$PARAMETERS_VAR.py` files, which are explained in more detail `here <runsim/runfile.html#parameters-master>`_.
 
 For the example of :file:`Input/Tensile/Tutorials`:
 
@@ -22,31 +22,41 @@ Scripts
 
 This directory includes the scripts required to install and launch **VirtualLab**.
 
-The directory :file:`Install` contains the scripts used by the `non-interactive installation <install.html#non-interactive-installation>`_, which will install and configure **VirtualLab** and its dependencies such as python, **Code_Aster**, **SALOME** and **ERMES**.
+Install
+~~~~~~~
+The directory :file:`Install` contains the scripts used by the `non-manual installation <install.html#installation-with-the-install-script>`_, which will install and configure **VirtualLab** and its dependencies such as python, **Code_Aster**, **SALOME** and **ERMES**.
 
+Methods
+~~~~~~~
+The directory :file:`Methods` contains files for the different methods available in **VirtualLab**, such as 'Mesh' and 'Sim'.
+
+Experiments
+~~~~~~~~~~~
+The directory :file:`Experiments` contain simulation-specific scripts for each experiment available, which currently are `Tensile <virtual_exp.html#tensile-testing>`_, `LFA <virtual_exp.html#laser-flash-analysis>`_ and `HIVE <virtual_exp.html#hive>`_. Inside the experiment directory are scripts, grouped by their method type, required to run that specific virtual experiment. In :file:`Mesh` you will find **SALOME** python scripts which create the mesh of the testpiece, while in :file:`Sim` you will find the **Code_Aster** command scripts which outline the steps followed to setup the FE simulation. Alongside these files used for PreAster and PostAster can be found. :file:`DA` contains scripts used for data analysis.
+
+Other simulation-specific sub-directories may also be included in the experiment directory here, such as *Laser* for the LFA simulation which contains different laser pulse profiles measured experimentally.
+
+Common
+~~~~~~
 :file:`Common` contains scripts used by **VirtualLab** for any type of experiment. These includes setting up the environment through creating directories and inerfacing with the various packages incorporated, such as **SALOME** and **Code_Aster**.
-
-Alongside these are directories containing simulation-specific scripts for each experiment available, which currently are `Tensile <virtual_exp.html#tensile-testing>`_, `LFA <virtual_exp.html#laser-flash-analysis>`_ and `HIVE <virtual_exp.html#hive>`_.
-
-Inside the simulation directories are sub-directories containing the relevant files required to run that specific virtual experiment. In *Mesh* you will find **SALOME** python scripts which create the mesh of the testpiece, while in *Sim* you will find the **Code_Aster** command scripts which outline the steps followed to setup the FE simulation. Alongside these files used for PreAster and PostAster can be found. *DA* contains scripts used for data analysis.
-
-Other simulation-specific sub-directories may also be included here, such as *Laser* for the LFA simulation which contains different laser pulse profiles measured experimentally.
 
 Materials
 *********
 
-This directory contains the material properties used for FE simulations. Each sub-directory contains properties for different materials.
+This directory contains the material properties used for FE simulations. 
 
-Material properties can be set to be linear or non-linear (e.g. temperature dependence).
+Within this directory are sub-directories, the name of which are the different materials available. Within these sub-directories are files for the different type of material properties, e.g. 'Youngs.dat' contains information about the Youngs modulus of a material. 
 
-The structure of the contents of this directory will be updated soon.
+The data stored in these files can be a single number (used to perform linear analysis) or a list of two numbers, the first column is a varying property (e.g. Temperature) while the second column is the value of the material property at that quantity.
+
+The structure of this directory will be updated soon.
 
 RunFiles
 ********
 
-This directory contain the driver files to launch virtual experiments, referred to as a `RunFile <runsim/runfile.html>`_.
+This directory contains the driver files to launch virtual experiments, referred to as a `RunFile <runsim/runfile.html>`_.
 
-This directory contains a number of templates which the user may customise for their own applications, including ones specifically for each of the tutorials in :file:`RunFiles/Tutorials`. A detailed template file :file:`Run.py` is also included in the top level directory of **VirtualLab** i.e. the installation location.
+This directory contains a number of templates which the user may customise for their own applications, including ones specifically for each of the tutorials in :file:`RunFiles/Tutorials`. A detailed template file :file:`Run.py` is also included in the top-level directory of **VirtualLab** i.e. the installation location.
 
 docs
 ****
@@ -60,4 +70,4 @@ This directory will be created when the first **VirtualLab** analysis is perform
 
 This directory is structured similarly to the `Input`_ directory, where you will find a directory for the *Simulation* type followed by one of the *Project* name.
 
-The 'project directory' (:file:`Output/$SIMULATON/$PROJECT`) will hold all data generated for the *Project*, such as: meshes; simulation results; visualisation images; analysis reports. The structure of the project directory is detailed `here <runsim/runfile.html#project>`_.
+The 'project directory' (:file:`Output/$SIMULATON/$PROJECT`) will hold all data generated for the *Project*, such as: meshes; simulation results; visualisation images; analysis reports. The structure of the project directory is detailed in `this section <runsim/runfile.html#project>`_.

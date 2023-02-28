@@ -44,7 +44,7 @@ class Method(Method_base):
         if not os.path.exists(VL.OUT_DIR):
             os.makedirs(VL.OUT_DIR)
 
-        # if RunVox is False or VoxDicts is empty dont perform voxelisation and return instead.
+        # if RunVoxelise is False or VoxDicts is empty dont perform voxelisation and return instead.
         if not (self.RunFlag and VoxDicts):
             return
         for VoxName, VoxParams in VoxDicts.items():

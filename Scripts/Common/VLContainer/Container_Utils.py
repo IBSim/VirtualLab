@@ -41,8 +41,42 @@ def run_pyfunc_launch(ContainerInfo, command, pkl_files):
     return RC, func_results
         
 def run_pyfunc(ContainerInfo,funcfile,funcname,args=(),kwargs={}):
-    python_exe, files = run_pyfunc_setup(funcfile,funcname,args=args,kwargs=kwargs)    
-    return run_pyfunc_launch(ContainerInfo,python_exe,files)
+def get_Vlab_Tcp_Port():
+    """
+    Function to get vlab tcp port from the os environment.
+    variable VL_TCP_PORT. This variable is, or at least
+    should be set in the VL_Manager container when VL_setup
+    is first created.
+
+    This then allows you to easily create new tcp sockets
+    for spawning containers without having to pass objects
+    through the various layers of functions.
+
+    WARNING: this function should only be called inside the
+    VL_Manager container otherwise it will not work
+    as the environment variables will be different to other
+    containers or the host.
+    """
+    import os
+
+    port_num = os.environ.get("VL_TCP_PORT", None)
+    # set port number to the specified value then
+    if port_num == None:
+        print(
+            "*************************************************************************\n",
+            " WARNING: TCP Port number not found from environment variable $VL_TCP_PORT\n",
+            " This should not happen unless you are either:\n",
+            " A) Calling this function outside of the VL_Manager Container\n",
+            " B) you have somehow not called _SetTcp_Port during the Settings function of VLSetup.\n",
+            "*************************************************************************",
+        )
+        sys.exit(1)
+    return int(port_num)
+
+
+def run_pyfunc(ContainerInfo, funcfile, funcname, args=(), kwargs={}):
+    python_exe, files = run_pyfunc_setup(funcfile, funcname, args=args, kwargs=kwargs)
+    return run_pyfunc_launch(ContainerInfo, python_exe, files, sock)
         
                 
 def bind_list2string(bind_list):
@@ -83,8 +117,9 @@ def Exec_Container(package_info, command):
     # This is updated on the server to give the filename on the host instead of the one inside VL_Manager
     stdout = None if sys.stdout.name=='<stdout>' else sys.stdout.name
 
-    # create new socket                  
-    sock = create_tcp_socket() 
+    # create new socket
+    tcp_port = get_Vlab_Tcp_Port()
+    sock = create_tcp_socket(tcp_port)
     
     # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
     # on the server, where  'args' and 'kwargs' are passed to it.
@@ -93,10 +128,11 @@ def Exec_Container(package_info, command):
             'kwargs':{'stdout':stdout}}
 
     # send data to relevant function in VLserver
-    send_data(sock,info)
-    
+    send_data(sock, info)
+
     # Get the information returned by Exec_Container_Manager, which is the returncode of the subprocess
-    ReturnCode = receive_data(sock, 0) # return code from subprocess
+    ReturnCode = receive_data(sock, 0)  # return code from subprocess
+    sock.close()  # cleanup after ourselves
     return ReturnCode
 
 
@@ -124,113 +160,17 @@ def Exec_Container_Manager(container_info, package_info, command, stdout=None):
     return ReturnCode
  
     
-    
-       
 
+def create_tcp_socket(port_num=9000):
+    """Function to create the tcp socket and connect to it.
+    The default port is 9000 for coms with the containers.
+    """
 
-
-
-def Spawn_Container(VL,sock,**kwargs):
-
-    import dill
-    ''' Function to enable communication with host script from container.
-        This will be called from the VirtualLab container to Run a job 
-        with another toll in separate container. At the moment this 
-        is only CIL but other tools can/will be added in time.
-        #######################################################################
-        Note: Current container ID's are:
-        1 - Base VirtualLab
-        2 - CIL
-
-        If/when you want to add more containers you will need to give 
-        them a unique id in the container_id's dict in VL_sever.py 
-        and add it to this list as a courtesy so everyone is on the same page
-        #######################################################################
-        Inputs: 
-        a dict containing the following parameters to setup the job:
-
-        Cont_id: ID of the container requesting the job. This is usually but not
-                 necessarily VL_manager (i.e. container 1).
-        Tool: string to identify the module to spin up.
-        Num_Cont: maximum number of containers to run in parallel,
-        Parameters_Master: string pointing to appropriate Runfile
-        Parameters_Var: string pointing to appropriate Runfile or None
-        Project: Name of the project.
-        Simulation: Name of the Simulation
-        Settings: dict of settings that were passed into VL_Manger. 
-                  This ensures modules receive the same settings 
-                  (mode,Nbjobs ect.)
-        #######################################################
-        ####################   Note:   ########################
-        #######################################################
-         The return value for this function will be different 
-         depending upon if it is called by VLSetup or VLModule.
-         see comment on line 81 for more details.
-        ''' 
-    waiting_containers = {}
-
-    kwargs['msg'] = "Spawn_Container"
-    
-    vltype = kwargs['Method_Name']
-    #data_string = json.dumps(data)
-    # send a signal to VL_server saying you want to spawn a container
-   
-    tmpfile = "{}/vlclass.pkl".format(VL.TEMP_DIR)
-    kwargs['class_file'] = tmpfile
-    kwargs['paths'] = VL._AddedPaths
-    with open(tmpfile,'wb') as f:
-        dill.dump(VL,f)
-
-    send_data(sock, kwargs, VL.debug)
-
-    target_ids = []
-    #wait to receive message saying the tool is finished before continuing on.
-
-    while True:
-        rec_dict=receive_data(sock,VL.debug)
-        if rec_dict:
-            if rec_dict['msg'] == 'Running':
-                target_ids.append(rec_dict['Cont_id'])
-        # wait until all containers have started
-            if len(target_ids) == kwargs['Num_Cont']:      
-                break
-    # check if container spawned by module or manager. If called by manger (VLsetup)
-    # we should wait for the containers to complete. VLModule on the other hand is 
-    # expecting a list of containers and it will handle the rest with a combination of
-    #  calls to: Wait_For_Container, Cont_continue and Cont_Waiting.
-    if VL.__class__.__name__ == 'VLModule':
-        return target_ids
-
-
-    while True:
-        rec_dict = receive_data(sock,VL.debug)
-        if rec_dict:
-            if rec_dict['msg'] == 'Success':
-                target_ids.remove(rec_dict['Target_id'])
-            elif rec_dict['msg'] == 'Error':
-                container_return = '-1'
-                break
-            else: 
-                continue
-
-        if len(target_ids) == 0:
-            container_return = '0'
-            break
-    #end of while loop
-    if container_return == '0':
-        VL.do_Analytics(vltype)
-    return container_return
-
-def create_tcp_socket(port=9000):
-    ''' Function to create the tcp socket and connect to it. 
-        The default port is 9000 for coms with the containers. 
-        This however should be set to 5000 for coms 
-        with the host process. '''
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(True)
     host = "0.0.0.0"
-    sock.connect((host, port))   
+    sock.connect((host, port_num))
     return sock
 
 def Cont_Started(Cont_id,sock,debug=False):
@@ -247,7 +187,7 @@ def Cont_Finished(Cont_id,sock,debug=False):
     sock.close()
     return
 
-def Wait_For_Container(sock,Cont_id,Target_id,debug=False):
+def send_data(conn, payload, bigPayload=False, debug=False):
     '''
     Function to wait to receive a message from container Target_id to say if 
     it has finished or is waiting. 

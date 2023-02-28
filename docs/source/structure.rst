@@ -43,11 +43,13 @@ Common
 Materials
 *********
 
-This directory contains the material properties used for FE simulations. Each sub-directory contains properties for different materials.
+This directory contains the material properties used for FE simulations. 
 
-Material properties can be set to be linear or non-linear (e.g. temperature dependence).
+Within this directory are sub-directories, the name of which are the different materials available. Within these sub-directories are files for the different type of material properties, e.g. 'Youngs.dat' contains information about the Youngs modulus of a material. 
 
-The structure of the contents of this directory will be updated soon.
+The data stored in these files can be a single number (used to perform linear analysis) or a list of two numbers, the first column is a varying property (e.g. Temperature) while the second column is the value of the material property at that quantity.
+
+The structure of this directory will be updated soon.
 
 RunFiles
 ********

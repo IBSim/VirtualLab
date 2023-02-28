@@ -50,7 +50,7 @@ Template
                    RunMesh=bool,
                    RunSim=bool,
                    RunDA=bool,
-                   RunVox=bool
+                   RunVoxelise=bool
                    )
         
         #===============================================================================
@@ -256,7 +256,7 @@ This function creates the parameter files defined using `Parameters_Master`_ and
                RunMesh=True,
                RunSim=True,
                RunDA=True,
-               RunVox=True
+               RunVoxelise=True
                )
 
 
@@ -372,7 +372,7 @@ This function is the data analysis routine. The analyses, defined using the name
 ``VirtualLab.Voxelize``
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-This function is the routine to call **Cad2Vox**. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images are saved to :file:`Output/$SIMULATION/$PROJECT/Voxel-Images`. If RunVox is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
+This function is the routine to call **Cad2Vox**. The parameters used for the Voxelization process are defined in the namespace ``Vox`` in *Parameters_Master* and *Parameters_Var*. The resultant output images are saved to :file:`Output/$SIMULATION/$PROJECT/Voxel-Images`. If RunVoxelise is set to :code:`False` in `VirtualLab.Parameters`_ then this routine is skipped.
 
 Example
 *******
@@ -421,7 +421,7 @@ Example
                    RunMesh=True,
                    RunSim=True,
                    RunDA=False,
-                   RunVox=False
+                   RunVoxelise=False
                    )
         
         #===============================================================================

@@ -37,7 +37,7 @@ VirtualLab.Parameters(
            RunMesh=True,
            RunSim=True,
            RunDA=True,
-           RunVox=False
+           RunVoxelise=False
            )
 
 #===============================================================================

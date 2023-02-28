@@ -1,0 +1,21 @@
+#!/bin/bash --login
+#SBATCH --job-name=VirtualLab
+#SBATCH --output=logs/VL.out.%J
+#SBATCH --error=logs/VL.err.%J
+#SBATCH --time=0-01:00
+#SBATCH --ntasks=4
+#SBATCH --ntasks-per-node=4
+#SBATCH --mem-per-cpu=6000
+
+'''
+Example batch script used to run VirtualLab.  
+'''
+
+module purge
+module load apptainer/#VersionNumber
+module load mpi/#MPIVersion # Optional, only required if one wants to run on multiple nodes (set launcher to mpi if so)
+source ~/.VLprofile # make sure VirtualLab/bin is in $PATH
+
+VirtualLab -f <Path/To/File> -K Mode=H NbJobs=4 Launcher=(process/mpi)
+
+

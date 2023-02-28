@@ -86,8 +86,8 @@ def run_pyfunc(ContainerInfo, funcfile, funcname, args=(), kwargs={}):
 def bind_list2string(bind_list):
     """Returns a list of bind points in the format required by a container."""
     container_bind = []
-    for bind in bind_list:
-        container_bind.append(":".join(bind))
+    for bind_host,bind_cont in bind_list.items():
+        container_bind.append(bind_host+":"+bind_cont)
     return ",".join(container_bind)
 
 
@@ -146,14 +146,14 @@ def Exec_Container(package_info, command):
 
 def Exec_Container_Manager(container_info, package_info, command, stdout=None):
     """Function called on VL_server to run jobs on other containers."""
-
+    
     container_cmd = container_info["container_cmd"]
+    # merge in bind points from package and replace defaults
 
-    if "bind" in package_info:
-        bind_str = bind_list2string(package_info["bind"])  # convert bind list to string
-        container_cmd += " --bind {}".format(
-            bind_str
-        )  # update command with bind points
+    if package_info.get('bind',None) != None:
+        continer_info['bind'] = continer_info['bind'] | package_info['bind']
+    bind_str = bind_list2string(container_info["bind"])  # convert bind list to string
+    container_cmd += " --bind {}".format(bind_str)  # update command with bind points
 
     # SP_call is whats executed by the server. calls containers and passes commands to it
     SP_call = "{} {} {}".format(

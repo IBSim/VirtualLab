@@ -27,7 +27,7 @@ DefaultSettings = {
     "Mode": "H",
     "Launcher": "Process",
     "NbJobs": 1,
-    "Max_Containers": 1,
+    # "Max_Containers": 1,
     "InputDir": VLconfig.InputDir,
     "OutputDir": VLconfig.OutputDir,
     "MaterialDir": VLconfig.MaterialsDir,
@@ -40,6 +40,7 @@ DefaultSettings = {
 
 class VLSetup:
     def __init__(self, Simulation, Project, Cont_id=1):
+        import VLconfig
         self._parsed_kwargs = VLF.parsed_kwargs(
             sys.argv[1:]
         )  # may need to be more robust than sys.argv
@@ -57,6 +58,11 @@ class VLSetup:
             "############################\n",
             Print=True,
         )
+        #Check that VL_config is indeed set correctly
+        if VLconfig.VL_HOST_DIR=="":
+            self.Exit(VLF.ErrorMessage("Something went wrong. The VirtualLab directory \n"
+            "does not appear to be set correctly in VL_Config.py."
+            "Please edit VL_HOST_DIR to point to the VirtualLab directory."))
 
     def __getstate__(self):
         """
@@ -327,9 +333,9 @@ class VLSetup:
             atexit.unregister(self._Cleanup)
         atexit.register(self._Cleanup, Cleanup)
 
-    def _SetMax_Containers(self, Max_Containers=1):
-        self._Max_Containers = Max_Containers
-        return
+    # def _SetMax_Containers(self, Max_Containers=1):
+    #     self._Max_Containers = Max_Containers
+    #     return
 
     def _SetTcp_Port(self, tcp_port=9000):
         import os
@@ -399,7 +405,7 @@ class VLSetup:
             "dry_run": self._SetDryrun,
             "debug": self._SetDebug,
             "tcp_port": self._SetTcp_Port,
-            "Max_Containers": self._SetMax_Containers,
+            # "Max_Containers": self._SetMax_Containers,
         }
 
         # check no incorrect kwargs given
@@ -460,7 +466,7 @@ class VLSetup:
         # get the number of runs defined in params for each module
         self.Num_runs = self._get_Num_Runs(flags, self.Methods)
         # get a list of all the containers and the runs they will process for each module
-        self.container_list = self._Spread_over_Containers()
+        # self.container_list = self._Spread_over_Containers()
         # call setup for each method
         for method_name in self.Methods:
             # get method_name instance

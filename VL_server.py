@@ -36,12 +36,6 @@ from Scripts.Common.VLContainer.Container_Utils import (
 )
 
 vlab_dir = get_vlab_dir()
-bind_points_default = [
-    ["/usr/share/glvnd", "/usr/share/glvnd"],
-    ["/tmp", "/tmp"],
-    [str(vlab_dir), "/home/ibsim/VirtualLab"],
-]
-
 
 # global variables for use in all threads
 waiting_cnt_sockets = {}
@@ -155,7 +149,13 @@ def main():
 
     # make a dir in /tmp on host with random name to avoid issues on shared systems
     # the tempfile library ensures this directory is deleted on exiting python.
-    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_dir_obj = tempfile.TemporaryDirectory()
+    tmp_dir = tmp_dir_obj.name
+    bind_points_default = {
+    "/usr/share/glvnd":"/usr/share/glvnd",
+    str(tmp_dir):"/tmp",
+    str(vlab_dir):"/home/ibsim/VirtualLab"}
+
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
@@ -215,7 +215,7 @@ def main():
     lock = threading.Lock()
     thread = threading.Thread(
         target=process,
-        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, tcp_port, tmp_dir),
+        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, tcp_port, bind_points_default),
     )
     thread.daemon = True
 
@@ -257,7 +257,7 @@ def main():
 
 
 def handle_messages(
-    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, tmp_dir
+    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, bind_points_default
 ):
     global waiting_cnt_sockets
     global target_ids
@@ -294,6 +294,7 @@ def handle_messages(
             container_path = "{}/{}".format(vlab_dir, cont_info["Apptainer_file"])
             cont_info["container_path"] = container_path
             cont_info["container_cmd"] = container_cmd
+            cont_info["bind"]=bind_points_default
 
             # check apptainer sif file exists and if not build from docker version
             if not os.path.exists(container_path):
@@ -358,7 +359,7 @@ def handle_messages(
             raise ValueError(f"Unknown message {event} received")
 
 
-def process(vlab_dir, use_Apptainer, debug, gpu_flag, tcp_port, tmp_dir):
+def process(vlab_dir, use_Apptainer, debug, gpu_flag, tcp_port, bind_points_default):
     """Function that runs in a thread to handle communication ect."""
     global waiting_cnt_sockets
     next_cnt_id = 1
@@ -400,7 +401,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, tcp_port, tmp_dir):
                     cont_ready,
                     debug,
                     gpu_flag,
-                    tmp_dir,
+                    bind_points_default,
                 ),
             )
             thread.daemon = True
@@ -436,7 +437,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, tcp_port, tmp_dir):
                 cont_ready,
                 debug,
                 gpu_flag,
-                tmp_dir,
+                bind_points_default,
             ),
         )
         thread.daemon = True

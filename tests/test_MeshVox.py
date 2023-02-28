@@ -13,7 +13,7 @@ def test_Task1(TutorialsDir,ParsedArgs):
     assert err==0
 
 def test_Task2_pre(TutorialsDir,ParsedArgs):
-    Run = Popen(['VirtualLab','-f','{}/Task2_Pre-setup_Run.py'.format(TutorialsDir),*ParsedArgs])
+    Run = Popen(['VirtualLab','-f','{}/{}/Task2_Pre-setup.py'.format(TutorialsDir,TestName),*ParsedArgs])
     err = Run.wait()
     assert err==0
 

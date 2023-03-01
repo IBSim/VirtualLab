@@ -132,7 +132,7 @@ The :bash:`--test` option downloads a minimal test container and runs a series o
 Installation from source code
 *****************************
 
-If you choose to perform the installation manually, in addition to Apptainer you will need both `git <https://git-scm.com/download/linux>`_, `python <https://www.python.org/>`_ version 3.9+ and optionally the pip package `pyinstaller <https://pyinstaller.org/en/stable/>`_. 
+If you choose to perform the installation manually, in addition to Apptainer you will need both `git <https://git-scm.com/download/linux>`_, `python <https://www.python.org/>`_ version 3.9+ and the pip packages :bash:`Pyaml`, :bash:`git-python` and optionally `pyinstaller <https://pyinstaller.org/en/stable/>`_. 
 
 First, you will need to clone our git repository with:
 :bash:`git clone https://gitlab.com/ibsim/virtuallab.git`
@@ -142,7 +142,9 @@ Next, you need to download the latest version of the manager container from dock
 The next step is to generate an executable. The original script the executable is based on is VL_server.py. So from here you have essentially 2 options:
 
 1. Run the script directly with :bash:`python3 VL_server.py --test`
-2. Build an executable yourself using pyinstaller by running :bash:`pyinstaller -n VirtualLab -F VL_server.py`
+2. Build an executable yourself using pyinstaller by running :bash:`pyinstaller -n VirtualLab -F VL_server.py`. You will then find the executable in the `dist` directory. This will need moving to the `bin` directory in the repo. [4]_ 
+
+.. [4] This step has been automated using the shell script `make_executable.sh` which can be found in the bin directory. 
 
 .. note:: As mentioned previously, all the other container modules get downloaded automatically the first time they are used. However, regardless of your container choice they are all hosted on dockerhub under `ibsim <https://hub.docker.com/u/ibsim>`_. You could always pull/build them from there if desired. Alternatively, the dockerfiles used to create the containers can be found in a separate github `repo <https://github.com/IBSim/VirtualLab>`_ that is itself linked to Dockerhub.
 

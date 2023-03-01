@@ -101,7 +101,7 @@ def custom_dir():
     install_Vlab(choice)
 
 
-def install_Vlab(install_path,non_interactive=False,shell_num=1):
+def install_Vlab(install_path,non_interactive=False,shell_num=1,branch='M'):
     os.system("clear")
     print(f"Installing VirtualLab to {install_path}")
     if os.path.isdir(install_path):
@@ -125,7 +125,7 @@ def install_Vlab(install_path,non_interactive=False,shell_num=1):
     # Docker = check_container_tool()
     Docker = False
     print("Downloading VirtualLab\n")
-    get_latest_code(install_path)
+    get_latest_code(install_path,branch=branch)
     if Docker:
         get_latest_docker()
     else:
@@ -135,7 +135,7 @@ def install_Vlab(install_path,non_interactive=False,shell_num=1):
     sys.exit()
 
 
-def get_latest_code(install_path):
+def get_latest_code(install_path,branch='M'):
     # os.chdir(install_path)
     if Platform == "Windows":
         # use wget with powershell for windows
@@ -152,13 +152,15 @@ def get_latest_code(install_path):
             "https://gitlab.com/ibsim/virtuallab.git", f"{install_path}"
         )
         my_repo = git.Repo(f"{install_path}")
-        my_repo.git.checkout("dev")
+        if branch == 'D':
+            my_repo.git.checkout("dev")
         # get binaries from second repo and copy them across
         git.Repo.clone_from(
             "https://gitlab.com/ibsim/virtuallab_bin.git", f"{install_path}/bins"
         )
         my_repo2 = git.Repo(f"{install_path}/bins")
-        my_repo2.git.checkout("dev")
+        if branch == 'D':
+            my_repo2.git.checkout("dev")
         shutil.copytree(
             f"{install_path}/bins", f"{install_path}/bin", dirs_exist_ok=True
         )
@@ -418,10 +420,20 @@ if __name__ == "__main__":
         help="Specify which shell to use for non-interactive install. Supported shells are: zsh, bash and other",
         default = "bash",
     )
+    parser.add_argument(
+        "-B",
+        "--branch",
+        help="Switch branch used for install code by passing in D is development or M for master (default).",
+        default="M",
+    )
 
     args = parser.parse_args()
     if args.update and args.yes:
         raise ValueError("You cannot use options -y and -U together as that makes no sense.")
+
+    if args.branch not in ['M','D']:
+        print(f"Invalid branch {args.branch} must by one of M or D.")
+        sys.exit(0)
     
     if args.inst_dir != None:
         install_path = args.inst_dir
@@ -436,7 +448,7 @@ if __name__ == "__main__":
         raise ValueError(f"Option {args.shell} is not a supported shell must be one of {list(shell_types.keys())}.")
 
     if args.yes:
-        install_Vlab(install_path,non_interactive=True,shell_num=shell_num)
+        install_Vlab(install_path,non_interactive=True,shell_num=shell_num,branch=args.branch)
     elif args.update:
         update_vlab(non_interactive=True)
     else:

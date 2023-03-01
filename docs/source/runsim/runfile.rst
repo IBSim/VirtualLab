@@ -214,7 +214,7 @@ Usage:
 
 This dictates how much information is printed in the terminal during the running of **VirtualLab**. Options available are:
 
-*   'Interactive' - Prints all output to individual pop-up terminals.
+*   'Interactive' - Prints all output to individual pop-up terminals (currently not in use due to a change in X-Window implementation).
 *   'Terminal' - Prints all information to a single terminal.
 *   'Continuous'  - Writes the output to a file as it is generated.
 *   'Headless'  - Writes output to file at the end of the process. (Default)
@@ -410,7 +410,7 @@ Example
                    )
 
         VirtualLab.Settings(
-                   Mode='Interactive',
+                   Mode='Terminal',
                    Launcher='Process',
                    NbJobs=1
                    )

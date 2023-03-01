@@ -161,6 +161,10 @@ Since *Force* and *Displacement* are attributes of ``Sim`` a force-controlled si
 
 With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`, when launching **VirtualLab** firstly you will see information relating to the mesh printed to the terminal, e.g. the number of nodes and location the mesh is saved, followed by the **Code_Aster** output messages for the simulation printing in a separate `xterm <https://wiki.archlinux.org/index.php/Xterm>`_ window, see :numref:`Fig. %s <Xterm_01>`.
 
+.. note::
+    
+    Due to a change in X-Window implementation, 'Interactive' is currently not in use within **VirtualLab** but if set, it will behave the same as using 'Terminal'. That is, output will be printed to the main terminal.
+
 .. admonition:: Action
    :class: Action
 

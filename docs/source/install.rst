@@ -16,8 +16,8 @@ To use **VirtualLab** there are very few prerequisites. To use VirtualLab only A
     - Version
     - Notes
   * - Linux
-    - Mint 19/Ubuntu 18.04+
-    - Any reasonably modern distro should work. **VirtualLab** has been tested on various desktops and laptops running ubuntu 18.04 and 20.04 LTS and a supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
+    - Mint 19/Ubuntu 20.04+
+    - Any reasonably modern distro should work. **VirtualLab** has been tested on various desktops and laptops running Ubuntu 20.04 LTS and a supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
   
 .. [1] Note: Builds are made with pyinstaller which can be downloaded `here <https://github.com/pyinstaller/pyinstaller>`_. For linux this can generate builds for Arm64 (Raspberry Pi) and IBM PowerPc. These aren't officially supported, due to lack of demand/resources but it's there should the need arise.
 
@@ -32,6 +32,10 @@ You may run the following 'one line' command on a fresh installation of a suppor
   This 'one line' commant has only been tested on Ubuntu 20.04 LTS.
 
 Terminal::
+
+    cd && wget https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Install_VLplus.sh && chmod 755 Install_VLplus.sh && sudo ./Install_VLplus.sh -B m -y && source ~/.VLprofile && rm Install_VLplus.sh
+
+Latest development version::
 
     cd && wget https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Install_VLplus.sh && chmod 755 Install_VLplus.sh && sudo ./Install_VLplus.sh -B d -y && source ~/.VLprofile && rm Install_VLplus.sh
 
@@ -56,8 +60,8 @@ We have chosen containers as the main way of distributing **VirtualLab** for a n
 
 For **VirtualLab** we use a number of different containers (modules) that are co-ordinated by a Manager container with inter-container communication being handled by a small server application that runs on your local machine (we will go into more details on exactly how this all works later).
 
-.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng.png
-  :width: 400
+.. image:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/VL_Worflowpng_v2.png
+  :width: 800
   :alt: Diagram of VirtualLab container setup
   :align: center
 

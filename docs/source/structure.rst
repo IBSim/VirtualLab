@@ -49,8 +49,6 @@ Within this directory are sub-directories, the name of which are the different m
 
 The data stored in these files can be a single number (used to perform linear analysis) or a list of two numbers, the first column is a varying property (e.g. Temperature) while the second column is the value of the material property at that quantity.
 
-The structure of this directory will be updated soon.
-
 RunFiles
 ********
 

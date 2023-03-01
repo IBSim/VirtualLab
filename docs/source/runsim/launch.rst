@@ -41,9 +41,7 @@ In batch mode, rather than launching the command directly it is normally entered
   #SBATCH --ntasks-per-node=4
   #SBATCH --mem-per-cpu=6000
   
-  '''
-  Example batch script used to run VirtualLab.  
-  '''
+  # Example batch script used to run VirtualLab.  
   
   module purge
   module load apptainer/#VersionNumber

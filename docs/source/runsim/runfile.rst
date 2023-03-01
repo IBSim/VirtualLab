@@ -96,8 +96,6 @@ Following this is the definitions section, where variables are defined which are
 Simulation
 ~~~~~~~~~~
 
-.. _usage:
-
 Usage:
 ::
   

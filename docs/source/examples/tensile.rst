@@ -163,7 +163,7 @@ With *Mode* set to 'Interactive' in the setup section of :file:`RunTutorials.py`
 
 .. note::
     
-    Due to a change in X-Window implementation, 'Interactive' is currently not in use within **VirtualLab** but if set, it will behave the same as using 'Terminal'. That is, output will be printed to the main terminal.
+    Due to a change in X-Window implementation, 'Interactive' is currently not in use within **VirtualLab**. However, if set, it will behave the same as using 'Terminal'. That is, output will be printed to the main terminal.
 
 .. admonition:: Action
    :class: Action

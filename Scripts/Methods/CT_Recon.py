@@ -17,6 +17,11 @@ _ are ignored.
 
 
 class Method(Method_base):
+    def __init__(self, VL):
+        super().__init__(VL)  # rune __init__ of Method_base
+        self.MethodName = "CIL"
+        self.Containers_used = ["CIL"]
+
     def Setup(self, VL, CILdicts, Import=False):
         """setup CT reconstruction with CIL"""
         # if RunCIL is False or CILdicts is empty dont perform Simulation and return instead.

@@ -88,7 +88,7 @@ def yes_no():
 
 
 def custom_dir():
-    print("Please enter full path for where Install VirtualLab to.\n")
+    print("Please enter full path for where to Install VirtualLab.\n")
     print("Or type 0 to go back.\n")
     choice = input(" >>  ")
     if choice == "0":

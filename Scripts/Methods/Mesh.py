@@ -11,7 +11,9 @@ from Scripts.Common.utils import Method_base
 
 class Method(Method_base):
     def __init__(self, VL):
-        super().__init__(VL)  # rune __init__ of Mthod_base
+        super().__init__(VL)  # rune __init__ of Method_base
+        self.MethodName = "Mesh"
+        self.Containers_used = ["SalomeMeca"]
         # Add MESH_DIR to VL here as it's used by other methods (Sim,Vox)
         VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 

@@ -18,10 +18,16 @@ _ are ignored.
 class Method(Method_base):
     def __init__(self, VL):
         """
-        Otional class initiation function. If this is used you will also need
-        initiate Method_base using 'super().__init__(VL)' (see Mesh method for
-        more details).
+        Class initiation function. At minimum you will need
+        initiate Method_base using 'super().__init__(VL)' and set
+        a Self.MethodName. If using Containers you will also need 
+        to set self.Containers_used to a list of all the containers
+        you have used. The names of which are defined in 
+        config/VL_Modules.json. You can also use this to set anything 
+        specific to your method (see Mesh method for more details).
         """
+        super().__init__(VL)
+        self.MethodName="#MethodName"
 
     def Setup(self, VL, MethodDicts, Import=False):
         """
@@ -113,54 +119,6 @@ class Method(Method_base):
             "~~~ #MethodName Complete ~~~\n"
             "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
             Print=True,
-        )
-
-    def Spawn(self, VL, **kwargs):
-        """
-        This is the function called when running VirtualLab.#MethodName
-        within the VL_Manger container (i.e. the RunFile).
-
-        This Function sends a message to the host to spawn a container
-        "#ContainerName". This refers to one of the Containers defined
-        in VL_modules.yaml.
-
-        ***************************************************************
-        ***********  Note for using multiple containers   *************
-        ***************************************************************
-        VirtualLab can, with some setup, be configured to spread defined
-        jobs over multiple containers.However, this can be very
-        problematic and resource (particularly ram) intensive.
-
-        Therefore, for running in parallel we recommend using pathos or mpi
-        set via the VL._Launcher option (see VLParallel.py). However, if
-        for whatever reason this is not an option an example of how to
-        implement this can be found in GVXR.py.
-
-        """
-        MethodName = "#MethodName"
-        ContainerName = "#ContainerName"
-        Cont_runs = VL.container_list.get(MethodName, None)
-        if Cont_runs == None:
-            print(
-                f"Warning: Method {MethodName} was called in the inputfile but has no coresponding"
-                f" namespace in the parameters file. To remove this warning message please set Run{MethodName}=False."
-            )
-            return
-
-        return_value = Utils.Spawn_Container(
-            VL,
-            Cont_id=1,
-            Tool=ContainerName,
-            Method_Name=MethodName,
-            Num_Cont=1,
-            Cont_runs=Cont_runs,
-            Parameters_Master=VL.Parameters_Master_str,
-            Parameters_Var=VL.Parameters_Var_str,
-            Project=VL.Project,
-            Simulation=VL.Simulation,
-            Settings=VL.settings_dict,
-            tcp_socket=VL.tcp_sock,
-            run_args=kwargs,
         )
 
         if return_value != "0":

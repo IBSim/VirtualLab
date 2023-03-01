@@ -30,6 +30,10 @@ def Check_Threads(num_threads):
 
 
 class Method(Method_base):
+    def __init__(self, VL):
+        super().__init__(VL)  # rune __init__ of Method_base
+        self.MethodName = "Vox"
+        self.Containers_used = ["Cad2Vox"]
     def Setup(self, VL, VoxDicts, Import=False):
         """
         Vox - Mesh Voxelisation using Cuda or OpenMP
@@ -40,7 +44,7 @@ class Method(Method_base):
         if not os.path.exists(VL.OUT_DIR):
             os.makedirs(VL.OUT_DIR)
 
-        # if RunVox is False or VoxDicts is empty dont perform voxelisation and return instead.
+        # if RunVoxelise is False or VoxDicts is empty dont perform voxelisation and return instead.
         if not (self.RunFlag and VoxDicts):
             return
         for VoxName, VoxParams in VoxDicts.items():

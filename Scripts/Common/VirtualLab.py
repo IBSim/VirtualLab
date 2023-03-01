@@ -27,19 +27,25 @@ DefaultSettings = {
     "Mode": "H",
     "Launcher": "Process",
     "NbJobs": 1,
-    "Max_Containers": 1,
+    # "Max_Containers": 1,
     "InputDir": VLconfig.InputDir,
     "OutputDir": VLconfig.OutputDir,
     "MaterialDir": VLconfig.MaterialsDir,
     "Cleanup": True,
+    "dry_run": False,
+    "debug": False,
+    "tcp_port": 9000,
 }
 
 
 class VLSetup:
-    def __init__(self, Simulation, Project, Cont_id=1, debug=False):
-        self._parsed_kwargs = VLF.parsed_kwargs(sys.argv[1:]) # may need to be more robust than sys.argv
+    def __init__(self, Simulation, Project, Cont_id=1):
+        import VLconfig
+        self._parsed_kwargs = VLF.parsed_kwargs(
+            sys.argv[1:]
+        )  # may need to be more robust than sys.argv
         # perform setup steps that are common to both VLModule and VL_manger
-        self._Common_init(Simulation, Project, DefaultSettings, Cont_id, debug)
+        self._Common_init(Simulation, Project, DefaultSettings, Cont_id)
         # Unique ID
         git_id = self._git()
         self._ID = "{}_{}".format(git_id, self._time)
@@ -52,13 +58,18 @@ class VLSetup:
             "############################\n",
             Print=True,
         )
+        #Check that VL_config is indeed set correctly
+        if VLconfig.VL_HOST_DIR=="":
+            self.Exit(VLF.ErrorMessage("Something went wrong. The VirtualLab directory \n"
+            "does not appear to be set correctly in VL_Config.py."
+            "Please edit VL_HOST_DIR to point to the VirtualLab directory."))
 
     def __getstate__(self):
         """
         This is here to solve issues with pickling when using mpi.
         Specifically because we pass a VLsetup/VLmodule object into
-        the call to mpi. When this occurs the class gets serialised through pickle
-        to be sent to each mpi process. The problem is not all objects in the class can be serialised.
+        the call to mpi. When this occurs the class gets serialized through pickle
+        to be sent to each mpi process. The problem is not all objects in the class can be serialized.
 
         This dundder method thus provides a workaround since __getstate__ gets called before pickling.
         Thus we can remove the offending attributes since they are not needed by the mpi processes.
@@ -71,13 +82,13 @@ class VLSetup:
         attributes.pop("tcp_sock", None)
         return attributes
 
-    def AddToPath(self,path,ix=-1):
-        ''' A more robust way of adding paths as they will also be available inside 
-        every container'''
-        sys.path.insert(ix,path)
-        if not hasattr(self,'_AddedPaths'): self._AddedPaths = []
+    def AddToPath(self, path, ix=-1):
+        """A more robust way of adding paths as they will also be available inside
+        every container"""
+        sys.path.insert(ix, path)
+        if not hasattr(self, "_AddedPaths"):
+            self._AddedPaths = []
         self._AddedPaths.append(path)
-
 
     def _AddMethod(self):
         """Add in the methods defined in Scripts/Methods to the VirtualLab class."""
@@ -185,22 +196,19 @@ class VLSetup:
             config = json.load(file)
         return config
 
-    def _Common_init(
-        self, Simulation, Project, DefaultSettings, Cont_id=1, debug=False
-    ):
+    def _Common_init(self, Simulation, Project, DefaultSettings, Cont_id=1):
         """
         init steps that are common between both VLSetup and VLModule.
         These are here since it makes sense to have them in one place and
         save duplicating work.
         """
-        self.debug = debug
 
         sys.excepthook = self.handle_except
         # ======================================================================
         # Check for updates to Simulation and Project in parsed arguments
         # Use given Simulation and project if not in self._parsed_kwargs
-        self.Simulation = self._parsed_kwargs.get('Simulation', Simulation)
-        self.Project = self._parsed_kwargs.get('Project', Project)
+        self.Simulation = self._parsed_kwargs.get("Simulation", Simulation)
+        self.Project = self._parsed_kwargs.get("Project", Project)
         # Copy path at the start for MPI to match sys.path
         self._pypath = sys.path.copy()
         self.Container = Cont_id
@@ -216,9 +224,9 @@ class VLSetup:
         if not os.path.isdir(self.SIM_SCRIPTS):
             self.Exit(
                 VLF.ErrorMessage(
-                    "Simulation type '{0}' does not exist.\n" \
+                    "Simulation type '{0}' does not exist.\n"
                     "Please check you have created a directory named '{0}' "
-                    "inside the Scripts/Experiments directory.".format(self.Simulation) \
+                    "inside the Scripts/Experiments directory.".format(self.Simulation)
                 )
             )
         self.COM_SCRIPTS = "{}/Common".format(self.SCRIPTS_DIR)
@@ -243,7 +251,7 @@ class VLSetup:
         # Specify default settings
         self.Settings(**DefaultSettings)
         # create socket for networking
-        self.tcp_sock = Utils.create_tcp_socket()
+        self.tcp_sock = Utils.create_tcp_socket(self._tcp_port)
         self._AddMethod()
 
     def _SetMode(self, Mode="H"):
@@ -325,22 +333,61 @@ class VLSetup:
             atexit.unregister(self._Cleanup)
         atexit.register(self._Cleanup, Cleanup)
 
-    def _SetMax_Containers(
-        self,
-        Max_Containers=1,
-    ):
-        if type(Max_Containers) == int:
-            self._Max_Containers = Max_Containers
-        elif type(Max_Containers) == float:
-            if Max_Containers.is_integer():
-                self._Max_Containers = Max_Containers
-            else:
-                self.Exit(ErrorMessage("Max_Containers must be an integer"))
-        else:
-            self.Exit(ErrorMessage("Max_Containers must be an integer"))
+    # def _SetMax_Containers(self, Max_Containers=1):
+    #     self._Max_Containers = Max_Containers
+    #     return
 
-        if Max_Containers <= 0:
-            self.Exit(ErrorMessage("Max_Containers must be positive"))
+    def _SetTcp_Port(self, tcp_port=9000):
+        import os
+
+        if type(tcp_port) != int:
+            self.Exit(
+                VLF.ErrorMessage(
+                    f"Invalid port number: {tcp_port}, must be an integer."
+                )
+            )
+        elif tcp_port < 1024 or tcp_port > 65535:
+            self.Exit(
+                VLF.ErrorMessage(
+                    f"invalid port number: {tcp_port}, must be an integer between 1024 and 65535."
+                )
+            )
+        else:
+            os.environ["VL_TCP_PORT"] = str(tcp_port)
+            self._tcp_port = tcp_port
+        return
+
+    def _SetDryrun(
+        self,
+        dry_run=False,
+    ):
+        if type(dry_run) == bool:
+            self._dry_run = dry_run
+        elif str(dry_run).lower() in ["true", "false", "0", "1"]:
+            self._dry_run = dry_run
+        else:
+            self.Exit(
+                VLF.ErrorMessage(
+                    f"Invalid option: {dry_run} for Dry_run. Must a boolean value"
+                )
+            )
+        return
+
+    def _SetDebug(
+        self,
+        debug=False,
+    ):
+        if type(debug) == bool:
+            self._debug = debug
+        elif str(debug).lower() in ["true", "false", "0", "1"]:
+            self._debug = debug
+        else:
+            self.Exit(
+                VLF.ErrorMessage(
+                    f"Invalid option:{debug} for debug. Must a boolean value"
+                )
+            )
+        return
 
     @VLF.kwarg_update
     def Settings(self, **kwargs):
@@ -354,8 +401,11 @@ class VLSetup:
             "InputDir": self._SetInputDir,
             "OutputDir": self._SetOutputDir,
             "MaterialDir": self._SetMaterialDir,
-            "Max_Containers": self._SetMax_Containers,
             "Cleanup": self._SetCleanup,
+            "dry_run": self._SetDryrun,
+            "debug": self._SetDebug,
+            "tcp_port": self._SetTcp_Port,
+            # "Max_Containers": self._SetMax_Containers,
         }
 
         # check no incorrect kwargs given
@@ -369,7 +419,7 @@ class VLSetup:
                 )
             )
 
-        updated_kwargs = VLF.Parser_update(kwargs_fnc.keys(),self._parsed_kwargs)
+        updated_kwargs = VLF.Parser_update(kwargs_fnc.keys(), self._parsed_kwargs)
         kwargs.update(updated_kwargs)
 
         for kw_name, kw_fnc in kwargs_fnc.items():
@@ -387,7 +437,6 @@ class VLSetup:
         Import=False,
         **run_flags,
     ):
-
         flags = {
             "Run{}".format(name): True for name in self.Methods
         }  # all defaulted to True
@@ -403,28 +452,30 @@ class VLSetup:
                 )
             )
         flags.update(run_flags)
-        
+
         # update run_flags keywords (not covered by decorator as they depend on the files in methods directory)
-        updated_flags = VLF.Parser_update(flags.keys(),self._parsed_kwargs)
+        updated_flags = VLF.Parser_update(flags.keys(), self._parsed_kwargs)
         flags.update(updated_flags)
 
         # update Parameters_master with parser (not covered by decorator as its an argument)
-        Parameters_Master = self._parsed_kwargs.get('Parameters_Master',Parameters_Master) 
-        
+        Parameters_Master = self._parsed_kwargs.get(
+            "Parameters_Master", Parameters_Master
+        )
+
         self._SetParams(Parameters_Master, Parameters_Var, ParameterArgs=ParameterArgs)
         # get the number of runs defined in params for each module
         self.Num_runs = self._get_Num_Runs(flags, self.Methods)
         # get a list of all the containers and the runs they will process for each module
-        self.container_list = self._Spread_over_Containers()
+        # self.container_list = self._Spread_over_Containers()
         # call setup for each method
         for method_name in self.Methods:
             # get method_name instance
             method_cls = getattr(self, method_name)
             # add flag to the instance
             method_cls.SetFlag(flags["Run{}".format(method_name)])
-            _NS_name = self.method_config[method_name]['Namespace']
+            _NS_name = self.method_config[method_name]["Namespace"]
             method_dicts = self._CreateParameters(_NS_name)
-            method_cls._MethodSetup(method_dicts)      
+            method_cls._MethodSetup(method_dicts)
 
     def ImportParameters(self, Rel_Parameters, ParameterArgs=None):
         """
@@ -732,7 +783,9 @@ class VLSetup:
             shutil.rmtree(self.TEMP_DIR)
         if hasattr(self, "tcp_sock"):
             import socket
-            print("closing tcp connection")
+
+            if self._debug:
+                print("closing tcp connection")
             self.tcp_sock.shutdown(socket.SHUT_RDWR)
             self.tcp_sock.close()
         print(exitstr)
@@ -793,4 +846,3 @@ class VLSetup:
         except:
             pass
         return "{}_{}".format(version, branch)
-

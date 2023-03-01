@@ -113,10 +113,10 @@ def install_Vlab(install_path,non_interactive=False,shell_num=1):
             print(f"The Directory {install_path} is not Empty\n")
             print("Warning: contents will be overwriten.\n")
             print("******************************************\n")
-            shutil.rmtree(install_path)
-            os.mkdir(install_path)
         if not non_interactive:
             yes_no()
+            shutil.rmtree(install_path)
+            os.mkdir(install_path)
     else:
         print(f"New directory {install_path} will be created")
         os.mkdir(install_path)

@@ -41,7 +41,6 @@ ENV LC_ALL=C.UTF-8 \
     LANGUAGE=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive
 
-#RUN apt-get update && apt-get install --no-install-recommends -y nano git
 USER ibsim
 ENV DEBIAN_FRONTEND=noninteractive TERM=linux
 # Install miniconda instead of full anaconda to space space in final image.
@@ -53,5 +52,5 @@ ENV PATH=/home/ibsim/miniconda/bin:${PATH}
 
 RUN conda update -y conda && conda init
 RUN conda create --name VirtualLab python=3.9 h5py pytest
-RUN /home/ibsim/miniconda/envs/VirtualLab/bin/pip install cad2vox==1.6.0
+RUN /home/ibsim/miniconda/envs/VirtualLab/bin/pip install cad2vox==1.7.3
 USER root

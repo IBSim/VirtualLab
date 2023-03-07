@@ -37,10 +37,13 @@ def run_pyfunc_setup(funcfile, funcname, args=(), kwargs={}):
 
 def run_pyfunc_launch(ContainerInfo, command, pkl_files):
     RC = Exec_Container(ContainerInfo, command)
-
     arg_path, ret_val_path = pkl_files
-    with open(ret_val_path, "rb") as f:
-        func_results = pickle.load(f)
+    if RC == 0:
+        with open(ret_val_path, "rb") as f:
+            func_results = pickle.load(f)
+    else:
+        #an error occurred so there will not be any func_return
+        func_results= None
 
     return RC, func_results
 

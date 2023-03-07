@@ -11,7 +11,7 @@ docs/source/_build
 !.gitignore
 !README.md
 !Run.py
-!VLconfig.py
+!VLconfig_DEFAULT.py
 !VLconfig_DEFAULT.sh
 !VL_server.py
 !SetupConfig.sh
@@ -47,3 +47,6 @@ Containers/*.sif
 !.log
 .log/*.log
 !VL_Modules.yaml
+# ignore vlab binaries
+bin/VirtualLab
+bin/Install_VirtualLab

@@ -27,8 +27,8 @@ VirtualLab.Settings(
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=False,
-           RunSim=False,
+           RunMesh=True,
+           RunSim=True,
            RunDA=False,
            RunVoxelise=True,
            RunCT_Scan=False,

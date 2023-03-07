@@ -41,12 +41,13 @@ class Method(Method_base):
         VL.OUT_DIR = "{}/Voxel-Images".format(VL.PROJECT_DIR)
         VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
-        if not os.path.exists(VL.OUT_DIR):
-            os.makedirs(VL.OUT_DIR)
-
         # if RunVoxelise is False or VoxDicts is empty dont perform voxelisation and return instead.
         if not (self.RunFlag and VoxDicts):
             return
+
+        if not os.path.exists(VL.OUT_DIR):
+            os.makedirs(VL.OUT_DIR)
+
         for VoxName, VoxParams in VoxDicts.items():
             Parameters = Namespace(**VoxParams)
             # check mesh for file extension and if not present assume salome med

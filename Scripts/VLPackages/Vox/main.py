@@ -10,7 +10,7 @@ import tifffile as tf
 import meshio
 from CudaVox import run
 import pandas as pd
-from .utill import check_greyscale, find_the_key, check_voxinfo, padding, check_padding
+from utill import check_greyscale, find_the_key, check_voxinfo, padding, check_padding
 
 
 def voxelise(input_file, output_file, **kwargs):
@@ -114,7 +114,6 @@ def voxelise(input_file, output_file, **kwargs):
     solid = kwargs.get("solid", False)
     im_format = kwargs.get("im_format", None)
     Num_Threads = kwargs.get("Num_threads", None)
-    Bbox_Centre = kwargs.get("Bbox_Centre", "mesh")
     Orientation = kwargs.get("Orientation", "XY")
     Output_Resolution = kwargs.get("Output_Resolution", None)
 

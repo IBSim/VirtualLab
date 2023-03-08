@@ -61,11 +61,10 @@ class Method(Method_base):
             # If not assume the file is in the Mesh directory
             else:
                 IN_FILE = "{}/{}".format(VL.MESH_DIR, mesh)
+            VoxDict = {}
+            VoxDict["input_file"] = IN_FILE
+            VoxDict["output_file"] = "{}/{}".format(VL.OUT_DIR, VoxName)
 
-            VoxDict = {
-                "input_file": IN_FILE,
-                "output_file": "{}/{}".format(VL.OUT_DIR, VoxName),
-            }
             # handle optional arguments
             if hasattr(Parameters, "unit_length"):
                 VoxDict["unit_length"] = Parameters.unit_length
@@ -107,7 +106,28 @@ class Method(Method_base):
             if hasattr(Parameters, "image_format"):
                 VoxDict["im_format"] = Parameters.image_format
 
+            if hasattr(Parameters, "Orientation"):
+                VoxDict["Orientation"] = Parameters.Orientation
+                
+            if hasattr(Parameters, "Output_Resolution"):
+                VoxDict["Output_Resolution"] = Parameters.Output_Resolution
+                 
+            # catch any extra options and throw an error to say they are invalid
+            param_dict = vars(Parameters)
+            for key in ["Name","mesh"]:
+                del param_dict[key]
+            
+            diff = set(param_dict.keys()).difference(VoxDict.keys())
+            if list(diff) != []:
+                invalid_options=''
+                for i in list(diff):
+                    invalid_options = invalid_options + f"Vox.{i}={param_dict[i]}\n"
+                VL.Exit(
+                    VLF.ErrorMessage(
+                        f"Invalid input parameters for cad2vox:\n{invalid_options}"))
+            
             self.Data[VoxName] = VoxDict.copy()
+        return
 
     @staticmethod
     def PoolRun(VL,VoxDict):

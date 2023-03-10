@@ -7,6 +7,7 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
     import pydantic
     import pickle
     import os
+    import sys
     from types import SimpleNamespace as Namespace
     from pydantic.dataclasses import dataclass, Field
     from typing import Optional, List
@@ -16,7 +17,8 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         InitSpectrum,
         dump_to_json,
     )
-    
+    import VLconfig as VLC
+
     class MyConfig:
         validate_assignment = True
 
@@ -31,7 +33,8 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         Intensity: List[float] = Field(default=None)
         Tube_Voltage: float = Field(default=None)
         Tube_Angle: float = Field(default=None)
-        Filters: str = Field(default=None)
+        Filter_ThicknessMM: float = Field(default=None)
+        Filter_Material: str = Field(default=None)
         Beam_Pos_units: str = Field(default="mm")
         Energy_units: str = Field(default="MeV")
 
@@ -56,14 +59,13 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         Angle_defined = "Tube_Angle" not in values
 
         if xor(Energy_defined, Intensity_defined):
-            raise ValueError(
-                "If using Energy and/or Intenisity You must define both."
+            print("If using Energy and/or Intenisity. You must define both in the input parameter's."
             )
+            sys.exit(1)
         # if using speckpy you need both Tube angle and voltage
         elif xor(Voltage_defined, Angle_defined):
-            raise ValueError(
-                "If using Tube Angle and/or Tube Voltage you must define both."
-            )
+            print("If using Tube Angle and/or Tube Voltage You must define both in the input parameter's.")
+            sys.exit(1)
     Data = {}
     #########################################
     # For reference in all cases our co-ordinates
@@ -109,7 +111,8 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         Model_Pos_units: str = Field(default="mm")
 
     OUT_DIR = "{}/GVXR-Images".format(PROJECT_DIR)
-    MESH_DIR = "{}/Meshes".format(PROJECT_DIR)
+    IN_MESH_DIR ="{}/Meshes".format(VLC.InputDir)
+    OUT_MESH_DIR = "{}/Meshes".format(PROJECT_DIR)
 
     if not os.path.exists(OUT_DIR):
         os.makedirs(OUT_DIR)
@@ -126,9 +129,12 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         # If mesh is an absolute path use it
         if os.path.isabs(mesh):
             IN_FILE = mesh
-        # If not assume the file is in the Mesh directory
+        # if not check the input Mesh directory
+        elif os.path.exists(f'{IN_MESH_DIR}/{mesh}'):
+            IN_FILE = "{}/{}".format(IN_MESH_DIR, mesh)
+        # If not assume the file is in the output Mesh directory
         else:
-            IN_FILE = "{}/{}".format(MESH_DIR, mesh)
+            IN_FILE = "{}/{}".format(OUT_MESH_DIR, mesh)
 
         GVXRDict = {
             "mesh_file": IN_FILE,
@@ -145,39 +151,30 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
             Check_Materials(Parameters.Material_list)
             GVXRDict["Material_list"] = Parameters.Material_list
         else:
-            raise ValueError(
-                "You must Specify a Material_list in Input Parameters."
-            )
+            print("You must Specify a Material_list in Input Parameters.")
+            sys.exit(1)
 
         ########### Setup x-ray beam ##########
         # create dummy beam and to get filled in with values either from Parameters OR Nikon file.
         dummy_Beam = Xray_Beam(
             Beam_PosX=0, Beam_PosY=0, Beam_PosZ=0, Beam_Type="point"
         )
-
-        if hasattr(Parameters, "Energy_units"):
-            dummy_Beam.Energy_units = Parameters.Energy_units
-
-        if hasattr(Parameters, "Tube_Angle"):
-            dummy_Beam.Tube_Angle = Parameters.Tube_Angle
-        if hasattr(Parameters, "Tube_Voltage"):
-            dummy_Beam.Tube_Voltage = Parameters.Tube_Voltage
-
-        if Parameters.use_spekpy:
-            dummy_Beam = InitSpectrum(
-                Beam=dummy_Beam, Headless=GVXRDict["Headless"]
-            )
-        else:
-            if hasattr(Parameters, "Energy") and hasattr(Parameters, "Intensity"):
-                dummy_Beam.Energy = Parameters.Energy
-                dummy_Beam.Intensity = Parameters.Intensity
-            else:
-                raise ValueError(
-                    "you must Specify a beam Energy and Beam Intensity when not using Spekpy."
-                )
         #################################################
         if hasattr(Parameters, "Nikon_file"):
-            Nikon_file = Parameters.Nikon_file
+            if os.path.isabs(Parameters.Nikon_file):
+            #if abs path use that
+                Nikon_file = Parameters.Nikon_file
+            else:
+                Nikon_file = f'{VLC.InputDir}/GVXR/{Parameters.Nikon_file}'
+            # if not check the input directory
+            if os.path.exists(Nikon_file):
+                print(f"Reading GVXR parameters from Nikon file: {Nikon_file}")
+            else:
+                print(f"Could not find Nikon file {Nikon_file}\n",
+                f"Please check the file is in the input directory {VLC.VL_HOST_DIR}/Input/GVXR \n",
+                "or that path to this file is correct.")
+                sys.exit(1)
+            
             # create dummy detector and cad model to get filled in with values
             # from nikon file.
             # Note: the function adds the 3 data classes to the GVXRdict itself.
@@ -189,9 +186,29 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
                 GVXRDict, Nikon_file, dummy_Beam, dummy_Det, dummy_Model
             )
         else:
-            #############################################################
-            # fill in values for x-ray detector, beam and cad model
-            # from Parameters.
+                #############################################################
+                # fill in values for x-ray detector, beam and cad model
+                # from Parameters.
+            if hasattr(Parameters, "Energy_units"):
+                dummy_Beam.Energy_units = Parameters.Energy_units
+
+            if hasattr(Parameters, "Tube_Angle"):
+                dummy_Beam.Tube_Angle = Parameters.Tube_Angle
+            if hasattr(Parameters, "Tube_Voltage"):
+                dummy_Beam.Tube_Voltage = Parameters.Tube_Voltage
+
+            if Parameters.use_spekpy:
+                dummy_Beam = InitSpectrum(
+                    Beam=dummy_Beam, Headless=GVXRDict["Headless"]
+                )
+            else:
+                if hasattr(Parameters, "Energy") and hasattr(Parameters, "Intensity"):
+                    dummy_Beam.Energy = Parameters.Energy
+                    dummy_Beam.Intensity = Parameters.Intensity
+                else:
+                    print("you must Specify a beam Energy and Beam Intensity when not using Spekpy.")
+                    sys.exit(1)
+                    
             dummy_Beam.Beam_PosX = Parameters.Beam_PosX
             dummy_Beam.Beam_PosY = Parameters.Beam_PosY
             dummy_Beam.Beam_PosZ = Parameters.Beam_PosZ
@@ -236,8 +253,8 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
             if hasattr(Parameters, "Model_Pos_units"):
                 Model.Model_Pos_units = Parameters.Model_Pos_units
 
-            if hasattr(Parameters, "rotation"):
-                Model.rotation = Parameters.rotation
+            # if hasattr(Parameters, "rotation"):
+            #     Model.rotation = Parameters.rotation
             GVXRDict["Model"] = Model
 
             if hasattr(Parameters, "num_projections"):
@@ -247,6 +264,9 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
                 GVXRDict["angular_step"] = Parameters.angular_step
 
         ################################################################
+        if hasattr(Parameters, "rotation"):
+            Model.rotation = Parameters.rotation
+
         if hasattr(Parameters, "image_format"):
             GVXRDict["im_format"] = Parameters.image_format
 

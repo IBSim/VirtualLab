@@ -11,6 +11,8 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     Model: Detector dataclass to hold data reltated to the cad model.
 
     '''
+    from Scripts.VLPackages.GVXR.GVXR_utils import InitSpectrum
+    use_speckpy=False
 # parse xtek file
     with open(file_name, 'r') as f:
         content = f.readlines()    
@@ -102,13 +104,19 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
                     object_offset_y = float(line.split('=')[1])
                 # object roll in degrees
                 # Roll is rotation about the z-axis.  
-            elif line.startswith("ObjectRoll"):
-                    object_roll_deg = float(line.split('=')[1])
-             # object tilt in degrees in our co-ordinates
-            # Tilt is rotation about the x-axis 
-            elif line.startswith("ObjectTilt"):
-                    object_tilt_deg = float(line.split('=')[1])
-                    
+            # elif line.startswith("ObjectRoll"):
+            #         object_roll_deg = float(line.split('=')[1])
+            #  # object tilt in degrees in our co-ordinates
+            # # Tilt is rotation about the x-axis 
+            # elif line.startswith("ObjectTilt"):
+            #         object_tilt_deg = float(line.split('=')[1])
+            elif line.startswith("XraykV"):
+                use_speckpy = True
+                Beam.Tube_Voltage=float(line.split('=')[1])
+            elif line.startswith("Filter_ThicknessMM"):
+                Beam.Filter_ThicknessMM = float(line.split('=')[1])
+            elif line.startswith("Filter_Material"):
+                Beam.Filter_Material = str(line.split('=')[1])
     #caculate the position of center of the detector
     #det_center_h = (0.5 * pixel_num_h_0 * pixel_size_h_0) + detector_offset_h
     #det_center_v = (0.5 * pixel_num_v_0 * pixel_size_v_0) + detector_offset_v
@@ -120,11 +128,11 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     Obj_Pos = [object_offset_x,object_offset_y,0]
     # for Nikon files in our co-ordinates:
     # Tilt is rotation about the x-axis
-    # Projetions are rotated around the y axis (hence intal_angle is y rotration)
+    # Projetions are rotated around the y axis (hence intal_angle is y rotation)
     # Roll is rotation around the z axis
-    Obj_Rot[0] = object_tilt_deg
+    # Obj_Rot[0] = object_tilt_deg
     Obj_Rot[1] = inital_angle
-    Obj_Rot[2] = object_roll_deg
+    # Obj_Rot[2] = object_roll_deg
 
     Beam.PosX = SRC_POS[0]
     Beam.PosY = SRC_POS[1]
@@ -139,6 +147,10 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     Model.PosZ = Obj_Pos[2]
 
     Model.rotation = Obj_Rot
+    # initialise speckpy if tube voltage is set in file
+    if use_speckpy:
+        Beam = InitSpectrum(Beam=Beam, Headless=GVXRDict["Headless"])
+
     GVXRDict['Beam'] = Beam
     GVXRDict['Model'] = Model
     GVXRDict['Detector'] = Det

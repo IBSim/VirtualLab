@@ -7,16 +7,6 @@ import math
 import meshio
 from Scripts.VLPackages.GVXR.GVXR_utils import *
 
-class GVXRError(Exception):
-    '''Custom error class to format error message in a pretty way.'''
-    def __init__(self, value): 
-        self.value = value
-    def __str__(self):
-        Errmsg = "\n========= Error =========\n\n"\
-        f"{self.value}\n\n"\
-        "=========================\n\n"
-        return Errmsg
-
 def CT_scan(**kwargs):
     ''' Main run function for GVXR'''
     #get kwargs or set defaults

@@ -154,7 +154,7 @@ def Exec_Container_Manager(container_info, package_info, command, stdout=None):
     # merge in bind points from package and replace defaults
 
     if package_info.get('bind',None) != None:
-        continer_info['bind'] = continer_info['bind'] | package_info['bind']
+        container_info['bind'] = container_info['bind'] | package_info['bind']
     bind_str = bind_list2string(container_info["bind"])  # convert bind list to string
     container_cmd += " --bind {}".format(bind_str)  # update command with bind points
 
@@ -428,14 +428,26 @@ def host_to_container_path(filepath):
     Function to Convert a path in the virtualLab directory on the host
     to an equivalent path inside the container. since the vlab _dir is
     mounted as /home/ibsim/VirtualLab inside the container.
-    Note: The filepath needs to be absolute and  is converted
+    Note: The filepath needs to be absolute and is converted
     into a string before it is returned.
     """
-    vlab_dir = get_vlab_dir()
+    import VLconfig as VLC
+    filepath=str(filepath)
+    vlab_dir_host = VLC.VL_HOST_DIR
     # location of vlab inside the container
-    cont_vlab_dir = "/home/ibsim/VirtualLab"
-    # convert path to be relative to container not host
-    filepath = str(filepath).replace(str(vlab_dir), cont_vlab_dir)
+    cont_vlab_dir = VLC.VL_DIR_CONT
+    #check the path is accessible inside the container
+    # that is it is relative to VLC.VL_HOST_DIR
+    if filepath.startswith(vlab_dir_host):
+        # convert path to be relative to container not host
+        filepath = str(filepath).replace(str(vlab_dir_host), str(cont_vlab_dir))
+    elif filepath.startswith(cont_vlab_dir):
+        # path is already relative to container so do nothing
+        pass
+    else:    
+        raise FileNotFoundError(f"The path {filepath} is not accessible inside the Container.\n \
+         The path must start with {VLC.VL_HOST_DIR}.")
+
     return filepath
 
 
@@ -448,9 +460,21 @@ def container_to_host_path(filepath):
     Note: The filepath needs to be absolute and  is converted
     into a string before it is returned.
     """
-    vlab_dir = get_vlab_dir()
+    import VLconfig as VLC
+    filepath=str(filepath)
+    vlab_dir_host = VLC.VL_HOST_DIR    
     # location of vlab inside the container
-    cont_vlab_dir = "/home/ibsim/VirtualLab"
-    # convert path to be relative to host not container
-    filepath = str(filepath).replace(cont_vlab_dir, str(vlab_dir))
+    cont_vlab_dir = VLC.VL_DIR_CONT
+    #check the path is accessible outside the container
+    # that is it is relative to VLC.VL_DIR_CONT
+    if filepath.startswith(cont_vlab_dir):
+        # convert path to be relative to host not container
+        filepath = str(filepath).replace(str(cont_vlab_dir), str(vlab_dir_host))
+    elif filepath.startswith(vlab_dir_host):
+        # path is already relative to host so do nothing
+        pass
+    else:
+        raise FileNotFoundError(f"The path {filepath} is not accessible outside the Container.\n \
+        The path must start with {VLC.VL_DIR_CONT}.")
+
     return filepath

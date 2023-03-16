@@ -154,7 +154,9 @@ def main():
     bind_points_default = {
     "/usr/share/glvnd":"/usr/share/glvnd",
     str(tmp_dir):"/tmp",
-    str(vlab_dir):"/home/ibsim/VirtualLab"}
+    str(vlab_dir):"/home/ibsim/VirtualLab",
+    "/dev":"/dev",
+    }
 
     # set flag to run tests instate of the normal run file
     if args.test:

@@ -273,8 +273,12 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         if hasattr(Parameters, "use_tetra"):
             GVXRDict["use_tetra"] = Parameters.use_tetra
 
-        if hasattr(Parameters, "Vulkan"):
-            GVXRDict["Vulkan"] = Parameters.Vulkan
+        if hasattr(Parameters, "downscale"):
+            if 0.0 < float(Parameters.downscale) <= 1.0:
+                GVXRDict["downscale"] = float(Parameters.downscale)
+            else:
+                raise ValueError(f"Invalid parameter for GVXR.downscale {Parameters.downscale}, \
+                            this must be between 0.0 and 1.0.")
 
         Param_dir = "{}/run_params/".format(PROJECT_DIR)
         if not os.path.exists(Param_dir):

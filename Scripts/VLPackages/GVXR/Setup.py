@@ -22,6 +22,41 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         dump_to_json,
     )
     import VLconfig as VLC
+    # list of all accepted params for GVXR
+    GVXR_parameters = [
+        "Nikon_file",
+        "use_spekpy",
+        "Material_list",
+        "energy_units",
+        "Tube_Angle",
+        "Tube_Voltage",
+        "Energy",
+        "Intensity",
+        "num_projections",
+        "angular_step",
+        "image_format",
+        "use_tetra",
+        "downscale",
+        "Beam_PosX",
+        "Beam_PosY",
+        "Beam_PosZ",
+        "Beam_Pos_units",
+        "Beam_Type",
+        "Detect_PosX",
+        "Detect_PosY",
+        "Detect_PosZ",
+        "Detect_Pos_units",
+        "Pix_X",
+        "Pix_Y",       
+        "SpacingX",
+        "SpacingY",
+        "Spacing_units",
+        "Model_PosX",
+        "Model_PosY",
+        "Model_PosZ",
+        "rotation",
+    ]
+
     def warn_Nikon(use_nikon,parameter_string):
         if use_nikon:
             msg =  "--------------------------- WARNING: ---------------------------\n" + \
@@ -360,6 +395,19 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
             else:
                 raise ValueError(f"Invalid parameter for GVXR.downscale {Parameters.downscale}, \
                             this must be between 0.0 and 1.0.")
+
+        # catch any extra options and throw an error to say they are invalid
+        param_dict = vars(Parameters)
+        for key in ["Name","mesh"]:
+            del param_dict[key]
+            
+        diff = set(param_dict.keys()).difference(GVXR_parameters)
+        if list(diff) != []:
+            invalid_options=''
+            for i in list(diff):
+                invalid_options = invalid_options + f"GVXR.{i}={param_dict[i]}\n"
+            print(f"The following input parameters were not recognized for GVXR:\n{invalid_options}")
+            sys.exit(1)
 
         Param_dir = "{}/run_params/".format(PROJECT_DIR)
         if not os.path.exists(Param_dir):

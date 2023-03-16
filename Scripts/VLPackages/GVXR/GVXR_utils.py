@@ -185,8 +185,9 @@ def InitSpectrum(Beam,Headless:bool=False):
     '''
     
     import spekpy as sp
-    if (Beam.Tube_Voltage is None):
+    if (Beam.Tube_Voltage == 0.0):
         raise GVXRError('When using Spekpy you must define a Tube Voltage')
+
     kwargs = {'kvp':Beam.Tube_Voltage,'th':Beam.Tube_Angle}
 
     print("Generating Beam Spectrum:" )
@@ -195,13 +196,16 @@ def InitSpectrum(Beam,Headless:bool=False):
 
     s = sp.Spek(**kwargs) # Generate a spectrum
 
-    if not xor(Beam.Filter_ThicknessMM==None,Beam.Filter_Material==None):
+    if xor(Beam.Filter_ThicknessMM==None,Beam.Filter_Material==None):
         # only one of the two parameters has been set
-        raise GVXRError('When using Spekpy with a filter you must define both Filter_Thickness and Material')
-    elif (Beam.Filter_ThicknessMM!=None) and (Beam.Filter_ThicknessMM!=None):
+        raise GVXRError(f'When using Spekpy with a filter you must define both Filter_Thickness and Material:\n \
+        Filter_Thickness={Beam.Filter_ThicknessMM} \n \
+        Filter_Material={Beam.Filter_Material}')
+
+    elif (Beam.Filter_ThicknessMM!=None) and (Beam.Filter_Material!=None):
         # both have been correctly set so add filtering
-        print("Applying ", filter_thickness_in_mm, "mm thick Filter of ", filter_material)
-        s.filter(filter_material, filter_thickness_in_mm)
+        print(f"Applying {Beam.Filter_ThicknessMM} mm thick Filter of {Beam.Filter_Material}")
+        s.filter(str(Beam.Filter_Material), float(Beam.Filter_ThicknessMM))
     else:
         # Neither have been set so do nothing.
         print("No Beam Filtering was applied")
@@ -229,9 +233,6 @@ def InitSpectrum(Beam,Headless:bool=False):
                 spectrum[energy] += count
             else:
                 spectrum[energy] = count
-
-        print("Minimum Energy:", min_energy, "keV")
-        print("Maximum Energy:", max_energy, "keV")
     
     if (Beam.Energy is not None) or (Beam.Intensity is not None):
         import warnings
@@ -263,7 +264,7 @@ def dump_to_json(Python_dict:dict,file_name:str):
 
 def world_to_model_axis(rotation,global_axis=[0,0,1],threshold=1E-5):
     '''because Rotations in openGL are based around object axes not
-     global axes we need to calcualte the unit vector that points 
+     global axes we need to calculate the unit vector that points 
      along the global x,y or z axis in the model co-ordinates order 
      to rotate around it for the CT scan.
 

@@ -11,6 +11,10 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
     from types import SimpleNamespace as Namespace
     from pydantic.dataclasses import dataclass, Field
     from typing import Optional, List
+    from Scripts.Common.VLContainer.Container_Utils import (
+        host_to_container_path,
+        container_to_host_path,
+    )
     from Scripts.VLPackages.GVXR.Utils_IO import ReadNikonData
     from Scripts.VLPackages.GVXR.GVXR_utils import (
         Check_Materials,
@@ -18,7 +22,57 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         dump_to_json,
     )
     import VLconfig as VLC
+    def warn_Nikon(use_nikon,parameter_string):
+        if use_nikon:
+            msg =  "--------------------------- WARNING: ---------------------------\n" + \
+                   "            Data is being read in from Nikon File.              \n" + \
+                  f"      However, you have defined GVXR.{parameter_string}.        \n" + \
+                   "Thus the equivalent parameter in the Nikon file will be ignored.\n" + \
+                   "----------------------------------------------------------------"
+            print(msg) 
+        return
 
+    def check_required_params(Parameters):
+        '''
+        function to check the input required parameters
+        and throw an error if they are not defined.
+
+        Note: The required parameters change if a nikon 
+        file is used as some params are assumed to be 
+        set in the nikon file. 
+
+        The logic here can be tough to follow but essentially:
+        
+        If we are NOT using a nikon file we need to check if any
+        listed parameters ARE NOT defined and if so throw an error.
+         
+        '''
+        # required regardless of nikon file
+        required_params = [
+            "Material_list",
+        ]      
+        if not hasattr(Parameters, "Nikon_file"):
+        # list of all prams that are required when not using a nikon file
+            required_params = required_params + [
+                "Beam_PosX",
+                "Beam_PosY",
+                "Beam_PosZ",
+                "Detect_PosX",
+                "Detect_PosY",
+                "Detect_PosZ",
+                "Pix_X",
+                "Pix_Y",
+                "Model_PosX",
+                "Model_PosY",
+                "Model_PosZ",
+                ]
+        for param in required_params:    
+            if not hasattr(Parameters, param):
+                raise ValueError(
+                    f"You must Specify GVXR.{param} in Input Parameters."
+                    )
+        return
+    
     class MyConfig:
         validate_assignment = True
 
@@ -31,8 +85,8 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         Beam_Type: str
         Energy: List[float] = Field(default=None)
         Intensity: List[float] = Field(default=None)
-        Tube_Voltage: float = Field(default=None)
-        Tube_Angle: float = Field(default=None)
+        Tube_Voltage: float = Field(default=0.0)
+        Tube_Angle: float = Field(default=12.0)
         Filter_ThicknessMM: float = Field(default=None)
         Filter_Material: str = Field(default=None)
         Beam_Pos_units: str = Field(default="mm")
@@ -43,29 +97,6 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         """Simple function to perform xor with two bool values"""
         return bool((x and not y) or (not x and y))
 
-    @pydantic.root_validator(pre=True)
-    @classmethod
-    def check_BeamEnergy_or_TubeVoltage(cls, values):
-        """
-        if defining own values you need both Energy and Intensity
-        xor here passes if both or neither are defined.
-        The same logic also applies if using Spekpy with tube Voltage and angle.
-        This prevents the user from defining only one of the two needed values.
-        """
-
-        Energy_defined = "Energy" not in values
-        Intensity_defined = "Intensity" not in values
-        Voltage_defined = "Tube_Voltage" not in values
-        Angle_defined = "Tube_Angle" not in values
-
-        if xor(Energy_defined, Intensity_defined):
-            print("If using Energy and/or Intenisity. You must define both in the input parameter's."
-            )
-            sys.exit(1)
-        # if using speckpy you need both Tube angle and voltage
-        elif xor(Voltage_defined, Angle_defined):
-            print("If using Tube Angle and/or Tube Voltage You must define both in the input parameter's.")
-            sys.exit(1)
     Data = {}
     #########################################
     # For reference in all cases our co-ordinates
@@ -120,6 +151,8 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
     for GVXRName, GVXRParams in GVXRDicts.items():
         # Perform some checks on the info in GVXRParams
         Parameters = Namespace(**GVXRParams)
+        # check for required parameters
+        check_required_params(Parameters)
         # check mesh for file extension and if not present assume
         # salome med
         root, ext = os.path.splitext(Parameters.mesh)
@@ -140,132 +173,180 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
             "mesh_file": IN_FILE,
             "output_file": "{}/{}".format(OUT_DIR, GVXRName),
         }
-        # Define flag to display visualisations
+        # Define flag to display visualizations
         if mode == "Headless":
             GVXRDict["Headless"] = True
         else:
             GVXRDict["Headless"] = False
-        # Logic to handle placing Material file in the correct place.
-        #  i.e. in the output dir not the run directory.
-        if hasattr(Parameters, "Material_list"):
-            Check_Materials(Parameters.Material_list)
-            GVXRDict["Material_list"] = Parameters.Material_list
-        else:
-            print("You must Specify a Material_list in Input Parameters.")
-            sys.exit(1)
+        # check to material list is valid
+        Check_Materials(Parameters.Material_list)
+        GVXRDict["Material_list"] = Parameters.Material_list
 
         ########### Setup x-ray beam ##########
-        # create dummy beam and to get filled in with values either from Parameters OR Nikon file.
+        # create dummy beam, detector and cad model 
+        # to get filled in with values either from Parameters OR Nikon file.
+        dummy_Det = Xray_Detector(
+            Det_PosX=0, Det_PosY=0, Det_PosZ=0, Pix_X=0, Pix_Y=0
+        )
+        dummy_Model = Cad_Model(Model_PosX=0, Model_PosY=0, Model_PosZ=0)
         dummy_Beam = Xray_Beam(
             Beam_PosX=0, Beam_PosY=0, Beam_PosZ=0, Beam_Type="point"
         )
         #################################################
         if hasattr(Parameters, "Nikon_file"):
             if os.path.isabs(Parameters.Nikon_file):
-            #if abs path use that
+            #if abs path use that 
+            # Note: we need to now convert it to a path is accessible within the container
+                Nikon_file=host_to_container_path(Parameters.Nikon_file)
                 Nikon_file = Parameters.Nikon_file
             else:
+            # if not abs path check the input directory
                 Nikon_file = f'{VLC.InputDir}/GVXR/{Parameters.Nikon_file}'
-            # if not check the input directory
+            
             if os.path.exists(Nikon_file):
                 print(f"Reading GVXR parameters from Nikon file: {Nikon_file}")
             else:
-                print(f"Could not find Nikon file {Nikon_file}\n",
-                f"Please check the file is in the input directory {VLC.VL_HOST_DIR}/Input/GVXR \n",
-                "or that path to this file is correct.")
-                sys.exit(1)
+                # convert file path from container to host if necessary so errors make sense
+                Nikon_file=container_to_host_path(Nikon_file)
+                raise FileNotFoundError(f"Could not find Nikon file {Nikon_file}\n \
+                Please check the file is in the input directory {VLC.VL_HOST_DIR}/Input/GVXR \n \
+                or that path to this file is correct.")
             
-            # create dummy detector and cad model to get filled in with values
-            # from nikon file.
-            # Note: the function adds the 3 data classes to the GVXRdict itself.
-            dummy_Det = Xray_Detector(
-                Det_PosX=0, Det_PosY=0, Det_PosZ=0, Pix_X=0, Pix_Y=0
-            )
-            dummy_Model = Cad_Model(Model_PosX=0, Model_PosY=0, Model_PosZ=0)
             GVXRDict = ReadNikonData(
                 GVXRDict, Nikon_file, dummy_Beam, dummy_Det, dummy_Model
             )
+            Use_Nikon_File=True
+
         else:
-                #############################################################
-                # fill in values for x-ray detector, beam and cad model
-                # from Parameters.
-            if hasattr(Parameters, "Energy_units"):
-                dummy_Beam.Energy_units = Parameters.Energy_units
-
-            if hasattr(Parameters, "Tube_Angle"):
-                dummy_Beam.Tube_Angle = Parameters.Tube_Angle
-            if hasattr(Parameters, "Tube_Voltage"):
-                dummy_Beam.Tube_Voltage = Parameters.Tube_Voltage
-
-            if Parameters.use_spekpy:
-                dummy_Beam = InitSpectrum(
-                    Beam=dummy_Beam, Headless=GVXRDict["Headless"]
-                )
-            else:
-                if hasattr(Parameters, "Energy") and hasattr(Parameters, "Intensity"):
-                    dummy_Beam.Energy = Parameters.Energy
-                    dummy_Beam.Intensity = Parameters.Intensity
-                else:
-                    print("you must Specify a beam Energy and Beam Intensity when not using Spekpy.")
-                    sys.exit(1)
-                    
-            dummy_Beam.Beam_PosX = Parameters.Beam_PosX
-            dummy_Beam.Beam_PosY = Parameters.Beam_PosY
-            dummy_Beam.Beam_PosZ = Parameters.Beam_PosZ
-            dummy_Beam.Beam_Type = Parameters.Beam_Type
-            if hasattr(Parameters, "Beam_Pos_units"):
-                dummy_Beam.Pos_units = Parameters.Beam_Pos_units
+            Use_Nikon_File=False
             GVXRDict["Beam"] = dummy_Beam
+            GVXRDict["Model"] = dummy_Model
+            GVXRDict["Detector"] = dummy_Det
+        #############################################################
+        # fill in values for x-ray detector, beam and cad model
+        # from Parameters if set.            
 
-            Detector = Xray_Detector(
-                Det_PosX=Parameters.Detect_PosX,
-                Det_PosY=Parameters.Detect_PosY,
-                Det_PosZ=Parameters.Detect_PosZ,
-                Pix_X=Parameters.Pix_X,
-                Pix_Y=Parameters.Pix_Y,
-            )
-            if hasattr(Parameters, "Detect_Pos_units"):
-                Detector.Pos_units = Parameters.Detect_Pos_units
-            if hasattr(Parameters, "Spacing_X"):
-                Detector.Spacing_X = Parameters.Spacing_X
+        if hasattr(Parameters, "energy_units"):
+            warn_Nikon(Use_Nikon_File,"energy_units")
+            GVXRDict["Beam"].Energy_units = Parameters.energy_units
 
-            if hasattr(Parameters, "Spacing_Y"):
-                Detector.Spacing_Y = Parameters.Spacing_Y
+        if hasattr(Parameters, "Tube_Angle"):
+            warn_Nikon(Use_Nikon_File,"Energy_units")
+            GVXRDict["Beam"].Tube_Angle = Parameters.Tube_Angle
+        
+        if hasattr(Parameters, "Tube_Voltage"):
+            warn_Nikon(Use_Nikon_File,"Energy_units")
+            GVXRDict["Beam"].Tube_Voltage = Parameters.Tube_Voltage
 
-            GVXRDict["Detector"] = Detector
+        if hasattr(Parameters,"use_spekpy"):
+            warn_Nikon(Use_Nikon_File,"use_spekpy")
+            use_spekpy=Parameters.use_spekpy
+        else:
+            use_spekpy=None
+        
+        if use_spekpy==True:
+            GVXRDict["Beam"] = InitSpectrum(
+                Beam=dummy_Beam, Headless=GVXRDict["Headless"]
+                )
+        elif use_spekpy==False:
+            if hasattr(Parameters, "Energy") and hasattr(Parameters, "Intensity"):
+                warn_Nikon(Use_Nikon_File,"Energy")
+                warn_Nikon(Use_Nikon_File,"Intensity")
+                GVXRDict["Beam"].Energy = Parameters.Energy
+                GVXRDict["Beam"].Intensity = Parameters.Intensity
+            else:
+                print("you must Specify a beam Energy and Beam Intensity when not using Spekpy.")
+                sys.exit(1)
 
-            Model = Cad_Model(
-                Model_PosX=Parameters.Model_PosX,
-                Model_PosY=Parameters.Model_PosY,
-                Model_PosZ=Parameters.Model_PosZ,
-            )
+        # if hasattr(Parameters, "Energy") and hasattr(Parameters, "Intensity"):
+        #     warn_Nikon(Use_Nikon_File,["Energy","Intensity"])
+        #     GVXRDict["Beam"].Energy = Parameters.Energy
+        #     GVXRDict["Beam"].Intensity = Parameters.Intensity
 
-            # add in model scaling factor
-            if hasattr(Parameters, "Model_ScaleX"):
-                Model.Model_ScaleX = Parameters.Model_ScaleX
+        # Xray Beam Position
+        if hasattr(Parameters, "Beam_PosX"):
+            warn_Nikon(Use_Nikon_File,"Beam_PosX")       
+            GVXRDict["Beam"].Beam_PosX = Parameters.Beam_PosX
+        if hasattr(Parameters, "Beam_PosY"):
+            warn_Nikon(Use_Nikon_File,"Beam_PosY")
+            GVXRDict["Beam"].Beam_PosY = Parameters.Beam_PosY
+        if hasattr(Parameters, "Beam_PosZ"):
+            warn_Nikon(Use_Nikon_File,"Beam_PosZ")
+            GVXRDict["Beam"].Beam_PosZ = Parameters.Beam_PosZ
+        if hasattr(Parameters, "Beam_Pos_units"):
+            warn_Nikon(Use_Nikon_File,"Beam_Pos_units")
+            GVXRDict["Beam"].Pos_units = Parameters.Beam_Pos_units
 
-            if hasattr(Parameters, "Model_ScaleY"):
-                Model.Model_ScaleY = Parameters.Model_ScaleY
+        # Beam Type
+        if hasattr(Parameters, "Beam_Type"):
+            GVXRDict["Beam"].Beam_Type = Parameters.Beam_Type
 
-            if hasattr(Parameters, "Model_ScaleZ"):
-                Model.Model_ScaleZ = Parameters.Model_Pos_units
+        # Detector position
+        if hasattr(Parameters, "Detect_PosX"):
+            warn_Nikon(Use_Nikon_File,"Detect_PosX")       
+            GVXRDict["Detector"].Det_PosX = Parameters.Detect_PosX
+        if hasattr(Parameters, "Detect_PosY"):
+            warn_Nikon(Use_Nikon_File,"Detect_PosY")       
+            GVXRDict["Detector"].Det_PosY = Parameters.Detect_PosY
+        if hasattr(Parameters, "Detect_PosZ"):
+            warn_Nikon(Use_Nikon_File,"Detect_PosZ")       
+            GVXRDict["Detector"].Det_PosZ = Parameters.Detect_PosZ
+        if hasattr(Parameters, "Detect_Pos_units"):
+            warn_Nikon(Use_Nikon_File,"Detect_Pos_units")
+            GVXRDict["Detector"].Det_Pos_units = Parameters.Detect_Pos_units
 
-            if hasattr(Parameters, "Model_Pos_units"):
-                Model.Model_Pos_units = Parameters.Model_Pos_units
+        # Detector Resolution
+        if hasattr(Parameters, "Pix_X"):
+            warn_Nikon(Use_Nikon_File,"Pix_X")       
+            GVXRDict["Detector"].Pix_X = Parameters.Pix_X  
+        if hasattr(Parameters, "Pix_Y"):
+            warn_Nikon(Use_Nikon_File,"Pix_Y")       
+            GVXRDict["Detector"].Pix_Y = Parameters.Pix_Y
+                      
+        # Detector Spacing
+        if hasattr(Parameters, "SpacingX"):
+            warn_Nikon(Use_Nikon_File,"SpacingX")
+            GVXRDict["Detector"].Spacing_X = Parameters.SpacingX
+        if hasattr(Parameters, "SpacingY"):
+            warn_Nikon(Use_Nikon_File,"SpacingY")
+            GVXRDict["Detector"].Spacing_Y = Parameters.SpacingY
+        if hasattr(Parameters, "Spacing_units"):
+            warn_Nikon(Use_Nikon_File,"Spacing_units")
+            GVXRDict["Detector"].Spacing_units = Parameters.Spacing_units
 
-            # if hasattr(Parameters, "rotation"):
-            #     Model.rotation = Parameters.rotation
-            GVXRDict["Model"] = Model
+        # CAD Model position
+        if hasattr(Parameters, "Model_PosX"):
+            warn_Nikon(Use_Nikon_File,"Model_PosX")       
+            GVXRDict["Model"].Model_PosX = Parameters.Model_PosX
+        if hasattr(Parameters, "Model_PosY"):
+            warn_Nikon(Use_Nikon_File,"Model_PosY")       
+            GVXRDict["Model"].Model_PosY = Parameters.Model_PosY
+        if hasattr(Parameters, "Model_PosZ"):
+            warn_Nikon(Use_Nikon_File,"Model_PosZ")    
+            GVXRDict["Model"].Model_PosZ = Parameters.Model_PosZ
+        if hasattr(Parameters, "Model_Pos_units"):
+            warn_Nikon(Use_Nikon_File,"Model_Pos_units")
+            GVXRDict["Model"].Model_Pos_units = Parameters.Model_Pos_units
 
-            if hasattr(Parameters, "num_projections"):
-                GVXRDict["num_projections"] = Parameters.num_projections
+        # CAD Model scaling factor
+        if hasattr(Parameters, "Model_ScaleX"):
+            GVXRDict["Model"].Model_ScaleX = Parameters.Model_ScaleX
+        if hasattr(Parameters, "Model_ScaleY"):
+            GVXRDict["Model"].Model_ScaleY = Parameters.Model_ScaleY
+        if hasattr(Parameters, "Model_ScaleZ"):
+            GVXRDict["Model"].Model_ScaleZ = Parameters.Model_Pos_units
 
-            if hasattr(Parameters, "angular_step"):
-                GVXRDict["angular_step"] = Parameters.angular_step
+        if hasattr(Parameters, "num_projections"):
+            warn_Nikon(Use_Nikon_File,"num_projections")
+            GVXRDict["num_projections"] = Parameters.num_projections
+
+        if hasattr(Parameters, "angular_step"):
+            warn_Nikon(Use_Nikon_File,"angular_step")
+            GVXRDict["angular_step"] = Parameters.angular_step
 
         ################################################################
         if hasattr(Parameters, "rotation"):
-            Model.rotation = Parameters.rotation
+            GVXRDict["Model"].rotation = Parameters.rotation
 
         if hasattr(Parameters, "image_format"):
             GVXRDict["im_format"] = Parameters.image_format

@@ -1,7 +1,36 @@
 """A bunch of useful utility functions"""
 import numpy as np
 
+def convert_units(values,input_units='mm',output_units='mm'):
+    '''
+    Function to convert unit_length from Vox_units into mesh_units
+    units must be one of 'mm','cm' or 'm'.
+    '''
+    unit_list = ['mm','cm','m']
+    if input_units.lower() not in unit_list:
+        raise ValueError(f'Invalid Voxel units {input_units} must be one of {unit_list}')
+    if output_units.lower() not in unit_list:
+        raise ValueError(f'Invalid Mesh units {output_units} must be one of {unit_list}')
 
+    if input_units == 'mm':
+        numerator = 1.0
+    elif input_units == 'cm':
+        numerator = 10.0
+    else:
+        numerator = 1000.0
+
+    if output_units == 'mm':
+        denominator = 1.0
+    elif output_units == 'cm':
+        denominator = 10.0
+    else:
+        denominator = 1000.0
+    
+    output=[0.0,0.0,0.0]
+    for I,_ in enumerate(values):
+        output[I] = values[I] * (numerator/denominator)
+    return output
+    
 # check if greyscale can be converted into a vaild 8-bit int
 def check_greyscale(greyscale_value):
     """Function to check the user defined Greyscale values are valid 8-bit integers"""
@@ -67,7 +96,7 @@ def check_padding(gridsize, Output_Resolution):
             )
 
 
-def check_unit_length(unit_length):
+def check_unit_length(unit_length,mesh_units='mm',Voxel_units='mm'):
     """check that unit_length is a list of three non-zero positive floats."""
     if not isinstance(unit_length, list):
         raise TypeError("Invalid unit_length. Must be a list.")
@@ -82,10 +111,11 @@ def check_unit_length(unit_length):
                 f"Invalid unit length {i}. Must be a floating point value"
                 " that is greater than 0."
             )
-
+    unit_length = convert_units(unit_length,Voxel_units,mesh_units)
 
 def check_voxinfo(
-    unit_length=[0.0, 0.0, 0.0], gridsize=[0, 0, 0], mesh_min=None, mesh_max=None
+    unit_length=[0.0, 0.0, 0.0], gridsize=[0, 0, 0], mesh_min=None, mesh_max=None,
+    mesh_units='mm',Voxel_units='mm'
 ):
     """
 
@@ -110,7 +140,7 @@ def check_voxinfo(
 
     #  check gridsize and unit_length are valid.
     check_gridsize(gridsize)
-    check_unit_length(unit_length)
+    check_unit_length(unit_length,mesh_units,Voxel_units)
 
     if (gridsize == [0, 0, 0]) and (0.0 not in unit_length):
         # unit_length has been defined by user so check it is valid and

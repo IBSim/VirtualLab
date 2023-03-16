@@ -37,6 +37,7 @@ def voxelise(input_file, output_file, **kwargs):
     the resulting output will be a series of z images with x by y pixels.
 
     :param unit_length: (list of 3 +ve non-zero floats): size of each voxel in mesh co-ordinate space.
+    Units are 'mm' by default but this can be changed with the param Voxel_units.
 
     *****************************************************************************************
       Note: Since one is caculated from the other you can only set one of unit_length or
@@ -59,6 +60,12 @@ def voxelise(input_file, output_file, **kwargs):
     in the event that you have multiple element types defined in the same file. Normally the code
     defaults to triangles however this flag overrides that.
 
+    :param Voxel_units: units used for Voxel unit_length must be one of "M","m","CM","cm","MM" or "mm". 
+    default is 'mm' if undefined.
+
+    :param mesh_units: units used for mesh must be one of "M","m","CM","cm","MM" or "mm". 
+    default is 'mm' if undefined.
+    
     :param cpu: (bool): Flag to ignore any CUDA capable GPUS and instead use the OpenMp implementation.
     By default the code will first check for GPUS and only use OpenMP as a fallback. This flag
     overrides that and forces the use of OpenMP. Note: if you wish to use CPU permanently,
@@ -102,12 +109,14 @@ def voxelise(input_file, output_file, **kwargs):
     of a specific size. Normally the image boundaries and final resolution are set by the
     gridsize/unit_length and the boundaries of the mesh. This option allows you to evenly pad the
     voxelised image with zeros to match any resolution desired keeping the mesh in the centre.
-    Note: If the specified resolution is smaller than the gridisize in any dimension it will
+    Note: If the specified resolution is smaller than the gridsize in any dimension it will
     raise a type error. Default is None.
     """
     # get Kwargs if set or use default values
     gridsize = kwargs.get("gridsize", [0, 0, 0])
     unit_length = kwargs.get("unit_length", [0.0, 0.0, 0.0])
+    Voxel_units = kwargs.get("Voxel_units", 'mm')
+    units = kwargs.get("mesh_units", 'mm')    
     greyscale_file = kwargs.get("greyscale_file", None)
     use_tetra = kwargs.get("use_tetra", False)
     cpu = kwargs.get("cpu", False)
@@ -194,6 +203,8 @@ def voxelise(input_file, output_file, **kwargs):
         "unit_length": unit_length,
         "mesh_min": mesh_min_corner,
         "mesh_max": mesh_max_corner,
+        "mesh_units":units,
+        "Voxel_units":Voxel_units
     }
     vox_info = check_voxinfo(**vox_dict)
     # Set number of OMP Thread if needed

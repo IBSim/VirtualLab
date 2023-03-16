@@ -80,10 +80,10 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
                     Det.Spacing_Y = pixel_size_v_0
                 # distance in z from source to center of rotation (origin)
             elif line.startswith("SrcToObject"):
-                    source_to_origin = float(line.split('=')[1])
+                    SrcToObject = float(line.split('=')[1])
                 # distance in z from source to center of detector 
             elif line.startswith("SrcToDetector"):
-                    source_to_det = float(line.split('=')[1])
+                    SrcToDetector = float(line.split('=')[1])
                 # initial angular position of a rotation stage
             elif line.startswith("InitialAngle"):
                     initial_angle = float(line.split('=')[1])
@@ -123,8 +123,8 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     det_center_h =  detector_offset_h
     det_center_v = detector_offset_v
             
-    SRC_POS = [0,0,-source_to_origin]
-    Det_Pos = [det_center_h,det_center_v,source_to_det-source_to_origin]
+    SRC_POS = [0,0,-SrcToObject]
+    Det_Pos = [det_center_h,det_center_v,SrcToDetector-SrcToObject]
     Obj_Pos = [object_offset_x,object_offset_y,0]
     # for Nikon files in our co-ordinates:
     # Tilt is rotation about the x-axis
@@ -134,17 +134,17 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     Obj_Rot[1] = inital_angle
     # Obj_Rot[2] = object_roll_deg
 
-    Beam.PosX = SRC_POS[0]
-    Beam.PosY = SRC_POS[1]
-    Beam.PosZ = SRC_POS[2]
+    Beam.Beam_PosX = SRC_POS[0]
+    Beam.Beam_PosY = SRC_POS[1]
+    Beam.Beam_PosZ = SRC_POS[2]
 
-    Det.PosX = Det_Pos[0]
-    Det.PosY = Det_Pos[1]
-    Det.PosZ = Det_Pos[2]
+    Det.Det_PosX = Det_Pos[0]
+    Det.Det_PosY = Det_Pos[1]
+    Det.Det_PosZ = Det_Pos[2]
 
-    Model.PosX = Obj_Pos[0]
-    Model.PosY = Obj_Pos[1]
-    Model.PosZ = Obj_Pos[2]
+    Model.Model_PosX = Obj_Pos[0]
+    Model.Model_PosY = Obj_Pos[1]
+    Model.Model_PosZ = Obj_Pos[2]
 
     Model.rotation = Obj_Rot
     # initialise speckpy if tube voltage is set in file
@@ -155,3 +155,38 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     GVXRDict['Model'] = Model
     GVXRDict['Detector'] = Det
     return GVXRDict
+
+def host_to_container_path(filepath):
+    """
+    Function to Convert a path in the virtualLab directory on the host
+    to an equivalent path inside the container. since the vlab _dir is
+    mounted as /home/ibsim/VirtualLab inside the container.
+    Note: The filepath needs to be absolute and  is converted
+    into a string before it is returned.
+    """
+    import VLconfig as VLC
+    vlab_dir_host = VLC.VL_HOST_DIR
+    # location of vlab inside the container
+    cont_vlab_dir = VLC.VL_DIR_CONT
+    # convert path to be relative to container not host
+    filepath = str(filepath).replace(str(vlab_dir), cont_vlab_dir)
+    return filepath
+
+
+def container_to_host_path(filepath):
+    """
+    Function to Convert a path inside the container
+    to an equivalent path on the host. since the vlab _dir is
+    mounted as /home/ibsim/VirtualLab inside the container.
+
+    Note: The filepath needs to be absolute and  is converted
+    into a string before it is returned.
+    """
+    import VLconfig as VLC
+    vlab_dir_host = VLC.VL_HOST_DIR    
+    # location of vlab inside the container
+    cont_vlab_dir = VLC.VL_DIR_CONT
+    # convert path to be relative to host not container
+    filepath = str(filepath).replace(cont_vlab_dir, str(vlab_dir))
+    return filepath
+

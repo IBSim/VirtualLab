@@ -64,11 +64,11 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
                 white_level = float(line.split('=')[1])
             # number of pixels along X axis
             elif line.startswith("DetectorPixelsX"):
-                pixel_num_v_0 = int(line.split('=')[1])
-                Det.Pix_X = pixel_num_v_0
+                pixel_num_h_0 = int(line.split('=')[1])
+                Det.Pix_X = pixel_num_h_0
             # number of pixels along Y axis
             elif line.startswith("DetectorPixelsY"):
-                    pixel_num_h_0 = int(line.split('=')[1])
+                    pixel_num_v_0 = int(line.split('=')[1])
                     Det.Pix_Y = pixel_num_v_0
                 # pixel size along X axis
             elif line.startswith("DetectorPixelSizeX"):
@@ -123,8 +123,11 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     det_center_h =  detector_offset_h
     det_center_v = detector_offset_v
             
-    SRC_POS = [0,0,-SrcToObject]
-    Det_Pos = [det_center_h,det_center_v,SrcToDetector-SrcToObject]
+    # note in GVXR co-ordinates:
+    # detector Y is along the z-axis
+    # The beam is assumeed to be projected along the y axis
+    SRC_POS = [0,-SrcToObject,0]
+    Det_Pos = [det_center_h,SrcToDetector-SrcToObject,det_center_v]
     Obj_Pos = [object_offset_x,object_offset_y,0]
     # for Nikon files in our co-ordinates:
     # Tilt is rotation about the x-axis

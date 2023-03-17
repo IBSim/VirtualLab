@@ -167,12 +167,28 @@ def CT_scan(**kwargs):
     # Compute an X-ray image
     print("Compute CT aquisition");
 
-    projections = [];
     theta = [];
     # Compute the intial X-ray image (zeroth angle) and add it to the list of projections
-    projections.append(gvxr.computeXRayImage());
+    projection = np.array(gvxr.computeXRayImage());
+    
     # Update the 3D visualisation
     gvxr.displayScene();
+
+    # Retrieve the total energy
+    energy_bins = gvxr.getEnergyBins("MeV") 
+    photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
+    total_energy = 0.0;
+    for energy, count in zip(energy_bins, photon_count_per_bin):
+        total_energy += energy * count;  
+    
+    # Perform the flat-Field correction of raw data
+    dark = np.zeros(projection.shape);
+
+    flat = np.ones(projection.shape) * total_energy;
+    projection = flat_field_normalize(projection,flat,dark)    
+    write_image(kwargs['output_file'],projection,im_format=im_format);
+
+
     theta.append(0.0);
     for i in range(1,num_projections+1):
         # Rotate the model by angular_step degrees
@@ -180,33 +196,13 @@ def CT_scan(**kwargs):
             gvxr.rotateNode(label, -1*angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
             total_rotation[2,n]+=angular_step
         # Compute an X-ray image and add it to the list of projections
-        projections.append(gvxr.computeXRayImage());
+        projection = np.array(gvxr.computeXRayImage());
         # Update the 3D visualisation
         gvxr.displayScene();
         theta.append(i * angular_step * math.pi / 180);
-      
-    # file = open("GVXR_angles.txt", "w")
-    # file.write(f"angles = {theta} \n")
-    # file.close()
-       
-    # Convert the projections as a Numpy array
-    projections = np.array(projections)
-    
-    # Perform the flat-Field correction of raw data
-    dark = np.zeros(projections.shape);
+        projection = flat_field_normalize(projection,flat,dark)    
+        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i);
 
-    # Retrieve the total energy
-    energy_bins = gvxr.getEnergyBins("MeV") 
-    photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
-    total_energy = 0.0;
-    for energy, count in zip(energy_bins, photon_count_per_bin):
-        total_energy += energy * count;
-    flat = np.ones(projections.shape) * total_energy;
-    projections = flat_field_normalize(projections,flat,dark)
-    #convert from transmission to absorbsion data.
-    #projections = - np.log(projections)
-    #projections = normalise_uint(projections)
-    write_image(kwargs['output_file'],projections,im_format=im_format);
     
     if (not Headless):
         controls_msg = ('### GVXR Window Controls ###\n'

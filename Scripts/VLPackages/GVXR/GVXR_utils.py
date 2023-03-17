@@ -137,7 +137,36 @@ def find_the_key(dictionary:dict, target_keys:str):
     """Function to pull out the keys of a dictionary as a list."""
     return {key: dictionary[key] for key in target_keys}
 
-def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
+def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8,angle_index=0):
+    from PIL import Image, ImageOps
+    import os
+    output_name = os.path.basename(os.path.normpath(output_dir))
+    os.makedirs(output_dir, exist_ok=True)
+    #calcualte number of digits in max number of images for formating
+    import math
+    if angle_index > 0:
+        digits = int(math.log10(angle_index))+1
+    elif angle_index == 0:
+        digits = 1
+    else:
+        raise ValueError('Angle_index for write image must be a non negative int')
+
+    if bitrate == 8:
+        vox = vox*255
+        convert_opt='L'
+    elif bitrate == 16:
+        vox = vox*65536
+        convert_opt='I;16'
+    else:
+        print("warning: bitrate not recognised assuming 8-bit greyscale")
+        convert_opt='L'
+
+    im = Image.fromarray(vox)
+    im = im.convert(convert_opt)
+    im_output=f"{output_dir}/{output_name}_{angle_index:0{digits}d}.{im_format}"
+    im.save(im_output)
+
+def write_image3D(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
     from PIL import Image, ImageOps
     import os
     output_name = os.path.basename(os.path.normpath(output_dir))
@@ -194,6 +223,13 @@ def InitSpectrum(Beam,Headless:bool=False):
     print("Tube Voltage (kV):", Beam.Tube_Voltage)
     print("Tube Angle (degrees):", Beam.Tube_Angle)
 
+    if Beam.Tube_Voltage > 300.0:
+        print(f"Warning: Beam Tube voltage exceeds 300Kv which is the max that spekpy supports. \n \
+        Thus beam enegry has been set to a flat {Beam.Tube_Voltage} keV.")
+        Beam.Energy = [Beam.Tube_Voltage]
+        Beam.Intensity = [1000]
+        Beam.Energy_units = 'keV'
+        return Beam;
     s = sp.Spek(**kwargs) # Generate a spectrum
 
     if xor(Beam.Filter_ThicknessMM==None,Beam.Filter_Material==None):
@@ -213,7 +249,6 @@ def InitSpectrum(Beam,Headless:bool=False):
 
     #units = "keV"
     k, f = s.get_spectrum(edges=True) # Get the spectrum
-
     if not Headless:
         import matplotlib.pyplot as plt # Import library for plotting
         plt.plot(k, f) # Plot the spectrum",

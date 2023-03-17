@@ -4,6 +4,8 @@ import errno
 import numpy as np
 from operator import xor as xor_
 from functools import reduce
+import itertools
+import time
 
 class GVXRError(Exception):
     '''Custom error class to format error message in a pretty way.'''
@@ -54,8 +56,6 @@ def extract_unique_triangles(t):
     return tri, index[counts==1]
 
 def tets2tri(tetra,points,mat_ids):
-    import itertools
-    import time
     start = time.time()
     # each tet has been broken dwon into 4 triangles 
     # so we must expand mat_ids by 4 times to get the

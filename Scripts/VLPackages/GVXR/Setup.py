@@ -54,6 +54,8 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         "Model_PosX",
         "Model_PosY",
         "Model_PosZ",
+        "Model_Pos_units",
+        "Model_Mesh_units",
         "rotation",
     ]
 
@@ -175,6 +177,7 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         # Nikon files define these as Tilt, InitalAngle, and Roll respectively.
         rotation: float = Field(default_factory=lambda: [0, 0, 0])
         Model_Pos_units: str = Field(default="mm")
+        Model_Mesh_units: str = Field(default="mm")
 
     OUT_DIR = "{}/GVXR-Images".format(PROJECT_DIR)
     IN_MESH_DIR ="{}/Meshes".format(VLC.InputDir)
@@ -310,7 +313,7 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
             GVXRDict["Beam"].Beam_PosZ = Parameters.Beam_PosZ
         if hasattr(Parameters, "Beam_Pos_units"):
             warn_Nikon(Use_Nikon_File,"Beam_Pos_units")
-            GVXRDict["Beam"].Pos_units = Parameters.Beam_Pos_units
+            GVXRDict["Beam"].Beam_Pos_units = Parameters.Beam_Pos_units
 
         # Beam Type
         if hasattr(Parameters, "Beam_Type"):
@@ -362,6 +365,8 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         if hasattr(Parameters, "Model_Pos_units"):
             warn_Nikon(Use_Nikon_File,"Model_Pos_units")
             GVXRDict["Model"].Model_Pos_units = Parameters.Model_Pos_units
+        if hasattr(Parameters, "Model_Mesh_units"):
+            GVXRDict["Model"].Model_Mesh_units = Parameters.Model_Mesh_units
 
         # CAD Model scaling factor
         if hasattr(Parameters, "Model_ScaleX"):

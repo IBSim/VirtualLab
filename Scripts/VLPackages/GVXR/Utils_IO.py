@@ -51,9 +51,9 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
         #units
             elif line.startswith("Units"):
                 units = line.split('=')[1]
-                Beam.Pos_units = units
-                Det.Pos_units = units
-                Model.Pos_units = units
+                Beam.Beam_Pos_units = units
+                Det.Det_Pos_units = units
+                Model.Model_Pos_units = units
                 Det.Spacing_units = units
         # number of projections
             elif line.startswith("Projections"):

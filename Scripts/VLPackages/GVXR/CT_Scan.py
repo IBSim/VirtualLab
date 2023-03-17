@@ -17,7 +17,6 @@ def CT_scan(**kwargs):
     im_format = kwargs.get('im_format','tiff')
     use_tetra = kwargs.get('use_tetra',False)
     downscale = kwargs.get('downscale',1.0)
-
     print(gvxr.getVersionOfSimpleGVXR())
     print(gvxr.getVersionOfCoreGVXR())
     # Create an OpenGL context
@@ -132,12 +131,12 @@ def CT_scan(**kwargs):
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
     gvxr.setDetectorPosition(kwargs['Det_PosX'],kwargs['Det_PosY'], kwargs['Det_PosZ'], kwargs['Det_Pos_units']);
     gvxr.setDetectorUpVector(0, 0, -1);
-    gvxr.setDetectorNumberOfPixels(math.ceil(kwargs['Pix_X']*downscale), math.ceil(kwargs['Pix_Y']*downscale));
+    gvxr.setDetectorNumberOfPixels(kwargs['Pix_X'], kwargs['Pix_Y']);
     gvxr.setDetectorPixelSize(kwargs['Spacing_X']*downscale, kwargs['Spacing_Y']*downscale, kwargs['Spacing_units']);
     for i,mesh in enumerate(meshes):
         label = mesh_names[i];
     ### BLOCK #####
-        gvxr.makeTriangularMesh(label,points.flatten(),mesh.flatten(),str(kwargs['Model_Pos_units']));
+        gvxr.makeTriangularMesh(label,points.flatten(),mesh.flatten(),str(kwargs['Model_Mesh_units']));
         # place mesh at the origin then translate it according to the defined offset
         gvxr.moveToCentre(label);
         gvxr.translateNode(label,kwargs['Model_PosX'],kwargs['Model_PosY'],kwargs['Model_PosZ'],kwargs['Model_Pos_units'])
@@ -186,9 +185,9 @@ def CT_scan(**kwargs):
         gvxr.displayScene();
         theta.append(i * angular_step * math.pi / 180);
       
-    file = open("GVXR_angles.txt", "w")
-    file.write(f"angles = {theta} \n")
-    file.close()
+    # file = open("GVXR_angles.txt", "w")
+    # file.write(f"angles = {theta} \n")
+    # file.close()
        
     # Convert the projections as a Numpy array
     projections = np.array(projections)

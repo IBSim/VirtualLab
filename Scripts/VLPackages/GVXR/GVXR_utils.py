@@ -155,7 +155,7 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
 
     for I in range(0,np.shape(vox)[0]):
         im = Image.fromarray(vox[I,:,:])
-        #im = im.convert(convert_opt)
+        im = im.convert(convert_opt)
         im_output=f"{output_dir}/{output_name}_{I:0{digits}d}.{im_format}"
         im.save(im_output)
 

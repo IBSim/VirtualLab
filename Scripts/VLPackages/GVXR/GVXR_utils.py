@@ -37,7 +37,7 @@ def correct_normal(tri_ind,extra,points):
     A = points[tri_ind[0]]
     B = points[tri_ind[1]]
     C = points[tri_ind[2]]
-    D = points[extra[0]]
+    D = points[extra]
     #edge vectors 
     E0 = B - A
     E1 = C - B
@@ -55,7 +55,25 @@ def extract_unique_triangles(t):
     tri = t[index[counts==1]]
     return tri, index[counts==1]
 
+def fix_normals_full(tet,points):
+    '''
+    Function to check and fix if necessary the 4 surface normals of a given tetrahedron
+    Note we use functools.partail when calling this function to prevent us having to 
+    copy the points array for each call given it never changes.
+    '''
+    Nodes = itertools.combinations(tet,3)
+    surface= np.empty(3)
+    for face in Nodes:
+        face = np.array(face)
+        extra = int(np.setdiff1d(tet,face,assume_unique=True))
+        face = correct_normal(face,extra,points)
+        surface = np.vstack([surface,face])
+
+    return surface
+
 def tets2tri(tetra,points,mat_ids):
+    import functools
+    import multiprocessing
     start = time.time()
     # each tet has been broken dwon into 4 triangles 
     # so we must expand mat_ids by 4 times to get the
@@ -64,15 +82,17 @@ def tets2tri(tetra,points,mat_ids):
     vol_mat_ids = np.empty(len(tetra)*4,'int')
     surface = []
     surf_mat_ids=[]
+    items=[]
     j = 0
-    for i,tet in enumerate(tetra,start=0):
-        Nodes = tuple(itertools.combinations(tet,3))
-        for face in Nodes:
-            vol_mat_ids[j] = mat_ids[i]
-            extra = list(set(tetra[i]).difference(face))
-            face = correct_normal(face,extra,points)
-            surface.append([face[0], face[1], face[2]])
-            j+=1
+    # we use functools.partail here to prevent us having to copy the points array for each call to fix_normals
+    fix_normals = functools.partial(fix_normals_full,points=points)
+
+    with multiprocessing.Pool() as pool:
+	# call the function for each item in parallel
+	    for result in pool.map(fix_normals, tetra):
+               surface.append(result)
+
+    vol_mat_ids = np.repeat(mat_ids,4)
             
     tri = np.array(list(surface),'int32')
     # extract triangles on the surface of the mesh and there id's

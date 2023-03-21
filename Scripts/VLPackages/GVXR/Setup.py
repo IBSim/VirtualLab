@@ -59,6 +59,54 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
         "rotation",
     ]
 
+    def convert_tets_to_tri(mesh_file):
+        '''
+        Function to read in a tetrahedron based 
+        volume mesh with meshio and convert it 
+        into surface triangle mesh for use with 
+        GVXR.
+        '''
+        import numpy as np
+        import meshio
+        from Scripts.VLPackages.GVXR.GVXR_utils import tets2tri, find_the_key
+        import os
+        root, ext = os.path.splitext(mesh_file)
+        new_mesh_file = f"{root}_triangles{ext}"
+        # This check helps us avoid having to repeat the conversion from tri to tet 
+        # when using one mesh file for multiple GVXR runs.
+        if os.path.exists(new_mesh_file):
+            print(f"Found {new_mesh_file} so assuming conversion has already been done previously.")
+            return new_mesh_file
+        
+        print("Converting tetrahedron mesh into triangles for GVXR")
+        mesh = meshio.read(mesh_file)
+        #extract np arrays of mesh data from meshio
+        points = mesh.points
+        tetra = mesh.get_cells_type('tetra')
+        if not np.any(tetra):
+            #no tetra data but trying to use tets
+            raise ValueError("User asked to use tets but mesh file does not contain Tetrahedron data")
+        mat_ids_tet = mesh.get_cell_data('cell_tags','tetra')
+        #extract surface triangles from volume tetrahedron mesh
+        elements, mat_ids  = tets2tri(tetra,points,mat_ids_tet)
+        cells = [('triangle',elements)]
+
+        # convert extracted triangles into new meshio object and write out to file
+        tri_mesh = meshio.Mesh(
+            points,
+            cells,
+            # Each item in cell data must match the cells array
+            cell_data={"cell_tags":[mat_ids]},
+        )
+        tri_mesh.cell_tags = find_the_key(mesh.cell_tags, np.unique(mat_ids))
+        print(f"Saving new triangle mesh as {new_mesh_file}")
+        tri_mesh.write(new_mesh_file)
+
+        return new_mesh_file
+
+
+
+
     def warn_Nikon(use_nikon,parameter_string):
         if use_nikon:
             msg =  "--------------------------- WARNING: ---------------------------\n" + \
@@ -392,6 +440,9 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,mode):
             GVXRDict["im_format"] = Parameters.image_format
 
         if hasattr(Parameters, "use_tetra"):
+            # Convert tetrahedron data into triangles
+            tri_mesh_file = convert_tets_to_tri(IN_FILE)
+            GVXRDict["mesh_file"] = tri_mesh_file
             GVXRDict["use_tetra"] = Parameters.use_tetra
 
         if hasattr(Parameters, "downscale"):

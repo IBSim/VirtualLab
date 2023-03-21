@@ -29,7 +29,7 @@ def CT_scan(**kwargs):
 
     # Load the data
     print("Loading the data");
-    
+
     mesh = meshio.read(kwargs['mesh_file'])
 
     #extract np arrays of mesh data from meshio
@@ -44,10 +44,6 @@ def CT_scan(**kwargs):
         #no triangle data but trying to use triangles
         raise GVXRError("User asked to use triangles but input file does "
         "not contain Triangle data")
-
-    if not np.any(tetra) and use_tetra:
-        #no tetra data but trying to use tets
-        raise GVXRError("User asked to use tets but file does not contain Tetrahedron data")
         
         # extract dict of material names and integer tags
     try:
@@ -55,35 +51,23 @@ def CT_scan(**kwargs):
     except AttributeError:
         all_mat_tags = {}
 
-    if not all_mat_tags:
+    if all_mat_tags == {}:
         print ("[WARN] No materials defined in input file so we assume the whole mesh is made of a single material.")
         mat_tag_dict={0:['Un-Defined']}
         all_mat_tags = mat_tag_dict
-        if use_tetra:
-            mat_ids = np.zeros(np.shape(tetra)[0],dtype = int)
-        else:
-            mat_ids = np.zeros(np.shape(triangles)[0],dtype = int) 
+        mat_ids = np.zeros(np.shape(triangles)[0],dtype = int) 
         tags = np.unique(mat_ids)
     else:
     # pull the dictionary containing material id's for each element
     # and the np array of ints that label the materials.
-        if use_tetra:
-            mat_ids = mesh.get_cell_data('cell_tags','tetra')
-        else:
-            mat_ids = mesh.get_cell_data('cell_tags','triangle')
+        mat_ids = mesh.get_cell_data('cell_tags','triangle')
         
         tags = np.unique(mat_ids)
         if(np.any(mat_ids==0)):
             all_mat_tags['0']=['Un-Defined']
         mat_tag_dict = find_the_key(all_mat_tags, np.unique(mat_ids))
             
-# switch element type based on flag, this prevents us having to keep checking
-#  if using tets or tri.
-    if use_tetra:
-        #extract surface triangles from volume tetrahedron mesh
-        elements, mat_ids  = tets2tri(tetra,points,mat_ids)
-    else:
-        elements = triangles
+    elements = triangles
 
     if len(tags) != len(Material_list):
         Errormsg = (f"Error: The number of Materials read in from Input file is {len(Material_list)} "

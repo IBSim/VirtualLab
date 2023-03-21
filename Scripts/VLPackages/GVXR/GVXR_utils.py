@@ -61,14 +61,13 @@ def fix_normals_full(tet,points):
     Note we use functools.partail when calling this function to prevent us having to 
     copy the points array for each call given it never changes.
     '''
-    Nodes = itertools.combinations(tet,3)
-    surface= np.empty(3)
-    for face in Nodes:
+    Nodes = list(itertools.combinations(tet,3))
+    surface= np.empty([len(Nodes),3])
+    for I, face in enumerate(Nodes):
         face = np.array(face)
         extra = int(np.setdiff1d(tet,face,assume_unique=True))
         face = correct_normal(face,extra,points)
-        surface = np.vstack([surface,face])
-
+        surface[I,:] = np.array([face[0],face[1],face[2]])
     return surface
 
 def tets2tri(tetra,points,mat_ids):
@@ -81,6 +80,7 @@ def tets2tri(tetra,points,mat_ids):
     #mat_ids = np.repeat(mat_ids,4)
     vol_mat_ids = np.empty(len(tetra)*4,'int')
     surface = []
+    # tri=np.empty(3,dtype='int32')
     surf_mat_ids=[]
     items=[]
     j = 0
@@ -91,12 +91,11 @@ def tets2tri(tetra,points,mat_ids):
 	# call the function for each item in parallel
 	    for result in pool.map(fix_normals, tetra):
                surface.append(result)
-
-    vol_mat_ids = np.repeat(mat_ids,4)
-            
-    tri = np.array(list(surface),'int32')
+    tri = np.concatenate(surface,axis=0).astype('int32')
+    vol_mat_ids = np.repeat(mat_ids,4)     
     # extract triangles on the surface of the mesh and there id's
     tri_surf, ind = extract_unique_triangles(tri)
+    
     surf_mat_ids = np.take(vol_mat_ids,ind)
     stop = time.time()
     print(f"Tet to Tri conversion took: {stop-start} seconds")

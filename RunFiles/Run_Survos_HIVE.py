@@ -10,8 +10,7 @@ from Scripts.Common.VirtualLab import VLSetup
 Simulation='GVXR'
 Project='Survos'
 Parameters_Master='TrainingParameters_Survos-HIVE'
-#Parameters_Var='TrainingParameters_GVXR_var'
-Parameters_Var=None
+Parameters_Var='TrainingParameters_Survos-HIVE_var'
 #===============================================================================
 # Environment
 
@@ -27,7 +26,7 @@ VirtualLab.Settings(
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=True,
+           RunMesh=False,
            RunSim=False,
            RunDA=False,
            RunVoxelise=False,

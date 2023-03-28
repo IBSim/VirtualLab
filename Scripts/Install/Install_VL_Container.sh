@@ -33,9 +33,11 @@ while getopts "B:yh" options; do
       B=${OPTARG}
       if [ "$B" == "m" ]; then
         BRANCH=main
+        B_UC=M
         echo " - VirtualLab will be installed from the main branch."
       elif [ "$B" == "d" ]; then
         BRANCH=dev
+        B_UC=D
         echo " - VirtualLab will be installed from the dev branch."
       else
         echo "Error: Invalid option argument $BRANCH" >&2
@@ -88,5 +90,5 @@ url="https://gitlab.com/ibsim/virtuallab_bin/-/raw/"$BRANCH"/"$fname
 wget $url
 
 chmod 755 $fname
-./$fname -y #&> ~/Install_VL.log
+./$fname -y -B $B_UC #&> ~/Install_VL.log
 rm $fname

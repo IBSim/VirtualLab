@@ -27,7 +27,10 @@ docs/build
 Config/*.yaml
 Config/*.py
 !Scripts/
-!Materials/
+!Materials/Copper
+!Materials/Copper_NL
+!Materials/Tungsten
+!Materials/Tungsten_NL
 # Ensure that only the Example and .dev sub-directory will be included in the whitelist
 !Input/
 Input/*/*

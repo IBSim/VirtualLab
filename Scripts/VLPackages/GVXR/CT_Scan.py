@@ -179,7 +179,7 @@ def CT_scan(**kwargs):
     gvxr.displayScene();
 
     # Retrieve the total energy
-    energy_bins = gvxr.getEnergyBins(kwargs['Energy_units']) 
+    energy_bins = gvxr.getEnergyBins('MeV') 
     photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
     total_energy = 0.0;
     for energy, count in zip(energy_bins, photon_count_per_bin):

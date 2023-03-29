@@ -20,14 +20,15 @@ VirtualLab=VLSetup(
            Project)
 
 VirtualLab.Settings(
-           Mode='Headless',
+           Mode='Interactive',
+        #    Mode='Headless',
            Launcher='Process',
            NbJobs=5)
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=True,
+           RunMesh=False,
            RunSim=False,
            RunDA=False,
            RunVoxelise=False,
@@ -35,7 +36,7 @@ VirtualLab.Parameters(
            RunCT_Recon=False)
 # Hive anlysis
 VirtualLab.Mesh(
-           ShowMesh=False,
+           ShowMesh=True,
            MeshCheck=None)
 
 VirtualLab.Sim(

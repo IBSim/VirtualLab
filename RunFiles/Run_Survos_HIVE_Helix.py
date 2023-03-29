@@ -8,10 +8,9 @@ from Scripts.Common.VirtualLab import VLSetup
 # Setup
 
 Simulation='GVXR'
-Project='Circular'
+Project='Helix'
 Parameters_Master='TrainingParameters_Survos-HIVE'
-# Parameters_Var='TrainingParameters_Survos-HIVE_var'
-Parameters_Var=None
+Parameters_Var='TrainingParameters_Survos-HIVE_var'
 #===============================================================================
 # Environment
 
@@ -20,19 +19,19 @@ VirtualLab=VLSetup(
            Project)
 
 VirtualLab.Settings(
-           Mode='Headless',
-           Launcher='Process',
+           Mode='Interactive',
+           Launcher='Sequential',
            NbJobs=5)
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=True,
+           RunMesh=False,
            RunSim=False,
            RunDA=False,
            RunVoxelise=False,
            RunCT_Scan=True,
-           RunCT_Recon=False)
+           RunCT_Recon2D=True)
 # Hive anlysis
 VirtualLab.Mesh(
            ShowMesh=False,
@@ -50,4 +49,4 @@ VirtualLab.Voxelise()
 #GVXR
 VirtualLab.CT_Scan()
 #CIL
-VirtualLab.CT_Recon()
+VirtualLab.CT_Recon2D()

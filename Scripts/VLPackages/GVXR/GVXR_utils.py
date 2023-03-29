@@ -17,6 +17,21 @@ class GVXRError(Exception):
         "=========================\n\n"
         return Errmsg
 
+def warning_message(msg:str,line_length:int=50):
+    ''' 
+    Function to take in a long string and format it in a pretty
+    way for printing to screen.
+    '''
+    from textwrap import fill
+    header = " WARNING: ".center(line_length,'*')
+    footer = ''.center(line_length,'*')
+    msg = fill(msg,width=line_length,initial_indent=' ', subsequent_indent=' ')
+    print(header)
+    print(msg)
+    print(footer)
+    return
+
+
 def xor(*args):
     return reduce(xor_, map(bool, args))
 

@@ -190,7 +190,7 @@ def CT_scan(**kwargs):
 
     flat = np.ones(projection.shape) * total_energy;
     projection = flat_field_normalize(projection,flat,dark)    
-    write_image(kwargs['output_file'],projection,im_format=im_format,bitrate=8);
+    write_image(kwargs['output_file'],projection,im_format=im_format,bitrate=32);
 
 
     theta.append(0.0);
@@ -205,7 +205,7 @@ def CT_scan(**kwargs):
         gvxr.displayScene();
         theta.append(i * angular_step * math.pi / 180);
         projection = flat_field_normalize(projection,flat,dark)    
-        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=8);
+        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=32);
 
     
     if (not Headless):

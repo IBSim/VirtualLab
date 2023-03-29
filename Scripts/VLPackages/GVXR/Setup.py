@@ -18,7 +18,6 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR, mode):
     from Scripts.VLPackages.GVXR.Utils_IO import ReadNikonData
     from Scripts.VLPackages.GVXR.GVXR_utils import (
         Check_Materials,
-        InitSpectrum,
         dump_to_json,
         warning_message,
     )
@@ -27,7 +26,6 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR, mode):
     # list of all accepted params for GVXR
     GVXR_parameters = [
         "Nikon_file",
-        "use_spekpy",
         "Material_list",
         "energy_units",
         "Tube_Angle",
@@ -348,11 +346,6 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR, mode):
                 )
                 sys.exit(1)
 
-        # if hasattr(Parameters, "Energy") and hasattr(Parameters, "Intensity"):
-        #     warn_Nikon(Use_Nikon_File,["Energy","Intensity"])
-        #     GVXRDict["Beam"].Energy = Parameters.Energy
-        #     GVXRDict["Beam"].Intensity = Parameters.Intensity
-
         # Xray Beam Position
         if hasattr(Parameters, "Beam_PosX"):
             warn_Nikon(Use_Nikon_File, "Beam_PosX")
@@ -445,8 +438,8 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR, mode):
 
         if hasattr(Parameters, "use_tetra"):
             # Convert tetrahedron data into triangles
-            tri_mesh_file = convert_tets_to_tri(IN_FILE)
-            GVXRDict["mesh_file"] = tri_mesh_file
+            # tri_mesh_file = convert_tets_to_tri(IN_FILE)
+            # GVXRDict["mesh_file"] = tri_mesh_file
             GVXRDict["use_tetra"] = Parameters.use_tetra
 
         if hasattr(Parameters, "downscale"):

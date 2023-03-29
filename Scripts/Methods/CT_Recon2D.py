@@ -8,19 +8,28 @@ from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
 from Scripts.Common.VLContainer import Container_Utils as Utils
 from Scripts.VLPackages.CIL.API import Run as CT_Recon, Dir as CilDIR
+import VLconfig as VLC
+
+"""
+Template file for creating a new method. Create a copy of this file as #MethodName.py,
+which is the name of the new method, and edit as desired. Any file starting with
+_ are ignored.
+"""
+
 
 class Method(Method_base):
     def __init__(self, VL):
         super().__init__(VL)  # rune __init__ of Method_base
-        self.MethodName = "CIL_2D"
+        self.MethodName = "CIL2D"
         self.Containers_used = ["CIL"]
 
     def Setup(self, VL, CILdicts, Import=False):
-        """setup 2D CT reconstruction with CIL"""
+        """setup CT reconstruction with CIL"""
         # if RunCIL is False or CILdicts is empty dont perform Simulation and return instead.
         if not (self.RunFlag and CILdicts):
             return
         self.Data = {}
+
         for CILName, CILParams in CILdicts.items():
             Parameters = Namespace(**CILParams)
 
@@ -28,14 +37,31 @@ class Method(Method_base):
                 "work_dir": "{}/GVXR-Images".format(VL.PROJECT_DIR),
                 "Name": CILName,
             }
-            # Define flag to display visualizations
+            # Define flag to display visualisations
             if VL.mode == "Headless":
                 CILdict["Headless"] = True
             else:
                 CILdict["Headless"] = False
 
             if hasattr(Parameters, "Nikon_file"):
-                CILdict["Nikon"] = Parameters.Nikon_file
+                if os.path.isabs(Parameters.Nikon_file):
+                #if abs path use that 
+                # Note: we need to now convert it to a path is accessible within the container
+                    Nikon_file = Utils.host_to_container_path(Parameters.Nikon_file)
+                    Nikon_file = Parameters.Nikon_file
+                else:
+                # if not abs path check the input directory
+                    Nikon_file = f'{VL.PARAMETERS_DIR}/{Parameters.Nikon_file}'
+                
+                if os.path.exists(Nikon_file):
+                    print(f"Reading CIL parameters from Nikon file: {Nikon_file}")
+                else:
+                    # convert file path from container to host if necessary so errors make sense
+                    Nikon_file=Utils.container_to_host_path(Nikon_file)
+                    raise FileNotFoundError(f"Could not find Nikon file {Nikon_file}\n \
+                    Please check the file is in the input directory {VLC.VL_HOST_DIR}/{VL.Project}/{VL.Simulation} \n \
+                    or that path to this file is correct.")
+                CILdict["Nikon"] = Nikon_file
             else:
                 CILdict["Nikon"] = None
 
@@ -44,10 +70,13 @@ class Method(Method_base):
             # else:
             #    CILdict['Beam_Pos_units'] = 'm'
 
-            CILdict["Beam"] = [
-                Parameters.Beam_PosX,
-                Parameters.Beam_PosY
-            ]
+            if hasattr(Parameters, "Beam_PosX") and hasattr(Parameters, "Beam_PosY"):
+                CILdict["Beam"] = [
+                    Parameters.Beam_PosX,
+                    Parameters.Beam_PosY,
+                ]
+            else:
+                CILdict["Beam"] = [0,0,0]
 
             # if hasattr(Parameters,'Detect_Pos_units'):
             #    CILdict['Det_Pos_units'] = Parameters.Detect_Pos_units
@@ -59,25 +88,26 @@ class Method(Method_base):
             else:
                 CILdict["Spacing_X"] = 0.5
 
-            CILdict["Detector"] = [
-                Parameters.Detect_PosX,
-                Parameters.Detect_PosY
-            ]
+            # Note we only care about X and Y 
+            if hasattr(Parameters, "Detect_PosX")  and hasattr(Parameters, "Detect_PosY"):
+                CILdict["Detector"] = [
+                    Parameters.Detect_PosX,
+                    Parameters.Detect_PosY,
+                ]
+            else:
+                CILdict["Detector"] = [0,0,0]
+            if hasattr(Parameters, "Model_PosX") and hasattr(Parameters, "Model_PosY"):
+                CILdict["Model"] = [
+                    Parameters.Model_PosX,
+                    Parameters.Model_PosY,
+                ]
+            else:
+                CILdict["Model"] = [0,0,0]
 
-            CILdict["Model"] = [
-                Parameters.Model_PosX,
-                Parameters.Model_PosY
-            ]
-
-            CILdict["Pix_X"] = Parameters.Pix_X
-
-            # if hasattr(Parameters,'Model_Pos_units'):
-            #    CILdict['Model_Pos_units'] = Parameters.Model_Pos_units
-            # else:
-            #    CILdict['Model_Pos_units'] = 'm'
-
-            if hasattr(Parameters, "rotation"):
-                CILdict["rotation"] = Parameters.rotation
+            if hasattr(Parameters, "Pix_X"):
+                CILdict["Pix_X"] = Parameters.Pix_X
+            else:
+                CILdict["Pix_X"] = 1
 
             if hasattr(Parameters, "num_projections"):
                 CILdict["num_projections"] = Parameters.num_projections

@@ -46,7 +46,7 @@ class Method(Method_base):
         funcname = "GVXR_Setup" # function to be executed within container
         funcfile = "{}/Setup.py".format(GVXRDir) # python file where 'funcname' is located
         PROJECT_DIR_CONT = Utils.host_to_container_path(VL.PROJECT_DIR)
-        RC = CT_Scan(funcfile, funcname, fnc_args=(GVXRDicts,PROJECT_DIR_CONT,VL.mode))
+        RC = CT_Scan(funcfile, funcname, fnc_args=(GVXRDicts,PROJECT_DIR_CONT,VL.PARAMETERS_DIR,VL.mode))
         if RC!=0:
             VL.Exit(
                VLF.ErrorMessage(

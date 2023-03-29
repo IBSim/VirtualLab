@@ -11,8 +11,6 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     Model: Detector dataclass to hold data reltated to the cad model.
 
     '''
-    from Scripts.VLPackages.GVXR.GVXR_utils import InitSpectrum
-    use_speckpy=False
 # parse xtek file
     with open(file_name, 'r') as f:
         content = f.readlines()    
@@ -111,8 +109,8 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
             # elif line.startswith("ObjectTilt"):
             #         object_tilt_deg = float(line.split('=')[1])
             elif line.startswith("XraykV"):
-                use_speckpy = True
                 Beam.Tube_Voltage=float(line.split('=')[1])
+                Beam.Energy_units='keV'
             elif line.startswith("Filter_ThicknessMM"):
                 Beam.Filter_ThicknessMM = float(line.split('=')[1])
             elif line.startswith("Filter_Material"):
@@ -151,8 +149,8 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
 
     Model.rotation = Obj_Rot
     # initialise speckpy if tube voltage is set in file
-    if use_speckpy:
-        Beam = InitSpectrum(Beam=Beam, Headless=GVXRDict["Headless"])
+    # if use_speckpy:
+    #     Beam = InitSpectrum(Beam=Beam, Headless=GVXRDict["Headless"])
 
     GVXRDict['Beam'] = Beam
     GVXRDict['Model'] = Model

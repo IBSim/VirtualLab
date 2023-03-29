@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pickletools import uint8
 from gvxrPython3 import gvxr
+from gvxrPython3.utils import loadXpecgenSpectrum
 #import gvxrPython3 as gvxr
 import numpy as np
 import math
@@ -30,7 +31,11 @@ def CT_scan(**kwargs):
     # Load the data
     print("Loading the data");
 
-    mesh = meshio.read(kwargs['mesh_file'])
+    if use_tetra:
+       mesh_file = convert_tets_to_tri(kwargs['mesh_file'])
+       mesh = meshio.read(mesh_file)
+    else:
+        mesh = meshio.read(kwargs['mesh_file'])
 
     #extract np arrays of mesh data from meshio
     points = mesh.points
@@ -108,8 +113,23 @@ def CT_scan(**kwargs):
         raise GVXRError(f"Invalid beam type {kwargs['Beam_Type']} defined in Input File, must be either point or parallel")
 
     gvxr.resetBeamSpectrum()
-    for energy, count in zip(kwargs['Energy'],kwargs['Intensity']):
-        gvxr.addEnergyBinToSpectrum(energy, kwargs['Energy_units'], count);
+    if kwargs["Tube_Voltage"] != 0.0:
+        #generate an xray tube spectrum
+        filters = []
+        if kwargs["Filter_Material"] != None and kwargs["Filter_ThicknessMM"] != None:
+            materiails = [kwargs["Filter_Material"]]
+            thickness = [kwargs["Filter_ThicknessMM"]]
+            for mat, thick in zip(materiails,thickness):
+                filters.append([mat,thick])
+        T_angle = kwargs.get("Tube_Angle",12.0)
+        print(f"generating xray Tube spectrum for {kwargs['Tube_Voltage']} Kv tube.")
+        spectrum_filtered, k_filtered, f_filtered, units = loadXpecgenSpectrum(kwargs["Tube_Voltage"],filters=filters)
+    else:
+    # generate spectrum from given energy and intensity values
+        print("Generating Beam spectrum using supplied values of Energy and Intensity.")
+        for energy, count in zip(kwargs['Energy'],kwargs['Intensity']):
+            gvxr.addEnergyBinToSpectrum(energy, kwargs['Energy_units'], count);
+    
     # Set up the detector
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
@@ -159,7 +179,7 @@ def CT_scan(**kwargs):
     gvxr.displayScene();
 
     # Retrieve the total energy
-    energy_bins = gvxr.getEnergyBins("MeV") 
+    energy_bins = gvxr.getEnergyBins('MeV') 
     photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
     total_energy = 0.0;
     for energy, count in zip(energy_bins, photon_count_per_bin):
@@ -170,11 +190,11 @@ def CT_scan(**kwargs):
 
     flat = np.ones(projection.shape) * total_energy;
     projection = flat_field_normalize(projection,flat,dark)    
-    write_image(kwargs['output_file'],projection,im_format=im_format);
+    write_image(kwargs['output_file'],projection,im_format=im_format,bitrate=32);
 
 
     theta.append(0.0);
-    for i in range(1,num_projections+1):
+    for i in range(1,num_projections):
         # Rotate the model by angular_step degrees
         for n,label in enumerate(mesh_names):
             gvxr.rotateNode(label, -1*angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
@@ -185,7 +205,7 @@ def CT_scan(**kwargs):
         gvxr.displayScene();
         theta.append(i * angular_step * math.pi / 180);
         projection = flat_field_normalize(projection,flat,dark)    
-        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i);
+        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=32);
 
     
     if (not Headless):

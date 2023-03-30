@@ -399,23 +399,22 @@ def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value
     if fill_percent == None or fill_percent == 0.0:
         return projection
     
-    pix_x,pix_y = np.shape(projection)
+    pix_y,pix_x = np.shape(projection)
 
     # calculate the number of pixes to remove from each side in x and y
+    # Note: we use floor here since we dont want any chance that nx or ny
+    # are bigger then half of pix_x or pix_y.
     nx = int(math.floor((pix_x * fill_percent)/ 2))
     ny = int(math.floor((pix_y * fill_percent)/ 2))
     
-    # we want to fill a minimum of one pixel from each side
-    if nx == 0:
-        nx = 1
-    if ny == 0:
-        ny = 1
-    
-
-    projection[:nx,:] = fill_value
-    projection[:,:ny] = fill_value
-    projection[-nx:,:] = fill_value
-    projection[:,-ny:] = fill_value
+    projection[:ny,:] = fill_value
+    projection[:,:nx] = fill_value
+    # this stops you nuking every value in the array instead of filling 0 
+    # pixels because we are using -ve indexing and as such -0 is treat as 0.
+    if nx > 0:
+        projection[-ny:,:] = fill_value 
+    if ny > 0:
+        projection[:,-nx:] = fill_value
 
     return projection
 

@@ -1,4 +1,4 @@
-def GVXR_Setup(GVXRDicts, PROJECT_DIR, mode):
+def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
     """
     GVXR - Simulation of X-ray CT scans
     """
@@ -294,7 +294,7 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR, mode):
                 Nikon_file = Parameters.Nikon_file
             else:
                 # if not abs path check the input directory
-                Nikon_file = f"{VLC.InputDir}/GVXR/{Parameters.Nikon_file}"
+                Nikon_file = f"{PARAMETERS_DIR}/{Parameters.Nikon_file}"
 
             if os.path.exists(Nikon_file):
                 print(f"Reading GVXR parameters from Nikon file: {Nikon_file}")

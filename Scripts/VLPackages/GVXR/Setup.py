@@ -59,6 +59,7 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
         "Model_Pos_units",
         "Model_Mesh_units",
         "rotation",
+        "fill_percent",
     ]
 
     def convert_tets_to_tri(mesh_file):
@@ -458,6 +459,15 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
                 raise ValueError(
                     f"Invalid parameter for GVXR.downscale {Parameters.downscale}, \
                             this must be between 0.0 and 1.0."
+                )
+        
+        if hasattr(Parameters, "fill_percent"):
+            if 0.0 < float(Parameters.fill_percent) <= 1.0:
+                GVXRDict["fill_percent"] = float(Parameters.fill_percent)
+            else:
+                raise ValueError(
+                    f"Invalid parameter for GVXR.fill_percent {Parameters.fill_percent}, \
+                            this must be greater than 0.0 and less than or equal to 1.0."
                 )
 
         # catch any extra options and throw an error to say they are invalid

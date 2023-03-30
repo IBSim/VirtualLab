@@ -7,6 +7,7 @@ from functools import reduce
 import itertools
 import time
 import VLconfig as VLC
+import math
 
 class GVXRError(Exception):
     '''Custom error class to format error message in a pretty way.'''
@@ -385,3 +386,36 @@ def convert_tets_to_tri(mesh_file):
     tri_mesh.write(new_mesh_file)
 
     return new_mesh_file
+
+def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value:float=0.0):
+    '''
+    Function to fill in the edges of an xray projection with fill_value (default is 0).
+    This is done to reduce ring/halo artifacts during reconstruction with CIL.
+    param: projection - 2D numpy array representing the image
+    param:  fill_percent -  float representing the percentage of pixes y ou want to fill 
+                            in from each edge.
+    param: fill_value - value to replace pixels with, default is zero.
+    '''
+    if fill_percent == None or fill_percent == 0.0:
+        return projection
+    
+    pix_x,pix_y = np.shape(projection)
+
+    # calculate the number of pixes to remove from each side in x and y
+    nx = int(math.floor((pix_x * fill_percent)/ 2))
+    ny = int(math.floor((pix_y * fill_percent)/ 2))
+    
+    # we want to fill a minimum of one pixel from each side
+    if nx == 0:
+        nx = 1
+    if ny == 0:
+        ny = 1
+    
+
+    projection[:nx,:] = fill_value
+    projection[:,:ny] = fill_value
+    projection[-nx:,:] = fill_value
+    projection[:,-ny:] = fill_value
+
+    return projection
+

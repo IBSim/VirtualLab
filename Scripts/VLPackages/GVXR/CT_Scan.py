@@ -21,6 +21,7 @@ def CT_scan(**kwargs):
     im_format = kwargs.get('im_format','tiff')
     use_tetra = kwargs.get('use_tetra',False)
     downscale = kwargs.get('downscale',1.0)
+    fill_percent = kwargs.get('fill_percent',None)
     print(gvxr.getVersionOfSimpleGVXR())
     print(gvxr.getVersionOfCoreGVXR())
     # Create an OpenGL context
@@ -203,7 +204,9 @@ def CT_scan(**kwargs):
     dark = np.zeros(projection.shape);
 
     flat = np.ones(projection.shape) * total_energy;
-    projection = flat_field_normalize(projection,flat,dark)    
+    projection = flat_field_normalize(projection,flat,dark)
+    #fill in edge pixels with zeros to reduce reconstruction artifacts
+    projection = fill_edges(projection,fill_percent) 
     write_image(kwargs['output_file'],projection,im_format=im_format,bitrate=32);
 
 
@@ -218,7 +221,9 @@ def CT_scan(**kwargs):
         # Update the 3D visualisation
         gvxr.displayScene();
         theta.append(i * angular_step * math.pi / 180);
-        projection = flat_field_normalize(projection,flat,dark)    
+        projection = flat_field_normalize(projection,flat,dark)
+        #fill in edge pixels with zeros to reduce reconstruction artifacts
+        projection = fill_edges(projection,fill_percent)    
         write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=32);
 
     

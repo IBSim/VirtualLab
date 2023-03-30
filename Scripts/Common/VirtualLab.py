@@ -61,7 +61,7 @@ class VLSetup:
         #Check that VL_config is indeed set correctly
         if VLconfig.VL_HOST_DIR=="":
             self.Exit(VLF.ErrorMessage("Something went wrong. The VirtualLab directory \n"
-            "does not appear to be set correctly in VL_Config.py."
+            "does not appear to be set correctly in VL_Config.py.\n"
             "Please edit VL_HOST_DIR to point to the VirtualLab directory."))
 
     def __getstate__(self):
@@ -74,7 +74,7 @@ class VLSetup:
         This dundder method thus provides a workaround since __getstate__ gets called before pickling.
         Thus we can remove the offending attributes since they are not needed by the mpi processes.
 
-        Note: we do  not directly modify self.__dict__ but instead copy it and serialise the copy. This is
+        Note: we do  not directly modify self.__dict__ but instead copy it and serialize the copy. This is
         because we dont want to modify the object itself but instead send a modified version to each mpi process.
 
         """

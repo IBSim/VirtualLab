@@ -114,3 +114,52 @@ def check_valid_port(tcp_port):
         sys.exit(0)
     else:
         return tcp_port
+
+def host_to_container_path(filepath,vlab_dir_host,vlab_dir_cont = '/home/ibsim/VirtualLab'):
+    """
+    Function to Convert a path in the virtualLab directory on the host
+    to an equivalent path inside the container. since the vlab _dir is
+    mounted as /home/ibsim/VirtualLab inside the container.
+    Note: The filepath needs to be absolute and is converted
+    into a string before it is returned.
+    """
+    filepath=str(filepath)
+    #check the path is accessible inside the container
+    # that is it is relative to vlab_dir_host
+    if filepath.startswith(str(vlab_dir_host)):
+        # convert path to be relative to container not host
+        filepath = str(filepath).replace(str(vlab_dir_host), str(vlab_dir_cont))
+    elif filepath.startswith(vlab_dir_cont):
+        # path is already relative to container so do nothing
+        pass
+    else:    
+        raise FileNotFoundError(f"The path {filepath} is not accessible inside the Container.\n \
+         The path must start with {vlab_dir_host}.")
+
+    return filepath
+
+
+def container_to_host_path(filepath,vlab_dir_host,vlab_dir_cont='/home/ibsim/VirtualLab'):
+    """
+    Function to Convert a path inside the container
+    to an equivalent path on the host. since the vlab _dir is
+    mounted as /home/ibsim/VirtualLab inside the container.
+
+    Note: The filepath needs to be absolute and  is converted
+    into a string before it is returned.
+    """
+    filepath=str(filepath)
+    vlab_dir_host =str(vlab_dir_host)
+    #check the path is accessible outside the container
+    # that is it is relative to /home/ibsim/VirtualLab
+    if filepath.startswith(str(vlab_dir_cont)):
+        # convert path to be relative to host not container
+        filepath = str(filepath).replace(str(vlab_dir_cont), str(vlab_dir_host))
+    elif filepath.startswith(vlab_dir_host):
+        # path is already relative to host so do nothing
+        pass
+    else:
+        raise FileNotFoundError(f"The path {filepath} is not accessible outside the Container.\n \
+        The path must start with {vlab_dir_cont}.")
+
+    return filepath

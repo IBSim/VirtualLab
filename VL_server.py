@@ -27,7 +27,6 @@ from Scripts.Common.VLContainer.Container_Utils import (
     receive_data,
     setup_networking_log,
     log_net_info,
-    host_to_container_path,
     bind_list2string,
     path_change_binder,
     Exec_Container_Manager,
@@ -224,7 +223,7 @@ def main():
     Modules = Utils.load_module_config(vlab_dir)
     Manager = Modules["Manager"]
     # convert path from host to container
-    path = host_to_container_path(Run_file)
+    path = Utils.host_to_container_path(Run_file,vlab_dir)
     thread.start()
     # start VirtualLab
     lock.acquire()

@@ -27,6 +27,8 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR, mode):
     GVXR_parameters = [
         "Nikon_file",
         "Material_list",
+        "Amounts",
+        "Density",
         "energy_units",
         "Tube_Angle",
         "Tube_Voltage",
@@ -266,10 +268,17 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR, mode):
             GVXRDict["Headless"] = True
         else:
             GVXRDict["Headless"] = False
-        # check to material list is valid
-        Check_Materials(Parameters.Material_list)
-        GVXRDict["Material_list"] = Parameters.Material_list
 
+        # check to material list is valid
+        GVXRDict['Material_Types'] = Check_Materials(
+            Parameters.Material_list,
+            getattr(Parameters,"Amounts",[]),
+            getattr(Parameters,"Density",[])
+            )
+
+        GVXRDict["Material_list"] = Parameters.Material_list
+        GVXRDict["Amounts"] = getattr(Parameters,"Amounts",[])
+        GVXRDict["Density"] = getattr(Parameters,"Density",[])
         ########### Setup x-ray beam ##########
         # create dummy beam, detector and cad model
         # to get filled in with values either from Parameters OR Nikon file.

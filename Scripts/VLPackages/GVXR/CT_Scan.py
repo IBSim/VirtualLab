@@ -12,6 +12,9 @@ def CT_scan(**kwargs):
     ''' Main run function for GVXR'''
     #get kwargs or set defaults
     Material_list = kwargs['Material_list']
+    Material_Types = kwargs["Material_Types"]
+    Amounts = kwargs.get("Amounts",[])
+    Density = kwargs.get("Density",[])
     Headless = kwargs.get('Headless',False)
     num_projections = kwargs.get('num_projections',180)
     angular_step = kwargs.get('angular_step',1)
@@ -145,7 +148,18 @@ def CT_scan(**kwargs):
         gvxr.moveToCentre(label);
         gvxr.translateNode(label,kwargs['Model_PosX'],kwargs['Model_PosY'],kwargs['Model_PosZ'],kwargs['Model_Pos_units'])
         gvxr.scaleNode(label, kwargs['Model_ScaleX'], kwargs['Model_ScaleY'], kwargs['Model_ScaleZ'])
-        gvxr.setElement(label, Material_list[i]);
+        # set materials based on type
+        if Material_Types[i] == 'E':
+            gvxr.setElement(label, Material_list[i]);
+        elif Material_Types[i] == 'M':
+            gvxr.setMixture(label,Material_list[i],Amounts[i])
+            gvxr.setDensity(label,Density[i],"g/cm3")
+        elif Material_Types[i] == 'C':
+            gvxr.setCompound(label, Material_list[i])
+            gvxr.setDensity(label,Density[i],"g/cm3")
+        else:
+            raise GVXRError(f'Invalid material type {Material_Types[i]} must be one of E,M or C')
+        # add mesh to scene
         gvxr.addPolygonMeshAsInnerSurface(label)
         
     # set initial rotation

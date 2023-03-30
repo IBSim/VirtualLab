@@ -6,6 +6,7 @@ from operator import xor as xor_
 from functools import reduce
 import itertools
 import time
+import VLconfig as VLC
 
 class GVXRError(Exception):
     '''Custom error class to format error message in a pretty way.'''
@@ -154,18 +155,90 @@ def Read_Material_File(Material_file,mat_tags):
 
     return list(Materials_list)
 
-def Check_Materials(Mat_list):
-    """ Function to check the element name or number is one that GVXR recognises.
-        This is done by passing the string to the gvxr.getElementAtomicNumber(string).
-        This already has error handling functions so if the name is valid it will return
-        the atomic number (which we are not actually using) and if not it will 
-        throw an exception and print. "ERROR: Element (name:string) not found."
- """
-    from gvxrPython3 import gvxr
-    #import gvxrPython3 as gvxr
-    for Mat_value in Mat_list:
-        atomic_number = gvxr.getElementAtomicNumber(Mat_value)
+def Check_Materials(Mat_list,Amounts,Density):
+    """ 
+    Function to check the element name or number is one that GVXR recognizes.
+    Then create a list of strings for each materials corresponding type with 
+    E for element, M for mixture, and C for compound. This will then tell 
+    GVXR what to do with each material.
+    """
+    Mixture = True
+    mat_types = []        
+    for Material in Mat_list:
+    # Check mat_list for list of lists, This indicates that the user has defined a mixture
+    # as such we then need to check they have defined both amounts and Density
+    # otherwise Assume they have defined either elements or compounds
+        if isinstance(Material, list):
+            if not all(isinstance(x, int) for x in Material):
+                raise ValueError(f'Invalid mixture {Material}. When using a mixture of elements they must be all be ints.')
+            elif Amounts == []:
+                raise ValueError(f'When using a mixture of elements you must define but not GVXR.Amounts')
+            elif len(Mat_list) != len(Amounts):
+               raise ValueError(f'You have defined {len(Mat_list)} mixtures but {len(Amounts)} corresponding amounts. These must match')
+            else:
+                mat_types.append('M')
+
+        elif isinstance(Material, int):
+            check_element_num(Material)
+            mat_types.append('E')
+        elif isinstance(Material, str):
+            mtype = check_element_or_compound(Material)
+            mat_types.append(mtype)
+        else:
+           raise ValueError(f'Invalid material {Materail} of type {type(Materail)} must be an int or a string.')
+
+    # if mixture or compound have been used we need to check that the Density was defined for each
+    if any(s in mat_types for s in ('M','C')):
+        if Density == []:
+            raise ValueError(f'When using a mixture of elements or Compounds you must define GVXR.Density')
+        elif len(Mat_list) != len(Density):
+            raise ValueError(f'You have defined {len(Mat_list)} mixtures/compunds but {len(Density)} corresponding Densities. These must match')
+    
+    return mat_types
+
+def check_element_num(number:int):
+    '''.
+    Simple function to check if given element number is valid
+    Valid elements are ints between 1 and 100.  
+    '''
+    if  number < 0:
+        raise ValueError(f'Invalid Atomic number {number} must not be negative.')
+    elif number > 100:
+        raise ValueError(f'Invalid Atomic number {number} must be less than 100.')
+
     return
+
+def check_element_or_compound(Material:str):
+    '''
+    function to check if string is a element name, symbol or a compound.
+    Note: we have no good way of checking if the string is a valid compound.
+    As such we assume that if it is not an element name or symbol it must 
+    be a compound. in which case we are relying on GVXR to check if its valid.  
+    '''
+    import csv
+
+#  Open csv file containing names and symbols for elements 1 to 100 
+    csv_file = open(f'{VLC.VL_DIR_CONT}/Scripts/VLPackages/GVXR/ptable.csv','r')
+    z_num = []
+    element_names = []
+    symbols = []
+
+    # Read off and discard first line, to skip headers
+    csv_file.readline()
+
+# Split columns while reading
+    for a, b, c in csv.reader(csv_file, delimiter=','):
+    # Append each variable to a separate list
+        z_num.append(a)
+        element_names.append(b)
+        symbols.append(c)
+    
+    if Material in element_names or Material in symbols:
+        mtype = 'E'
+    else:
+        mtype = 'C'
+
+    return mtype
 
 def find_the_key(dictionary:dict, target_keys:str):
     """Function to pull out the keys of a dictionary as a list."""
@@ -229,81 +302,6 @@ def write_image3D(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
         im_output=f"{output_dir}/{output_name}_{I:0{digits}d}.{im_format}"
         im.save(im_output)
 
-
-# def InitSpectrum(Beam,Headless:bool=False):
-#     ''' Function to create x-ray beam from spectrum generated by spekpy.
-#     ====================================================================
-#     Input Pratmeters:
-#     -----------------
-#     Beam: Xray_Beam - dataclass to hold data related to xray beam.
-#     Headless: bool - flag to set if we want turn on/off matplot lib plots of spectrum data.
-#     '''
-    
-#     import spekpy as sp
-#     if (Beam.Tube_Voltage == 0.0):
-#         raise GVXRError('When using Spekpy you must define a Tube Voltage')
-
-#     kwargs = {'kvp':Beam.Tube_Voltage,'th':Beam.Tube_Angle}
-
-#     print("Generating Beam Spectrum:" )
-#     print("Tube Voltage (kV):", Beam.Tube_Voltage)
-#     print("Tube Angle (degrees):", Beam.Tube_Angle)
-
-#     if Beam.Tube_Voltage > 300.0:
-#         print(f"Warning: Beam Tube voltage exceeds 300Kv which is the max that spekpy supports. \n \
-#         Thus beam enegry has been set to a flat {Beam.Tube_Voltage} keV.")
-#         Beam.Energy = [Beam.Tube_Voltage]
-#         Beam.Intensity = [1000]
-#         Beam.Energy_units = 'keV'
-#         return Beam;
-#     s = sp.Spek(**kwargs) # Generate a spectrum
-
-#     if xor(Beam.Filter_ThicknessMM==None,Beam.Filter_Material==None):
-#         # only one of the two parameters has been set
-#         raise GVXRError(f'When using Spekpy with a filter you must define both Filter_Thickness and Material:\n \
-#         Filter_Thickness={Beam.Filter_ThicknessMM} \n \
-#         Filter_Material={Beam.Filter_Material}')
-
-#     elif (Beam.Filter_ThicknessMM!=None) and (Beam.Filter_Material!=None):
-#         # both have been correctly set so add filtering
-#         print(f"Applying {Beam.Filter_ThicknessMM} mm thick Filter of {Beam.Filter_Material}")
-#         s.filter(str(Beam.Filter_Material), float(Beam.Filter_ThicknessMM))
-#     else:
-#         # Neither have been set so do nothing.
-#         print("No Beam Filtering was applied")
-
-
-#     #units = "keV"
-#     k, f = s.get_spectrum(edges=True) # Get the spectrum
-#     if not Headless:
-#         import matplotlib.pyplot as plt # Import library for plotting
-#         plt.plot(k, f) # Plot the spectrum",
-#         plt.xlabel('Energy [keV]')
-#         plt.ylabel('Fluence per mAs per unit energy [photons/cm2/mAs/keV]')
-#         plt.show()
-
-#     max_energy = 0
-#     min_energy = 0
-#     spectrum={}
-#     for energy, count in zip(k, f):
-#         count = round(count)
-#         if count > 0:
-#             max_energy = max(max_energy, energy)
-#             min_energy = min(min_energy, energy)
-#             if energy in spectrum.keys():
-#                 spectrum[energy] += count
-#             else:
-#                 spectrum[energy] = count
-    
-#     if (Beam.Energy is not None) or (Beam.Intensity is not None):
-#         import warnings
-#         warnings.warn('You have defined Energies or Intensity'
-#          'whist also using Spekpy. These will be ignored and'
-#          'replaced with the Spekpy Values.') 
-#     Beam.Energy = list(spectrum.keys())
-#     Beam.Intensity = list(spectrum.values())
-#     Beam.Energy_units = 'keV'
-#     return Beam;
 
 def without_keys(d, keys):
     return {x: d[x] for x in d if x not in keys}

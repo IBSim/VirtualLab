@@ -153,3 +153,4 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8,angl
     #im = im.convert(convert_opt)
     im_output=f"{output_dir}/{output_name}_{angle_index:0{digits}d}.{im_format}"
     im.save(im_output)
+    im.close()

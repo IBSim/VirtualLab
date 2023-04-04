@@ -38,29 +38,21 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         im_format='tiff',Nikon=None,_Name=None):
     inputfile = f"{work_dir}/{Name}"
 
-    if Nikon:
-        Nikondata = NikonDataReader(file_name=Nikon)
-        ag = Nikondata.get_geometry()
-    else:
-        dist_source_center = 0-Beam[1]
-        dist_center_detector = 0+Detector[1]
+    dist_source_center = 0-Beam[1]
+    dist_center_detector = 0+Detector[1]
 
-        # calculate geometrical magnification
-        mag = (dist_source_center + dist_center_detector) / dist_source_center
+    # calculate geometrical magnification
+    mag = (dist_source_center + dist_center_detector) / dist_source_center
 
-        angles_deg =np.arange(0,(num_projections+1)*angular_step,angular_step)
-        angles_rad = angles_deg *(math.pi / 180)
-        ag = AcquisitionGeometry.create_Cone3D(source_position=Beam, detector_position=Detector, 
-        detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
-        rotation_axis_direction=[0,0,1])  \
-        .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
-        .set_angles(angles=angles_rad, angle_unit='radian')
+    angles_deg =np.arange(0,(num_projections+1)*angular_step,angular_step)
+    angles_rad = angles_deg *(math.pi / 180)
+    ag = AcquisitionGeometry.create_Cone3D(source_position=Beam, detector_position=Detector, 
+    detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
+    rotation_axis_direction=[0,0,1])  \
+    .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
+    .set_angles(angles=angles_rad, angle_unit='radian')
         
     ig = ag.get_ImageGeometry()
-    
-    #if not Headless:
-    #    breakpoint()
-    #    show_geometry(ag)
 
     
     im = TIFFStackReader(file_name=inputfile)

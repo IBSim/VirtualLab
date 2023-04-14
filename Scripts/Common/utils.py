@@ -10,7 +10,6 @@ class Method_base():
         self.clsname = str(VL.__class__.__name__)
         self._parsed_kwargs = VL._parsed_kwargs
         self.Containers_used = []
-        self.tcp_sock = VL.tcp_sock
         self._debug = VL._debug
         self.MethodName = ""
 

@@ -49,9 +49,12 @@ class VLSetup:
         # Unique ID
         git_id = self._git()
         self._ID = "{}_{}".format(git_id, self._time)
+
         data = {"msg": "VirtualLab started", "Cont_id": 1}
-        data_string = json.dumps(data)
-        Utils.send_data(self.tcp_sock, data)
+        #data_string = json.dumps(data)
+        sock = Utils.create_tcp_socket(self._tcp_port)
+        Utils.send_data(sock, data)
+        
         self.Logger(
             "\n############################\n"
             "### Launching VirtualLab ###\n"
@@ -250,8 +253,6 @@ class VLSetup:
             os.makedirs(self.TEMP_DIR)
         # Specify default settings
         self.Settings(**DefaultSettings)
-        # create socket for networking
-        self.tcp_sock = Utils.create_tcp_socket(self._tcp_port)
         self._AddMethod()
 
     def _SetMode(self, Mode="H"):

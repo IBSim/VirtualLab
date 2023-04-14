@@ -2,13 +2,23 @@ import sys
 import os
 import traceback
 import copy
-from types import SimpleNamespace as Namespace
+from types import SimpleNamespace as Namespace, MethodType
 import pickle
 from contextlib import redirect_stderr, redirect_stdout
 import numpy as np
 import time
-from Scripts.Common.tools import Paralleliser
-import VLconfig
+
+from subprocess import Popen, call
+import tempfile
+import logging
+import dill
+
+from pyina.launchers import MpiPool
+from pyina.tools import which_python, which_mpirun, which_strategy
+
+from Scripts.Common.VLContainer import Container_Utils as Utils
+from Scripts.Common.tools.Paralleliser import Paralleliser, _fn_wrap_kwargs
+
 
 def _time_fn(fn,*args,**kwargs):
     st = time.time()
@@ -36,7 +46,8 @@ def PoolWrap(fn,VL,Dict,*args,**kwargs):
             print("Running {}.\nOutput is piped to {}.\n".format(Name, LogFile),flush=True)
             LogDir = os.path.dirname(LogFile)
             os.makedirs(LogDir,exist_ok=True)
-            with open(LogFile,'w') as f:
+            with open(LogFile,'w') as f: pass # make blank file
+            with open(LogFile,'a') as f:
                 with redirect_stdout(f), redirect_stderr(f):
                     err = _time_fn(fn,VL,Dict,*args,**kwargs)
         else:
@@ -96,6 +107,126 @@ def PoolReturn(Dicts,Returners):
 
     return PlError
 
+
+def containermap(self, func, *args, **kwds):
+    log = logging.getLogger("mpi")
+    log.addHandler(logging.StreamHandler())
+    _SAVE = [False]
+
+    # set strategy
+    if self.scatter:
+        kwds['onall'] = kwds.get('onall', True)
+    else:
+        kwds['onall'] = kwds.get('onall', True) #XXX: has pickling issues
+    config = {}
+    config['program'] = which_strategy(self.scatter, lazy=True)
+
+    # serialize function and arguments to files
+    modfile = self._modularize(func)
+    argfile = self._pickleargs(args, kwds)
+    # Keep the above handles as long as you want the tempfiles to exist
+    if _SAVE[0]:
+        _HOLD.append(modfile)
+        _HOLD.append(argfile)
+    # create an empty results file
+    resfilename = tempfile.mktemp(dir=self.workdir)
+    # process the module name
+    modname = self._modulenamemangle(modfile.name)
+    # build the launcher's argument string
+    config['progargs'] = ' '.join([modname, argfile.name, \
+                                   resfilename, self.workdir])
+
+    #XXX: better with or w/o scheduler baked into command ?
+    #XXX: better... if self.scheduler: self.scheduler.submit(command) ?
+    #XXX: better if self.__launch modifies command to include scheduler ?
+    if _SAVE[0]:
+        self._save_in(modfile.name, argfile.name) # func, pickled input
+    # create any necessary job files
+    if self.scheduler: config.update(self.scheduler._prepare())
+    ######################################################################
+    # build the launcher command
+
+    command = self._launcher(config)
+
+    log.info('(skipping): %s' % command)
+    if log.level == logging.DEBUG:
+        error = False
+        res = []
+    else:
+
+        try:
+            error = Utils.MPI_Container({'ContainerName':'Manager'}, command)    
+            #subproc = Popen([command],shell=True)
+            #error = subproc.wait()  # block until all done
+
+
+            # just to be sure... here's a loop to wait for results file ##
+            maxcount = self.timeout; counter = 0
+            #print "before wait"
+            while not os.path.exists(resfilename):
+                call('sync', shell=True)
+                from time import sleep
+                sleep(1); counter += 1
+                if counter >= maxcount:
+                    print("Warning: exceeded timeout (%s s)" % maxcount)
+                    break
+            #print "after wait"
+            # read result back
+            res = dill.load(open(resfilename,'rb'))
+
+            #print "got result"
+        except:
+            error = True
+           
+    ######################################################################
+
+    # cleanup files
+    if _SAVE[0] and log.level == logging.WARN:
+        self._save_out(resfilename) # pickled output
+    self._cleanup(resfilename, modfile.name, argfile.name)
+    if self.scheduler and not _SAVE[0]: self.scheduler._cleanup()
+    if error:
+        raise IOError("launch failed: %s" % command)
+    return res
+
+
+def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True, **kwargs):
+  
+    NbEval = len(args_list)
+
+    workdir = kwargs.get('workdir',None)
+    addpath = kwargs.get('addpath',[])
+    source = kwargs.get('source',True)
+
+    # Ensure that sys.path is the same for pyinas MPI subprocess
+    PyPath_orig = os.environ.get('PYTHONPATH',"")
+
+    if addpath:
+        # Update PYTHONPATH with addpath for matching environment
+        os.environ["PYTHONPATH"] = "{}:{}".format(":".join(addpath), PyPath_orig)
+
+    args_list = list(zip(*args_list)) # change format of args for this
+    # Run functions in parallel of N using pyina
+    pool = MpiPool(nodes=nb_parallel, source=source, workdir=workdir)
+    pool.map = MethodType(containermap, pool)
+
+
+    if kwargs_list == []:
+        Res = pool.map(fnc, *args_list,onall=onall)
+    else:
+        # pass kwargs as additional args which is picked up by _fn_wrap_kwargs
+        fncs = [fnc]*NbEval 
+        Res = pool.map(_fn_wrap_kwargs, fncs, *args_list, kwargs_list, onall=onall)
+
+    Res = list(Res)
+
+    # Reset environment back to original
+    os.environ["PYTHONPATH"] = PyPath_orig
+    
+    return Res
+
+
+
 def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
 
     if args_list:
@@ -112,10 +243,13 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
     if not N: N = VL._NbJobs
     if not launcher: launcher = VL._Launcher
 
+    VL_dict = VL.__dict__.copy()
+    VL_dict = Namespace(**VL_dict)
+
     # create list fof arguments
     PoolArgs = []
     for i,_dict in enumerate(analysis_data):
-        a = [fnc,VL,_dict]
+        a = [fnc,VL_dict,_dict]
         # add args_list info, if it exists
         if args_list:
             _arg = args_list[i]
@@ -129,8 +263,18 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
         elif launcher.lower() in ('mpi','mpi_worker'):
             kwargs = {'workdir':VL.TEMP_DIR,
                       'addpath':set(sys.path)-set(VL._pypath)}
+            VL = Namespace()
         else: kwargs = {}
-        Res = Paralleliser(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, method=launcher, nb_parallel=N,**kwargs)
+
+   
+        if launcher.lower().startswith('mpi'):
+            if launcher.lower() == 'mpi' or N==1: onall = True
+            else: onall = False
+            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=onall, **kwargs)
+        else:
+            Res = Paralleliser(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, method=launcher, nb_parallel=N,**kwargs)
+        
+        
     except KeyboardInterrupt as e:
         VL.Cleanup()
 

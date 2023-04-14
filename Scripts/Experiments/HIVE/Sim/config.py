@@ -28,7 +28,7 @@ class Method(Method_default):
         # ==========================================================================
         # Run pre aster step
         if RunPreAster and 'PreFile' in SimDict:
-            VL.Logger("Running PreAster for '{}'\n".format(Parameters.Name),Print=True)
+            print("Running PreAster for '{}'\n".format(Parameters.Name))
             os.makedirs(SimDict['PREASTER'],exist_ok=True)
 
             PreAsterFnc = VLF.GetFunc(*SimDict['PreFile'])
@@ -40,7 +40,7 @@ class Method(Method_default):
         # Run coolant analysis
         HT_File = "{}/HeatTransfer.dat".format(SimDict['PREASTER'])
         if RunCoolant:
-            VL.Logger("Running Coolant for '{}'\n".format(Parameters.Name),Print=True)
+            print("Running Coolant for '{}'\n".format(Parameters.Name))
             os.makedirs(SimDict['PREASTER'],exist_ok=True)
 
             CoolantFnc = VLF.GetFunc("{}/Coolant_1D.py".format(VL.SIM_SIM),'Single')
@@ -53,7 +53,7 @@ class Method(Method_default):
         # Run ERMES analysis
         ERMES_ResFile = "{}/ERMES.rmed".format(SimDict['PREASTER'])
         if RunERMES:
-            VL.Logger("Running ERMES for '{}'\n".format(Parameters.Name),Print=True)
+            print("Running ERMES for '{}'\n".format(Parameters.Name))
             os.makedirs(SimDict['PREASTER'],exist_ok=True)
             SimDict['ERMES_ResFile'] = ERMES_ResFile
             ERMESFnc = VLF.GetFunc("{}/EM_Analysis.py".format(VL.SIM_SIM),'ERMES_linear')
@@ -64,7 +64,7 @@ class Method(Method_default):
         # ==========================================================================
         # Run aster step
         if RunAster and hasattr(Parameters,'AsterFile'):
-            VL.Logger("Running Aster for '{}'\n".format(Parameters.Name),Print=True)
+            print("Running Aster for '{}'\n".format(Parameters.Name))
             os.makedirs(SimDict['ASTER'],exist_ok=True)
 
             #=======================================================================
@@ -150,7 +150,7 @@ class Method(Method_default):
         # ==========================================================================
         # Run post aster step
         if RunPostAster and 'PostFile' in SimDict:
-            VL.Logger("Running PostAster for '{}'\n".format(Parameters.Name),Print=True)
+            print("Running PostAster for '{}'\n".format(Parameters.Name))
             os.makedirs(SimDict['POSTASTER'],exist_ok=True)
 
             PostAsterFnc = VLF.GetFunc(*SimDict['PostFile'])

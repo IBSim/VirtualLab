@@ -31,6 +31,7 @@ from Scripts.Common.VLContainer.Container_Utils import (
     bind_list2string,
     path_change_binder,
     Exec_Container_Manager,
+    MPI_Container_Manager,
     get_vlab_dir,
     update_container,
 )
@@ -327,8 +328,49 @@ def handle_messages(
                 # stdout is a file path within VL_Manager so need to get the path on the host
                 stdout = path_change_binder(stdout, bind_points_default)
                 kwargs["stdout"] = stdout
-
+                
             RC = Exec_Container_Manager(cont_info, *args, **kwargs)
+            send_data(client_socket, RC, debug)
+
+        elif event == "MPI":
+            # will need to add option for docker when fixed
+            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs"
+
+            cont_name = rec_dict["Cont_name"]
+            cont_info = VL_MOD[cont_name]
+
+            container_path = "{}/{}".format(vlab_dir, cont_info["Apptainer_file"])
+            cont_info["container_path"] = container_path
+            cont_info["container_cmd"] = container_cmd
+            cont_info["bind"]=bind_points_default
+
+            # check apptainer sif file exists and if not build from docker version
+            if not os.path.exists(container_path):
+                # sif file doesn't exist
+                if "Docker_url" in cont_info:
+                    print(
+                        f"Apptainer file {container_path} does not appear to exist so building. This may take a while."
+                    )
+                    try:
+                        proc = subprocess.check_call(
+                            f"apptainer build "
+                            f'{container_path} docker://{cont_info["Docker_url"]}:{cont_info["Tag"]}',
+                            shell=True,
+                        )
+                    except subprocess.CalledProcessError as E:
+                        print(E.stderr)
+                        raise E
+
+                else:
+                    print(
+                        f"Apptainer file {container_path} does not exist and no information about its location is provided.\n Exiting"
+                    )
+                    sys.exit()
+
+            args = rec_dict.get("args", ())
+            kwargs = rec_dict.get("kwargs", {})
+
+            RC = MPI_Container_Manager(cont_info, *args, **kwargs)
             send_data(client_socket, RC, debug)
 
         elif event == "Build":

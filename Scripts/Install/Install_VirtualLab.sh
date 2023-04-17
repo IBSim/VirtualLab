@@ -387,7 +387,7 @@ else
 fi
 #END
 
-sudo -u ${SUDO_USER:-$USER} git checkout BT-Container
+sudo -u ${SUDO_USER:-$USER} git checkout RL_AddML
 ### Run initial VirtualLab setup
 echo
 
@@ -453,15 +453,15 @@ sudo chown -R ${SUDO_USER:-$USER} $VL_DIR
 echo
 ### Build VirtualLab documentation using sphinx
 echo "Building documentation"
-cd $VL_DIR/docs
-make clean
-make html
-sudo chown ${SUDO_USER} -R $VL_DIR/docs/build
-sudo chgrp ${SUDO_USER} -R $VL_DIR/docs/build
-sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
-cd $VL_DIR
-rm docs.html
-sudo -u ${SUDO_USER:-$USER} ln -s docs/build/html/index.html docs.html
+#cd $VL_DIR/docs
+#make clean
+#make html
+#sudo chown ${SUDO_USER} -R $VL_DIR/docs/build
+#sudo chgrp ${SUDO_USER} -R $VL_DIR/docs/build
+#sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
+#cd $VL_DIR
+#rm docs.html
+#sudo -u ${SUDO_USER:-$USER} ln -s docs/build/html/index.html docs.html
 END
 
 ### Currently can only run test as SU (therefore output files protected)

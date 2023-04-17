@@ -229,7 +229,7 @@ fi
 
 echo
 ### Build VirtualLab documentation using sphinx
-source $VL_DIR/Scripts/Install/Install_docs.sh
+#source $VL_DIR/Scripts/Install/Install_docs.sh
 
 
 #: <<'END'

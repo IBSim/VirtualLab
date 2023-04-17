@@ -43,4 +43,4 @@ RUN sudo chmod 755 /home/ibsim/patch.sh && \
     sudo ./Install_VirtualLab.sh -P c -y
 EXPOSE 9000
 USER root
-RUN mkdir /home/ibsim/VirtualLab/.log
+# RUN mkdir /home/ibsim/VirtualLab/.log

@@ -38,7 +38,7 @@ sudo rm Miniconda3-latest-Linux-x86_64.sh
 
 # Download and install VirtualLab and its requirements
 RUN sudo chmod 755 /home/ibsim/patch.sh && \
-    wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/BT-Container/Scripts/Install/Install_VirtualLab.sh && \
+    wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Install_VirtualLab.sh && \
     chmod 755 Install_VirtualLab.sh && \
     sudo ./Install_VirtualLab.sh -P c -y
 EXPOSE 9000

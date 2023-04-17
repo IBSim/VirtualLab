@@ -387,7 +387,7 @@ else
 fi
 #END
 
-sudo -u ${SUDO_USER:-$USER} git checkout RL_AddML
+sudo -u ${SUDO_USER:-$USER} git checkout dev
 ### Run initial VirtualLab setup
 echo
 

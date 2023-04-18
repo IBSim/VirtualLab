@@ -6,3 +6,5 @@ pathos==0.2.7
 requests
 pytorch
 gpytorch
+natsort
+pandas

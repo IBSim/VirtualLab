@@ -1,4 +1,6 @@
 import os
+import sys
+
 import numpy as np
 import torch
 from scipy.stats import norm
@@ -34,7 +36,7 @@ def Adaptive(model,AdaptDict,bounds,Show=0):
                     constraint = ConstrainRad(OrigCandidates,constr_rad)
                 else: constraint = []
 
-                score,srtCandidates = Adaptive_SLSQP(Candidates,model,Method,[[0,1]]*NbInput,
+                score,srtCandidates = Adaptive_SLSQP(Candidates,model,Method,bounds,
                                                     constraints=constraint,
                                                     scoring='sum',sort=False)
 
@@ -397,7 +399,7 @@ def _Caller_slsqp(Candidates,fn,model,scoring='sum'):
 # ==============================================================================
 # Adaptive routines implemented for slsqp optimiser
 def MMSE_Grad(Candidates,model):
-    dvar, var = model.Gradient_variance(Candidates)
+    var, dvar = model.Gradient_variance(Candidates)
     var, dvar = var.detach().numpy(),dvar.detach().numpy()
     return var,dvar
 

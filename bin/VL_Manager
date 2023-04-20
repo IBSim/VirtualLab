@@ -30,7 +30,7 @@ if [[ $# == 0 ]]; then
   echo "Error: VirtualLab requires an option."
   exit_abnormal
 fi
-while getopts ":f:h:k:" options; do
+while getopts ":f:h:k:P:" options; do
   case "${options}" in
     k)
       Args="$Args ${OPTARG}"
@@ -44,6 +44,9 @@ while getopts ":f:h:k:" options; do
       ;;
     h)  # display Help
       exit_abnormal
+      ;;
+    P) # port number
+      export VL_TCP_PORT=${OPTARG}
       ;;
     :)  # If expected argument omitted:
       echo "Error: Option -${OPTARG} requires an argument."

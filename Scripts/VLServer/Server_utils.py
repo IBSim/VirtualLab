@@ -114,3 +114,8 @@ def check_valid_port(tcp_port):
         sys.exit(0)
     else:
         return tcp_port
+        
+        
+def get_pwd():
+    import os
+    return os.environ["PWD"]

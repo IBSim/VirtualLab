@@ -97,11 +97,6 @@ def path_change_binder(path, bindings, path_inside=True):
     Returns new path or None
     """
 
-    if path_inside:
-        check_ix, swap_ix = 1, 0
-    else:
-        check_ix, swap_ix = 0, 1
-
     for outside,inside in bindings.items():
         if path_inside:
             check_mount,swap_mount = inside, outside

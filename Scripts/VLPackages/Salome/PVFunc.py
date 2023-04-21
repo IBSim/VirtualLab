@@ -1,3 +1,4 @@
+import types
 
 import numpy as np
 import pvsimple
@@ -182,11 +183,106 @@ def CompareMultiFile(medfiles, resnames, filenames,compare_ix=0, camera=None, re
         ImageCapture(renderView1,meddisplay,resname,fname,CB=CB,TF=_TF,Capture=Capture)
         pvsimple.Hide(medfile, renderView1)
 
-def Compare(med_result, resnames, filenames, **kwargs):
-    if type(med_result)==str:
-        # results are in a single file
-        CompareSingleFile(med_result, resnames, filenames,**kwargs)
-    elif type(med_result) in (tuple,list):
+def Compare(results, resnames, filenames, **kwargs):
+    if type(results) in (tuple,list):
         # results are in a multiple files
-        CompareMultiFile(med_result, resnames, filenames,**kwargs)
-            
+        CompareMultiFile(results, resnames, filenames,**kwargs)
+    else :
+        # a single results file with many results
+        CompareSingleFile(results, resnames, filenames,**kwargs)            
+
+def DifferenceSingleFile(medfile, resnames, filename, camera=None, render_view=None, absolute_difference=False, 
+                         res_type='Surface', diff_resname='Difference', zero_centre=False, CB={}, TF={}, Capture={}):
+    if len(resnames) != 2:
+        # incorrect number of result names given
+        raise Exception("Number of results must be equal to 2")
+
+    pvsimple.HideAll()
+
+    # get render view
+    if render_view is not None:
+        renderView1 = render_view # use the render view provided
+    else:
+        renderView1 = GetRenderView(camera) # get renderview
+
+    # calculate difference
+    calculator1 = pvsimple.Calculator(Input=medfile)
+    func_str = '{}-{}'.format(*resnames)
+    if absolute_difference:
+        func_str = 'abs({})'.format(func_str)
+    calculator1.Function = func_str
+    calculator1.ResultArrayName = diff_resname
+
+    meddisplay = pvsimple.Show(calculator1, renderView1)
+    meddisplay.Representation = res_type
+
+    # enable data to be centred around zero
+    if zero_centre:
+        Range = DataRange(calculator1,diff_resname)
+        maxabs = np.abs(DataRange).max()
+        DataRange = [-maxabs,maxabs ]
+        _TF = {'RescaleTransferFunction':DataRange,**TF}
+    else:
+        _TF = {**TF}
+
+    # capture image
+    ImageCapture(renderView1,meddisplay,diff_resname,filename,CB=CB,TF=_TF,Capture=Capture)
+
+    # hide result
+    meddisplay = pvsimple.Hide(calculator1, renderView1) 
+
+def DifferenceMultiFile(medfiles, resnames, filename, camera=None, render_view=None, absolute_difference=False, 
+                         res_type='Surface', diff_resname='Difference', CB={}, TF={}, Capture={}):
+    # perform checks
+    if len(medfiles) != 2:
+        # lengths of result names and filenames are not compatible
+        raise Exception("Number of results must be equal to 2")
+
+    if type(resnames)==str:
+        resnames = [resnames,'{}_input_1'.format(resnames)]
+    elif type(resnames) in (list,tuple) and len(resnames) !=2:
+        # lengths of resnames and results must be the same length
+        raise Exception("Lengths of results and result names must be equal")
+    
+    pvsimple.HideAll()
+
+    # get render view
+    if render_view is not None:
+        renderView1 = render_view # use the render view provided
+    else:
+        renderView1 = GetRenderView(camera) # get renderview
+
+    # calculate difference
+    appendAttributes1 = pvsimple.AppendAttributes(Input=medfiles)
+    calculator1 = pvsimple.Calculator(Input=appendAttributes1)
+
+    func_str = '{}-{}'.format(*resnames)
+    if absolute_difference:
+        func_str = 'abs({})'.format(func_str)
+    calculator1.Function = func_str
+    calculator1.ResultArrayName = diff_resname
+
+    # enable data to be centred around zero
+    DataRange = DataRange(calculator1,diff_resname)
+    if zero_centre:
+        maxabs = np.abs(DataRange).max()
+        DataRange = [-maxabs,maxabs ]
+    _TF = {'RescaleTransferFunction':DataRange,**TF}
+
+
+    meddisplay = pvsimple.Show(calculator1, renderView1)
+    meddisplay.Representation = res_type
+
+    # capture image
+    ImageCapture(renderView1,meddisplay,diff_resname,filename,CB=CB,TF=_TF,Capture=Capture)
+
+    # hide result
+    meddisplay = pvsimple.Hide(calculator1, renderView1)     
+
+def Difference(results, resnames, filenames, **kwargs):
+    if type(results) in (tuple,list):
+        # results are in a multiple files
+        DifferenceMultiFile(results, resnames, filenames,**kwargs)
+    else :
+        # a single results file with many results
+        DifferenceSingleFile(results, resnames, filenames,**kwargs)     

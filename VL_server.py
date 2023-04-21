@@ -109,6 +109,12 @@ def main():
         default=9000,
         type=int,
     )
+    parser.add_argument(
+        "-B",
+        "--bind_points",
+        help="Additional files/directories to mount to containers.",
+        default='',
+    )    
     # parser.add_argument(
     #     "-V",
     #     "--version",
@@ -159,11 +165,32 @@ def main():
                             str(vlab_dir):"/home/ibsim/VirtualLab",
                           }
 
+    # Add present working directory to the list of bind points
     pwd_dir = Utils.get_pwd()
     if pwd_dir not in bind_points_default:
+        # add pwd_dir to the bind points list
         bind_points_default[pwd_dir] = pwd_dir
     else:
+        # if already bound set pwd to the directory inside the container
         pwd_dir = bind_points_default[pwd_dir]
+
+
+    for _bind in args.bind_points.split(','):
+        _bind_split = _bind.split(':')
+        if len(_bind_split)==1:
+            # same directory outside and inside
+            host_path = cont_path = _bind_split[0]
+        elif len(_bind_split)==2:
+            host_path, cont_path = _bind_split
+        else:
+            print("****************************************************************")
+            print("Error: Unable to understand bind {}".format(_bind))
+            print("****************************************************************")
+            sys.exit(1)
+
+        if host_path not in bind_points_default:
+            bind_points_default[host_path] = cont_path           
+
 
    
     # set flag to run tests instate of the normal run file

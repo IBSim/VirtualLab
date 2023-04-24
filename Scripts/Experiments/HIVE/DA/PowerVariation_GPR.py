@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from types import SimpleNamespace as Namespace
 import torch
 import gpytorch
-from PIL import Image
 
 from VLFunctions import ReadData, ReadParameters
 from Scripts.Common.ML import ML, Adaptive, GPR, NN

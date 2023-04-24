@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from scipy.stats import norm
 
-from Scripts.Common.Optimisation import slsqp_multi, GA
+from Scripts.Common.Optimisation import slsqp_multi # GA
 
 # ==============================================================================
 def Adaptive(model,AdaptDict,bounds,Show=0):

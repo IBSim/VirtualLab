@@ -1,3 +1,5 @@
+import os
+
 def ContainerError(out, err):
     """Custom function to format error message in a pretty way."""
     Errmsg = (
@@ -117,5 +119,21 @@ def check_valid_port(tcp_port):
         
         
 def get_pwd():
-    import os
     return os.environ["PWD"]
+    
+def filetodict(filepath):
+    with open(filepath,'r') as f:
+        contents = f.readlines()
+
+    info = {}
+    for line in contents:
+        if line.startswith('#'): continue
+        data = line.split('=')
+        if len(data) !=2: continue
+        varname, value = data
+        value = (value.strip()).strip('"')
+        info[varname] = value
+    
+    return info
+
+    

@@ -69,10 +69,9 @@ def check_gridsize(gridsize):
             )
 
 
-def check_padding(gridsize, Output_Resolution):
+def check_padding(Output_Resolution):
     """
-    Check that Output_Resolution is a list of 3 non-zero positive integers
-    and is not smaller than Gridsize.
+    Check that Output_Resolution is a list of 3 non-zero positive integers.
     """
     if not isinstance(Output_Resolution, list):
         raise TypeError("Invalid Output_Resolution. Must be a list.")
@@ -88,11 +87,6 @@ def check_padding(gridsize, Output_Resolution):
             raise TypeError(
                 f"Invalid Output_Resolution {j}. Must be an integer value that is"
                 "greater than 0."
-            )
-        if j < gridsize[i]:
-            raise TypeError(
-                f"Invalid Output_Resolution {j}. This is smaller than the "
-                f"corresponding Gridsize {gridsize[i]}"
             )
 
 
@@ -170,34 +164,78 @@ def check_voxinfo(
     return Vox_info
 
 
-def crop_center(img, cropx, cropy, cropz):
+def crop_center(img, outresx, outresy, outresz, rm_start=True):
     """
     Take a 3D array and crop it from the centre in 3D.
-    cropx, cropy, cropz represents how many rows you
-    wish to drop in each dimension.
+    outresx, outresy, outresz represents your desired dims in x,y and z.
 
-    e.g.:
-    cropx,cropy,cropz represents how many rows you wish
-    to drop in each dimension.
+    Note if these are smaller than the corresponding dimension of img that 
+    dimension will be unchanged.
 
-    so cropx = 3 means drop the first and last two rows in x
+    Also Note: ideally we want to remove an equal number of values from the start and 
+    end of each dimension. However this is obviously impossible if the difference 
+    between the current and desired dimension is not even. In which case we have 1 
+    additional value to remove. Thus we have provided an extra param rm_start.
+    
+    This is a bool to control where to remove the "extra" value from. If True (the default)
+    it removes the it from the start of the dim. If False we remove it from the end.
 
     """
-    y, x, z = img.shape
+    x, y, z = img.shape
 
-    if x < cropx:
+# don't crop anything if output res is greater than the image current resolution in that dim.
+    if outresx > x :
         cropx = 0
-    if y < cropy:
+        remx = 0
+    else:
+    # otherwise drop an equal number of values from each side
+        cropx = (x - outresx)//2
+        if  (x - outresx) % 2 == 0:
+            remx = 0
+        else:
+        # difference is odd so we need to remove an additional value from 
+        # either the right of left hand side. 
+            remx = 1
+        
+    if outresy > y:
         cropy = 0
-    if z < cropz:
-        cropz = 0
+        remy = 0
+    else:
+        cropy = (y - outresy)//2
+        if  (y - outresy) % 2 == 0:
+            remy = 0
+        else:
+            remy = 1
 
-    startx = x // 2 - cropx // 2
-    starty = y // 2 - cropy // 2
-    startz = z // 2 - cropz // 2
-    return img[
-        startx : startx + cropx, starty : starty + cropy, startz : startz + cropz
-    ]
+    if outresz > z:
+        cropz = 0
+        remz = 0
+    else:
+        cropz = (z - outresz)//2
+        if  (z - outresz) % 2 == 0:
+            remz = 0
+        else:
+            remz = 1
+    
+    startx = cropx
+    stopx = x - cropx
+    starty = cropy
+    stopy = y - cropy
+    startz = cropz
+    stopz = z - cropz
+
+    if rm_start:    
+        # remove additional value from the start
+        startx = startx + remx
+        starty = starty + remy
+        startz = startz + remz
+    else:
+    # remove additional value from the end
+        stopx = stopx - remx
+        stopy = stopy - remy
+        stopz = stopz - remz
+
+    return img[startx:stopx, starty:stopy, startz:stopz]
 
 
 def padding(array, xx, yy, zz):
@@ -210,13 +248,23 @@ def padding(array, xx, yy, zz):
     """
 
     h, w, l = array.shape
-
-    a = (xx - h) // 2
-    aa = xx - a - h
-    b = (yy - w) // 2
-    bb = yy - b - w
-
-    c = (zz - l) // 2
-    cc = zz - c - l
+    if h < xx:
+        a = (xx - h) // 2
+        aa = xx - a - h
+    else:
+        a = 0
+        aa =0
+    if w < yy:    
+        b = (yy - w) // 2
+        bb = yy - b - w
+    else:
+        b = 0
+        bb =0
+    if l < zz:
+        c = (zz - l) // 2
+        cc = zz - c - l
+    else:
+        c = 0
+        cc = 0
 
     return np.pad(array, pad_width=((a, aa), (b, bb), (c, cc)), mode="constant")

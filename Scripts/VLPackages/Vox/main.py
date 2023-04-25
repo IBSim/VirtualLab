@@ -10,7 +10,7 @@ import tifffile as tf
 import meshio
 from CudaVox import run
 import pandas as pd
-from utill import check_greyscale, find_the_key, check_voxinfo, padding, check_padding
+from utill import check_greyscale, find_the_key, check_voxinfo, padding, check_padding, crop_center
 
 
 def voxelise(input_file, output_file, **kwargs):
@@ -226,14 +226,19 @@ def voxelise(input_file, output_file, **kwargs):
         )
     ).astype("uint8")
     if Output_Resolution != None:
-        check_padding(gridsize, Output_Resolution)
+        check_padding(Output_Resolution)
         print(
             f"padding final output image to x = {Output_Resolution[0]}, "
             f"y = {Output_Resolution[1]}, z={Output_Resolution[2]}"
         )
+        # first pad any dims that are less then output_res then crop any that are larger.
         vox = padding(
             vox, Output_Resolution[0], Output_Resolution[1], Output_Resolution[2]
         )
+        vox = crop_center(
+            vox, Output_Resolution[0], Output_Resolution[1], Output_Resolution[2]
+        )
+
     write_image(output_file, vox, im_format, Orientation)
     # write resultant 3D NP array as tiff stack
 
@@ -265,15 +270,15 @@ def write_image(output_file, vox, im_format=None, Orientation="XY"):
     else:
         im_output = "{}.tiff".format(output_file)
         if Orientation == "XY":
-            with tf.TiffWriter(im_output) as f:
+            with tf.TiffWriter(im_output,bigtiff=True) as f:
                 for I in range(0, np.shape(vox)[2]):
                     f.write(vox[:, :, I], contiguous=True)
         elif Orientation == "XZ":
-            with tf.TiffWriter(im_output) as f:
+            with tf.TiffWriter(im_output,bigtiff=True) as f:
                 for I in range(0, np.shape(vox)[1]):
                     f.write(vox[:, I, :], contiguous=True)
         elif Orientation == "YZ":
-            with tf.TiffWriter(im_output) as f:
+            with tf.TiffWriter(im_output,bigtiff=True) as f:
                 for I in range(0, np.shape(vox)[0]):
                     f.write(vox[I, :, :], contiguous=True, photometric="minisblack")
         else:

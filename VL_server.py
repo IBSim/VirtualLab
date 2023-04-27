@@ -235,13 +235,13 @@ def main():
         Apptainer_file = f"{vlab_dir}/{Manager['Apptainer_file']}"
         if not os.path.exists(Apptainer_file):
             update_container(Manager, vlab_dir)
-        else:
-            proc = subprocess.Popen(
-                f"apptainer exec --contain --writable-tmpfs \
-                            --bind {bind_str} {Apptainer_file} "
-                f'{Manager["Startup_cmd"]} {options} -f {path} ',
-                shell=True,
-            )
+        
+        proc = subprocess.Popen(
+            f"apptainer exec --contain --writable-tmpfs \
+                        --bind {bind_str} {Apptainer_file} "
+            f'{Manager["Startup_cmd"]} {options} -f {path} ',
+            shell=True,
+        )
     else:
         # Assume using Docker
         proc = subprocess.Popen(

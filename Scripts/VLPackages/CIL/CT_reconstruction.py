@@ -10,7 +10,6 @@ from cil.processors import TransmissionAbsorptionConverter
 from cil.utilities.display import show_geometry
 from cil.recon import FDK
 from cil.io import TIFFStackReader, NikonDataReader
-from Scripts.VLPackages.GVXR.GVXR_utils import write_image
 class GPUError(Exception): 
     def __init__(self, value): 
         self.value = value
@@ -41,10 +40,7 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
     dist_source_center = 0-Beam[1]
     dist_center_detector = 0+Detector[1]
 
-    # calculate geometrical magnification
-    mag = (dist_source_center + dist_center_detector) / dist_source_center
-
-    angles_deg =np.arange(0,(num_projections+1)*angular_step,angular_step)
+    angles_deg =np.arange(0,(num_projections)*angular_step,angular_step)
     angles_rad = angles_deg *(math.pi / 180)
     ag = AcquisitionGeometry.create_Cone3D(source_position=Beam, detector_position=Detector, 
     detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
@@ -68,7 +64,7 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
     for I in range(0,recon_shape[0]):
         r_slice = recon.get_slice(vertical=I)
         r_slice = r_slice.as_array()
-        write_image(f'{work_dir}/../CIL_Images/{Name}',r_slice,bitrate=32,angle_index=I);
+        write_image(f'{work_dir}/../CIL_Images/{Name}',r_slice,bitrate=32,slice_index=I);
 
     return
 
@@ -115,34 +111,40 @@ def CT_Recon_2D(work_dir,Name,Beam,Detector,Model,Pix_X,Spacing_X,
     write_image(f'{work_dir}/../CIL_Images/{Name}',recon,bitrate=32);
     return
 
-def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8,angle_index=0):
+def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate=8,slice_index=0):
     from PIL import Image, ImageOps
     import os
+    import tifffile as tf
     output_name = os.path.basename(os.path.normpath(output_dir))
     os.makedirs(output_dir, exist_ok=True)
-    #calcualte number of digits in max number of images for formating
-    import math
-    if angle_index > 0:
-        digits = int(math.log10(angle_index))+1
-    elif angle_index == 0:
-        digits = 1
-    else:
-        raise ValueError('Angle_index for write image must be a non negative int')
+    if im_format:
+        #calcualte number of digits in max number of images for formating
+        import math
+        if slice_index > 0:
+            digits = int(math.log10(slice_index))+1
+        elif slice_index == 0:
+            digits = 1
+        else:
+            raise ValueError('Slice_index for write image must be a non negative int')
 
-    if bitrate == 8:
-        vox *= 255.0/vox.max()
-        convert_opt='L'
-    elif bitrate == 16:
-        vox *= 65536/vox.max()
-        convert_opt='I;16'
-    elif bitrate == 32:
-        convert_opt='F'
-    else:
-        print("warning: bitrate not recognised assuming 8-bit greyscale")
-        convert_opt='L'
+        if bitrate == 8:
+            vox *= 255.0/vox.max()
+            convert_opt='L'
+        elif bitrate == 16:
+            vox *= 65536/vox.max()
+            convert_opt='I;16'
+        elif bitrate == 32:
+            convert_opt='F'
+        else:
+            print("warning: bitrate not recognised assuming 8-bit greyscale")
+            convert_opt='L'
 
-    im = Image.fromarray(vox)
-    #im = im.convert(convert_opt)
-    im_output=f"{output_dir}/{output_name}_{angle_index:0{digits}d}.{im_format}"
-    im.save(im_output)
-    im.close()
+        im = Image.fromarray(vox)
+        #im = im.convert(convert_opt)
+        im_output=f"{output_dir}/{output_name}_{slice_index:0{digits}d}.{im_format}"
+        im.save(im_output)
+        im.close()
+    else:
+        # write to tiff stack
+        im_output=f"{output_dir}/{output_name}.tiff"
+        tf.imwrite(im_output,vox,bigtiff=True, append=True)

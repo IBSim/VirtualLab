@@ -75,20 +75,14 @@ class Method(Method_base):
                     Parameters.Beam_PosY,
                     Parameters.Beam_PosZ,
                 ]
-            else:
-                CILdict["Beam"] = [0,0,0]
 
             if hasattr(Parameters, "Spacing_X"):
                 warn_Nikon(use_nikon,"Spacing_X")
                 CILdict["Spacing_X"] = Parameters.Spacing_X
-            else:
-                CILdict["Spacing_X"] = 0.5
 
             if hasattr(Parameters, "Spacing_Y"):
                 warn_Nikon(use_nikon,"Spacing_Y")
                 CILdict["Spacing_Y"] = Parameters.Spacing_Y
-            else:
-                CILdict["Spacing_Y"] = 0.5
 
             if hasattr(Parameters, "Detect_PosX") and hasattr(Parameters, "Detect_PosY") and hasattr(Parameters, "Detect_PosZ"):
                 warn_Nikon(use_nikon,"Detect_Pos")
@@ -97,8 +91,6 @@ class Method(Method_base):
                     Parameters.Detect_PosY,
                     Parameters.Detect_PosZ,
                 ]
-            else:
-                CILdict["Detector"] = [0,0,0]
 
             if hasattr(Parameters, "Model_PosX") and hasattr(Parameters, "Model_PosY") and hasattr(Parameters, "Model_PosZ"):
                 warn_Nikon(use_nikon,"Model_Pos")
@@ -107,8 +99,6 @@ class Method(Method_base):
                     Parameters.Model_PosY,
                     Parameters.Model_PosZ,
                 ]
-            else:
-                CILdict["Model"] = [0,0,0]
 
             if hasattr(Parameters, "Pix_X"):
                 warn_Nikon(use_nikon,"Pix_X")

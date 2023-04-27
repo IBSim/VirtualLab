@@ -1,9 +1,14 @@
 from pygad import GA
 import numpy as np
+import random
 
 from Scripts.Common.tools import Paralleliser
 
-def GA_Parallel(method='process',nb_parallel=1,**kwargs):
+def GA_Parallel(method='process',nb_parallel=1,seed=None,**kwargs):
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+
     if nb_parallel==1:return GA # No parallelism
 
     GA.cal_pop_fitness = cal_pop_fitness

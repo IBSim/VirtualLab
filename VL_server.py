@@ -29,6 +29,7 @@ from Scripts.Common.VLContainer.Container_Utils import (
     log_net_info,
     host_to_container_path,
     bind_list2string,
+    bind_str2dict,
     path_change_binder,
     Exec_Container_Manager,
     MPI_Container_Manager,
@@ -109,6 +110,12 @@ def main():
         default=9000,
         type=int,
     )
+    parser.add_argument(
+        "-B",
+        "--bind_points",
+        help="Additional files/directories to mount to containers.",
+        default='',
+    )    
     # parser.add_argument(
     #     "-V",
     #     "--version",
@@ -148,14 +155,8 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    # make a dir in /tmp on host with random name to avoid issues on shared systems
-    # the tempfile library ensures this directory is deleted on exiting python.
-    tmp_dir_obj = tempfile.TemporaryDirectory()
-    tmp_dir = tmp_dir_obj.name
-    bind_points_default = {
-    "/usr/share/glvnd":"/usr/share/glvnd",
-    str(tmp_dir):"/tmp",
-    str(vlab_dir):"/home/ibsim/VirtualLab"}
+    # do it this way as can't import VLconfig with VirtualLab binary
+    config_dict = Utils.filetodict("{}/VLconfig.py".format(vlab_dir)) 
 
     # set flag to run tests instate of the normal run file
     if args.test:
@@ -169,9 +170,59 @@ def main():
     else:
         Run_file = args.Run_file
     Run_file = Utils.check_file_in_container(vlab_dir, Run_file)
-    kOption_dict = {}
+
+
+    # ==========================================================================
+    # make bindings to container
+
+    # make a dir in /tmp on host with random name to avoid issues on shared systems
+    # the tempfile library ensures this directory is deleted on exiting python.
+    tmp_dir_obj = tempfile.TemporaryDirectory()
+    tmp_dir = tmp_dir_obj.name
+
+    bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
+                            str(tmp_dir):"/tmp",
+                            str(vlab_dir):"/home/ibsim/VirtualLab",
+                          }
+
+    # add important paths defined in VLconfig separately
+    for var_name in ['InputDir','MaterialsDir','RunFilesDir','OutputDir']:
+        path_dir = config_dict[var_name]
+        if os.path.isdir(path_dir):
+            bind_points_default[path_dir] = path_dir
+
+    # add bind points defined in VLconfig
+    _bind_points = config_dict.get('bind_points','')
+    _bind_dict = bind_str2dict(_bind_points)
+    for key,val in _bind_dict.items():
+        if key in bind_points_default: continue
+        bind_points_default[key] = val
+
+
+    # add run directory so run files can be run from anywhere on the host system
+    Run_file_dir = os.path.dirname(Run_file)
+    if Run_file_dir not in bind_points_default:
+        bind_points_default[Run_file_dir] = Run_file_dir
+    else:
+        Run_file = host_to_container_path(Run_file)
+
+    # Add present working directory to the list of bind points
+    pwd_dir = Utils.get_pwd()
+    if pwd_dir not in bind_points_default:
+        bind_points_default[pwd_dir] = pwd_dir
+    else:
+        # if already bound set pwd to the directory inside the container
+        pwd_dir = bind_points_default[pwd_dir]
+
+    # add bind points given by command line
+    _bind_dict = bind_str2dict(args.bind_points)
+    for key,val in _bind_dict.items():
+        if key in bind_points_default: continue
+        bind_points_default[key] = val
+    
     ######################################
     # formatting for optional -K cmd option
+    kOption_dict = {}
     if args.options != None:
         options = ""
         # Note: -K can be set multiple times so we need these loops to format them correctly to be passed on
@@ -194,7 +245,7 @@ def main():
         options = options + " -k debug=True"
     if args.tcp_port:
         tcp_port = Utils.check_valid_port(args.tcp_port)
-        options = options + f" -k tcp_port={tcp_port}"
+        options = options + f" -P {tcp_port}"
 
     #####################################
     # turn on/off gpu support with a flag
@@ -222,8 +273,7 @@ def main():
 
     Modules = Utils.load_module_config(vlab_dir)
     Manager = Modules["Manager"]
-    # convert path from host to container
-    path = host_to_container_path(Run_file)
+
     thread.start()
     # start VirtualLab
     lock.acquire()
@@ -237,9 +287,9 @@ def main():
             update_container(Manager, vlab_dir)
         else:
             proc = subprocess.Popen(
-                f"apptainer exec --contain --writable-tmpfs \
+                f"apptainer exec -H {pwd_dir} --contain --writable-tmpfs \
                             --bind {bind_str} {Apptainer_file} "
-                f'{Manager["Startup_cmd"]} {options} -f {path} ',
+                f'{Manager["Startup_cmd"]} {options} -f {Run_file} ',
                 shell=True,
             )
     else:
@@ -247,7 +297,7 @@ def main():
         proc = subprocess.Popen(
             f"docker run --rm -it --network=host -v {vlab_dir}:/home/ibsim/VirtualLab "
             f'{Manager["Docker_url"]}:{Manager["Tag"]} '
-            f'"{Manager["Startup_cmd"]} {options} -f {path}"',
+            f'"{Manager["Startup_cmd"]} {options} -f {Run_file}"',
             shell=True,
         )
     lock.release()
@@ -285,9 +335,14 @@ def handle_messages(
             f'Server - received "{event}" event from container {container_id}',
         )
 
+        pwd_dir = Utils.get_pwd()
+        pwd_dir = bind_points_default[pwd_dir]
+                 
         if event == "Exec":
             # will need to add option for docker when fixed
-            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs"
+
+            
+            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
 
             cont_name = rec_dict["Cont_name"]
             cont_info = VL_MOD[cont_name]
@@ -334,7 +389,7 @@ def handle_messages(
 
         elif event == "MPI":
             # will need to add option for docker when fixed
-            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs"
+            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
 
             cont_name = rec_dict["Cont_name"]
             cont_info = VL_MOD[cont_name]
@@ -417,47 +472,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, tcp_port, bind_points_defa
     sock.bind((host, tcp_port))
     sock.listen(20)
     VL_MOD = Utils.load_module_config(vlab_dir)
-    ###############
-    # VLAB Started
-    while True:
-        # first while loop to wait for signal to start virtualLab
-        # since the "VirtualLab started" message will only be sent
-        # by vl_manger we can use this to identify the socket for
-        # the manger
-        manager_socket, manager_address = sock.accept()
-
-        log_net_info(net_logger, f"received request for connection.")
-        rec_dict = receive_data(manager_socket, debug)
-        event = rec_dict["msg"]
-        if event == "VirtualLab started":
-            log_net_info(net_logger, f"received VirtualLab started")
-            waiting_cnt_sockets["Manager"] = {"socket": manager_socket, "id": 0}
-            # spawn a new thread to deal with messages
-            thread = threading.Thread(
-                target=handle_messages,
-                args=(
-                    manager_socket,
-                    net_logger,
-                    VL_MOD,
-                    sock_lock,
-                    cont_ready,
-                    debug,
-                    gpu_flag,
-                    bind_points_default,
-                ),
-            )
-            thread.daemon = True
-            thread.start()
-            break
-        else:
-            # we are not expecting any other message so raise an error
-            # as something has gone wrong with the timing.
-            manager_socket.shutdown(socket.SHUT_RDWR)
-            manager_socket.close()
-            raise ValueError(
-                f"Unknown message {event} received, expected VirtualLab started"
-            )
-
+    
     ################################
     while True:
         # check for new connections and them to list

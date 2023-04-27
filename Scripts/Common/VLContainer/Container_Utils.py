@@ -90,17 +90,30 @@ def bind_list2string(bind_list):
         container_bind.append(bind_host+":"+bind_cont)
     return ",".join(container_bind)
 
+def bind_str2dict(bind_str):
+    # comma separated list, with mount point denoted using :
+    if len(bind_str)==0: return {}
+
+    bind_dict = {}
+    for _bind in bind_str.split(','):
+        _bind_split = _bind.split(':')
+        if len(_bind_split)==1:
+            # same directory outside and inside
+            host_path = cont_path = _bind_split[0]
+        elif len(_bind_split)==2:
+            host_path, cont_path = _bind_split
+        else:
+            print("****************************************************************")
+            print("Warning: Unable to understand meaning of bind {}".format(_bind))
+            print("****************************************************************")
+        bind_dict[host_path] = cont_path
+    return bind_dict
 
 def path_change_binder(path, bindings, path_inside=True):
     """Converts path based on the bindings to the container used.
     This assumes that path is inside the container.
     Returns new path or None
     """
-
-    if path_inside:
-        check_ix, swap_ix = 1, 0
-    else:
-        check_ix, swap_ix = 0, 1
 
     for outside,inside in bindings.items():
         if path_inside:

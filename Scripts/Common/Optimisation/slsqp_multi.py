@@ -349,6 +349,8 @@ def slsqp_multi(fnc, init_points, find='max',order=True, tol=0.01, version='mult
     # Multiply by sign for min/max
     f = sign*f
 
+    if len(f)==0: return x,f
+
     # ==========================================================================
     # order the results in decreasing order for max. and increasing for min.
     if order:

@@ -14,7 +14,7 @@ import shutil
 # =======================
 
 # Main menu (execution starts here)
-def main_menu():
+def main_menu(args):
     os.system("clear")
 
     print("Welcome to the VirtualLab Installer,\n")
@@ -23,20 +23,20 @@ def main_menu():
     print("2. Update existing VirtualLab Install")
     print("\n0. Quit")
     choice = input(" >>  ")
-    exec_menu(choice)
+    exec_menu(choice, args)
 
     return
 
 
 # Execute menu
-def exec_menu(choice):
+def exec_menu(choice,args):
     os.system("clear")
     ch = choice.lower()
     if ch == "":
         menu_actions["main_menu"]()
     else:
         try:
-            menu_actions[ch]()
+            menu_actions[ch](args)
         except KeyError:
             print("Invalid selection, please try again.\n")
             menu_actions["main_menu"]()
@@ -44,27 +44,37 @@ def exec_menu(choice):
 
 
 # Menu 1
-def Install_menu():
+def Install_menu(args):
     print("Installing VirtualLab !\n")
-    print("Please select where to Install VirtualLab to.\n")
-    if Platform == "Windows":
-        install_path = "C:/Program Files/VirtualLab"
+    if args.inst_dir:
+        # install path provided
+        install_Vlab(args.inst_dir,branch=args.branch)
     else:
-        install_path = f"{Path.home()}/VirtualLab"
-    print(f"1. Default location: {install_path}")
-    print("2. Custom location")
-    print("9. Back")
-    print("0. Quit")
-    choice = input(" >>  ")
-    if choice == "1":
-        install_Vlab(install_path)
-    elif choice == "2":
-        custom_dir()
-    if choice == "":
-        # return to install menu
-        menu_actions["1"]()
-    else:
-        exec_menu(choice)
+        if Platform == "Windows":
+            install_path = "C:/Program Files/VirtualLab"
+        else:
+            install_path = f"{Path.home()}/VirtualLab"
+
+        print("Please select where to Install VirtualLab to.\n")
+        print(f"1. Default location: {install_path}")
+        print("2. Custom location")
+        print("9. Back")
+        print("0. Quit")
+        choice = input(" >>  ")
+
+        if choice == "2":
+            # get custom install path
+            install_path = custom_dir()
+
+        if choice in ("1","2"):
+            install_Vlab(install_path,branch=args.branch)
+
+        if choice == "":
+            # return to install menu
+            menu_actions["1"]()
+        else:
+            exec_menu(choice)
+
     return
 
 
@@ -98,8 +108,7 @@ def custom_dir():
         # choice is not a valid path
         print("Invalid path, please try again.\n")
         custom_dir()
-    install_Vlab(choice)
-
+    return choice
 
 def install_Vlab(install_path,non_interactive=False,shell_num=1,branch='M'):
     os.system("clear")
@@ -126,16 +135,18 @@ def install_Vlab(install_path,non_interactive=False,shell_num=1,branch='M'):
     Docker = False
     print("Downloading VirtualLab\n")
     get_latest_code(install_path,branch=branch)
+
     if Docker:
         get_latest_docker()
     else:
-        get_latest_Apptainer(install_path)
-    add_to_Path(install_path, non_interactive,shell_num)
+        pass
+        #get_latest_Apptainer(install_path)
+    #add_to_Path(install_path, non_interactive,shell_num)
     print("Instalation Complete!!")
     sys.exit()
 
 
-def get_latest_code(install_path,branch='M'):
+def get_latest_code(install_path,branch='master'):
     # os.chdir(install_path)
     if Platform == "Windows":
         # use wget with powershell for windows
@@ -147,24 +158,30 @@ def get_latest_code(install_path,branch='M'):
         # Mac/Linux hopefully have Curl
         # subprocess.call(f'curl --output {install_path}/VirtualLab.zip -O https://gitlab.com/ibsim/virtuallab/-/archive/dev/virtuallab-dev.zip', shell=True)
         import git
-
+        print(branch)
+        print('getting vl repo')
         git.Repo.clone_from(
             "https://gitlab.com/ibsim/virtuallab.git", f"{install_path}"
         )
         my_repo = git.Repo(f"{install_path}")
-        if branch == 'D':
-            my_repo.git.checkout("dev")
+        if branch != 'master':
+            print('here')
+            my_repo.git.checkout(branch)
+            
         # get binaries from second repo and copy them across
-        git.Repo.clone_from(
-            "https://gitlab.com/ibsim/virtuallab_bin.git", f"{install_path}/bins"
-        )
-        my_repo2 = git.Repo(f"{install_path}/bins")
-        if branch == 'D':
-            my_repo2.git.checkout("dev")
-        shutil.copytree(
-            f"{install_path}/bins", f"{install_path}/bin", dirs_exist_ok=True
-        )
-        shutil.rmtree(f"{install_path}/bins")
+        # print('getting binaries')
+        # git.Repo.clone_from(
+        #     "https://gitlab.com/ibsim/virtuallab_bin.git", f"{install_path}/bins"
+        # )
+        # my_repo2 = git.Repo(f"{install_path}/bins")
+        # if branch == 'D':
+        #     my_repo2.git.checkout("dev")
+        # shutil.copytree(
+        #     f"{install_path}/bins", f"{install_path}/bin", dirs_exist_ok=True
+        # )
+        # shutil.rmtree(f"{install_path}/bins")
+
+        make_config(install_path)
 
 
 def get_latest_docker():
@@ -269,6 +286,21 @@ def check_container_tool():
         # Windows/Mac only use Docker so no need to ask just return True.
         return True
 
+def make_config(install_dir):
+    file_content = ['#!/usr/bin/env python3',
+                    'VL_DIR_CONT="/home/ibsim/VirtualLab"',
+                    f'VL_HOST_DIR={install_dir}',
+                    f'InputDir="{install_dir}/Input"',
+                    f'RunFilesDir="{install_dir}/RunFiles"',
+                    f'MaterialsDir="{install_dir}/Materials"',
+                    f'OutoutDir="{install_dir}/Materials"',
+                    f'TEMP_DIR="/tmp"'
+                    ]
+
+    with open(f'{install_dir}/VLconfig.py', 'w') as f:
+        f.write('\n'.join(file_content))
+
+
 
 def add_to_Path(install_dir,non_interactive,shell_num):
     os.system("clear")
@@ -361,13 +393,13 @@ def add_to_Path(install_dir,non_interactive,shell_num):
                 "****************************************************************************"
             )
 # add vlab_dir to VLconfig.py
-    import re
-    with open(f'{install_dir}/VLconfig.py', 'r+') as f:
-        file = f.read()
-        file = re.sub('VL_HOST_DIR=""',f'VL_HOST_DIR="{install_dir}"',file)
-        f.seek(0)
-        f.write(file)
-        f.truncate()
+    # import re
+    # with open(f'{install_dir}/VLconfig.py', 'r+') as f:
+    #     file = f.read()
+    #     file = re.sub('VL_HOST_DIR=""',f'VL_HOST_DIR="{install_dir}"',file)
+    #     f.seek(0)
+    #     f.write(file)
+    #     f.truncate()
     return
 
 
@@ -424,16 +456,16 @@ if __name__ == "__main__":
         "-B",
         "--branch",
         help="Switch branch used for install code by passing in D is development or M for master (default).",
-        default="M",
+        default="master",
     )
 
     args = parser.parse_args()
     if args.update and args.yes:
         raise ValueError("You cannot use options -y and -U together as that makes no sense.")
-
-    if args.branch not in ['M','D']:
-        print(f"Invalid branch {args.branch} must by one of M or D.")
-        sys.exit(0)
+ 
+    # if args.branch not in ['M','D']:
+    #     print(f"Invalid branch {args.branch} must by one of M or D.")
+    #     sys.exit(0)
     
     if args.inst_dir != None:
         install_path = args.inst_dir
@@ -452,5 +484,5 @@ if __name__ == "__main__":
     elif args.update:
         update_vlab(non_interactive=True)
     else:
-    # Launch main menu
-        main_menu()
+        # Launch main menu  
+        main_menu(args)

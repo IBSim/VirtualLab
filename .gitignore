@@ -40,13 +40,11 @@ Input/*/*
 !Input/*/.dev/
 !Input/Unit/*
 !tests/
-!Containers/
-Containers/*.sif
 # Ensure that only some Run files will be included in the RunFiles directory
 !RunFiles/
 # ignore logfiles but not directory
 !.log
 .log/*.log
 !VL_Modules.yaml
-
+VLconfig.py
 

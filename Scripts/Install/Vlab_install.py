@@ -294,6 +294,7 @@ def make_config(install_dir):
                     f'RunFilesDir="{install_dir}/RunFiles"',
                     f'MaterialsDir="{install_dir}/Materials"',
                     f'OutputDir="{install_dir}/Output"',
+                    f'ContainerDir="{install_dir}/Containers"',
                     f'TEMP_DIR="/tmp"'
                     ]
 

@@ -22,7 +22,6 @@ import tempfile
 from Scripts.VLServer import Server_utils as Utils
 from Scripts.Common.VLContainer.Container_Utils import (
     check_platform,
-    Format_Call_Str,
     send_data,
     receive_data,
     setup_networking_log,
@@ -38,6 +37,9 @@ from Scripts.Common.VLContainer.Container_Utils import (
 )
 
 vlab_dir = get_vlab_dir()
+# do it this way as can't import VLconfig with VirtualLab binary
+config_dict = Utils.filetodict("{}/VLconfig.py".format(vlab_dir))
+ContainerDir = config_dict.get('ContainerDir',f"{vlab_dir}/Containers")
 
 # global variables for use in all threads
 waiting_cnt_sockets = {}
@@ -155,9 +157,6 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    # do it this way as can't import VLconfig with VirtualLab binary
-    config_dict = Utils.filetodict("{}/VLconfig.py".format(vlab_dir)) 
-
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
@@ -186,10 +185,10 @@ def main():
                           }
 
     # add important paths defined in VLconfig separately
+    os.makedirs(config_dict['OutputDir'],exist_ok=True) # make this directory as it may not exist
     for var_name in ['InputDir','MaterialsDir','RunFilesDir','OutputDir']:
         path_dir = config_dict[var_name]
-        if os.path.isdir(path_dir):
-            bind_points_default[path_dir] = path_dir
+        bind_points_default[path_dir] = path_dir
 
     # add bind points defined in VLconfig
     _bind_points = config_dict.get('bind_points','')
@@ -282,9 +281,15 @@ def main():
     bind_str = bind_list2string(bind_points_default)
 
     if use_Apptainer:
-        Apptainer_file = f"{vlab_dir}/{Manager['Apptainer_file']}"
+        if Manager['Apptainer_file'].startswith('/'):
+            # full path provided
+            Apptainer_file = Manager['Apptainer_file']
+        else:
+            # relative path from container dir
+            Apptainer_file = f"{ContainerDir}/{Manager['Apptainer_file']}"
+
         if not os.path.exists(Apptainer_file):
-            update_container(Manager, vlab_dir)
+            update_container(Apptainer_file, Manager)
         else:
             proc = subprocess.Popen(
                 f"apptainer exec -H {pwd_dir} --contain --writable-tmpfs \
@@ -338,22 +343,26 @@ def handle_messages(
         pwd_dir = Utils.get_pwd()
         pwd_dir = bind_points_default[pwd_dir]
                  
-        if event == "Exec":
+        if event in ("Exec","MPI"):
             # will need to add option for docker when fixed
-
             
             container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
 
             cont_name = rec_dict["Cont_name"]
             cont_info = VL_MOD[cont_name]
 
-            container_path = "{}/{}".format(vlab_dir, cont_info["Apptainer_file"])
+            if cont_info["Apptainer_file"].startswith('/'):
+                container_path = cont_info["Apptainer_file"] # full path provided
+            else:
+                container_path = f"{ContainerDir}/{cont_info['Apptainer_file']}" # relative path from container dir
+
             cont_info["container_path"] = container_path
             cont_info["container_cmd"] = container_cmd
             cont_info["bind"]=bind_points_default
 
             # check apptainer sif file exists and if not build from docker version
             if not os.path.exists(container_path):
+                os.makedirs(os.path.dirname(container_path),exist_ok=True)
                 # sif file doesn't exist
                 if "Docker_url" in cont_info:
                     print(
@@ -378,55 +387,19 @@ def handle_messages(
             args = rec_dict.get("args", ())
             kwargs = rec_dict.get("kwargs", {})
 
-            stdout = kwargs.get("stdout", None)
-            if stdout is not None:
-                # stdout is a file path within VL_Manager so need to get the path on the host
-                stdout = path_change_binder(stdout, bind_points_default)
-                kwargs["stdout"] = stdout
-                
-            RC = Exec_Container_Manager(cont_info, *args, **kwargs)
-            send_data(client_socket, RC, debug)
-
-        elif event == "MPI":
-            # will need to add option for docker when fixed
-            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
-
-            cont_name = rec_dict["Cont_name"]
-            cont_info = VL_MOD[cont_name]
-
-            container_path = "{}/{}".format(vlab_dir, cont_info["Apptainer_file"])
-            cont_info["container_path"] = container_path
-            cont_info["container_cmd"] = container_cmd
-            cont_info["bind"]=bind_points_default
-
-            # check apptainer sif file exists and if not build from docker version
-            if not os.path.exists(container_path):
-                # sif file doesn't exist
-                if "Docker_url" in cont_info:
-                    print(
-                        f"Apptainer file {container_path} does not appear to exist so building. This may take a while."
-                    )
-                    try:
-                        proc = subprocess.check_call(
-                            f"apptainer build "
-                            f'{container_path} docker://{cont_info["Docker_url"]}:{cont_info["Tag"]}',
-                            shell=True,
-                        )
-                    except subprocess.CalledProcessError as E:
-                        print(E.stderr)
-                        raise E
-
-                else:
-                    print(
-                        f"Apptainer file {container_path} does not exist and no information about its location is provided.\n Exiting"
-                    )
-                    sys.exit()
-
-            args = rec_dict.get("args", ())
-            kwargs = rec_dict.get("kwargs", {})
-
-            RC = MPI_Container_Manager(cont_info, *args, **kwargs)
-            send_data(client_socket, RC, debug)
+            if event=='Exec':
+                stdout = kwargs.get("stdout", None)
+                if stdout is not None and not os.path.isdir(os.path.dirname(stdout)):
+                    # stdout is a file path within VL_Manager so need to get the path on the host
+                    stdout = path_change_binder(stdout, bind_points_default)
+                    kwargs["stdout"] = stdout
+                    
+                RC = Exec_Container_Manager(cont_info, *args, **kwargs)
+                send_data(client_socket, RC, debug)
+            else:
+                # MPI
+                RC = MPI_Container_Manager(cont_info, *args, **kwargs)
+                send_data(client_socket, RC, debug)    
 
         elif event == "Build":
             # recive list of containers to be built

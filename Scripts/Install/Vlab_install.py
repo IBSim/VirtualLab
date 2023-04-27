@@ -158,16 +158,17 @@ def get_latest_code(install_path,branch='master'):
         # Mac/Linux hopefully have Curl
         # subprocess.call(f'curl --output {install_path}/VirtualLab.zip -O https://gitlab.com/ibsim/virtuallab/-/archive/dev/virtuallab-dev.zip', shell=True)
         import git
-        print(branch)
-        print('getting vl repo')
+
         git.Repo.clone_from(
             "https://gitlab.com/ibsim/virtuallab.git", f"{install_path}"
         )
         my_repo = git.Repo(f"{install_path}")
         if branch != 'master':
-            print('here')
             my_repo.git.checkout(branch)
-            
+
+        # make config file
+        make_config(install_path)
+
         # get binaries from second repo and copy them across
         # print('getting binaries')
         # git.Repo.clone_from(
@@ -181,7 +182,7 @@ def get_latest_code(install_path,branch='master'):
         # )
         # shutil.rmtree(f"{install_path}/bins")
 
-        make_config(install_path)
+
 
 
 def get_latest_docker():
@@ -205,7 +206,6 @@ def get_latest_Apptainer(install_path):
         shell=True,
         check=True,
     )
-
 
 def update_vlab(non_interactive=False):
     vlab_dir = os.environ.get("VL_DIR", None)
@@ -289,18 +289,16 @@ def check_container_tool():
 def make_config(install_dir):
     file_content = ['#!/usr/bin/env python3',
                     'VL_DIR_CONT="/home/ibsim/VirtualLab"',
-                    f'VL_HOST_DIR={install_dir}',
+                    f'VL_HOST_DIR="{install_dir}"',
                     f'InputDir="{install_dir}/Input"',
                     f'RunFilesDir="{install_dir}/RunFiles"',
                     f'MaterialsDir="{install_dir}/Materials"',
-                    f'OutoutDir="{install_dir}/Materials"',
+                    f'OutputDir="{install_dir}/Output"',
                     f'TEMP_DIR="/tmp"'
                     ]
 
     with open(f'{install_dir}/VLconfig.py', 'w') as f:
         f.write('\n'.join(file_content))
-
-
 
 def add_to_Path(install_dir,non_interactive,shell_num):
     os.system("clear")

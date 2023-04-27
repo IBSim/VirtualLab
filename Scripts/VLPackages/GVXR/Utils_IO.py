@@ -82,9 +82,6 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
                 # distance in z from source to center of detector 
             elif line.startswith("SrcToDetector"):
                     SrcToDetector = float(line.split('=')[1])
-                # initial angular position of a rotation stage
-            elif line.startswith("InitialAngle"):
-                    initial_angle = float(line.split('=')[1])
                 # angular increment (in degrees)
             elif line.startswith("AngularStep"):
                     angular_step = float(line.split('=')[1])

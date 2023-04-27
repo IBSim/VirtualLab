@@ -248,8 +248,11 @@ def find_the_key(dictionary:dict, target_keys:str):
 def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8,angle_index=0):
     from PIL import Image, ImageOps
     import os
+    import tifffile
     output_name = os.path.basename(os.path.normpath(output_dir))
     os.makedirs(output_dir, exist_ok=True)
+    if im_format == None:
+        im_format:str='tiff'
     #calcualte number of digits in max number of images for formating
     import math
     if angle_index > 0:
@@ -275,6 +278,8 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8,angl
     im = im.convert(convert_opt)
     im_output=f"{output_dir}/{output_name}_{angle_index:0{digits}d}.{im_format}"
     im.save(im_output)
+    im.close()
+
 
 def write_image3D(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
     from PIL import Image, ImageOps
@@ -302,7 +307,7 @@ def write_image3D(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
         im = im.convert(convert_opt)
         im_output=f"{output_dir}/{output_name}_{I:0{digits}d}.{im_format}"
         im.save(im_output)
-
+        im.close()
 
 def without_keys(d, keys):
     return {x: d[x] for x in d if x not in keys}

@@ -21,6 +21,7 @@ docs/source/_build
 
 # Whitelist these directories
 !bin/
+bin/VirtualLab
 !docs/
 docs/build
 !Config/
@@ -47,6 +48,5 @@ Containers/*.sif
 !.log
 .log/*.log
 !VL_Modules.yaml
-# ignore any exisiting vlab binary
-bin/VirtualLab
-VLconfig.py
+
+

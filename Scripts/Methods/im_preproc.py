@@ -7,8 +7,7 @@ from types import SimpleNamespace as Namespace
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
 from Scripts.Common.VLContainer import Container_Utils as Utils
-# from Scripts.VLPackages.CIL.API import Run as CT_Recon, Dir as CilDIR
-# from Scripts.VLPackages.CIL.Utils_IO import ReadNikonData, warn_Nikon
+from Scripts.VLPackages.CIL.API import Run as ImPreProc, Dir as MethodDIR
 import VLconfig as VLC
 import Scripts.Common.VLFunctions as VLF 
 
@@ -106,7 +105,12 @@ class Method(Method_base):
                 Methoddict['set_order_no'] = Parameters.set_order_no
             else:
                 Methoddict['set_order_no'] = 10
-            
+                
+            if hasattr(Parameters,'Keep_Raw'):
+                Methoddict['Keep_Raw'] = Parameters.Keep_Raw
+            else:
+                Methoddict['Keep_Raw'] = False
+
             # catch any extra options and throw an error to say they are invalid
             param_dict = vars(Parameters)
             for key in ["Name","mesh"]:

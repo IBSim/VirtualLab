@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import scipy.signal
 import tifffile as tf
 """
-Set of functions for image normalisation
+Set of functions for image normalisation of tiff stack
 """
 def normTiff(fname,**kwargs):
     '''
@@ -17,7 +17,7 @@ def normTiff(fname,**kwargs):
     The function uses histogram values to determine 
     the average pixel values for air and the material.
 
-    It then normalises the data based on thoose values.
+    It then normalises the data based on those values.
 
     required parameters:
 
@@ -28,7 +28,7 @@ def normTiff(fname,**kwargs):
         nbins - number of bins used for the histograms. Default is 256
 
         des_bg - float to determine the pixel value for peak intensity 
-                coresponding to air in the final image based on the 
+                corresponding to air in the final image based on the 
                 max of the given data (or 1.0 for floating point types).
 
                 For int datatypes that is uint32 uint16 and uint8.
@@ -44,7 +44,7 @@ def normTiff(fname,**kwargs):
                 would be set as 0.1.
 
         des_fg - float to determine the pixel value for peak intensity 
-                coresponding to materail in the final image based on 
+                corresponding to material in the final image based on 
                 the max of the given data (or 1.0 for floating point types). 
 
                 For int datatypes, that is uint32, uint16 and uint8.
@@ -61,8 +61,8 @@ def normTiff(fname,**kwargs):
 
         peak_width -    pixel width of the peaks used, default is 1
 
-        set_order_no -  detemines number of peaks that are used for 
-                        comparison when detemining air vs materail.
+        set_order_no -  determines number of peaks that are used for 
+                        comparison when determining air vs material.
                         See https://docs.scipy.org/doc/scipy/reference
                         /generated/scipy.signal.argrelextrema.html
                         for more info.
@@ -73,7 +73,7 @@ def normTiff(fname,**kwargs):
         'des_bg':0.1,
         'des_fg':0.9,
         'peak_width':1, 
-        'set_order_no':10
+        'set_order_no':10,
     }
       
     kwargs = { **default_kwargs, **kwargs }
@@ -93,7 +93,6 @@ def normTiff(fname,**kwargs):
 
     # Read data into array   
     img_arr = tf.imread(fname)
-    print(np.shape(img_arr))
     dt = str(img_arr.dtype)
     dtype_min, dtype_max, pix_air, pix_material = check_valid_np_type(dt,des_bg,des_fg)
     # Create histogram to find peaks
@@ -125,23 +124,17 @@ def normTiff(fname,**kwargs):
     peaks[1,:] = pick_point[0]
     peaks[2,:] = pick_point_x[0]
     peakssort = peaks[:,peaks[1].argsort()]
-    print(f"peaksorts = {peakssort}")
     # accessing the peak location in x-axis
     pickpoint_x = pick_point_x[0]
     # mean calculation
     idx_y = indexes[0]
     air_idx = int(peakssort[0,len(indexes[0])-1])
     material_idx = int(peakssort[0,len(indexes[0])-2])
-    print(air_idx)
     desired_air = histo_x[air_idx]
     desired_material = histo_x[material_idx]
-    print(f"air:{air_idx}, {desired_air}")
-    print(f"mat:{material_idx}, {desired_material}")
     # mean for air
     bin_min_air = abs(peak_width-air_idx)
     bin_max_air = (air_idx+peak_width)
-    print(f"bin min air: {bin_min_air}")
-    print(f"bin max air: {bin_max_air}")
     data_in_air_bin_range = histo_y[bin_min_air:bin_max_air]
     air_bin_range = histo_x[bin_min_air:bin_max_air]
 
@@ -186,14 +179,13 @@ def normTiff(fname,**kwargs):
     img_arr = img_arr.astype(np.float32)
     # Normalise
     img_arr = pix_air+(pix_material-pix_air)*(img_arr-mean_air)/(mean_material-mean_air)
-    print(f"min: {np.min(img_arr)}")
-    print(f"max: {np.max(img_arr)}")
     # Set any values outside new range to min/max (i.e. over/under saturate)
     img_arr[img_arr < dtype_min] = dtype_min
     img_arr[img_arr > dtype_max] = dtype_max
 
+    # Convert back into original format
+    img_arr = img_arr.astype(dt)
     # Write normalised data to file
-    # np.asarray(img_arr, dtype=np.dtype(raw_dtype)).tofile(fname+"_N"+ext)
     im_output=f"{root}_N{ext}"
     tf.imwrite(im_output,img_arr,bigtiff=True)
 
@@ -210,8 +202,9 @@ def normTiff(fname,**kwargs):
     plt.xlabel('x positions (bins)')
     plt.ylabel('y positions  (counts)')
     plt.title('Pixel Histogram of Normalised Image')
-    overlaied_histo_Img=root+'_overlayed_hist.png'
-    plt.savefig(overlaied_histo_Img)
+    overlaid_histo_Img=root+'_overlaid_hist.png'
+    plt.savefig(overlaid_histo_Img)
+    return
 
 def check_valid_np_type(raw_dtype:str,des_bg:float,des_fg:float):
     '''

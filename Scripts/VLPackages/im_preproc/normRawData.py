@@ -5,14 +5,15 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import scipy.signal
+import tifffile as tf
 
 """
-Set of functions for image normalisation
+Set of functions for image normalisation of Raw binary file
 """
 def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     '''
     Function to normalise CT-image data between pixel
-    values for the materal and air.
+    values for the material and air.
 
     The function uses histogram values to determine 
     the average pixel values for air and the material.
@@ -81,6 +82,8 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
                         See https://docs.scipy.org/doc/scipy/reference
                         /generated/scipy.signal.argrelextrema.html
                         for more info.
+        Keep_Raw - Bool to set if normalised image should be kept as raw binary 
+                   or saved as a tiff stack. Default is False, i.e. save as tiff
     '''
 
     default_kwargs ={
@@ -89,7 +92,8 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
         'des_bg':0.1,
         'des_fg':0.9,
         'peak_width':1, 
-        'set_order_no':10
+        'set_order_no':10,
+        'Keep_Raw':False,
     }
       
     kwargs = { **default_kwargs, **kwargs }
@@ -149,7 +153,6 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     peaks[1,:] = pick_point[0]
     peaks[2,:] = pick_point_x[0]
     peakssort = peaks[:,peaks[1].argsort()]
-    print(f"peaksorts = {peakssort}")
     # accessing the peak location in x-axis
     pickpoint_x = pick_point_x[0]
     # mean calculation
@@ -159,13 +162,9 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     print(air_idx)
     desired_air = histo_x[air_idx]
     desired_material = histo_x[material_idx]
-    print(f"air:{air_idx}, {desired_air}")
-    print(f"mat:{material_idx}, {desired_material}")
     # mean for air
     bin_min_air = abs(peak_width-air_idx)
     bin_max_air = (air_idx+peak_width)
-    print(f"bin min air: {bin_min_air}")
-    print(f"bin max air: {bin_max_air}")
     data_in_air_bin_range = histo_y[bin_min_air:bin_max_air]
     air_bin_range = histo_x[bin_min_air:bin_max_air]
 
@@ -210,20 +209,23 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     img_arr = img_arr.astype(np.float32)
     # Normalise
     img_arr = pix_air+(pix_material-pix_air)*(img_arr-mean_air)/(mean_material-mean_air)
-    print(f"min: {np.min(img_arr)}")
-    print(f"max: {np.max(img_arr)}")
     # Set any values outside new range to min/max (i.e. over/under saturate)
     img_arr[img_arr < dtype_min] = dtype_min
     img_arr[img_arr > dtype_max] = dtype_max
 
     # Convert back into original format
     img_arr = img_arr.astype(np.dtype(raw_dtype))
-    # Reshape into single column
-    img_arr=img_arr.reshape(-1)
 
-    # Write normalised data to file
-    np.asarray(img_arr, dtype=np.dtype(raw_dtype)).tofile(root+"_N"+ext)
-
+    if kwargs['Keep_Raw']:
+        # Reshape into single column
+        img_arr=img_arr.reshape(-1)
+        # Write normalised data to file
+        np.asarray(img_arr, dtype=np.dtype(raw_dtype)).tofile(root+"_N"+ext)
+    else:
+        # Write normalised data to tiff stack
+        im_output=f"{root}_N{ext}"
+        tf.imwrite(im_output,img_arr,bigtiff=True)
+    
     # Generate new histogram with normalised data for comparison
     (n_norm, bins_norm) = np.histogram(img_arr, nbins, density=True)
     histo_x_norm = bins_norm

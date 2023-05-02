@@ -287,13 +287,13 @@ def main():
 
         if not os.path.exists(Apptainer_file):
             update_container(Apptainer_file, Manager)
-        else:
-            proc = subprocess.Popen(
+
+        proc = subprocess.Popen(
                 f"apptainer exec -H {pwd_dir} --contain --writable-tmpfs \
-                            --bind {bind_str} {Apptainer_file} "
+                                 --bind {bind_str} {Apptainer_file} "
                 f'{Manager["Startup_cmd"]} {options} -f {Run_file} ',
                 shell=True,
-            )
+                               )
     else:
         # Assume using Docker
         proc = subprocess.Popen(

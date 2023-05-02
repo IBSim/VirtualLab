@@ -305,7 +305,7 @@ def add_to_Path(install_dir,non_interactive,shell_num):
         if choice == 2:
             output = subprocess.run(
                 [
-                    f"{install_dir}/Scripts/Install/Set_VLProfile_zsh.sh",
+                    f"{install_dir}/Scripts/Install/Host/Set_VLProfile_zsh.sh",
                     f"{install_dir}",
                     f"{Path.home()}",
                 ],
@@ -336,7 +336,7 @@ def add_to_Path(install_dir,non_interactive,shell_num):
             # default to bash
             output = subprocess.run(
                 [
-                    f"{install_dir}/Scripts/Install/Set_VLProfile_bash.sh",
+                    f"{install_dir}/Scripts/Install/Host/Set_VLProfile_bash.sh",
                     f"{install_dir}",
                     f"{Path.home()}",
                 ],

@@ -450,11 +450,10 @@ def log_net_info(logger, message, screen=False):
         logger.debug(message)
 
 
-def update_container(Module, vlab_dir):
+def update_container(Apptainer_file, Module):
     import os
     import subprocess
 
-    Apptainer_file = f"{vlab_dir}/{Module['Apptainer_file']}"
     # check apptainer sif file exists and if not build from docker version
     if not os.path.exists(Apptainer_file):
         print(

@@ -135,10 +135,11 @@ def install_Vlab(install_path,args,non_interactive=False,shell_num=1):
     print("Downloading VirtualLab\n")
     get_latest_code(install_path,branch=args.branch,branch_bin=args.branch_binary)
 
-    if Docker:
-        get_latest_docker()
-    else:
-        get_latest_Apptainer(install_path)
+    # if Docker:
+    #     get_latest_docker()
+    # else:
+    #     get_latest_Apptainer(install_path)
+    
     add_to_Path(install_path, non_interactive,shell_num)
     print("Instalation Complete!!")
     sys.exit()

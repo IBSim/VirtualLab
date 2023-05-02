@@ -29,7 +29,6 @@ fi
 
 ### Default VirtualLab branch if no flag.
 BRANCH=master
-B="m"
 
 ################################################################################
 #                    Parse CMD Arguments
@@ -38,16 +37,15 @@ B="m"
 while getopts "B:yh" options; do
   case "${options}" in
     B)
-      B=${OPTARG}
-      if [ "$B" == "m" ]; then
-        BRANCH=master
-        echo " - VirtualLab will be installed from the main branch."
-      elif [ "$B" == "d" ]; then
-        BRANCH=dev
-        echo " - VirtualLab will be installed from the dev branch."
+      BRANCH=${OPTARG}
+      if [ "$BRANCH" != "master" ] || [ "$BRANCH" != "dev" ] ; then
+        echo "############## Warning #############"
+        echo
+        echo "VirtualLab not installed from master or dev branch. Errors may occur"
+        echo
+        echo "####################################"
       else
-        echo "Error: Invalid option argument $BRANCH" >&2
-        exit_abnormal
+        echo " - VirtualLab will be installed from branch $BRANCH."
       fi
       ;;
     y)  ### Skip install confirmation dialogue.
@@ -60,10 +58,9 @@ while getopts "B:yh" options; do
       echo "Error: Option -${OPTARG} requires an argument."
       exit_abnormal
       ;;
-    *)  ### If unknown (any other) option:
-      echo "Error: Invalid option -$OPTARG" >&2
-      exit_abnormal
+    *)
       ;;
+
   esac
 done
 
@@ -88,10 +85,11 @@ if [[ ! "$SKIP" =~ "y" ]]; then
   fi
 fi
 
-#########################
-### This script is used to install VirtualLab and its dependencies.
-### It first attempts to detect whether it is already installed.
-#########################
+
+########################
+## This script is used to install VirtualLab and its dependencies.
+## It first attempts to detect whether it is already installed.
+########################
 
 ### Test to check if VirtualLab already exists in current shell's PATH
 if hash VirtualLab 2>/dev/null; then
@@ -114,7 +112,7 @@ else
 
   ### Install git
   fname=Install_git.sh
-  url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/"$fname
+  url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/Host/"$fname
   #echo $url
   #url="https://gitlab.com/ibsim/virtuallab_bin/-/raw/"$BRANCH"/"$fname
   wget $url
@@ -124,18 +122,19 @@ else
   
   ### Install Apptainer
   fname=Install_Apptainer-bin.sh
-  url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/"$fname
+  url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/Host/"$fname
   wget $url
   chmod 755 $fname
   ./$fname
   rm $fname
   
-  ### Install VirtualLab
-  fname=Install_VL_Container.sh
-  url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/"$fname
+  ### Download VirtualLab repo and configure it on the system
+  # all arguments are passed to 
+  fname=Install_VL.sh
+  url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/Host/"$fname
   wget $url
   chmod 755 $fname
-  sudo -u ${SUDO_USER:-$USER} ./$fname -B $B -y
+  sudo -u ${SUDO_USER:-$USER} ./$fname -B $BRANCH #$@
   rm $fname
   
   ### Test to check if installation worked

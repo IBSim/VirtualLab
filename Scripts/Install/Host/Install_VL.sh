@@ -1,17 +1,19 @@
 #!/bin/bash
 
+# Script for downloading the VirtualLab repo and configuriging its use on the host system. 
+
 USER_HOME=$(eval echo ~"${SUDO_USER}")
 
 usage() {
   echo
   echo "Usage:"
-  echo " $0 [-B {m/d}]"
+  echo " $0 [-B {name} -V {name}]"
   echo
   echo "A script to install VirtualLab with default settings."
   echo
   echo "Options:"
-  echo "   '-B m' Install the main (stable) version of VirtualLab"
-  echo "   '-B d' Install the dev (developmental) version of VirtualLab"
+  echo "   '-B {branch name}' Branch from VirtualLab repo (default master)"  
+  echo "   '-E {branch name}' Branch from binary repo (defaul main)"
   echo "   '-y' Skip install confirmation dialogue."
 }
 
@@ -21,28 +23,27 @@ exit_abnormal() {
 }
 
 ### Default VirtualLab branch if no flag.
-BRANCH=main
+BRANCH_VL=master
+BRANCH_bin=main
 
 ################################################################################
 #                    Parse CMD Arguments
 ################################################################################
 
-while getopts "B:yh" options; do
+while getopts "B:E:yh" options; do
   case "${options}" in
     B)
-      B=${OPTARG}
-      if [ "$B" == "m" ]; then
-        BRANCH=main
-        B_UC=M
-        echo " - VirtualLab will be installed from the main branch."
-      elif [ "$B" == "d" ]; then
-        BRANCH=dev
-        B_UC=D
-        echo " - VirtualLab will be installed from the dev branch."
-      else
-        echo "Error: Invalid option argument $BRANCH" >&2
-        exit_abnormal
+      # VirtualLab branch
+      BRANCH_VL=${OPTARG}
+      if [ "$BRANCH_VL" == "master" ]; then
+        BRANCH_bin=main
+      else;
+        BRANCH_bin=$BRANCH_VL
       fi
+      ;;
+    E)
+      # VirtualLab executable branch
+      BRANCH_VL=${OPTARG}
       ;;
     y)  ### Skip install confirmation dialogue.
       SKIP=y
@@ -60,6 +61,8 @@ while getopts "B:yh" options; do
       ;;
   esac
 done
+
+#echo " - VirtualLab will be installed from the main branch."
 
 ### Check that no additional args were given that weren't caught.
 shift $(($OPTIND - 1))
@@ -82,13 +85,13 @@ if [[ ! "$SKIP" =~ "y" ]]; then
   fi
 fi
 
-### Install VirtualLab
+### Install VirtualLab using installation binary
 cd $USER_HOME
 fname=Install_VirtualLab
-url="https://gitlab.com/ibsim/virtuallab_bin/-/raw/"$BRANCH"/"$fname
-#wget https://gitlab.com/ibsim/virtuallab_bin/-/raw/$BRANCH/Install_VirtualLab
+url="https://gitlab.com/ibsim/virtuallab_bin/-/raw/"$BRANCH_bin"/"$fname
 wget $url
 
 chmod 755 $fname
-./$fname -y -B $B_UC #&> ~/Install_VL.log
+./$fname -y -B $BRANCH_VL #&> ~/Install_VL.log
 rm $fname
+

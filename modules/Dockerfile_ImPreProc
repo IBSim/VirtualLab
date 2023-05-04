@@ -1,0 +1,28 @@
+FROM python:3.10-slim-bullseye
+USER root
+# Set locale environment
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    LANGUAGE=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install --no-install-recommends -y nano git wget ca-certificates libxrender1 
+
+# Add a new user
+RUN adduser --disabled-password --gecos "" ibsim && \
+    adduser ibsim sudo && \
+    echo "%sudo ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Create a sharable zone
+USER ibsim
+RUN touch /home/ibsim/.sudo_as_admin_successful && \
+    mkdir /home/ibsim/shared
+VOLUME /home/ibsim/shared
+
+WORKDIR /home/ibsim
+
+USER ibsim
+ENV DEBIAN_FRONTEND=noninteractive TERM=linux
+ENV PATH=${PATH}:/home/ibsim/.local/bin
+RUN pip install itk-elastix matplotlib scipy tifffile
+USER root

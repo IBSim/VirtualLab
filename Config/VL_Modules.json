@@ -41,5 +41,10 @@
     },    
     "Aster_test": {
         "Apptainer_file": "Containers/code_aster_v14.sif"
-    }    
+    },
+     "ImPreproc": {
+        "Docker_url": "ibsim/vl_impreproc",
+        "Tag": "latest",
+        "Apptainer_file": "Containers/VL_ImPreProc.sif",
+        "Method":"ImPreProc"   
 }

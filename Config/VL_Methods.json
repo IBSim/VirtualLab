@@ -22,5 +22,8 @@
     },
     "CT_Recon2D": {
         "Namespace": "GVXR"
+    },
+    "ImPreProc": {
+        "Namespace": "ImPreProc"
     }
 }

@@ -23,7 +23,7 @@ def Run(funcfile, funcname, fnc_args=(), fnc_kwargs = {}, ContainerInfo = None, 
     with open(pth,'wb') as f:
         pickle.dump((fnc_args,fnc_kwargs),f)
 
-    container_bash = "{}/VL_im_preproc.sh".format(Dir) # bash script executed by container to perform setup ect.
+    container_bash = "{}/VL_Preproc.sh".format(Dir) # bash script executed by container to perform setup ect.
     # command passed to container bash (done this way for more flexibility)
     container_command = "python3 /home/ibsim/VirtualLab/bin/run_pyfunc.py {} {} {}".format(funcfile,funcname,pth)
 

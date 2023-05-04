@@ -40,13 +40,14 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
     dist_source_center = 0-Beam[1]
     dist_center_detector = 0+Detector[1]
 
-    angles_deg =np.arange(0,(num_projections)*angular_step,angular_step)
+    angles_deg =np.arange(angular_step,(num_projections+1)*angular_step,angular_step)
+    np.savetxt('GVXR_angles.txt', angles_deg, delimiter=',',fmt='%f')
     angles_rad = angles_deg *(math.pi / 180)
     ag = AcquisitionGeometry.create_Cone3D(source_position=Beam, detector_position=Detector, 
     detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
     rotation_axis_direction=[0,0,1])  \
     .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
-    .set_angles(angles=angles_rad, angle_unit='radian')
+    .set_angles(angles=angles_deg, angle_unit='degree')
         
     ig = ag.get_ImageGeometry()
 
@@ -147,4 +148,7 @@ def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate=8,slice_
     else:
         # write to tiff stack
         im_output=f"{output_dir}/{output_name}.tiff"
-        tf.imwrite(im_output,vox,bigtiff=True, append=True)
+        if os.path.exists(im_output):
+            tf.imwrite(im_output,vox,bigtiff=True, append=True)
+        else:
+            tf.imwrite(im_output,vox,bigtiff=True)

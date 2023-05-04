@@ -69,7 +69,7 @@ class Method(Method_base):
 
 
             if hasattr(Parameters, "Beam_PosX") and hasattr(Parameters, "Beam_PosY") and hasattr(Parameters, "Beam_PosZ"):
-                warn_Nikon(use_nikon,"Beam_Pos")
+                warn_Nikon(use_Nikon,"Beam_Pos")
                 CILdict["Beam"] = [
                     Parameters.Beam_PosX,
                     Parameters.Beam_PosY,
@@ -77,15 +77,15 @@ class Method(Method_base):
                 ]
 
             if hasattr(Parameters, "Spacing_X"):
-                warn_Nikon(use_nikon,"Spacing_X")
+                warn_Nikon(use_Nikon,"Spacing_X")
                 CILdict["Spacing_X"] = Parameters.Spacing_X
 
             if hasattr(Parameters, "Spacing_Y"):
-                warn_Nikon(use_nikon,"Spacing_Y")
+                warn_Nikon(use_Nikon,"Spacing_Y")
                 CILdict["Spacing_Y"] = Parameters.Spacing_Y
 
             if hasattr(Parameters, "Detect_PosX") and hasattr(Parameters, "Detect_PosY") and hasattr(Parameters, "Detect_PosZ"):
-                warn_Nikon(use_nikon,"Detect_Pos")
+                warn_Nikon(use_Nikon,"Detect_Pos")
                 CILdict["Detector"] = [
                     Parameters.Detect_PosX,
                     Parameters.Detect_PosY,
@@ -93,7 +93,7 @@ class Method(Method_base):
                 ]
 
             if hasattr(Parameters, "Model_PosX") and hasattr(Parameters, "Model_PosY") and hasattr(Parameters, "Model_PosZ"):
-                warn_Nikon(use_nikon,"Model_Pos")
+                warn_Nikon(use_Nikon,"Model_Pos")
                 CILdict["Model"] = [
                     Parameters.Model_PosX,
                     Parameters.Model_PosY,
@@ -101,19 +101,19 @@ class Method(Method_base):
                 ]
 
             if hasattr(Parameters, "Pix_X"):
-                warn_Nikon(use_nikon,"Pix_X")
+                warn_Nikon(use_Nikon,"Pix_X")
                 CILdict["Pix_X"] = Parameters.Pix_X
 
             if hasattr(Parameters, "Pix_Y"):
-                warn_Nikon(use_nikon,"Pix_X")
+                warn_Nikon(use_Nikon,"Pix_X")
                 CILdict["Pix_Y"] = Parameters.Pix_Y
 
             if hasattr(Parameters, "num_projections"):
-                warn_Nikon(use_nikon,"num_projections")
+                warn_Nikon(use_Nikon,"num_projections")
                 CILdict["num_projections"] = Parameters.num_projections
 
             if hasattr(Parameters, "angular_step"):
-                warn_Nikon(use_nikon,"angular_step")
+                warn_Nikon(use_Nikon,"angular_step")
                 CILdict["angular_step"] = Parameters.angular_step
 
             if hasattr(Parameters, "image_format"):

@@ -409,14 +409,20 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
 
         # CAD Model position
         if hasattr(Parameters, "Model_PosX"):
-            warn_Nikon(Use_Nikon_File, "Model_PosX")
             GVXRDict["Model"].Model_PosX = Parameters.Model_PosX
+        else:
+            GVXRDict["Model"].Model_PosX = 0
+
         if hasattr(Parameters, "Model_PosY"):
-            warn_Nikon(Use_Nikon_File, "Model_PosY")
             GVXRDict["Model"].Model_PosY = Parameters.Model_PosY
+        else:
+            GVXRDict["Model"].Model_PosY = 0
+
         if hasattr(Parameters, "Model_PosZ"):
-            warn_Nikon(Use_Nikon_File, "Model_PosZ")
             GVXRDict["Model"].Model_PosZ = Parameters.Model_PosZ
+        else:
+            GVXRDict["Model"].Model_PosZ = 0
+            
         if hasattr(Parameters, "Model_Pos_units"):
             warn_Nikon(Use_Nikon_File, "Model_Pos_units")
             GVXRDict["Model"].Model_Pos_units = Parameters.Model_Pos_units

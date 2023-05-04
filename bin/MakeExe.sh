@@ -1,7 +1,6 @@
 #!/bin/sh
 # File which creates VirtualLab executable from VL_server.py
-filepath="$(cd "$(dirname "$1")"; pwd)/$0"
-bindir=$(dirname $filepath)
+bindir="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 VLdir=$(dirname $bindir)
 
 # create temp dir as pyinstaller has a lot of output 

@@ -19,9 +19,8 @@ import git
 
 # Main menu (execution starts here)
 def main_menu():
-    os.system("clear")
+    # os.system("clear -x")
 
-    print("Welcome to the VirtualLab Installer,\n")
     print("Please choose an option:")
     print("1. Install VirtualLab")
     print("2. Update existing VirtualLab Install")
@@ -34,7 +33,7 @@ def main_menu():
 
 # Execute menu
 def exec_menu(choice):
-    os.system("clear")
+    # os.system("clear -x")
     ch = choice.lower()
     if ch == "":
         menu_actions["main_menu"]()
@@ -64,15 +63,15 @@ def Install_menu():
 
         if choice == "1":
             install_Vlab(install_path,args)
-        if choice == "2":
+        elif choice == "2":
             # get custom install path
             install_path_custom = custom_dir()
             install_Vlab(install_path_custom,args)
-        if choice == "":
+        elif choice == "":
             # return to install menu
             menu_actions["1"](install_path,args)
         else:
-            exec_menu(choice,install_path, args)
+            exec_menu(choice)
 
     return
 
@@ -110,42 +109,36 @@ def custom_dir():
     return choice
 
 def install_Vlab(install_path,args,non_interactive=False,shell_num=1):
-    os.system("clear")
-    print(f"Installing VirtualLab to {install_path}")
+    # os.system("clear")
+    print(f"\nInstalling VirtualLab to {install_path}\n")
     if os.path.isdir(install_path):
         # if it exists check if it is empty
         dir_list = os.listdir(install_path)
         # Checking if the list is empty or not
         if len(dir_list) != 0:
             print("******************************************\n")
-            print(f"The Directory {install_path} is not Empty\n")
+            print(f"The directory {install_path} is not empty\n")
             print("Warning: contents will be overwriten.\n")
             print("******************************************\n")
         if not non_interactive:
             yes_no()
-            shutil.rmtree(install_path)
-            os.mkdir(install_path)
+        shutil.rmtree(install_path)
+        os.mkdir(install_path)
     else:
         print(f"New directory {install_path} will be created")
         os.mkdir(install_path)
         if not non_interactive:
             yes_no()
-    # Docker = check_container_tool()
-    Docker = False
-    print("Downloading VirtualLab\n")
-    get_latest_code(install_path,branch=args.branch,branch_bin=args.branch_binary)
 
-    # if Docker:
-    #     get_latest_docker()
-    # else:
-    #     get_latest_Apptainer(install_path)
-    
+    print("\nDownloading VirtualLab code")
+    get_latest_code(install_path,branch=args.branch)
+    print("Done\n")
     add_to_Path(install_path, non_interactive,shell_num)
-    print("Instalation Complete!!")
+    # print("Instalation Complete!!")
     sys.exit()
 
 
-def get_latest_code(install_path,branch='master',branch_bin='main'):
+def get_latest_code(install_path,branch='master'):
     # os.chdir(install_path)
     if Platform == "Windows":
         # use wget with powershell for windows
@@ -167,12 +160,8 @@ def get_latest_code(install_path,branch='master',branch_bin='main'):
 
         # make config file
         make_config(install_path)
-        
-        # get VirtualLab binary
-        urllib.request.urlretrieve(f"https://gitlab.com/ibsim/virtuallab_bin/-/raw/{branch_bin}/VirtualLab?inline=false","_VirtualLab_exe")
-        shutil.move("_VirtualLab_exe",f"{install_path}/bin/VirtualLab")
-        os.chmod(f'{install_path}/bin/VirtualLab',0o755)
 
+        
 def get_latest_docker():
     print("Pulling latest VLManager container from Dockerhub:\n")
     try:
@@ -290,7 +279,7 @@ def make_config(install_dir):
         f.write('\n'.join(file_content))
 
 def add_to_Path(install_dir,non_interactive,shell_num):
-    os.system("clear")
+    # os.system("clear")
     os.chdir(install_dir)
     if Platform == "Linux":
         if non_interactive:
@@ -343,7 +332,7 @@ def add_to_Path(install_dir,non_interactive,shell_num):
                 capture_output=True,
             )
             print(output.stdout.decode("utf8"))
-        subprocess.check_call(["chmod", "+x", f"{install_dir}/bin/VirtualLab"])
+
     elif Platform == "Darwin":
         # MacOs uses zsh by default
         output = subprocess.run(
@@ -445,16 +434,7 @@ if __name__=='__main__':
         help="Switch branch used for install code by passing in D is development or M for master (default).",
         default="master",
     )
-    parser.add_argument(
-        "--branch_binary",
-        help="Switch branch used for install code by passing in D is development or M for master (default).",
-        default="main",
-    )
-    parser.add_argument(
-        "--manager_container",
-        help="Name of VirtualLab manager container",
-        default="virtuallab",
-    )   
+
     args = parser.parse_args()
 
     if args.update and args.yes:
@@ -467,9 +447,6 @@ if __name__=='__main__':
             install_path = "C:/Program Files/VirtualLab"
         else:
             install_path = f"{Path.home()}/VirtualLab"
-
-    install_path2=install_path
-
 
     shell_num = shell_types.get(args.shell,None)
     if shell_num == None:

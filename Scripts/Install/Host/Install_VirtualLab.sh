@@ -112,17 +112,26 @@ if [ "$VL_BINARY" = "python" ] ; then
   echo "Installing required packages"
   echo "#############################"
   echo
+
   pip3 install gitpython pyinstaller
+
 elif [ "$VL_BINARY" = "conda" ] ; then
   echo
   echo "Creating conda environment named 'VirtualLab'"
   echo "This will need to be active to run VirtualLab."
   echo
 
-  conda create -n VirtualLab python=3.9
+  conda create -y -n VirtualLab python=3.9
   conda activate VirtualLab
-  conda install -c conda-forge gitpython
+  conda install -y -c conda-forge gitpython
   python3 -m pip install pyinstaller
+
+elif [ "$VL_BINARY" = "N" ] ; then
+  echo
+  echo "No python packages installed. It is assumed that gitpython and pyinstaller are already available."
+  echo "VirtualLab will be downloaded using python"
+  echo
+
 fi
 
 

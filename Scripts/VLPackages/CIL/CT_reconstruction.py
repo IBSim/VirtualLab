@@ -148,7 +148,7 @@ def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate=8,slice_
     else:
         # write to tiff stack
         im_output=f"{output_dir}/{output_name}.tiff"
-        if os.path.exists(im_output):
+        if os.path.exists(im_output) and slice_index != 0:
             tf.imwrite(im_output,vox,bigtiff=True, append=True)
         else:
             tf.imwrite(im_output,vox,bigtiff=True)

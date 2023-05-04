@@ -93,12 +93,13 @@ class Method(Method_base):
                 ]
 
             if hasattr(Parameters, "Model_PosX") and hasattr(Parameters, "Model_PosY") and hasattr(Parameters, "Model_PosZ"):
-                warn_Nikon(use_Nikon,"Model_Pos")
                 CILdict["Model"] = [
                     Parameters.Model_PosX,
                     Parameters.Model_PosY,
                     Parameters.Model_PosZ,
                 ]
+            else:
+                CILdict["Model"] = [0,0,0]
 
             if hasattr(Parameters, "Pix_X"):
                 warn_Nikon(use_Nikon,"Pix_X")

@@ -188,32 +188,7 @@ def CT_scan(**kwargs):
     print("Compute CT aquisition");
 
     theta = [];
-    # Compute the intial X-ray image (zeroth angle) and add it to the list of projections
-    projection = np.array(gvxr.computeXRayImage());
-    
-    # Update the 3D visualisation
-    gvxr.displayScene();
-
-    # Retrieve the total energy
-    energy_bins = gvxr.getEnergyBins('MeV') 
-    photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
-    total_energy = 0.0;
-    for energy, count in zip(energy_bins, photon_count_per_bin):
-        total_energy += energy * count;  
-    
-    # Perform the flat-Field correction of raw data
-    dark = np.zeros(projection.shape);
-
-    flat = np.ones(projection.shape) * total_energy;
-    if FFNorm:
-        projection = flat_field_normalize(projection,flat,dark)
-    #fill in edge pixels with zeros to reduce reconstruction artifacts
-    projection = fill_edges(projection,fill_percent) 
-    write_image(kwargs['output_file'],projection,im_format=im_format,bitrate=32);
-
-
-    theta.append(0.0);
-    for i in range(1,num_projections):
+    for i in range(1,num_projections+1):
         # Rotate the model by angular_step degrees
         for n,label in enumerate(mesh_names):
             gvxr.rotateNode(label, -1*angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);

@@ -392,15 +392,16 @@ def convert_tets_to_tri(mesh_file):
 
     return new_mesh_file
 
-def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value:float=1.0):
+def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value:float=None):
     '''
     Function to fill in the edges of an xray projection with fill_value (default is 1.0 i.e. background).
     This is done to reduce ring/halo artifacts during reconstruction with CIL.
     param: projection - 2D numpy array representing the image
     param:  fill_percent -  float representing the percentage of pixes y ou want to fill 
                             in from each edge.
-    param: fill_value - value to replace pixels with, default is zero.
+    param: fill_value - value to replace pixels with, default is to calcuate background value using image histogram.
     '''
+    nbins = 256
     if fill_percent == None or fill_percent == 0.0:
         return projection
     
@@ -411,7 +412,11 @@ def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value
     # are bigger then half of pix_x or pix_y.
     nx = int(math.floor((pix_x * fill_percent)/ 2))
     ny = int(math.floor((pix_y * fill_percent)/ 2))
-    
+    if fill_value == None:
+        # use a histgram of the image to pick out the higest peak to obtain background instnsity
+        bins, vals = np.histogram(projection,nbins)
+        peak_ind = np.argmax(bins)
+        fill_value = vals[peak_ind]
     projection[:ny,:] = fill_value
     projection[:,:nx] = fill_value
     # this stops you nuking every value in the array instead of filling 0 

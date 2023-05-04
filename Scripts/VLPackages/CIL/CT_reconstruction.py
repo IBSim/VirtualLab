@@ -151,4 +151,4 @@ def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate=8,slice_
         if os.path.exists(im_output) and slice_index != 0:
             tf.imwrite(im_output,vox,bigtiff=True, append=True)
         else:
-            tf.imwrite(im_output,vox,bigtiff=True)
+            tf.imwrite(im_output,vox,metadata=None,bigtiff=True)

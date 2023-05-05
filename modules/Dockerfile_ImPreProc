@@ -24,5 +24,7 @@ WORKDIR /home/ibsim
 USER ibsim
 ENV DEBIAN_FRONTEND=noninteractive TERM=linux
 ENV PATH=${PATH}:/home/ibsim/.local/bin
-RUN pip install itk-elastix matplotlib scipy tifffile
+RUN python -m venv venv && \
+    . venv/bin/activate && \
+    pip install itk-elastix matplotlib scipy tifffile
 USER root

@@ -17,7 +17,7 @@ def Run(funcfile, funcname, fnc_args=(), fnc_kwargs = {}, ContainerInfo = None, 
     
     if ContainerInfo is None:
         # Get default container info
-        ContainerInfo = GetInfo('im_preproc') 
+        ContainerInfo = GetInfo('ImPreProc') 
 
     pth = "{}/{}.pkl".format(tempdir,uuid.uuid4())
     with open(pth,'wb') as f:

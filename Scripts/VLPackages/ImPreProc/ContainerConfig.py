@@ -1,8 +1,8 @@
 import VLconfig
 
-__all__ = ['CIL']
+__all__ = ['ImPreProc']
 
-CIL = {'ContainerName':'CIL',
+ImPreProc = {'ContainerName':'ImPreProc',
          'Command':"python" 
         }
         

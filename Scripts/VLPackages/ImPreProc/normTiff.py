@@ -6,45 +6,29 @@ import os
 import matplotlib.pyplot as plt
 import scipy.signal
 import tifffile as tf
-
 """
-Set of functions for image normalisation of Raw binary file
+Set of functions for image normalisation of tiff stack
 """
-def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
+def normTiff(fname,**kwargs):
     '''
-    Function to normalise CT-image data between pixel
-    values for the material and air.
+    Function to normalise CT-image data from a tiff file between pixel
+    values for the materal and air.
 
     The function uses histogram values to determine 
     the average pixel values for air and the material.
 
-    It then normalises the data based on thoose values.
+    It then normalises the data based on those values.
 
     required parameters:
 
-    param:  fname - path to image file including the file extension
-    param:  img_dim_x - Number of pixels in x
-    param:  img_dim_y - Number of pixels in y
-    param:  num_slices - no of slices in z
+    param:  fname - path to tiff image file including the file extension
 
     Optional kwargs:
-
-    param: raw_dtype - String to define numpy dtype. See 
-           https://numpy.org/doc/stable/reference/arrays.dtypes.html
-           for details of all valid options.
-           This can be any type that is commonly used for pixel values
-           Default value is uint16. Other possible dtypes include:
-           float32 (f4), float16 (f2), unit32 (u4), uint16 (u2) and uint8 (u1) 
-           Note: you can also specify byte order. X86 and ARM (that 
-           is most modern computers) are so called little-endian by
-           default. However, you can be explict by using < for 
-           little-endian or > for big-endian. 
-           e.g. '<u2' would specify little-endain 16 bit unsigned int
 
         nbins - number of bins used for the histograms. Default is 256
 
         des_bg - float to determine the pixel value for peak intensity 
-                coresponding to air in the final image based on the 
+                corresponding to air in the final image based on the 
                 max of the given data (or 1.0 for floating point types).
 
                 For int datatypes that is uint32 uint16 and uint8.
@@ -60,7 +44,7 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
                 would be set as 0.1.
 
         des_fg - float to determine the pixel value for peak intensity 
-                coresponding to materail in the final image based on 
+                corresponding to material in the final image based on 
                 the max of the given data (or 1.0 for floating point types). 
 
                 For int datatypes, that is uint32, uint16 and uint8.
@@ -77,28 +61,23 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
 
         peak_width -    pixel width of the peaks used, default is 1
 
-        set_order_no -  detemines number of peaks that are used for 
-                        comparison when detemining air vs materail.
+        set_order_no -  determines number of peaks that are used for 
+                        comparison when determining air vs material.
                         See https://docs.scipy.org/doc/scipy/reference
                         /generated/scipy.signal.argrelextrema.html
                         for more info.
-        Keep_Raw - Bool to set if normalised image should be kept as raw binary 
-                   or saved as a tiff stack. Default is False, i.e. save as tiff
     '''
 
     default_kwargs ={
-        'raw_dtype':'u2',
         'nbins':512,
         'des_bg':0.1,
         'des_fg':0.9,
         'peak_width':1, 
         'set_order_no':10,
-        'Keep_Raw':False,
     }
       
     kwargs = { **default_kwargs, **kwargs }
 
-    raw_dtype = kwargs['raw_dtype']
     nbins=kwargs['nbins']
     des_bg = kwargs['des_bg']
     des_fg = kwargs['des_fg']
@@ -109,26 +88,18 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     root, ext = os.path.splitext(fname)
     if not ext:
         raise ValueError(f'Invalid file name {fname} filename must include a file extension.')
-    
-    dtype_min, dtype_max, pix_air, pix_material = check_valid_np_type(raw_dtype,des_bg,des_fg)
-    dt = np.dtype(raw_dtype)
-
-    # Store image dimensions in array
-    dim_size=np.array((img_dim_x,img_dim_y,num_slices),dtype=np.int)
-
-    # Open image data file in read-only
-    f = open(fname,'rb')
-
-    # Read data into array and close file
-    img_arr=np.fromfile(f,dtype=dt)
-    f.close()
-
-    # Reshape 1D array into 3D
-    img_arr=img_arr.reshape(dim_size[2], dim_size[0], dim_size[1])
-
+    elif ext not in ['.tiff','.tif']:
+        raise ValueError(f'Invalid input file {fname} file must be a tiff stack.')
+    print(f"Reading data from Tiff stack {fname}")
+    # Read data into array   
+    img_arr = tf.imread(fname)
+    dt = str(img_arr.dtype)
+    dtype_min, dtype_max, pix_air, pix_material = check_valid_np_type(dt,des_bg,des_fg)
     # Create histogram to find peaks
     (n, bins) = np.histogram(img_arr, nbins, density=True)
     plt.plot(.5*(bins[1:]+bins[:-1]), n)
+    plt.xlabel('x positions (bins)')
+    plt.ylabel('y positions  (counts)')
     histo_x = bins
     histo_y=np.zeros(shape=(nbins+1))
     histo_y[1:nbins+1] = n
@@ -159,7 +130,6 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     idx_y = indexes[0]
     air_idx = int(peakssort[0,len(indexes[0])-1])
     material_idx = int(peakssort[0,len(indexes[0])-2])
-    print(air_idx)
     desired_air = histo_x[air_idx]
     desired_material = histo_x[material_idx]
     # mean for air
@@ -193,7 +163,6 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     plt.clf()
     plt.plot(histo_x, histo_y)                      # histogram of Normalized Image
     plt.plot(pick_point_x, pick_point,  'go')      # Draw all the peaks found
-
     # Highlight selected two peaks
     x_number_list = [peakssort[2,len(indexes[0])-1], peakssort[2,len(indexes[0])-2]]
     y_number_list = [peakssort[1,len(indexes[0])-1], peakssort[1,len(indexes[0])-2]]
@@ -204,6 +173,7 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     plt.ylabel('y positions  (counts)')
     plt.title('Pixel Histogram of Input Image')
     plt.savefig(root+'_Input_hist.png')
+    
     # Normalise data based on peak values
     # Convert into float32 to avoid data clipping
     img_arr = img_arr.astype(np.float32)
@@ -214,18 +184,11 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     img_arr[img_arr > dtype_max] = dtype_max
 
     # Convert back into original format
-    img_arr = img_arr.astype(np.dtype(raw_dtype))
+    img_arr = img_arr.astype(dt)
+    # Write normalised data to file
+    im_output=f"{root}_N{ext}"
+    tf.imwrite(im_output,img_arr,bigtiff=True)
 
-    if kwargs['Keep_Raw']:
-        # Reshape into single column
-        img_arr=img_arr.reshape(-1)
-        # Write normalised data to file
-        np.asarray(img_arr, dtype=np.dtype(raw_dtype)).tofile(root+"_N"+ext)
-    else:
-        # Write normalised data to tiff stack
-        im_output=f"{root}_N{ext}"
-        tf.imwrite(im_output,img_arr,bigtiff=True)
-    
     # Generate new histogram with normalised data for comparison
     (n_norm, bins_norm) = np.histogram(img_arr, nbins, density=True)
     histo_x_norm = bins_norm
@@ -239,8 +202,10 @@ def norm_rawdata(fname,img_dim_x,img_dim_y,num_slices,**kwargs):
     plt.xlabel('x positions (bins)')
     plt.ylabel('y positions  (counts)')
     plt.title('Pixel Histogram of Normalised Image')
-    overlaied_histo_Img=root+'_overlayed_hist.png'
-    plt.savefig(overlaied_histo_Img)
+    overlaid_histo_Img=root+'_overlaid_hist.png'
+    plt.savefig(overlaid_histo_Img)
+    print("Normalisation Complete")
+    return
 
 def check_valid_np_type(raw_dtype:str,des_bg:float,des_fg:float):
     '''

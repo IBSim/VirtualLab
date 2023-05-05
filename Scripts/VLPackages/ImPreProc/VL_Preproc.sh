@@ -11,6 +11,7 @@ while getopts "c:p:" options; do
 esac
 done
 cd /home/ibsim/VirtualLab
+source /home/ibsim/venv/bin/activate
 export PYTHONPATH=/home/ibsim/VirtualLab:$pypath:$PYTHONPATH
 # check here that command is a string
 eval $command

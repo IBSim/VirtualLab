@@ -6,12 +6,13 @@ if [ -f "$USER_HOME"/.VLprofile ]; then source "$USER_HOME"/.VLprofile; fi
 usage() {
   echo
   echo "Usage:"
-  echo " $0 [-B {m/d}]"
+  echo " $0 [-B {name}] [-I {python/conda/binary}] "
   echo
-  echo "A script to install VirtualLab and its dependencies with default settings."
+  echo "A script to install VirtualLab with default settings."
   echo
-  echo "Options:"
-  echo "   '-B {Branch_name}' Install VirtualLab from Branch_name"
+  echo "   '-B {Branch_name}' Install VirtualLab from Branch_name (default is master)"
+  echo "   '-I {python/conda/binary/N}' How VirtualLab is installed, either using standard python (default), conda or pre-built binaries."
+  echo "                                N will not install any new packages, giving the user more flexibility."
   echo "   '-d {directory}' Path to custom directory in which to install VirtuaLab"
   echo "   '-y' Skip install confirmation dialogue."
 }
@@ -162,7 +163,7 @@ else
   url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/Host/"$fname
   wget $url
   chmod 755 $fname
-  sudo -u ${SUDO_USER:-$USER} ./$fname -B $BRANCH $INST_DIR $SKIP -Z
+  sudo -u ${SUDO_USER:-$USER} ./$fname -B $BRANCH -I $VL_BINARY $INST_DIR $SKIP -Z
   rm $fname
 
 #END

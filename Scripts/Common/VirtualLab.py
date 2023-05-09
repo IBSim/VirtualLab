@@ -472,7 +472,7 @@ class VLSetup:
             method_cls.SetFlag(flags["Run{}".format(method_name)])
             _NS_name = self.method_config[method_name]["Namespace"]
             method_dicts = self._CreateParameters(_NS_name)
-            method_cls._MethodSetup(method_dicts)
+            method_cls._SetupRun(method_dicts)
 
     def ImportParameters(self, Rel_Parameters, ParameterArgs=None):
         """

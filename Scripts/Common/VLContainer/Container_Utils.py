@@ -127,6 +127,14 @@ def path_change_binder(path, bindings, path_inside=True):
 
             return swap_path
 
+def is_bound(path,bind_dict):
+    # return boolean value whether or not a certain path is in the container
+    for host_path in bind_dict.keys():
+        if path.startswith(host_path):
+            return True
+        
+    return False
+
 
 def Exec_Container(package_info, command):
     """Function called inside the VL_Manager container to pass information to VL_server

@@ -31,6 +31,7 @@ from Scripts.Common.VLContainer.Container_Utils import (
     MPI_Container_Manager,
     get_vlab_dir,
     update_container,
+    is_bound
 )
 
 vlab_dir = get_vlab_dir()
@@ -111,7 +112,7 @@ def main():
     )
     parser.add_argument(
         "-B",
-        "--bind_points",
+        "--bind",
         help="Additional files/directories to mount to containers.",
         default='',
     )    
@@ -122,7 +123,12 @@ def main():
     #     action="store_false",
     # )
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
+    args, unknownargs = parser.parse_known_args()
+    if unknownargs:
+       sys.exit(f'Unknown option: {unknownargs[0]}')
+
+
     ################################################################
     # Note: Docker and nvcclli are work in progress options. As such
     # I don't want to totally remove them since they will be needed
@@ -177,44 +183,43 @@ def main():
     tmp_dir = tmp_dir_obj.name
 
     bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
+                            str(Path.home()):str(Path.home()),
                             str(tmp_dir):"/tmp",
                             str(vlab_dir):"/home/ibsim/VirtualLab",
                           }
 
-    # add important paths defined in VLconfig separately
-    os.makedirs(config_dict['OutputDir'],exist_ok=True) # make this directory as it may not exist
-    for var_name in ['InputDir','MaterialsDir','RunFilesDir','OutputDir']:
-        path_dir = config_dict[var_name]
-        bind_points_default[path_dir] = path_dir
+
+
+    # add bind points given by command line
+    _bind_dict = bind_str2dict(args.bind)
+    for key,val in _bind_dict.items():
+        if key in bind_points_default: continue
+        bind_points_default[key] = val
 
     # add bind points defined in VLconfig
-    _bind_points = config_dict.get('bind_points','')
+    _bind_points = config_dict.get('bind','')
     _bind_dict = bind_str2dict(_bind_points)
     for key,val in _bind_dict.items():
         if key in bind_points_default: continue
         bind_points_default[key] = val
 
 
-    # add run directory so run files can be run from anywhere on the host system
-    Run_file_dir = os.path.dirname(Run_file)
-    if Run_file_dir not in bind_points_default:
-        bind_points_default[Run_file_dir] = Run_file_dir
-    else:
-        Run_file = host_to_container_path(Run_file)
-
-    # Add present working directory to the list of bind points
+    # Add present working directory to the list of bind points if not already included
     pwd_dir = Utils.get_pwd()
-    if pwd_dir not in bind_points_default:
+    if not is_bound(pwd_dir,bind_points_default):
         bind_points_default[pwd_dir] = pwd_dir
-    else:
-        # if already bound set pwd to the directory inside the container
-        pwd_dir = bind_points_default[pwd_dir]
 
-    # add bind points given by command line
-    _bind_dict = bind_str2dict(args.bind_points)
-    for key,val in _bind_dict.items():
-        if key in bind_points_default: continue
-        bind_points_default[key] = val
+
+    for dir_type in ['InputDir','MaterialsDir','OutputDir']:
+        _path = config_dict[dir_type]
+        if not is_bound(_path,bind_points_default):
+            message = "\n*************************************************************************\n" \
+            f"Error: The '{dir_type}' directory '{_path}'\n" \
+            "is not bound to the container. This can be corrected either using the \n" \
+            "--bind option or by including the argument bind in VLconfig.py\n" \
+            "*************************************************************************\n"
+            
+            sys.exit(message)
     
     ######################################
     # formatting for optional -K cmd option

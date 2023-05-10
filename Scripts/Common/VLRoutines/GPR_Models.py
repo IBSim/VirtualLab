@@ -104,25 +104,33 @@ def GPR_PCA_hdf5(VL,DADict):
     # Get Train & test data from file DataFile_path
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TrainData[0])
     TrainIn, TrainOut = ML.GetDataML(DataFile_path, *Parameters.TrainData[1:])
+    ScalePCA = ML.ScaleValues(TrainOut,scaling='centre')
+    TrainOut_centre = ML.DataScale(TrainOut,*ScalePCA)
 
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TestData[0])
     TestIn, TestOut = ML.GetDataML(DataFile_path, *Parameters.TestData[1:])
+    TestOut_centre = ML.DataScale(TestOut,*ScalePCA)
+
+    np.save("{}/ScalePCA.npy".format(DADict['CALC_DIR']),ScalePCA)
 
     # ==========================================================================
     # Compress data & save compression matrix in CALC_DIR
     if os.path.isfile("{}/VT.npy".format(DADict['CALC_DIR'])) and not getattr(Parameters,'VT',True):
         VT = np.load("{}/VT.npy".format(DADict['CALC_DIR']))
     else:
-        VT = ML.PCA(TrainOut,metric=getattr(Parameters,'Metric',{}))
+        metric = getattr(Parameters,'Metric',{})
+        U,s,VT = ML.GetPC(TrainOut_centre,metric=metric,centre=False)# no need to centre as already done
         np.save("{}/VT.npy".format(DADict['CALC_DIR']),VT)
 
-    TrainOutCompress = TrainOut.dot(VT.T)
-    TestOutCompress = TestOut.dot(VT.T)
+    TrainOutCompress = TrainOut_centre.dot(VT.T)
+    TestOutCompress = TestOut_centre.dot(VT.T)
+
 
     NbComponents = VT.shape[0]
     print("Nb Components: {}".format(NbComponents))
     for name,orig,compress in zip(['Train','Test'],[TrainOut,TestOut],[TrainOutCompress,TestOutCompress]):
-        diff = compress.dot(VT) - orig # compare uncompressed and original
+        reconstructed = ML.DataRescale(compress.dot(VT),*ScalePCA)
+        diff = reconstructed - orig # compare uncompressed and original
         absmaxix = np.unravel_index(np.argmax(np.abs(diff), axis=None), diff.shape)
         percmaxix = np.unravel_index(np.argmax(np.abs(diff)/orig, axis=None), diff.shape)
         abs_orig, perc_orig = orig[absmaxix],orig[percmaxix]
@@ -160,12 +168,14 @@ def GPR_PCA_hdf5_Metrics(VL,DADict):
     ModelDir = "{}/{}".format(VL.PROJECT_DIR,Parameters.ModelDir)
     likelihood, model, Dataspace, ParametersMod = GPR.LoadModel(ModelDir)
     VT = np.load("{}/VT.npy".format(ModelDir))
+    ScalePCA = np.load("{}/ScalePCA.npy".format(ModelDir))
 
     # ==========================================================================
     # Get Test data from file DataFile_path
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TestData[0])
     TestIn, TestOut = ML.GetDataML(DataFile_path, *Parameters.TestData[1:])
-    TestOutCompress = TestOut.dot(VT.T)
+    TestOut_centre = ML.DataScale(TestOut,*ScalePCA)
+    TestOutCompress = TestOut_centre.dot(VT.T)
 
     ML.DataspaceAdd(Dataspace,Test=[TestIn,TestOutCompress])
 
@@ -174,7 +184,7 @@ def GPR_PCA_hdf5_Metrics(VL,DADict):
     Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
             'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
     PrintParameters = getattr(Parameters,'PrintParameters',False)
-    Performance(model, Data, PrintParameters=PrintParameters)
+    # Performance(model, Data, PrintParameters=PrintParameters)
     Performance_PCA(model, Data, VT,Dataspace.OutputScaler, PrintParameters=PrintParameters)
 
 # ==============================================================================
@@ -200,6 +210,9 @@ def Performance_PCA(model,Data,VT,OutputScaler,PrintParameters=False, fast_pred_
 
         pred_mean = _pred(model,data_in,fast_pred_var=fast_pred_var)
         pred_mean_rescale = ML.DataRescale(pred_mean,*OutputScaler)
+        # print(data_in[0].detach().numpy())
+        # print(pred_mean_rescale[0])
+        # print()
         data_out_rescale = ML.DataRescale(data_out,*OutputScaler)
         df_data_uncompress = ML.GetMetrics2(pred_mean_rescale.dot(VT),data_out_rescale.dot(VT))
 

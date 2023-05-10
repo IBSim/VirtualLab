@@ -21,6 +21,7 @@ docs/source/_build
 
 # Whitelist these directories
 !bin/
+bin/VirtualLab
 !docs/
 docs/build
 !Config/
@@ -39,8 +40,6 @@ Input/*/*
 !Input/*/.dev/
 !Input/Unit/*
 !tests/
-!Containers/
-Containers/*.sif
 # Ensure that only some Run files will be included in the RunFiles directory
 !RunFiles/
 # ignore logfiles but not directory
@@ -50,3 +49,5 @@ Containers/*.sif
 # ignore vlab binaries
 bin/VirtualLab
 bin/Install_VirtualLab
+
+

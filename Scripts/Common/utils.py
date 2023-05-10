@@ -2,7 +2,6 @@ from Scripts.Common import VLFunctions as VLF
 
 class Method_base():
     def __init__(self,VL):
-        self.Data = {}
         self.dry_run = VL._dry_run
         self.RunFlag = True
         self._checks(VL.Exit)
@@ -10,7 +9,6 @@ class Method_base():
         self.clsname = str(VL.__class__.__name__)
         self._parsed_kwargs = VL._parsed_kwargs
         self.Containers_used = []
-        self.tcp_sock = VL.tcp_sock
         self._debug = VL._debug
         self.MethodName = ""
 
@@ -69,6 +67,10 @@ class Method_base():
     def GetPoolRun(self):
         return self._MethodPoolRun
     
+    def _SetupRun(self,*args,**kwargs):
+        self.Data = {} # doing this here enables running analysis multiple times in the same script
+        return self._MethodSetup(*args,**kwargs)
+
     def _DryRun(self):
         '''
         Function to build listed containers then return.

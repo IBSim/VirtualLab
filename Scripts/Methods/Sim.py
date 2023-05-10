@@ -170,7 +170,8 @@ class Method(Method_base):
         # ==========================================================================
         # Run pre aster step
         if RunPreAster and "PreFile" in SimDict:
-            VL.Logger("Running PreAster for '{}'\n".format(Parameters.Name), Print=True)
+#            VL.Logger("Running PreAster for '{}'\n".format(Parameters.Name), Print=True)
+            print("Running PreAster for '{}'\n".format(Parameters.Name))
             os.makedirs(SimDict["PREASTER"], exist_ok=True)
 
             PreAsterFnc = VLF.GetFunc(*SimDict["PreFile"])
@@ -181,8 +182,8 @@ class Method(Method_base):
         # ==========================================================================
         # Run aster step
         if RunAster and hasattr(Parameters, "AsterFile"):
-            VL.Logger("Running Aster for '{}'\n".format(Parameters.Name), Print=True)
-
+#            VL.Logger("Running Aster for '{}'\n".format(Parameters.Name), Print=True)
+            print("Running Aster for '{}'\n".format(Parameters.Name))
             os.makedirs(SimDict["ASTER"], exist_ok=True)
 
             # =======================================================================
@@ -263,9 +264,8 @@ class Method(Method_base):
         # ==========================================================================
         # Run post aster step
         if RunPostAster and "PostFile" in SimDict:
-            VL.Logger(
-                "Running PostAster for '{}'\n".format(Parameters.Name), Print=True
-            )
+#            VL.Logger("Running PostAster for '{}'\n".format(Parameters.Name), Print=True)
+            print("Running PostAster for '{}'\n".format(Parameters.Name))
             os.makedirs(SimDict["POSTASTER"], exist_ok=True)
 
             PostAsterFnc = VLF.GetFunc(*SimDict["PostFile"])

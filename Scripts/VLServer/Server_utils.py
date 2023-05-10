@@ -1,3 +1,5 @@
+import os
+
 def ContainerError(out, err):
     """Custom function to format error message in a pretty way."""
     Errmsg = (
@@ -114,6 +116,27 @@ def check_valid_port(tcp_port):
         sys.exit(0)
     else:
         return tcp_port
+        
+        
+def get_pwd():
+    return os.environ["PWD"]
+    
+def filetodict(filepath):
+    with open(filepath,'r') as f:
+        contents = f.readlines()
+
+    info = {}
+    for line in contents:
+        if line.startswith('#'): continue
+        data = line.split('=')
+        if len(data) !=2: continue
+        varname, value = data
+        value = (value.strip()).strip('"')
+        info[varname] = value
+    
+    return info
+
+    
 
 def host_to_container_path(filepath,vlab_dir_host,vlab_dir_cont = '/home/ibsim/VirtualLab'):
     """

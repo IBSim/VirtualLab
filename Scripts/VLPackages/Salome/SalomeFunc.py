@@ -131,18 +131,21 @@ def GetArgs():
     if len(sys.argv) > 1:
         pkldict = {}
         for arg in sys.argv[1:]:
+            if not arg.endswith('pkl'): continue
+
             varname,path = arg.split('=')
-            if not path.endswith('pkl'): continue
 
             with open(path,'rb') as f:
                 pklvar = pickle.load(f)
             pkldict[varname] = pklvar
-
+        # return pkldict
         if len(pkldict) == 2:
             # change to alphabetical
             return pkldict['Args'],pkldict['DataDict']
         elif len(pkldict) == 1:
             return list(pkldict.values())[0]
+        else:
+            return {}
 
 def Reload(name):
     importlib.reload(sys.modules[name])
@@ -170,3 +173,4 @@ def GetFunc(FilePath, funcname):
 
     func = getattr(module, funcname, None)
     return func
+

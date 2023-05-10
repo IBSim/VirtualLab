@@ -93,27 +93,50 @@ def bind_list2string(bind_list):
         container_bind.append(bind_host+":"+bind_cont)
     return ",".join(container_bind)
 
+def bind_str2dict(bind_str):
+    # comma separated list, with mount point denoted using :
+    if len(bind_str)==0: return {}
 
-def path_change_binder(path, bind_list, path_inside=True):
+    bind_dict = {}
+    for _bind in bind_str.split(','):
+        _bind_split = _bind.split(':')
+        if len(_bind_split)==1:
+            # same directory outside and inside
+            host_path = cont_path = _bind_split[0]
+        elif len(_bind_split)==2:
+            host_path, cont_path = _bind_split
+        else:
+            print("****************************************************************")
+            print("Warning: Unable to understand meaning of bind {}".format(_bind))
+            print("****************************************************************")
+        bind_dict[host_path] = cont_path
+    return bind_dict
+
+def path_change_binder(path, bindings, path_inside=True):
     """Converts path based on the bindings to the container used.
     This assumes that path is inside the container.
     Returns new path or None
     """
-    if path_inside:
-        check_ix, swap_ix = 1, 0
-    else:
-        check_ix, swap_ix = 0, 1
 
-    for bind in bind_list:
-        if len(bind) == 1:
-            bind = bind * 2  # make in to two
+    for outside,inside in bindings.items():
+        if path_inside:
+            check_mount,swap_mount = inside, outside
+        else:
+            check_mount,swap_mount = outside, inside
 
-        check_mount, swap_mount = bind[check_ix], bind[swap_ix]
         if path.startswith(check_mount):
             after_mount = path[len(check_mount) :]  # path after bind point
             swap_path = swap_mount + after_mount  # add this to swap_mount
 
             return swap_path
+
+def is_bound(path,bind_dict):
+    # return boolean value whether or not a certain path is in the container
+    for host_path in bind_dict.keys():
+        if path.startswith(host_path):
+            return True
+        
+    return False
 
 
 def Exec_Container(package_info, command):
@@ -123,6 +146,7 @@ def Exec_Container(package_info, command):
     # Find out what stdout is to decide where to send output (for different modes).
     # This is updated on the server to give the filename on the host instead of the one inside VL_Manager
     stdout = None if sys.stdout.name == "<stdout>" else sys.stdout.name
+
 
     # create new socket
     tcp_port = get_Vlab_Tcp_Port()
@@ -149,7 +173,7 @@ def Exec_Container(package_info, command):
 
 def Exec_Container_Manager(container_info, package_info, command, stdout=None):
     """Function called on VL_server to run jobs on other containers."""
-    
+
     container_cmd = container_info["container_cmd"]
     # merge in bind points from package and replace defaults
 
@@ -179,6 +203,77 @@ def Exec_Container_Manager(container_info, package_info, command, stdout=None):
     return ReturnCode
 
 
+
+def MPI_Container(package_info, command):
+    """Function called inside the VL_Manager container to pass information to VL_server
+    to run jobs in other containers."""
+
+    # create new socket
+    tcp_port = get_Vlab_Tcp_Port()
+    sock = create_tcp_socket(tcp_port)
+
+    # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
+    # on the server, where  'args' and 'kwargs' are passed to it.
+    info = {
+        "msg": "MPI",
+        "Cont_id": 123,
+        "Cont_name": package_info["ContainerName"],
+        "args": (package_info, command),
+        "kwargs": {"port": tcp_port},
+    }
+
+    # send data to relevant function in VLserver
+    send_data(sock, info)
+
+    # Get the information returned by Exec_Container_Manager, which is the returncode of the subprocess
+    ReturnCode = receive_data(sock, 0)  # return code from subprocess
+    sock.close()  # cleanup after ourselves
+    return ReturnCode
+
+def _MPIFile(command, port):
+    ''' As command contains statements such as which it must be done this way so that they are not evaluated by the host system.'''
+    string = "#!/bin/bash\n" + \
+             "source activate VirtualLab\n" + \
+             "export VL_TCP_PORT={}\n".format(port) + \
+             "export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH\n" + \
+             "{}\n".format(command)
+    return string
+             
+def MPI_Container_Manager(container_info, package_info, command, port=9000):
+    """Function called on VL_server to run jobs on other containers."""
+    
+    container_cmd = container_info["container_cmd"]
+    # merge in bind points from package and replace defaults
+ 
+    container_info['bind'].update({'/dev':'/dev'})
+    if package_info.get('bind',None) != None:
+        continer_info['bind'] = continer_info['bind'] | package_info['bind']
+    
+    bind_str = bind_list2string(container_info["bind"])  # convert bind list to string
+    container_cmd += " --bind {}".format(bind_str)  # update command with bind points
+
+    _command = command.split()
+ 
+    command_inside = " ".join(_command[3:]) # command to be run inside container
+    contents = _MPIFile(command_inside, port) # additional steps run inside container
+
+    tmpfile = "{}/MPIfile.sh"
+    # write contents to tmpfile
+    tmpdir = list(container_info['bind'].keys())[1] # so we know where to save MPI file to
+    with open(tmpfile.format(tmpdir),'w') as f:
+        f.write(contents)
+
+    command_outside = tmpfile.format('/tmp')
+ 
+    _mpicommand = _command[:3] + [container_cmd,container_info["container_path"]] + ['bash {}'.format(command_outside)] 
+    mpicommand = " ".join(_mpicommand)
+
+    container_process = subprocess.Popen(mpicommand, shell=True)
+
+    ReturnCode = (
+        container_process.wait()
+    )  # wait for process to finish and return its return code
+    return ReturnCode
 
 def create_tcp_socket(port_num=9000):
     """Function to create the tcp socket and connect to it.
@@ -366,17 +461,17 @@ def log_net_info(logger, message, screen=False):
         logger.debug(message)
 
 
-def update_container(Module, vlab_dir):
+def update_container(Apptainer_file, Module):
     import os
     import subprocess
 
-    Apptainer_file = f"{vlab_dir}/{Module['Apptainer_file']}"
     # check apptainer sif file exists and if not build from docker version
     if not os.path.exists(Apptainer_file):
         print(
             f"Apptainer file {Apptainer_file} does not appear to exist so building. This may take a while."
         )
         try:
+            os.makedirs(os.path.dirname(Apptainer_file),exist_ok=True) # make sure the directory exists for the container to go into 
             proc = subprocess.check_call(
                 f"apptainer build "
                 f'{Apptainer_file} docker://{Module["Docker_url"]}:{Module["Tag"]}',

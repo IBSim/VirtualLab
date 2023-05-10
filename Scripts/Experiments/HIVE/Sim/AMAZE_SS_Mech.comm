@@ -157,13 +157,7 @@ if TileEmissivity!=0 or BlockEmissivity!=0:
                             RAYONNEMENT=Radiation)
     Loading.append(_F(CHARGE=Radiat))
 
-# Mechanical BC using 3-2-1 method to constrain. Both pipe ends are constrained
-Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DY=0.0, GROUP_MA=('PipeIn','PipeOut')), #Pipe runs along y axis
-                        DDL_IMPO=(_F(DX=0.0, DZ=0.0, GROUP_NO=('PipeInV2','PipeOutV2')),
-                                  _F(DX=0.0, GROUP_NO=('PipeInV1', 'PipeOutV1'))),
-                        LIAISON_MAIL=(_F(GROUP_MA_MAIT='Pipe', GROUP_MA_ESCL='ContactBP_double'),
-                                      _F(GROUP_MA_MAIT='Block', GROUP_MA_ESCL='ContactTB_double')),
-                        MODELE=Mechmod)
+
 
 # ==============================================================================
 # Thermal analysis
@@ -210,21 +204,30 @@ Mechmat = AFFE_MATERIAU(AFFE=(_F(MATER=TleMch, GROUP_MA='Tile'),
                                      VALE_REF=Parameters.TempExt),
                         MODELE=Mechmod)
 
+# Mechanical BC using 3-2-1 method to constrain. Both pipe ends are constrained
+Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DY=0.0, GROUP_MA=('PipeIn','PipeOut')), #Pipe runs along y axis
+                        DDL_IMPO=(_F(DX=0.0, DZ=0.0, GROUP_NO=('PipeInV2','PipeOutV2')),
+                                  _F(DX=0.0, GROUP_NO=('PipeInV1', 'PipeOutV1'))),
+                       LIAISON_MAIL=(_F(GROUP_MA_MAIT='Pipe', GROUP_MA_ESCL='ContactBP_double'),
+                                     _F(GROUP_MA_MAIT='Block', GROUP_MA_ESCL='ContactTB_double')),
+                        MODELE=Mechmod)
+
 # Mechanical analysis
 ResMech = MECA_STATIQUE(CHAM_MATER=Mechmat,
                      EXCIT=(_F(CHARGE=Fix321)),
                      MODELE=Mechmod,
                      SOLVEUR=_F(METHODE=Solver))
 
-    # Get stresses
+# Get strain and equivalent stresses
 CALC_CHAMP(reuse=ResMech,
-               CRITERES=('SIEQ_ELGA'),
+               EXCIT=(_F(CHARGE=Fix321)),
+               CRITERES=('SIEQ_ELGA','SIEQ_NOEU'),
                DEFORMATION=('EPSI_ELGA'),
                RESULTAT=ResMech)
 
 IMPR_RESU(RESU=_F(RESULTAT=ResMech,
-                  NOM_CHAM=('DEPL','SIEF_ELGA','EPSI_ELGA','SIEQ_ELGA'),
-                  NOM_CHAM_MED=('Displacement','Stress','Strain','Stress_Eq')),
+                  NOM_CHAM=('DEPL','SIEF_ELGA','EPSI_ELGA','SIEQ_ELGA','SIEQ_NOEU'),
+                  NOM_CHAM_MED=('Displacement','Stress','Strain','Stress_Eq','Stress_Eq_Nd')),
           UNITE=80)
 
 FIN()

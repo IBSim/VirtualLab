@@ -13,28 +13,30 @@ import subprocess
 import threading
 import argparse
 import os
-import json
 import sys
 from pathlib import Path
-import time
-import yaml
 import tempfile
 from Scripts.VLServer import Server_utils as Utils
 from Scripts.Common.VLContainer.Container_Utils import (
     check_platform,
-    Format_Call_Str,
     send_data,
     receive_data,
     setup_networking_log,
     log_net_info,
     bind_list2string,
+    bind_str2dict,
     path_change_binder,
     Exec_Container_Manager,
+    MPI_Container_Manager,
     get_vlab_dir,
     update_container,
+    is_bound
 )
 
 vlab_dir = get_vlab_dir()
+# do it this way as can't import VLconfig with VirtualLab binary
+config_dict = Utils.filetodict("{}/VLconfig.py".format(vlab_dir))
+ContainerDir = config_dict.get('ContainerDir',f"{vlab_dir}/Containers")
 
 # global variables for use in all threads
 waiting_cnt_sockets = {}
@@ -107,6 +109,12 @@ def main():
         default=9000,
         type=int,
     )
+    parser.add_argument(
+        "-B",
+        "--bind",
+        help="Additional files/directories to mount to containers.",
+        default='',
+    )    
     # parser.add_argument(
     #     "-V",
     #     "--version",
@@ -114,7 +122,12 @@ def main():
     #     action="store_false",
     # )
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
+    args, unknownargs = parser.parse_known_args()
+    if unknownargs:
+       sys.exit(f'Unknown option: {unknownargs[0]}')
+
+
     ################################################################
     # Note: Docker and nvcclli are work in progress options. As such
     # I don't want to totally remove them since they will be needed
@@ -169,9 +182,58 @@ def main():
     else:
         Run_file = args.Run_file
     Run_file = Utils.check_file_in_container(vlab_dir, Run_file)
-    kOption_dict = {}
+
+
+    # ==========================================================================
+    # make bindings to container
+
+    # make a dir in /tmp on host with random name to avoid issues on shared systems
+    # the tempfile library ensures this directory is deleted on exiting python.
+    tmp_dir_obj = tempfile.TemporaryDirectory()
+    tmp_dir = tmp_dir_obj.name
+
+    bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
+                            str(Path.home()):str(Path.home()),
+                            str(tmp_dir):"/tmp",
+                            str(vlab_dir):"/home/ibsim/VirtualLab",
+                          }
+
+
+
+    # add bind points given by command line
+    _bind_dict = bind_str2dict(args.bind)
+    for key,val in _bind_dict.items():
+        if key in bind_points_default: continue
+        bind_points_default[key] = val
+
+    # add bind points defined in VLconfig
+    _bind_points = config_dict.get('bind','')
+    _bind_dict = bind_str2dict(_bind_points)
+    for key,val in _bind_dict.items():
+        if key in bind_points_default: continue
+        bind_points_default[key] = val
+
+
+    # Add present working directory to the list of bind points if not already included
+    pwd_dir = Utils.get_pwd()
+    if not is_bound(pwd_dir,bind_points_default):
+        bind_points_default[pwd_dir] = pwd_dir
+
+
+    for dir_type in ['InputDir','MaterialsDir','OutputDir']:
+        _path = config_dict[dir_type]
+        if not is_bound(_path,bind_points_default):
+            message = "\n*************************************************************************\n" \
+            f"Error: The '{dir_type}' directory '{_path}'\n" \
+            "is not bound to the container. This can be corrected either using the \n" \
+            "--bind option or by including the argument bind in VLconfig.py\n" \
+            "*************************************************************************\n"
+            
+            sys.exit(message)
+    
     ######################################
     # formatting for optional -K cmd option
+    kOption_dict = {}
     if args.options != None:
         options = ""
         # Note: -K can be set multiple times so we need these loops to format them correctly to be passed on
@@ -194,7 +256,7 @@ def main():
         options = options + " -k debug=True"
     if args.tcp_port:
         tcp_port = Utils.check_valid_port(args.tcp_port)
-        options = options + f" -k tcp_port={tcp_port}"
+        options = options + f" -P {tcp_port}"
 
     #####################################
     # turn on/off gpu support with a flag
@@ -232,7 +294,13 @@ def main():
     bind_str = bind_list2string(bind_points_default)
 
     if use_Apptainer:
-        Apptainer_file = f"{vlab_dir}/{Manager['Apptainer_file']}"
+        if Manager['Apptainer_file'].startswith('/'):
+            # full path provided
+            Apptainer_file = Manager['Apptainer_file']
+        else:
+            # relative path from container dir
+            Apptainer_file = f"{ContainerDir}/{Manager['Apptainer_file']}"
+
         if not os.path.exists(Apptainer_file):
             update_container(Manager, vlab_dir)
         
@@ -247,7 +315,7 @@ def main():
         proc = subprocess.Popen(
             f"docker run --rm -it --network=host -v {vlab_dir}:/home/ibsim/VirtualLab "
             f'{Manager["Docker_url"]}:{Manager["Tag"]} '
-            f'"{Manager["Startup_cmd"]} {options} -f {path}"',
+            f'"{Manager["Startup_cmd"]} {options} -f {Run_file}"',
             shell=True,
         )
     lock.release()
@@ -285,20 +353,29 @@ def handle_messages(
             f'Server - received "{event}" event from container {container_id}',
         )
 
-        if event == "Exec":
+        pwd_dir = Utils.get_pwd()
+        pwd_dir = bind_points_default[pwd_dir]
+                 
+        if event in ("Exec","MPI"):
             # will need to add option for docker when fixed
-            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs"
+            
+            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
 
             cont_name = rec_dict["Cont_name"]
             cont_info = VL_MOD[cont_name]
 
-            container_path = "{}/{}".format(vlab_dir, cont_info["Apptainer_file"])
+            if cont_info["Apptainer_file"].startswith('/'):
+                container_path = cont_info["Apptainer_file"] # full path provided
+            else:
+                container_path = f"{ContainerDir}/{cont_info['Apptainer_file']}" # relative path from container dir
+
             cont_info["container_path"] = container_path
             cont_info["container_cmd"] = container_cmd
             cont_info["bind"]=bind_points_default
 
             # check apptainer sif file exists and if not build from docker version
             if not os.path.exists(container_path):
+                os.makedirs(os.path.dirname(container_path),exist_ok=True)
                 # sif file doesn't exist
                 if "Docker_url" in cont_info:
                     print(
@@ -323,14 +400,19 @@ def handle_messages(
             args = rec_dict.get("args", ())
             kwargs = rec_dict.get("kwargs", {})
 
-            stdout = kwargs.get("stdout", None)
-            if stdout is not None:
-                # stdout is a file path within VL_Manager so need to get the path on the host
-                stdout = path_change_binder(stdout, bind_points_default)
-                kwargs["stdout"] = stdout
-
-            RC = Exec_Container_Manager(cont_info, *args, **kwargs)
-            send_data(client_socket, RC, debug)
+            if event=='Exec':
+                stdout = kwargs.get("stdout", None)
+                if stdout is not None and not os.path.isdir(os.path.dirname(stdout)):
+                    # stdout is a file path within VL_Manager so need to get the path on the host
+                    stdout = path_change_binder(stdout, bind_points_default)
+                    kwargs["stdout"] = stdout
+                    
+                RC = Exec_Container_Manager(cont_info, *args, **kwargs)
+                send_data(client_socket, RC, debug)
+            else:
+                # MPI
+                RC = MPI_Container_Manager(cont_info, *args, **kwargs)
+                send_data(client_socket, RC, debug)    
 
         elif event == "Build":
             # recive list of containers to be built
@@ -376,47 +458,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, tcp_port, bind_points_defa
     sock.bind((host, tcp_port))
     sock.listen(20)
     VL_MOD = Utils.load_module_config(vlab_dir)
-    ###############
-    # VLAB Started
-    while True:
-        # first while loop to wait for signal to start virtualLab
-        # since the "VirtualLab started" message will only be sent
-        # by vl_manger we can use this to identify the socket for
-        # the manger
-        manager_socket, manager_address = sock.accept()
-
-        log_net_info(net_logger, f"received request for connection.")
-        rec_dict = receive_data(manager_socket, debug)
-        event = rec_dict["msg"]
-        if event == "VirtualLab started":
-            log_net_info(net_logger, f"received VirtualLab started")
-            waiting_cnt_sockets["Manager"] = {"socket": manager_socket, "id": 0}
-            # spawn a new thread to deal with messages
-            thread = threading.Thread(
-                target=handle_messages,
-                args=(
-                    manager_socket,
-                    net_logger,
-                    VL_MOD,
-                    sock_lock,
-                    cont_ready,
-                    debug,
-                    gpu_flag,
-                    bind_points_default,
-                ),
-            )
-            thread.daemon = True
-            thread.start()
-            break
-        else:
-            # we are not expecting any other message so raise an error
-            # as something has gone wrong with the timing.
-            manager_socket.shutdown(socket.SHUT_RDWR)
-            manager_socket.close()
-            raise ValueError(
-                f"Unknown message {event} received, expected VirtualLab started"
-            )
-
+    
     ################################
     while True:
         # check for new connections and them to list

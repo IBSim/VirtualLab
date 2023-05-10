@@ -23,35 +23,34 @@ from importlib import import_module
 #       legacy code to be worthwhile. So it's easier to     #
 #       just live with it for now.                          #
 #############################################################
+
 DefaultSettings = {
     "Mode": "H",
     "Launcher": "Process",
     "NbJobs": 1,
-    # "Max_Containers": 1,
     "InputDir": VLconfig.InputDir,
     "OutputDir": VLconfig.OutputDir,
     "MaterialDir": VLconfig.MaterialsDir,
     "Cleanup": True,
     "dry_run": False,
     "debug": False,
-    "tcp_port": 9000,
+    "tcp_port": None,
 }
-
 
 class VLSetup:
     def __init__(self, Simulation, Project, Cont_id=1):
-        import VLconfig
+#        import VLconfig
         self._parsed_kwargs = VLF.parsed_kwargs(
             sys.argv[1:]
         )  # may need to be more robust than sys.argv
         # perform setup steps that are common to both VLModule and VL_manger
         self._Common_init(Simulation, Project, DefaultSettings, Cont_id)
+        
+        
         # Unique ID
         git_id = self._git()
         self._ID = "{}_{}".format(git_id, self._time)
-        data = {"msg": "VirtualLab started", "Cont_id": 1}
-        data_string = json.dumps(data)
-        Utils.send_data(self.tcp_sock, data)
+
         self.Logger(
             "\n############################\n"
             "### Launching VirtualLab ###\n"
@@ -250,8 +249,6 @@ class VLSetup:
             os.makedirs(self.TEMP_DIR)
         # Specify default settings
         self.Settings(**DefaultSettings)
-        # create socket for networking
-        self.tcp_sock = Utils.create_tcp_socket(self._tcp_port)
         self._AddMethod()
 
     def _SetMode(self, Mode="H"):
@@ -333,14 +330,12 @@ class VLSetup:
             atexit.unregister(self._Cleanup)
         atexit.register(self._Cleanup, Cleanup)
 
-    # def _SetMax_Containers(self, Max_Containers=1):
-    #     self._Max_Containers = Max_Containers
-    #     return
+    def _SetTcp_Port(self, tcp_port=None):
 
-    def _SetTcp_Port(self, tcp_port=9000):
-        import os
+        if tcp_port is None:
+            tcp_port = os.environ["VL_TCP_PORT"] # set during the launch of VirtualLab
 
-        if type(tcp_port) != int:
+        elif type(tcp_port) != int:
             self.Exit(
                 VLF.ErrorMessage(
                     f"Invalid port number: {tcp_port}, must be an integer."
@@ -353,9 +348,11 @@ class VLSetup:
                 )
             )
         else:
-            os.environ["VL_TCP_PORT"] = str(tcp_port)
-            self._tcp_port = tcp_port
-        return
+           # update global variable with giiven port
+           os.environ["VL_TCP_PORT"] = str(tcp_port)
+                
+        self._tcp_port = tcp_port
+
 
     def _SetDryrun(
         self,
@@ -475,7 +472,7 @@ class VLSetup:
             method_cls.SetFlag(flags["Run{}".format(method_name)])
             _NS_name = self.method_config[method_name]["Namespace"]
             method_dicts = self._CreateParameters(_NS_name)
-            method_cls._MethodSetup(method_dicts)
+            method_cls._SetupRun(method_dicts)
 
     def ImportParameters(self, Rel_Parameters, ParameterArgs=None):
         """

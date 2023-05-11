@@ -16,6 +16,8 @@ import os
 import sys
 from pathlib import Path
 import tempfile
+sys.path.insert(0,os.path.dirname(Path(__file__).parent.resolve())) # add one level up
+
 from Scripts.VLServer import Server_utils as Utils
 from Scripts.Common.VLContainer.Container_Utils import (
     check_platform,
@@ -343,7 +345,6 @@ def handle_messages(
         )
 
         pwd_dir = Utils.get_pwd()
-        pwd_dir = bind_points_default[pwd_dir]
                  
         if event in ("Exec","MPI"):
             # will need to add option for docker when fixed

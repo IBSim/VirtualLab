@@ -48,7 +48,7 @@ class Method(Method_base):
                 use_Nikon = True
                 if os.path.isabs(Parameters.Nikon_file):
                 #if abs path use that
-                    if is_bound(Nikon_file,vlab_dir=VLC.VL_HOST_DIR):
+                    if Utils.is_bound(Nikon_file,vlab_dir=VLC.VL_HOST_DIR):
                         Nikon_file = Parameters.Nikon_file
                     else:
                         message = "\n*************************************************************************\n" \
@@ -61,7 +61,7 @@ class Method(Method_base):
                 # if not abs path check the input directory
                     Nikon_file = f'{VL.PARAMETERS_DIR}/{Parameters.Nikon_file}'
                 
-                if is_bound(Nikon_file,vlab_dir=VLC.VL_HOST_DIR) and os.path.exists(Nikon_file):
+                if  os.path.exists(Nikon_file):
                     print(f"Reading CIL parameters from Nikon file: {Nikon_file}")
                 else:
                     # convert file path from container to host if necessary so errors make sense

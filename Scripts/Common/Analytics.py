@@ -21,7 +21,8 @@ done in VLconfig.py.
 '''
 
 def Run(Category,Action,Label):
-    tracking_id = 'UA-112907949-3' #tid
+    #tracking_id = 'UA-112907949-3' #tid
+    tracking_id = 'G-M4X1J02VS1' #tid
     clientid_str = str(datetime.now()) #cid
     campaign_name_str = 'UbuntuVM' #cn
     key1 = 'UbuntuVM' #key1

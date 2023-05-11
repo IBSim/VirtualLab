@@ -371,7 +371,14 @@ def handle_messages(
         )
 
         pwd_dir = Utils.get_pwd()
+<<<<<<< HEAD:bin/VL_server.py
+        pwd_dir = bind_points_default[pwd_dir]
+
+        if event in ("Exec", "MPI"):
+=======
+                 
         if event in ("Exec","MPI"):
+>>>>>>> dev:VL_server.py
             # will need to add option for docker when fixed
 
             container_cmd = (

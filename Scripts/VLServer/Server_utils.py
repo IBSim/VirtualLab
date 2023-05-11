@@ -1,5 +1,9 @@
 import os
 import json
+import sys
+from pathlib import Path
+import json
+import re
 
 def ContainerError(out, err):
     """Custom function to format error message in a pretty way."""
@@ -28,8 +32,7 @@ def load_module_config_yaml(vlab_dir):
 
 def load_module_config(vlab_dir):
     """Function to get the config from a json file"""
-    import json
-    from pathlib import Path
+
 
     vlab_dir = Path(vlab_dir)
     # load module config from file
@@ -77,9 +80,7 @@ def check_file_in_container(vlab_dir, Run_file):
     Function to check that the given runfile is accessible by the container i.e it is inside
     the virtualLab directory.
     """
-    from pathlib import Path
-    import shutil
-    import os, sys, stat
+
 
     # Convert Run_file to a pathlib path
     Run_file = Path(Run_file)
@@ -95,7 +96,6 @@ def check_k_options(option):
     """
     check that the options given to -K are of the form Name=Value
     """
-    import re
 
     # look for a single = sign that is not at the beging or end of the string.
     # Note: this coves a blank string and '='.

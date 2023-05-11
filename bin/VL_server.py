@@ -162,7 +162,7 @@ def main():
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
-    elif args.Run_file == None:
+    elif args.Run_file == NonUtils.e:
         print("****************************************************************")
         print("Error: you must specify a path to a valid RunFile with option -f")
         print("****************************************************************")
@@ -293,7 +293,7 @@ def main():
             sys.exit(message)
 
     # convert path from host to container if needed
-    path = Utils.host_to_container_path(Run_file, vlab_dir)
+    path = host_to_container_path(Run_file, vlab_dir)
     thread.start()
     # start VirtualLab
     lock.acquire()

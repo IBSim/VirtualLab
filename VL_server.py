@@ -284,7 +284,7 @@ def main():
     Modules = Utils.load_module_config(vlab_dir)
     Manager = Modules["Manager"]
 
-    if not is_bound(Run_file, bind_points_default):
+    if Run_file.startswith("/") and not is_bound(Run_file, bind_points_default):
             message = (
                 "\n*************************************************************************\n"
                 f"Error: The Runfile {Run_file}\n" \

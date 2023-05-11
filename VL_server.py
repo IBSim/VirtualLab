@@ -164,7 +164,7 @@ def main():
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
-    elif args.Run_file == NonUtils.e:
+    elif args.Run_file == None:
         print("****************************************************************")
         print("Error: you must specify a path to a valid RunFile with option -f")
         print("****************************************************************")

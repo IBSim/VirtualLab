@@ -159,17 +159,6 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    # make a dir in /tmp on host with random name to avoid issues on shared systems
-    # the tempfile library ensures this directory is deleted on exiting python.
-    tmp_dir_obj = tempfile.TemporaryDirectory()
-    tmp_dir = tmp_dir_obj.name
-    bind_points_default = {
-    "/usr/share/glvnd":"/usr/share/glvnd",
-    str(tmp_dir):"/tmp",
-    str(vlab_dir):"/home/ibsim/VirtualLab",
-    "/dev":"/dev",
-    }
-
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
@@ -196,8 +185,8 @@ def main():
                             str(Path.home()):str(Path.home()),
                             str(tmp_dir):"/tmp",
                             str(vlab_dir):"/home/ibsim/VirtualLab",
+                            "/dev":"/dev",
                           }
-
 
 
     # add bind points given by command line

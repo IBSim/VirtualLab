@@ -16,7 +16,6 @@ import os
 import sys
 from pathlib import Path
 import tempfile
-sys.path.insert(0,os.path.dirname(Path(__file__).parent.resolve())) # add one level up
 
 from Scripts.VLServer import Server_utils as Utils
 from Scripts.Common.VLContainer.Container_Utils import (
@@ -25,7 +24,6 @@ from Scripts.Common.VLContainer.Container_Utils import (
     receive_data,
     setup_networking_log,
     log_net_info,
-    host_to_container_path,
     bind_list2string,
     bind_str2dict,
     path_change_binder,
@@ -41,18 +39,6 @@ vlab_dir = get_vlab_dir()
 config_dict = Utils.filetodict("{}/VLconfig.py".format(vlab_dir))
 ContainerDir = config_dict.get('ContainerDir',f"{vlab_dir}/Containers")
 
-# global variables for use in all threads
-waiting_cnt_sockets = {}
-target_ids = []
-task_dict = {}
-settings_dict = {}
-running_processes = {}
-run_arg_dict = {}
-Method_dict = {}
-next_cnt_id = 1
-manager_socket = None
-cont_ready = False
-
 
 ##########################################################################################
 ####################  ACTUAL CODE STARTS HERE !!!! #######################################
@@ -66,10 +52,6 @@ def main():
         help="Where " "RUN_FILE" " is the path of the python run file.",
         default=None,
     )
-    # parser.add_argument(
-    #     "-D",
-    #     "--Docker",VLconfig.VL_HOST_DIR
-    # )
     parser.add_argument(
         "-X",
         "--debug",
@@ -91,12 +73,6 @@ def main():
         help="Flag to perform dry run.",
         action="store_true",
     )
-    # parser.add_argument(
-    #     "-C",
-    #     "--nvccli",
-    #     help="Flag to use nvidia continer toolkit instead of default --nv.",
-    #     action="store_true",
-    # )
     parser.add_argument(
         "-K",
         "--options",
@@ -108,8 +84,8 @@ def main():
     parser.add_argument(
         "-P",
         "--tcp_port",
-        help="tcp port to use for server communication. Default is 9000",
-        default=9000,
+        help="tcp port to use for server communication.",
+        default=None,
         type=int,
     )
     parser.add_argument(
@@ -119,17 +95,25 @@ def main():
         default='',
     )    
     # parser.add_argument(
+    #     "-C",
+    #     "--nvccli",
+    #     help="Flag to use nvidia continer toolkit instead of default --nv.",
+    #     action="store_true",
+    # )
+     # parser.add_argument(
+    #     "-D",
+    #     "--Docker",VLconfig.VL_HOST_DIR
+    # )
+    # parser.add_argument(
     #     "-V",
     #     "--version",
     #     help="Display version number and citation information",
     #     action="store_false",
     # )
 
-    # args = parser.parse_args()
     args, unknownargs = parser.parse_known_args()
     if unknownargs:
        sys.exit(f'Unknown option: {unknownargs[0]}')
-
 
     ################################################################
     # Note: Docker and nvcclli are work in progress options. As such
@@ -142,8 +126,6 @@ def main():
     args.nvccli = False
     ###############################################################
 
-    # get vlab_dir either from cmd args or environment
-    vlab_dir = get_vlab_dir()
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
     use_Apptainer = check_platform() and not args.Docker
 
@@ -184,13 +166,12 @@ def main():
     tmp_dir_obj = tempfile.TemporaryDirectory()
     tmp_dir = tmp_dir_obj.name
 
+    # default bind points used in every container
     bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
                             str(Path.home()):str(Path.home()),
                             str(tmp_dir):"/tmp",
                             str(vlab_dir):"/home/ibsim/VirtualLab",
                           }
-
-
 
     # add bind points given by command line
     _bind_dict = bind_str2dict(args.bind)
@@ -204,7 +185,6 @@ def main():
     for key,val in _bind_dict.items():
         if key in bind_points_default: continue
         bind_points_default[key] = val
-
 
     # Add present working directory to the list of bind points if not already included
     pwd_dir = Utils.get_pwd()
@@ -246,9 +226,6 @@ def main():
         options = options + " -k dry_run=True"
     if args.debug:
         options = options + " -k debug=True"
-    if args.tcp_port:
-        tcp_port = Utils.check_valid_port(args.tcp_port)
-        options = options + f" -P {tcp_port}"
 
     #####################################
     # turn on/off gpu support with a flag
@@ -266,12 +243,26 @@ def main():
     # test never needs gpu support
     if args.test:
         gpu_flag = ""
+    
+    # make socket on a port
+    if args.tcp_port:
+        # use given port number
+        tcp_port = Utils.check_valid_port(args.tcp_port)
+        sock = make_socket(tcp_port)
+    else:
+        # run on free port
+        sock = make_socket()
+        tcp_port = sock.getsockname()[1]
+
+    options = options + f" -P {tcp_port}"
+
     # start server listening for incoming jobs on separate thread
     lock = threading.Lock()
     thread = threading.Thread(
         target=process,
-        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, tcp_port, bind_points_default),
+        args=(vlab_dir, sock, args.debug, gpu_flag, bind_points_default),
     )
+
     thread.daemon = True
 
     Modules = Utils.load_module_config(vlab_dir)
@@ -317,17 +308,10 @@ def main():
 
 
 def handle_messages(
-    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, bind_points_default
+    client_socket, net_logger, debug, gpu_flag, bind_points_default
 ):
-    global waiting_cnt_sockets
-    global target_ids
-    global task_dict
-    global settings_dict
-    global running_processes
-    global next_cnt_id
-    global manager_socket
-    global run_arg_dict
-    global Method_dict
+
+    VL_MOD = Utils.load_module_config(vlab_dir)
     # list of messages to simply relay from Container_id to Target_id
     relay_list = ["Continue", "Waiting", "Error"]
     while True:
@@ -432,42 +416,38 @@ def handle_messages(
             raise ValueError(f"Unknown message {event} received")
 
 
-def process(vlab_dir, use_Apptainer, debug, gpu_flag, tcp_port, bind_points_default):
-    """Function that runs in a thread to handle communication ect."""
-    global waiting_cnt_sockets
-    next_cnt_id = 1
-    global manager_socket
-    cont_ready = threading.Event()
-    log_dir = f"{vlab_dir}/.log/network_log"
-    net_logger = setup_networking_log(log_dir)
-    sock_lock = threading.Lock()
+def make_socket(tcp_port=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(True)
     host = "0.0.0.0"
-    sock.bind((host, tcp_port))
-    sock.listen(20)
-    VL_MOD = Utils.load_module_config(vlab_dir)
     
+    if tcp_port is None: 
+        sock.bind((host, 0)) # will find a free port
+    else: 
+        sock.bind((host, tcp_port)) # bind to tcp_port provided
+
+    sock.listen(20)
+    return sock
+
+def process(vlab_dir, sock, debug, gpu_flag, bind_points_default):
+    """Function that runs in a thread to handle communication ect."""
+    cont_ready = threading.Event()
+    sock_lock = threading.Lock()
+    log_dir = f"{vlab_dir}/.log/network_log"
+    net_logger = setup_networking_log(log_dir)
+
     ################################
     while True:
         # check for new connections and them to list
         client_socket, client_address = sock.accept()
 
-        waiting_cnt_sockets[str(next_cnt_id)] = {
-            "socket": client_socket,
-            "id": next_cnt_id,
-        }
-        next_cnt_id += 1
         # spawn a new thread to deal with messages
         thread = threading.Thread(
             target=handle_messages,
             args=(
                 client_socket,
                 net_logger,
-                VL_MOD,
-                sock_lock,
-                cont_ready,
                 debug,
                 gpu_flag,
                 bind_points_default,
@@ -475,6 +455,9 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, tcp_port, bind_points_defa
         )
         thread.daemon = True
         thread.start()
+
+
+
 
 
 if __name__ == "__main__":

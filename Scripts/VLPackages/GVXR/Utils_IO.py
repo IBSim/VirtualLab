@@ -115,37 +115,3 @@ def ReadNikonData(GVXRDict,file_name,Beam,Det,Model):
     GVXRDict['Detector'] = Det
     return GVXRDict
 
-def host_to_container_path(filepath):
-    """
-    Function to Convert a path in the virtualLab directory on the host
-    to an equivalent path inside the container. since the vlab _dir is
-    mounted as /home/ibsim/VirtualLab inside the container.
-    Note: The filepath needs to be absolute and  is converted
-    into a string before it is returned.
-    """
-    import VLconfig as VLC
-    vlab_dir_host = VLC.VL_HOST_DIR
-    # location of vlab inside the container
-    cont_vlab_dir = VLC.VL_DIR_CONT
-    # convert path to be relative to container not host
-    filepath = str(filepath).replace(str(vlab_dir), cont_vlab_dir)
-    return filepath
-
-
-def container_to_host_path(filepath):
-    """
-    Function to Convert a path inside the container
-    to an equivalent path on the host. since the vlab _dir is
-    mounted as /home/ibsim/VirtualLab inside the container.
-
-    Note: The filepath needs to be absolute and  is converted
-    into a string before it is returned.
-    """
-    import VLconfig as VLC
-    vlab_dir_host = VLC.VL_HOST_DIR    
-    # location of vlab inside the container
-    cont_vlab_dir = VLC.VL_DIR_CONT
-    # convert path to be relative to host not container
-    filepath = str(filepath).replace(cont_vlab_dir, str(vlab_dir))
-    return filepath
-

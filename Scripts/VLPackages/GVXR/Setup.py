@@ -12,7 +12,6 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
     from pydantic.dataclasses import dataclass, Field
     from typing import Optional, List
     from Scripts.Common.VLContainer.Container_Utils import (
-        host_to_container_path,
         container_to_host_path,
     )
     from Scripts.VLPackages.GVXR.Utils_IO import ReadNikonData
@@ -291,8 +290,15 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
             if os.path.isabs(Parameters.Nikon_file):
                 # if abs path use that
                 # Note: we need to now convert it to a path is accessible within the container
-                Nikon_file = host_to_container_path(Parameters.Nikon_file)
-                Nikon_file = Parameters.Nikon_file
+                    if is_bound(Nikon_file,vlab_dir=VLC.VL_HOST_DIR):
+                        Nikon_file = Parameters.Nikon_file
+                    else:
+                        message = "\n*************************************************************************\n" \
+                                f"Error: The Nikon file '{Nikon_file}' is in a directory that'\n" \
+                                "is not bound to the container. This can be corrected either using the \n" \
+                                "--bind option or by including the argument bind in VLconfig.py\n" \
+                                "*************************************************************************\n"
+                        raise FileNotFoundError(message) 
             else:
                 # if not abs path check the input directory
                 Nikon_file = f"{PARAMETERS_DIR}/{Parameters.Nikon_file}"

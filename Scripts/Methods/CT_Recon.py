@@ -47,15 +47,21 @@ class Method(Method_base):
             if hasattr(Parameters, "Nikon_file"):
                 use_Nikon = True
                 if os.path.isabs(Parameters.Nikon_file):
-                #if abs path use that 
-                # Note: we need to now convert it to a path is accessible within the container
-                    Nikon_file = Utils.host_to_container_path(Parameters.Nikon_file)
-                    Nikon_file = Parameters.Nikon_file
+                #if abs path use that
+                    if is_bound(Nikon_file,vlab_dir=VLC.VL_HOST_DIR):
+                        Nikon_file = Parameters.Nikon_file
+                    else:
+                        message = "\n*************************************************************************\n" \
+                                f"Error: The Nikon file '{Nikon_file}' is in a directory that'\n" \
+                                "is not bound to the container. This can be corrected either using the \n" \
+                                "--bind option or by including the argument bind in VLconfig.py\n" \
+                                "*************************************************************************\n"
+                        raise FileNotFoundError(message) 
                 else:
                 # if not abs path check the input directory
                     Nikon_file = f'{VL.PARAMETERS_DIR}/{Parameters.Nikon_file}'
                 
-                if os.path.exists(Nikon_file):
+                if is_bound(Nikon_file,vlab_dir=VLC.VL_HOST_DIR) and os.path.exists(Nikon_file):
                     print(f"Reading CIL parameters from Nikon file: {Nikon_file}")
                 else:
                     # convert file path from container to host if necessary so errors make sense

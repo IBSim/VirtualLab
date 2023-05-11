@@ -1,12 +1,6 @@
-from email import message
 import socket
 import json
-import tempfile
 import pickle
-
-from types import SimpleNamespace as Namespace
-from ast import Raise
-import struct
 import sys
 import subprocess
 
@@ -201,7 +195,7 @@ def Exec_Container_Manager(container_info, package_info, command, stdout=None):
 
 
 
-def MPI_Container(package_info, command):
+def MPI_Container(package_info, command, shared_dir):
     """Function called inside the VL_Manager container to pass information to VL_server
     to run jobs in other containers."""
 
@@ -215,8 +209,8 @@ def MPI_Container(package_info, command):
         "msg": "MPI",
         "Cont_id": 123,
         "Cont_name": package_info["ContainerName"],
-        "args": (package_info, command),
-        "kwargs": {"port": tcp_port},
+        "args": (package_info, command,shared_dir,tcp_port),
+        # "kwargs": {},
     }
 
     # send data to relevant function in VLserver
@@ -236,7 +230,7 @@ def _MPIFile(command, port):
              "{}\n".format(command)
     return string
              
-def MPI_Container_Manager(container_info, package_info, command, port=9000):
+def MPI_Container_Manager(container_info, package_info, command, shared_dir, port):
     """Function called on VL_server to run jobs on other containers."""
     
     container_cmd = container_info["container_cmd"]
@@ -254,22 +248,13 @@ def MPI_Container_Manager(container_info, package_info, command, port=9000):
     command_inside = " ".join(_command[3:]) # command to be run inside container
     contents = _MPIFile(command_inside, port) # additional steps run inside container
 
-    tmpfile = "{}/MPIfile.sh"
-    # write contents to tmpfile
+    # write contents to tmpfile in shared_dir (all nodes must have access to shared_dir)
 
-    bind_internal = list(container_info['bind'].values())
-    if '/tmp' in bind_internal:
-        ix = bind_internal.index('/tmp')
-        tmpdir = list(container_info['bind'].keys())[ix]
-    else:
-        tmpdir = '/tmp'
-
-    with open(tmpfile.format(tmpdir),'w') as f:
+    mpifile = "{}/MPIfile.sh".format(shared_dir)
+    with open(mpifile,'w') as f:
         f.write(contents)
 
-    command_outside = tmpfile.format('/tmp')
- 
-    _mpicommand = _command[:3] + [container_cmd,container_info["container_path"]] + ['bash {}'.format(command_outside)] 
+    _mpicommand = _command[:3] + [container_cmd,container_info["container_path"]] + ['bash {}'.format(mpifile)] 
     mpicommand = " ".join(_mpicommand)
 
     container_process = subprocess.Popen(mpicommand, shell=True)

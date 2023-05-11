@@ -155,7 +155,7 @@ def containermap(self, func, *args, **kwds):
     else:
 
         try:
-            error = Utils.MPI_Container({'ContainerName':'Manager'}, command)    
+            error = Utils.MPI_Container({'ContainerName':'Manager'}, command, self.VLshared_dir)    
             #subproc = Popen([command],shell=True)
             #error = subproc.wait()  # block until all done
 
@@ -191,7 +191,7 @@ def containermap(self, func, *args, **kwds):
 
 
 def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True, **kwargs):
-  
+
     NbEval = len(args_list)
 
     workdir = kwargs.get('workdir',None)
@@ -209,6 +209,7 @@ def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True,
     # Run functions in parallel of N using pyina
     pool = MpiPool(nodes=nb_parallel, source=source, workdir=workdir)
     pool.map = MethodType(containermap, pool)
+    pool.VLshared_dir = VL.TEMP_DIR
 
 
     if kwargs_list == []:
@@ -263,7 +264,6 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
         elif launcher.lower() in ('mpi','mpi_worker'):
             kwargs = {'workdir':VL.TEMP_DIR,
                       'addpath':set(sys.path)-set(VL._pypath)}
-            VL = Namespace()
         else: kwargs = {}
 
    

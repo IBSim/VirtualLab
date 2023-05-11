@@ -30,7 +30,8 @@ from Scripts.Common.VLContainer.Container_Utils import (
     MPI_Container_Manager,
     get_vlab_dir,
     update_container,
-    is_bound
+    is_bound,
+    host_to_container_path,
 )
 
 vlab_dir = get_vlab_dir()
@@ -170,7 +171,6 @@ def main():
         sys.exit(1)
     else:
         Run_file = args.Run_file
-    Run_file = Utils.check_file_in_container(vlab_dir, Run_file)
 
 
     # ==========================================================================
@@ -219,7 +219,8 @@ def main():
             "*************************************************************************\n"
             
             sys.exit(message)
-    
+# output final bind point ict to file so we can retrieve them later
+    Utils.bind_points2file(bind_points_default,vlab_dir)
     ######################################
     # formatting for optional -K cmd option
     kOption_dict = {}

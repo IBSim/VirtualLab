@@ -130,8 +130,20 @@ def path_change_binder(path, bindings, path_inside=True):
 
             return swap_path
 
-def is_bound(path,bind_dict):
-    # return boolean value whether or not a certain path is in the container
+def is_bound(path,bind_dict=None,vlab_dir=None):
+    '''
+    Function to check whether or not a certain path 
+    is in the container and return boolean value. 
+    You can either use a dict of bind points or you can
+    supply the vlab dir to get the bind points from 
+    the json file that is generated at runtime. 
+    '''
+    if bind_dict == None and vlab_dir == None:
+        raise ValueError('you must supply one of ether vlab_dir or bind_dict')
+    elif bind_dict == None:
+        # vlab dir is assumed set so get bind_dict from json file
+        bind_dict = json.loads(f'{vlab_dir}/Config/bind_points_runtime.json')
+
     for host_path in bind_dict.keys():
         if path.startswith(host_path):
             return True

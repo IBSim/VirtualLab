@@ -40,12 +40,12 @@
         "Apptainer_file": "VL_Salome.sif"
     },    
     "Aster_test": {
-        "Apptainer_file": "Containers/code_aster_v14.sif"
+        "Apptainer_file": "code_aster_v14.sif"
     },
      "ImPreProc": {
         "Docker_url": "ibsim/vl_impreproc",
         "Tag": "latest",
-        "Apptainer_file": "Containers/VL_ImPreProc.sif",
+        "Apptainer_file": "VL_ImPreProc.sif",
         "Method":"ImPreProc" 
         }  
 }

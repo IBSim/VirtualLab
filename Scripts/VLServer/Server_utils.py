@@ -74,8 +74,7 @@ def correct_typecasting(arg):
 def check_file_in_container(vlab_dir, Run_file):
     """
     Function to check that the given runfile is accessible by the container i.e it is inside
-    the virtualLab directory. If not the file is copied to the temporary directory, previously
-    created by the tempfile library which is accessible and bound to /tmp in the container.
+    the virtualLab directory.
     """
     from pathlib import Path
     import shutil

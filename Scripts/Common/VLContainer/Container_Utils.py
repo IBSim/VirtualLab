@@ -256,7 +256,14 @@ def MPI_Container_Manager(container_info, package_info, command, port=9000):
 
     tmpfile = "{}/MPIfile.sh"
     # write contents to tmpfile
-    tmpdir = list(container_info['bind'].keys())[1] # so we know where to save MPI file to
+
+    bind_internal = list(container_info['bind'].values())
+    if '/tmp' in bind_internal:
+        ix = bind_internal.index('/tmp')
+        tmpdir = list(container_info['bind'].keys())[ix]
+    else:
+        tmpdir = '/tmp'
+
     with open(tmpfile.format(tmpdir),'w') as f:
         f.write(contents)
 

@@ -27,6 +27,7 @@ docs/build
 !Config/
 Config/*.yaml
 Config/*.py
+Config/bind_points_runtime.json
 !Scripts/
 !Materials/Copper
 !Materials/Copper_NL

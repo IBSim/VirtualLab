@@ -284,7 +284,10 @@ def main():
     Modules = Utils.load_module_config(vlab_dir)
     Manager = Modules["Manager"]
 
-    if Run_file.startswith("/") and not is_bound(Run_file, bind_points_default):
+    if not Run_file.startswith("/"):
+        # runfile is reative so make absolute with current working directory
+        Run_file = f"{pwd_dir}/{Run_file}"
+    elif not is_bound(Run_file, bind_points_default):
             message = (
                 "\n*************************************************************************\n"
                 f"Error: The Runfile {Run_file}\n" \
@@ -295,7 +298,7 @@ def main():
             sys.exit(message)
 
     # convert path from host to container if needed
-    path = host_to_container_path(Run_file, vlab_dir)
+    Run_file = host_to_container_path(Run_file, vlab_dir)
     thread.start()
     # start VirtualLab
     lock.acquire()
@@ -317,7 +320,7 @@ def main():
         proc = subprocess.Popen(
             f"apptainer exec --contain --writable-tmpfs \
                         --bind {bind_str} {Apptainer_file} "
-            f'{Manager["Startup_cmd"]} {options} -f {path} ',
+            f'{Manager["Startup_cmd"]} {options} -f {Run_file} ',
             shell=True,
         )
     else:

@@ -37,7 +37,7 @@ from Scripts.Common.VLContainer.Container_Utils import (
 vlab_dir = get_vlab_dir()
 # do it this way as can't import VLconfig with VirtualLab binary
 config_dict = Utils.filetodict("{}/VLconfig.py".format(vlab_dir))
-ContainerDir = config_dict.get('ContainerDir',f"{vlab_dir}/Containers")
+ContainerDir = config_dict.get("ContainerDir", f"{vlab_dir}/Containers")
 
 # global variables for use in all threads
 waiting_cnt_sockets = {}
@@ -114,8 +114,8 @@ def main():
         "-B",
         "--bind",
         help="Additional files/directories to mount to containers.",
-        default='',
-    )    
+        default="",
+    )
     # parser.add_argument(
     #     "-V",
     #     "--version",
@@ -126,8 +126,7 @@ def main():
     # args = parser.parse_args()
     args, unknownargs = parser.parse_known_args()
     if unknownargs:
-       sys.exit(f'Unknown option: {unknownargs[0]}')
-
+        sys.exit(f"Unknown option: {unknownargs[0]}")
 
     ################################################################
     # Note: Docker and nvcclli are work in progress options. As such
@@ -172,7 +171,6 @@ def main():
     else:
         Run_file = args.Run_file
 
-
     # ==========================================================================
     # make bindings to container
 
@@ -181,46 +179,48 @@ def main():
     tmp_dir_obj = tempfile.TemporaryDirectory()
     tmp_dir = tmp_dir_obj.name
 
-    bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
-                            str(Path.home()):str(Path.home()),
-                            str(tmp_dir):"/tmp",
-                            str(vlab_dir):"/home/ibsim/VirtualLab",
-                            "/dev":"/dev",
-                          }
-
+    bind_points_default = {
+        "/usr/share/glvnd": "/usr/share/glvnd",
+        str(Path.home()): str(Path.home()),
+        str(tmp_dir): "/tmp",
+        str(vlab_dir): "/home/ibsim/VirtualLab",
+        "/dev": "/dev",
+    }
 
     # add bind points given by command line
     _bind_dict = bind_str2dict(args.bind)
-    for key,val in _bind_dict.items():
-        if key in bind_points_default: continue
+    for key, val in _bind_dict.items():
+        if key in bind_points_default:
+            continue
         bind_points_default[key] = val
 
     # add bind points defined in VLconfig
-    _bind_points = config_dict.get('bind','')
+    _bind_points = config_dict.get("bind", "")
     _bind_dict = bind_str2dict(_bind_points)
-    for key,val in _bind_dict.items():
-        if key in bind_points_default: continue
+    for key, val in _bind_dict.items():
+        if key in bind_points_default:
+            continue
         bind_points_default[key] = val
-
 
     # Add present working directory to the list of bind points if not already included
     pwd_dir = Utils.get_pwd()
-    if not is_bound(pwd_dir,bind_points_default):
+    if not is_bound(pwd_dir, bind_points_default):
         bind_points_default[pwd_dir] = pwd_dir
 
-
-    for dir_type in ['InputDir','MaterialsDir','OutputDir']:
+    for dir_type in ["InputDir", "MaterialsDir", "OutputDir"]:
         _path = config_dict[dir_type]
-        if not is_bound(_path,bind_points_default):
-            message = "\n*************************************************************************\n" \
-            f"Error: The '{dir_type}' directory '{_path}'\n" \
-            "is not bound to the container. This can be corrected either using the \n" \
-            "--bind option or by including the argument bind in VLconfig.py\n" \
-            "*************************************************************************\n"
-            
+        if not is_bound(_path, bind_points_default):
+            message = (
+                "\n*************************************************************************\n"
+                f"Error: The '{dir_type}' directory '{_path}'\n"
+                "is not bound to the container. This can be corrected either using the \n"
+                "--bind option or by including the argument bind in VLconfig.py\n"
+                "*************************************************************************\n"
+            )
+
             sys.exit(message)
-# output final bind point ict to file so we can retrieve them later
-    Utils.bind_points2file(bind_points_default,vlab_dir)
+    # output final bind point ict to file so we can retrieve them later
+    Utils.bind_points2file(bind_points_default, vlab_dir)
     ######################################
     # formatting for optional -K cmd option
     kOption_dict = {}
@@ -268,14 +268,32 @@ def main():
     lock = threading.Lock()
     thread = threading.Thread(
         target=process,
-        args=(vlab_dir, use_Apptainer, args.debug, gpu_flag, tcp_port, bind_points_default),
+        args=(
+            vlab_dir,
+            use_Apptainer,
+            args.debug,
+            gpu_flag,
+            tcp_port,
+            bind_points_default,
+        ),
     )
     thread.daemon = True
 
     Modules = Utils.load_module_config(vlab_dir)
     Manager = Modules["Manager"]
-    # convert path from host to container
-    path = Utils.host_to_container_path(Run_file,vlab_dir)
+
+    if not is_bound(Run_file, bind_points_default):
+            message = (
+                "\n*************************************************************************\n"
+                f"Error: The Runfile {Run_file}\n" \
+                "is in a directory that is not bound to the container. This can be corrected\n" \
+                "either using the --bind option or by including the argument bind in VLconfig.py\n"
+                "*************************************************************************\n"
+            )
+            sys.exit(message)
+
+    # convert path from host to container if needed
+    path = Utils.host_to_container_path(Run_file, vlab_dir)
     thread.start()
     # start VirtualLab
     lock.acquire()
@@ -284,16 +302,16 @@ def main():
     bind_str = bind_list2string(bind_points_default)
 
     if use_Apptainer:
-        if Manager['Apptainer_file'].startswith('/'):
+        if Manager["Apptainer_file"].startswith("/"):
             # full path provided
-            Apptainer_file = Manager['Apptainer_file']
+            Apptainer_file = Manager["Apptainer_file"]
         else:
             # relative path from container dir
             Apptainer_file = f"{ContainerDir}/{Manager['Apptainer_file']}"
 
         if not os.path.exists(Apptainer_file):
             update_container(Manager, vlab_dir)
-        
+
         proc = subprocess.Popen(
             f"apptainer exec --contain --writable-tmpfs \
                         --bind {bind_str} {Apptainer_file} "
@@ -316,7 +334,14 @@ def main():
 
 
 def handle_messages(
-    client_socket, net_logger, VL_MOD, sock_lock, cont_ready, debug, gpu_flag, bind_points_default
+    client_socket,
+    net_logger,
+    VL_MOD,
+    sock_lock,
+    cont_ready,
+    debug,
+    gpu_flag,
+    bind_points_default,
 ):
     global waiting_cnt_sockets
     global target_ids
@@ -345,27 +370,29 @@ def handle_messages(
 
         pwd_dir = Utils.get_pwd()
         pwd_dir = bind_points_default[pwd_dir]
-                 
-        if event in ("Exec","MPI"):
+
+        if event in ("Exec", "MPI"):
             # will need to add option for docker when fixed
-            
-            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
+
+            container_cmd = (
+                f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
+            )
 
             cont_name = rec_dict["Cont_name"]
             cont_info = VL_MOD[cont_name]
 
-            if cont_info["Apptainer_file"].startswith('/'):
-                container_path = cont_info["Apptainer_file"] # full path provided
+            if cont_info["Apptainer_file"].startswith("/"):
+                container_path = cont_info["Apptainer_file"]  # full path provided
             else:
-                container_path = f"{ContainerDir}/{cont_info['Apptainer_file']}" # relative path from container dir
+                container_path = f"{ContainerDir}/{cont_info['Apptainer_file']}"  # relative path from container dir
 
             cont_info["container_path"] = container_path
             cont_info["container_cmd"] = container_cmd
-            cont_info["bind"]=bind_points_default
+            cont_info["bind"] = bind_points_default
 
             # check apptainer sif file exists and if not build from docker version
             if not os.path.exists(container_path):
-                os.makedirs(os.path.dirname(container_path),exist_ok=True)
+                os.makedirs(os.path.dirname(container_path), exist_ok=True)
                 # sif file doesn't exist
                 if "Docker_url" in cont_info:
                     print(
@@ -390,19 +417,19 @@ def handle_messages(
             args = rec_dict.get("args", ())
             kwargs = rec_dict.get("kwargs", {})
 
-            if event=='Exec':
+            if event == "Exec":
                 stdout = kwargs.get("stdout", None)
                 if stdout is not None and not os.path.isdir(os.path.dirname(stdout)):
                     # stdout is a file path within VL_Manager so need to get the path on the host
                     stdout = path_change_binder(stdout, bind_points_default)
                     kwargs["stdout"] = stdout
-                    
+
                 RC = Exec_Container_Manager(cont_info, *args, **kwargs)
                 send_data(client_socket, RC, debug)
             else:
                 # MPI
                 RC = MPI_Container_Manager(cont_info, *args, **kwargs)
-                send_data(client_socket, RC, debug)    
+                send_data(client_socket, RC, debug)
 
         elif event == "Build":
             # recive list of containers to be built
@@ -448,7 +475,7 @@ def process(vlab_dir, use_Apptainer, debug, gpu_flag, tcp_port, bind_points_defa
     sock.bind((host, tcp_port))
     sock.listen(20)
     VL_MOD = Utils.load_module_config(vlab_dir)
-    
+
     ################################
     while True:
         # check for new connections and them to list

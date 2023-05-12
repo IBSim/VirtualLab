@@ -10,7 +10,7 @@ from Scripts.Common.VirtualLab import VLSetup
 Simulation='GVXR'
 Project='Helix'
 Parameters_Master='TrainingParameters_Survos-HIVE'
-Parameters_Var='TrainingParameters_Survos-HIVE_var1'
+Parameters_Var='TrainingParameters_Survos-HIVE_var2'
 #===============================================================================
 # Environment
 

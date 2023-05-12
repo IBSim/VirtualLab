@@ -6,7 +6,7 @@ from types import SimpleNamespace as Namespace
 from Scripts.Common.VLParallel import VLPool
 from Scripts.Common.utils import Method_base
 from Scripts.Common.VLContainer import Container_Utils as Utils
-from Scripts.VLPackages.Survos.API import Run as VolSeg
+from Scripts.VLPackages.VolSeg.API import Run as VolSeg
 from Scripts.VLPackages.ContainerInfo import GetInfo
 import Scripts.Common.VLFunctions as VLF
 
@@ -14,8 +14,8 @@ class Method(Method_base):
 
     def __init__(self, VL):
         super().__init__(VL)  # rune __init__ of Method_base
-        self.MethodName = "VolSeg"
-        self.Containers_used = ["Survos"]
+        self.MethodName = "VolSeg_Train"
+        self.Containers_used = ["VolSeg"]
 
     def Setup(self, VL, VolSegDicts):
         """
@@ -26,23 +26,27 @@ class Method(Method_base):
         if not (self.RunFlag and VolSegDicts):
             return
         self.Data = {}
-        for SegName, SegParams in VolSegdicts.items():
+        for SegName, SegParams in VolSegDicts.items():
             Parameters = Namespace(**SegParams)
 
             Segdict = {
-                "Name": SegName,
+                "Name": SegName,    
             }
+
+            if hasattr(Parameters,'Working_dir'):
+                Segdict['Working_dir'] = Parameters.Working_dir
+            else:
+                Segdict['Working_dir'] = "{}/Volume_Segmentics".format(VL.PROJECT_DIR),
+            
             if hasattr(Parameters, "Exp_Data"):
                 Segdict['Exp_Data'] = Parameters.Exp_Data
-            else:
-                raise ValueError('No exp data defined')
-            
+
             self.Data[SegName] = Segdict.copy()
         return
 
     @staticmethod
     def PoolRun(VL,VolSegDict):
-        RC = VolSeg(**VolSegDict)
+        RC = VolSeg('predict',**VolSegDict)
         return RC
     
 

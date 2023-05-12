@@ -25,5 +25,11 @@
     },
     "ImPreProc": {
         "Namespace": "ImPreProc"
+    },
+     "VolSeg_Train": {
+        "Namespace": "VolSeg"
+    },
+     "VolSeg_Predict": {
+        "Namespace": "VolSeg"
     }
 }

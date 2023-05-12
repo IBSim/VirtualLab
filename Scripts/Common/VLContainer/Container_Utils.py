@@ -3,6 +3,7 @@ import json
 import pickle
 import sys
 import subprocess
+import os
 
 
 def _tmpfile_pkl(tempdir="/tmp"):
@@ -55,8 +56,7 @@ def get_Vlab_Tcp_Port():
     as the environment variables will be different to other
     containers or the host.
     """
-    import os
-
+  
     port_num = os.environ.get("VL_TCP_PORT", None)
     # set port number to the specified value then
     if port_num == None:
@@ -71,6 +71,33 @@ def get_Vlab_Tcp_Port():
         sys.exit(1)
     return int(port_num)
 
+def get_Vlab_Host_Name():
+    """
+    Function to get vlab tcp port from the os environment.
+    variable VL_TCP_PORT. This variable is, or at least
+    should be set in the VL_Manager container when VL_setup
+    is first created.
+
+    This then allows you to easily create new tcp sockets
+    for spawning containers without having to pass objects
+    through the various layers of functions.
+
+    WARNING: this function should only be called inside the
+    VL_Manager container otherwise it will not work
+    as the environment variables will be different to other
+    containers or the host.
+    """
+
+    host_name = os.environ.get("VL_HOST_NAME", None)
+    # set port number to the specified value then
+    if host_name == None:
+        print(
+            "*************************************************************************\n",
+            " WARNING: VL host name not found from environment variable $VL_HOST_NAME\n",
+            "*************************************************************************",
+        )
+        sys.exit(1)
+    return host_name
 
 def run_pyfunc(ContainerInfo, funcfile, funcname, args=(), kwargs={}):
     python_exe, files = run_pyfunc_setup(funcfile, funcname, args=args, kwargs=kwargs)
@@ -141,7 +168,8 @@ def Exec_Container(package_info, command):
 
     # create new socket
     tcp_port = get_Vlab_Tcp_Port()
-    sock = create_tcp_socket(tcp_port)
+    host_name = get_Vlab_Host_Name()
+    sock = create_tcp_socket(host_name,tcp_port)
 
     # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
     # on the server, where  'args' and 'kwargs' are passed to it.
@@ -201,7 +229,8 @@ def MPI_Container(package_info, command, shared_dir):
 
     # create new socket
     tcp_port = get_Vlab_Tcp_Port()
-    sock = create_tcp_socket(tcp_port)
+    host_name = get_Vlab_Host_Name()
+    sock = create_tcp_socket(host_name,tcp_port)
 
     # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
     # on the server, where  'args' and 'kwargs' are passed to it.
@@ -209,8 +238,7 @@ def MPI_Container(package_info, command, shared_dir):
         "msg": "MPI",
         "Cont_id": 123,
         "Cont_name": package_info["ContainerName"],
-        "args": (package_info, command,shared_dir,tcp_port),
-        # "kwargs": {},
+        "args": (package_info, command,shared_dir,tcp_port,host_name),
     }
 
     # send data to relevant function in VLserver
@@ -221,16 +249,17 @@ def MPI_Container(package_info, command, shared_dir):
     sock.close()  # cleanup after ourselves
     return ReturnCode
 
-def _MPIFile(command, port):
+def _MPIFile(command, port, host_name):
     ''' As command contains statements such as which it must be done this way so that they are not evaluated by the host system.'''
     string = "#!/bin/bash\n" + \
              "source activate VirtualLab\n" + \
              "export VL_TCP_PORT={}\n".format(port) + \
+             "export VL_HOST_NAME={}\n".format(host_name) + \
              "export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH\n" + \
              "{}\n".format(command)
     return string
              
-def MPI_Container_Manager(container_info, package_info, command, shared_dir, port):
+def MPI_Container_Manager(container_info, package_info, command, shared_dir, port,host_name):
     """Function called on VL_server to run jobs on other containers."""
     
     container_cmd = container_info["container_cmd"]
@@ -246,10 +275,9 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
     _command = command.split()
  
     command_inside = " ".join(_command[3:]) # command to be run inside container
-    contents = _MPIFile(command_inside, port) # additional steps run inside container
+    contents = _MPIFile(command_inside, port,host_name) # additional steps run inside container
 
     # write contents to tmpfile in shared_dir (all nodes must have access to shared_dir)
-
     mpifile = "{}/MPIfile.sh".format(shared_dir)
     with open(mpifile,'w') as f:
         f.write(contents)
@@ -264,15 +292,16 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
     )  # wait for process to finish and return its return code
     return ReturnCode
 
-def create_tcp_socket(port_num=9000):
+def create_tcp_socket(host, port_num):
     """Function to create the tcp socket and connect to it.
-    The default port is 9000 for coms with the containers.
     """
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(True)
-    host = "0.0.0.0"
+    # host = "0.0.0.0"
+    # host = ""
+    # host = socket.gethostname()
     sock.connect((host, port_num))
     return sock
 

@@ -163,8 +163,10 @@ def main():
 
     # make a dir in /tmp on host with random name to avoid issues on shared systems
     # the tempfile library ensures this directory is deleted on exiting python.
-    tmp_dir_obj = tempfile.TemporaryDirectory()
-    tmp_dir = tmp_dir_obj.name
+    # tmp_dir_obj = tempfile.TemporaryDirectory()
+    # tmp_dir = tmp_dir_obj.name
+    tmp_dir='/tmp'
+
 
     # default bind points used in every container
     bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
@@ -243,7 +245,8 @@ def main():
     # test never needs gpu support
     if args.test:
         gpu_flag = ""
-    
+
+
     # make socket on a port
     if args.tcp_port:
         # use given port number
@@ -254,7 +257,8 @@ def main():
         sock = make_socket()
         tcp_port = sock.getsockname()[1]
 
-    options = options + f" -P {tcp_port}"
+    host = socket.gethostname()
+    options = options + f" -P {tcp_port} -s {host}"
 
     # start server listening for incoming jobs on separate thread
     lock = threading.Lock()
@@ -420,10 +424,10 @@ def make_socket(tcp_port=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(True)
-    host = "0.0.0.0"
-    
+    host = socket.gethostname()
+
     if tcp_port is None: 
-        sock.bind((host, 0)) # will find a free port
+        sock.bind((host, 0)) # will find a free port on the host
     else: 
         sock.bind((host, tcp_port)) # bind to tcp_port provided
 

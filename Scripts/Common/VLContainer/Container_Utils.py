@@ -5,7 +5,6 @@ import sys
 import subprocess
 import os
 
-
 def _tmpfile_pkl(tempdir="/tmp"):
     import uuid
 
@@ -168,8 +167,9 @@ def Exec_Container(package_info, command):
 
     # create new socket
     tcp_port = get_Vlab_Tcp_Port()
-    host_name = get_Vlab_Host_Name()
-    sock = create_tcp_socket(host_name,tcp_port)
+    host = socket.gethostname()
+    # host = '0.0.0.0'
+    sock = create_tcp_socket(host,tcp_port)
 
     # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
     # on the server, where  'args' and 'kwargs' are passed to it.
@@ -249,16 +249,14 @@ def MPI_Container(package_info, command, shared_dir):
     sock.close()  # cleanup after ourselves
     return ReturnCode
 
-def _MPIFile(command, port, host_name):
-    ''' As command contains statements such as which it must be done this way so that they are not evaluated by the host system.'''
+def _MPIFile(command):
     string = "#!/bin/bash\n" + \
              "source activate VirtualLab\n" + \
-             "export VL_TCP_PORT={}\n".format(port) + \
-             "export VL_HOST_NAME={}\n".format(host_name) + \
+             "export VL_TCP_PORT=$1 \n" + \
              "export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH\n" + \
-             "{}\n".format(command)
+             f"{command}\n"
     return string
-             
+
 def MPI_Container_Manager(container_info, package_info, command, shared_dir, port,host_name):
     """Function called on VL_server to run jobs on other containers."""
     
@@ -267,22 +265,24 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
  
     container_info['bind'].update({'/dev':'/dev'})
     if package_info.get('bind',None) != None:
-        continer_info['bind'] = continer_info['bind'] | package_info['bind']
+        container_info['bind'] = container_info['bind'] | package_info['bind']
     
     bind_str = bind_list2string(container_info["bind"])  # convert bind list to string
     container_cmd += " --bind {}".format(bind_str)  # update command with bind points
 
+    # make file
     _command = command.split()
- 
-    command_inside = " ".join(_command[3:]) # command to be run inside container
-    contents = _MPIFile(command_inside, port,host_name) # additional steps run inside container
-
-    # write contents to tmpfile in shared_dir (all nodes must have access to shared_dir)
+    command_inside = " ".join(_command[3:]) # command for running the function
+    contents = _MPIFile(command_inside)
     mpifile = "{}/MPIfile.sh".format(shared_dir)
     with open(mpifile,'w') as f:
         f.write(contents)
+    os.chmod(mpifile, 0o755)
 
-    _mpicommand = _command[:3] + [container_cmd,container_info["container_path"]] + ['bash {}'.format(mpifile)] 
+    vlab_dir = get_vlab_dir()
+    run_cont = f"{vlab_dir}/Scripts/Common/VLContainer/MPI.sh {mpifile} {host_name} {port}"
+
+    _mpicommand = _command[:3] + [container_cmd,container_info["container_path"]] + [f'{run_cont}']   
     mpicommand = " ".join(_mpicommand)
 
     container_process = subprocess.Popen(mpicommand, shell=True)
@@ -290,6 +290,7 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
     ReturnCode = (
         container_process.wait()
     )  # wait for process to finish and return its return code
+
     return ReturnCode
 
 def create_tcp_socket(host, port_num):
@@ -299,9 +300,6 @@ def create_tcp_socket(host, port_num):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(True)
-    # host = "0.0.0.0"
-    # host = ""
-    # host = socket.gethostname()
     sock.connect((host, port_num))
     return sock
 

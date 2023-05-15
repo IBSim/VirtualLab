@@ -197,7 +197,7 @@ def Exec_Container_Manager(container_info, package_info, command, stdout=None):
     # merge in bind points from package and replace defaults
 
     if package_info.get('bind',None) != None:
-        continer_info['bind'] = continer_info['bind'] | package_info['bind']
+        container_info['bind'] = container_info['bind'] | package_info['bind']
     bind_str = bind_list2string(container_info["bind"])  # convert bind list to string
     container_cmd += " --bind {}".format(bind_str)  # update command with bind points
 
@@ -277,15 +277,15 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
     mpifile = "{}/MPIfile.sh".format(shared_dir)
     with open(mpifile,'w') as f:
         f.write(contents)
-    os.chmod(mpifile, 0o755)
+
+    run_container = [container_cmd,container_info["container_path"]] + [f'bash {mpifile}'] 
+    run_container = " ".join(run_container)
 
     vlab_dir = get_vlab_dir()
-    run_cont = f"{vlab_dir}/Scripts/Common/VLContainer/MPI.sh {mpifile} {host_name} {port}"
+    mpi_str = " ".join(_command[:3])
+    mpi_command = f"{mpi_str} {vlab_dir}/Scripts/Common/VLContainer/MPI.sh '{run_container}' {host_name} {port}"
 
-    _mpicommand = _command[:3] + [container_cmd,container_info["container_path"]] + [f'{run_cont}']   
-    mpicommand = " ".join(_mpicommand)
-
-    container_process = subprocess.Popen(mpicommand, shell=True)
+    container_process = subprocess.Popen(mpi_command, shell=True)
 
     ReturnCode = (
         container_process.wait()

@@ -283,7 +283,7 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
 
     vlab_dir = get_vlab_dir()
     mpi_str = " ".join(_command[:3])
-    mpi_command = f"{mpi_str} {vlab_dir}/Scripts/Common/VLContainer/MPI.sh '{run_container}' {host_name} {port}"
+    mpi_command = f"{mpi_str} {vlab_dir}/Scripts/Common/VLContainer/MPI.sh '{run_container}' {host_name} {port} {vlab_dir}"
 
     container_process = subprocess.Popen(mpi_command, shell=True)
 

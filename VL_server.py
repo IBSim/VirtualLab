@@ -461,7 +461,7 @@ def process(vlab_dir, sock, debug, gpu_flag, bind_points_default):
 
 
 
-def handle_messages2(client_socket):
+def handle_messages2(client_socket,bind_points_default):
     # bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
     #                     str(Path.home()):str(Path.home()),
     #                     '/tmp':"/tmp",

@@ -167,9 +167,8 @@ def Exec_Container(package_info, command):
 
     # create new socket
     tcp_port = get_Vlab_Tcp_Port()
-    host = socket.gethostname()
-    # host = '0.0.0.0'
-    sock = create_tcp_socket(host,tcp_port)
+    host_name = socket.gethostname()
+    sock = create_tcp_socket(host_name,tcp_port)
 
     # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
     # on the server, where  'args' and 'kwargs' are passed to it.
@@ -230,14 +229,16 @@ def MPI_Container(package_info, command, shared_dir):
     # create new socket
     tcp_port = get_Vlab_Tcp_Port()
     host_name = get_Vlab_Host_Name()
+
     sock = create_tcp_socket(host_name,tcp_port)
 
-    # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
+    # Create info dictionary to send to VLserver. The msg 'MPI' calls MPI_Container_Manager
     # on the server, where  'args' and 'kwargs' are passed to it.
     info = {
         "msg": "MPI",
         "Cont_id": 123,
         "Cont_name": package_info["ContainerName"],
+        "shared_dir":shared_dir,
         "args": (package_info, command,shared_dir,tcp_port,host_name),
     }
 
@@ -283,7 +284,7 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
 
     vlab_dir = get_vlab_dir()
     mpi_str = " ".join(_command[:3])
-    mpi_command = f"{mpi_str} {vlab_dir}/Scripts/Common/VLContainer/MPI.sh '{run_container}' {host_name} {port} {vlab_dir}"
+    mpi_command = f"{mpi_str} {vlab_dir}/Scripts/Common/VLContainer/MPI.sh '{run_container}' {host_name} {port} {shared_dir} {vlab_dir}"
 
     container_process = subprocess.Popen(mpi_command, shell=True)
 

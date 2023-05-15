@@ -15,7 +15,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
-import tempfile
+import pickle
 
 from Scripts.VLServer import Server_utils as Utils
 from Scripts.Common.VLContainer.Container_Utils import (
@@ -166,8 +166,6 @@ def main():
     # tmp_dir_obj = tempfile.TemporaryDirectory()
     # tmp_dir = tmp_dir_obj.name
     tmp_dir='/tmp'
-
-
     # default bind points used in every container
     bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
                             str(Path.home()):str(Path.home()),
@@ -175,16 +173,14 @@ def main():
                             str(vlab_dir):"/home/ibsim/VirtualLab",
                           }
 
+    # bind points defined in VLconfig
+    _bind_points = config_dict.get('bind','')
+    _bind_dict_add = bind_str2dict(_bind_points)
+
     # add bind points given by command line
     _bind_dict = bind_str2dict(args.bind)
-    for key,val in _bind_dict.items():
-        if key in bind_points_default: continue
-        bind_points_default[key] = val
-
-    # add bind points defined in VLconfig
-    _bind_points = config_dict.get('bind','')
-    _bind_dict = bind_str2dict(_bind_points)
-    for key,val in _bind_dict.items():
+    _bind_dict_add.update(_bind_dict)
+    for key,val in _bind_dict_add.items():
         if key in bind_points_default: continue
         bind_points_default[key] = val
 
@@ -248,16 +244,16 @@ def main():
 
 
     # make socket on a port
+    host = socket.gethostname()
     if args.tcp_port:
         # use given port number
         tcp_port = Utils.check_valid_port(args.tcp_port)
-        sock = make_socket(tcp_port)
+        sock = make_socket(host,tcp_port)
     else:
         # run on free port
-        sock = make_socket()
+        sock = make_socket(host)
         tcp_port = sock.getsockname()[1]
-
-    host = socket.gethostname()
+   
     options = options + f" -P {tcp_port} -s {host}"
 
     # start server listening for incoming jobs on separate thread
@@ -389,6 +385,9 @@ def handle_messages(
                 send_data(client_socket, RC, debug)
             else:
                 # MPI
+                shared_dir = rec_dict['shared_dir']
+                with open(f"{shared_dir}/bind_points.pkl",'wb') as f:
+                    pickle.dump(bind_points_default,f)
                 RC = MPI_Container_Manager(cont_info, *args, **kwargs)
                 send_data(client_socket, RC, debug)    
 
@@ -420,11 +419,10 @@ def handle_messages(
             raise ValueError(f"Unknown message {event} received")
 
 
-def make_socket(tcp_port=None):
+def make_socket(host = '0.0.0.0', tcp_port=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(True)
-    host = socket.gethostname()
 
     if tcp_port is None: 
         sock.bind((host, 0)) # will find a free port on the host
@@ -463,6 +461,112 @@ def process(vlab_dir, sock, debug, gpu_flag, bind_points_default):
 
 
 
+def handle_messages2(client_socket):
+    # bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
+    #                     str(Path.home()):str(Path.home()),
+    #                     '/tmp':"/tmp",
+    #                     str(vlab_dir):"/home/ibsim/VirtualLab",
+    #                     }
+  
+    while True:
+
+        rec_dict = receive_data(client_socket)
+
+        if rec_dict == None:
+            return
+        
+        event = rec_dict["msg"]
+
+        if event in ("Exec"):
+            # will need to add option for docker when fixed
+            
+            container_cmd = f"apptainer exec --contain"
+
+            cont_name = rec_dict["Cont_name"]
+            VL_MOD = Utils.load_module_config(vlab_dir)
+            cont_info = VL_MOD[cont_name]
+
+            if cont_info["Apptainer_file"].startswith('/'):
+                container_path = cont_info["Apptainer_file"] # full path provided
+            else:
+                container_path = f"{ContainerDir}/{cont_info['Apptainer_file']}" # relative path from container dir
+
+            cont_info["container_path"] = container_path
+            cont_info["container_cmd"] = container_cmd
+            # cont_info["bind"]=bind_points_default
+            cont_info['bind'] = bind_points_default
+
+            # check apptainer sif file exists and if not build from docker version
+            if not os.path.exists(container_path):
+                os.makedirs(os.path.dirname(container_path),exist_ok=True)
+                # sif file doesn't exist
+                if "Docker_url" in cont_info:
+                    print(
+                        f"Apptainer file {container_path} does not appear to exist so building. This may take a while."
+                    )
+                    try:
+                        proc = subprocess.check_call(
+                            f"apptainer build "
+                            f'{container_path} docker://{cont_info["Docker_url"]}:{cont_info["Tag"]}',
+                            shell=True,
+                        )
+                    except subprocess.CalledProcessError as E:
+                        print(E.stderr)
+                        raise E
+
+                else:
+                    print(
+                        f"Apptainer file {container_path} does not exist and no information about its location is provided.\n Exiting"
+                    )
+                    sys.exit()
+
+            args = rec_dict.get("args", ())
+            kwargs = rec_dict.get("kwargs", {})
+
+
+            stdout = kwargs.get("stdout", None)
+            if stdout is not None and not os.path.isdir(os.path.dirname(stdout)):
+                # stdout is a file path within VL_Manager so need to get the path on the host
+                stdout = path_change_binder(stdout, bind_points_default)
+                kwargs["stdout"] = stdout
+                
+            RC = Exec_Container_Manager(cont_info, *args, **kwargs)
+            send_data(client_socket, RC)
+
+
+def _server(temp_file,shared_dir):
+    # Create TCP port
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setblocking(True)
+    sock.bind(('0.0.0.0', 0)) # will find a free port on the host
+    sock.listen(20)
+
+    # write TCP-port to temp_file so that bash script can use it
+    with open(temp_file,'w') as f:
+        f.write(str(sock.getsockname()[1]))
+
+    # get bind information from file
+    with open(f"{shared_dir}/bind_points.pkl",'rb') as f:
+        bind_points_default = pickle.load(f)
+
+    client_socket, client_address = sock.accept()
+    
+    while client_socket:
+        return handle_messages2(client_socket, bind_points_default)
+    
+    sock.close()
+
+
+def _get_host(temp_file):
+    with open(temp_file,'w') as f:
+        f.write(str(socket.gethostname()))
+
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1] == 'server':
+        _server(*sys.argv[2:4])
+    elif sys.argv[1] == 'hostname':
+        _get_host(sys.argv[2])
+    else:
+        main()

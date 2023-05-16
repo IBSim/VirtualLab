@@ -268,8 +268,11 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
 
    
         if launcher.lower().startswith('mpi'):
-            if launcher.lower() == 'mpi' or N==1: onall = True
-            else: onall = False
+            if launcher.lower() == 'mpi':
+                onall = False
+                N+=1 # add extra 1 to N for master mpi 
+            else: 
+                onall = True
             Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=onall, **kwargs)
         else:
             Res = Paralleliser(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, method=launcher, nb_parallel=N,**kwargs)

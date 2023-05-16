@@ -162,7 +162,12 @@ def Exec_Container(package_info, command):
 
     # Find out what stdout is to decide where to send output (for different modes).
     # This is updated on the server to give the filename on the host instead of the one inside VL_Manager
-    stdout = None if sys.stdout.name == "<stdout>" else sys.stdout.name
+    
+    if sys.stdout.name == "<stdout>":
+        stdout = None 
+    else :
+        sys.stdout.flush() # flush information writen by manager to the file
+        stdout = sys.stdout.name
 
 
     # create new socket
@@ -228,8 +233,7 @@ def MPI_Container(package_info, command, shared_dir):
 
     # create new socket
     tcp_port = get_Vlab_Tcp_Port()
-    host_name = get_Vlab_Host_Name()
-
+    host_name = socket.gethostname()
     sock = create_tcp_socket(host_name,tcp_port)
 
     # Create info dictionary to send to VLserver. The msg 'MPI' calls MPI_Container_Manager

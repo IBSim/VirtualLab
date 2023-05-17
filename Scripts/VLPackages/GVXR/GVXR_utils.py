@@ -392,7 +392,7 @@ def convert_tets_to_tri(mesh_file):
 
     return new_mesh_file
 
-def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value:float=None):
+def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value:float=None, nbins:int = 256):
     '''
     Function to fill in the edges of an xray projection with fill_value (default is 1.0 i.e. background).
     This is done to reduce ring/halo artifacts during reconstruction with CIL.
@@ -401,7 +401,6 @@ def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value
                             in from each edge.
     param: fill_value - value to replace pixels with, default is to calcuate background value using image histogram.
     '''
-    nbins = 256
     if fill_percent == None or fill_percent == 0.0:
         return projection
     
@@ -413,7 +412,7 @@ def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value
     nx = int(math.floor((pix_x * fill_percent)/ 2))
     ny = int(math.floor((pix_y * fill_percent)/ 2))
     if fill_value == None:
-        # use a histgram of the image to pick out the higest peak to obtain background instnsity
+        # use a histgram of the image to pick out the highest peak to obtain background intensity
         bins, vals = np.histogram(projection,nbins)
         peak_ind = np.argmax(bins)
         fill_value = vals[peak_ind]

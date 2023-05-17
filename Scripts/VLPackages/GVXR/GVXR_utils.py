@@ -421,9 +421,9 @@ def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value
     projection[:,:nx] = fill_value
     # this stops you nuking every value in the array instead of filling 0 
     # pixels because we are using -ve indexing and as such -0 is treat as 0.
-    if nx > 0:
-        projection[-ny:,:] = fill_value 
     if ny > 0:
+        projection[-ny:,:] = fill_value 
+    if nx > 0:
         projection[:,-nx:] = fill_value
 
     return projection

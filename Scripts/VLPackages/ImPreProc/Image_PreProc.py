@@ -19,7 +19,7 @@ def Normalise(**kwargs):
         normTiff(Exp_Data,**kwargs)
     elif EXP_ext in ['.raw','.vol']:
         # data is raw binary
-        Print(f"Normalising Raw data {Exp_Data}")
+        print(f"Normalising Raw data {Exp_Data}")
         normRawData(Exp_Data,**kwargs)
     else:
         raise ValueError(f'Invalid input file {Exp_Data} file must be a tiff stack, .vol or .raw file.')

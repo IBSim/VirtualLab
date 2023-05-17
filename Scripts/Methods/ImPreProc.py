@@ -197,12 +197,19 @@ class Method(Method_base):
             for key in self.Data.keys():
                     Errorfnc = self.PoolRun(VL,self.Data[key],'Register')
                     if Errorfnc:
-                        VL.Exit(
-                            VLF.ErrorMessage(
-                                "The following Image Pre-Processing routine(s) finished with errors:\n{}".format(
-                                    Errorfnc
+                        if Errorfnc == 137:
+                            VL.Exit(
+                                VLF.ErrorMessage(
+                                    "Image Pre-Processing routine(s) was killed as the system ran out of avalible memory\n"
+                                    )
                                 )
-                            )
+                        else:
+                            VL.Exit(
+                                VLF.ErrorMessage(
+                                    "Image Pre-Processing routine(s) finished with errors:\n Exit code:{}".format(
+                                        Errorfnc
+                                    )
+                                )
                         )
             VL.Logger("\n### Image Registration Complete ###\n", Print=True)
         VL.Logger("\n### Image Pre-Processing Complete ###", Print=True)        

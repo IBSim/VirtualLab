@@ -47,5 +47,11 @@
         "Tag": "latest",
         "Apptainer_file": "VL_ImPreProc.sif",
         "Method":"ImPreProc" 
-        }  
+        },
+      "VolSeg": {
+        "Docker_url":"localhost:5000/vl_survos ",
+        "Tag": "latest",
+        "Apptainer_file": "VL_VolSeg.sif",
+        "Method":"VolSeg" 
+        }    
 }

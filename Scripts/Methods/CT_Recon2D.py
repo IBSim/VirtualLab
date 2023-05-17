@@ -46,7 +46,7 @@ class Method(Method_base):
             if hasattr(Parameters, "Nikon_file"):
                 if os.path.isabs(Parameters.Nikon_file):
                 #if abs path use that
-                    if is_bound(Nikon_file,vlab_dir=VLC.VL_HOST_DIR):
+                    if Utils.is_bound(Nikon_file,vlab_dir=VLC.VL_HOST_DIR):
                         Nikon_file = Parameters.Nikon_file
                     else:
                         message = "\n*************************************************************************\n" \

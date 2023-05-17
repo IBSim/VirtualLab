@@ -31,8 +31,8 @@ VirtualLab.Parameters(
            RunMesh=False,
            RunSim=False,
            RunDA=False,
-           RunVoxelise=False,
-           RunCT_Scan=True,
+           RunVoxelise=True,
+           RunCT_Scan=False,
            RunCT_Recon=False)
 # Hive anlysis
 VirtualLab.Mesh(

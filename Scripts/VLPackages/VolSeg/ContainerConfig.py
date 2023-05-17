@@ -1,8 +1,8 @@
 import VLconfig
 
-__all__ = ['Survos']
+__all__ = ['VolSeg']
 
-CIL = {'ContainerName':'Survos',
+VolSeg = {'ContainerName':'VolSeg',
          'Command':"model-train-2d --version" 
         }
         

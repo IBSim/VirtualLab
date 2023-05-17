@@ -8,9 +8,10 @@ from Scripts.Common.VirtualLab import VLSetup
 # Setup
 
 Simulation='GVXR'
-Project='Helix'
-Parameters_Master='TrainingParameters_Survos-HIVE'
-Parameters_Var='TrainingParameters_Survos-HIVE_var1'
+Project='Circular'
+Parameters_Master='TrainingParameters_Survos-HIVE_volseg'
+# Parameters_Var='TrainingParameters_Survos-HIVE_var'
+Parameters_Var=None
 #===============================================================================
 # Environment
 
@@ -19,29 +20,26 @@ VirtualLab=VLSetup(
            Project)
 
 VirtualLab.Settings(
+         #   Mode='Interactive',
            Mode='Headless',
            Launcher='Process',
-           NbJobs=10)
+           NbJobs=1)
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=False,
            RunSim=False,
-           RunDA=False,
            RunVoxelise=False,
-           RunCT_Scan=True,
-           RunCT_Recon=True)
+           RunCT_Scan=False,
+           RunCT_Recon=False,
+           RunImPreProc=False,
+           RunVolSeg_Train=False,
+           RunVolSeg_Predict=True,
+           )
 # Hive anlysis
 VirtualLab.Mesh(
            ShowMesh=False,
            MeshCheck=None)
-
-VirtualLab.Sim(
-           RunPreAster=True,
-           RunAster=True,
-           RunPostAster=True,
-           ShowRes=True)
 
 VirtualLab.DA()
 #Voxelsisation
@@ -50,3 +48,10 @@ VirtualLab.Voxelise()
 VirtualLab.CT_Scan()
 #CIL
 VirtualLab.CT_Recon()
+# Reg/Normalisation
+VirtualLab.ImPreProc(
+  Normalise=True,
+  Register=True)
+
+#VirtualLab.VolSeg_Train()
+VirtualLab.VolSeg_Predict()

@@ -9,6 +9,11 @@ def Normalise(**kwargs):
     Sim_Data = kwargs["Sim_Data"]
 
     EXP_root, EXP_ext = os.path.splitext(Exp_Data)
+    if os.path.is_dir(Sim_Data):
+        Sim_Data = glob.glob(f'{input_dir}/*tiff')
+        if len(Sim_Data) !=1:
+            raise ValueError(f'Sim_Dat must either be a tiff stack or a directory containing a single tiff stack.')
+        Sim_Data = Sim_Data[0]
     Sim_root, Sim_ext = os.path.splitext(Sim_Data)
     # Normalise Experimental Data
     if not EXP_ext:

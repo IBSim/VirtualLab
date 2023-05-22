@@ -2,74 +2,82 @@ import tifffile as tf
 import glob
 from PIL import Image, ImageOps
 import os
+import re
 import tifffile as tf
 
-def assemble_slices(input_dir,output_file,im_format=None,slice_index=1):
+def assemble_slices(input_dir,output_fname=None,im_format=None,slice_index=1):
     '''
     Function to assemble images slices from slice/helical scan into a 
     single tiff stack or series of images.
-    This function is nessacry due to the way we emulate a helical scan.
+    This function is necessary due to the way we emulate a helical scan.
     
-    In a nutshell Strating at the very top of the object we perfom a series
-    GVXR runs to obtain 3 pixel high "slices" in z. By Slowy moving the object
+    In a nutshell Starting at the very top of the object we perform a series
+    GVXR runs to obtain 3 pixel high "slices" in z. By Slowly moving the object
     the height of 1 pixel down in z and taking an x-ray image at each step. 
 
-    We then use to CIL to reconstruct each 3 pixel high slice seperatly.
-    Thease are not 1 pixel high because CIL gives horendous ring arefacts.
-    Thus we take 3 pixles with the intention of dropping the top and bottom ones.
+    We then use to CIL to reconstruct each 3 pixel high slice separately.
+    These are not 1 pixel high because CIL gives horrendous ring artifacts.
+    Thus we take 3 pixels with the intention of dropping the top and bottom ones.
 
-    This function therfore is required to be run as a post-processing step to 
-    extract the middle image from each reconstruction and place them in a either 
-    a single tiff stack or a seperate series of images depending on the desired output
-    format.
+    This function therefore is required to be run as a post-processing step to 
+    extract the middle image from each reconstruction and place them in a single 
+    tiff stack.
 
     Inputs:
     param: input_dir - directory containing reconstructed slices for each run inside sub-directories.
-    param: output_file - Name of the image file you want to use for the final ouput.
+    param: output_file - Name of the image file you want to use for the final output. If not supplied
+            The final image stack is placed inside input_dir with a default name 
+            of Full_Helical.tiff. 
     param: im_format - string to determine the image format for both the inout and output images. e.g. 'png'
             This function does not do any conversion. If None we assume tiff stacks and thus extract the 
-            image coresponding to middle pixel for each run then compile them into a single tiff stack as the output.
-            Otherwise it will copy the individual images that corespond the middle pixel and rename them acordingly.
-    param: slice_index - Index corespnding to the middle pixel image genrally for a three pixel high image this will 
+            image corresponding to middle pixel for each run then compile them into a single tiff stack as the output.
+            Otherwise it will copy the individual images that correspond the middle pixel and rename them accordingly.
+    param: slice_index - Index corresponding to the middle pixel image generally for a three pixel high image this will 
             be 1. However this is here if you want to change the number of pixels in a slice for some reason.
     '''
+    
+    def get_order(file):
+        '''
+        key function for use with sorted to get file names in numerical order.
+        If files do not contain a number the function returns math.inf, this 
+        tells the sorted function to just stick it on the end of the list.
+        Thus any filenames with numbers are listed in numerical order, based 
+        on the first number that appears. Then filenames without numbers 
+        are placed in a arbitrary order at the end.
+        '''
+        file_pattern = re.compile(r'.*?(\d+).*?')
+        match = file_pattern.match(Path(file).name)
+        if not match:
+            return math.inf
+        return int(match.groups()[0])
+
     if not im_format:
+        # assume tiff stack and extract slice index from each slice
         im_format = 'tiff'
-        files = glob.glob(input_dir + '*.'+im_format)
+        if not output_fname:
+            output_fname=f"{input_dir}/Full_Helical.{im_format}"
+        files = sorted(glob.glob(f'{input_dir}/slice_*/slice_*.{im_format}'),key=get_order)
+        for f in files:
+            image = tf.imread(f)
+            write(input_dir,output_fname,image[:,:,slice_index],im_format)
+    else:
+        files = sorted(glob.glob(input_dir + f'/slice_*_{slice_index}.{im_format}'),key=get_order)
+        for I,f in enumerate(files):
+            image = im.read(f)
+            if not output_fname:
+                output_fname=f"{input_dir}/Full_Helical_{I}.{im_format}"
+            write(input_dir,output_fname,image[:,:,slice_index],im_format,slice_index=I)
 
 
-def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate=8,slice_index=0):
 
-    output_name = os.path.basename(os.path.normpath(output_dir))
-    os.makedirs(output_dir, exist_ok=True)
-    if im_format:
-        #calcualte number of digits in max number of images for formating
-        import math
-        if slice_index > 0:
-            digits = int(math.log10(slice_index))+1
-        elif slice_index == 0:
-            digits = 1
-        else:
-            raise ValueError('Slice_index for write image must be a non negative int')
-
-        if bitrate == 8:
-            vox *= 255.0/vox.max()
-            convert_opt='L'
-        elif bitrate == 16:
-            vox *= 65536/vox.max()
-            convert_opt='I;16'
-        elif bitrate == 32:
-            convert_opt='F'
-        else:
-            print("warning: bitrate not recognised assuming 8-bit greyscale")
-            convert_opt='L'
-
+def write_image(output_dir:str,output_fname:str,vox:np.double,im_format:str='tiff',slice_index=0):
+    if im_format != 'tiff':
         im = Image.fromarray(vox)
-        #im = im.convert(convert_opt)
-        im_output=f"{output_dir}/{output_name}_{slice_index:0{digits}d}.{im_format}"
+        im_output=f"{output_dir}/{output_fname}_{slice_index}.{im_format}"
         im.save(im_output)
         im.close()
     else:
         # write to tiff stack
-        im_output=f"{output_dir}/{output_name}.tiff"
-        tf.imwrite(im_output,vox,bigtiff=True, append=True)
+        output_file = f'{output_dir}/{output_fname}.{im_format}'
+        tf.imwrite(output_file,vox,bigtiff=True, append=True)
+

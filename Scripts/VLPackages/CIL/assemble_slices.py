@@ -1,6 +1,8 @@
 import tifffile as tf
 import glob
 from PIL import Image, ImageOps
+import numpy as np
+from pathlib import Path
 import os
 import re
 import tifffile as tf
@@ -55,18 +57,25 @@ def assemble_slices(input_dir,output_fname=None,im_format=None,slice_index=1):
         # assume tiff stack and extract slice index from each slice
         im_format = 'tiff'
         if not output_fname:
-            output_fname=f"{input_dir}/Full_Helical.{im_format}"
-        files = sorted(glob.glob(f'{input_dir}/slice_*/slice_*.{im_format}'),key=get_order)
+            output_fname=f"Full_Helical"
+            if os.path.exists(f'{output_fname}.tiff'):
+                print('Found existing image file {output_fname}')
+                print('Renaming to prevent data loss')
+                os.rename(f'{output_fname}.tiff',f'{output_fname}.tiff.old')
+                os.remove(output_fname)
+
+        files = sorted(glob.glob(f'{input_dir}/slice_*/slice_*_1.{im_format}'),key=get_order)
         for f in files:
+            print(f'Processing slice: {f}')
             image = tf.imread(f)
-            write(input_dir,output_fname,image[:,:,slice_index],im_format)
+            write_image(input_dir,output_fname,image[:,:])
     else:
         files = sorted(glob.glob(input_dir + f'/slice_*_{slice_index}.{im_format}'),key=get_order)
         for I,f in enumerate(files):
             image = im.read(f)
             if not output_fname:
                 output_fname=f"{input_dir}/Full_Helical_{I}.{im_format}"
-            write(input_dir,output_fname,image[:,:,slice_index],im_format,slice_index=I)
+            write_image(input_dir,output_fname,image[:,:,slice_index],im_format,slice_index=I)
 
 
 
@@ -79,5 +88,4 @@ def write_image(output_dir:str,output_fname:str,vox:np.double,im_format:str='tif
     else:
         # write to tiff stack
         output_file = f'{output_dir}/{output_fname}.{im_format}'
-        tf.imwrite(output_file,vox,bigtiff=True, append=True)
-
+        tf.imwrite(output_file,vox,bigtiff=True,metadata=None,append=True)

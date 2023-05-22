@@ -1,18 +1,27 @@
 from Scripts.VLPackages.ImPreProc.normTiff import normTiff 
 from Scripts.VLPackages.ImPreProc.normRawData import normRawData
 from Scripts.VLPackages.ImPreProc.registration import Register_image
+from Scripts.VLPackages.CIL.assemble_slices import assemble_slices
+import glob
 import os
 import textwrap
+
+def Helix(**kwargs):
+    ''' Function to assemble slices from a helix scan into a single tiff file for further processing'''
+    Sim_Data = kwargs["Sim_Data"]
+    assemble_slices(Sim_Data)
+
 
 def Normalise(**kwargs):
     Exp_Data = kwargs["Exp_Data"]
     Sim_Data = kwargs["Sim_Data"]
 
     EXP_root, EXP_ext = os.path.splitext(Exp_Data)
-    if os.path.is_dir(Sim_Data):
-        Sim_Data = glob.glob(f'{input_dir}/*tiff')
+    if os.path.isdir(Sim_Data):
+        Sim_Data = glob.glob(f'{Sim_Data}/*.tiff')
         if len(Sim_Data) !=1:
-            raise ValueError(f'Sim_Dat must either be a tiff stack or a directory containing a single tiff stack.')
+            print(f'Sim_Data contains: {Sim_Data}')
+            raise ValueError(f'Sim_Data must either be a tiff stack or a directory containing a single tiff stack.')
         Sim_Data = Sim_Data[0]
     Sim_root, Sim_ext = os.path.splitext(Sim_Data)
     # Normalise Experimental Data
@@ -42,6 +51,13 @@ def Register(**kwargs):
     kwargs['mask'] = kwargs.get("Vox_Data",None)
     Sim_Data = kwargs.get("Sim_Data")
     EXP_Data = kwargs.get("Exp_Data")
+
+    if os.path.isdir(Sim_Data):
+        Sim_Data = glob.glob(f'{Sim_Data}/*_N.tiff')
+        if len(Sim_Data) !=1:
+            print(f'Sim_Data contains: {Sim_Data}')
+            raise ValueError(f'Sim_Data must either be a tiff stack or a directory containing a single tiff stack.')
+        Sim_Data = Sim_Data[0]
 
     # look for normalized data with standard naming convention first
     moving_im = find_norm_data(EXP_Data)

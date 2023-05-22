@@ -177,13 +177,23 @@ class Method(Method_base):
         # kwargs to control which processing steps occur
         Normalise = kwargs.get('Normalise',True)
         Register = kwargs.get('Register',True)
-        helix_scan = kwargs.get('Helix',False)
+        Helix = kwargs.get('Helix',False)
         # Convert data from helix scan into a single tiff stack
-        if helix_scan:
-            VL.Logger("\n### Performing Reconstruction of Helical scan ###\n", Print=True)
+        if Helix:
+            VL.Logger("\n### Assembling slices from Helical scan ###\n", Print=True)
+                        
             for key in self.Data.keys():
-                input_dir = self.Data[key]['Sim_Data']
-                assemble_slices(input_dir)
+                Errorfnc = self.PoolRun(VL,self.Data[key],'Helix')
+                if Errorfnc:
+                    VL.Exit(
+                        VLF.ErrorMessage(
+                            "The following Image Pre-Processing routine(s) finished with errors:\n{}".format(
+                                Errorfnc
+                            )
+                        )
+                    )
+            VL.Logger("\n### Slice Assembley Complete ###\n", Print=True)
+            
         # do Normalisation
         if Normalise:
             VL.Logger("\n### Performing Image Normalisation ###\n", Print=True)
@@ -231,7 +241,7 @@ class Method(Method_base):
         if category == "EXP":
             default_dir = Path(f"{VL.PARAMETERS_DIR}/Data/{filename}")
         elif category == "SIM":
-            if P.is_dir(filename):
+            if P.is_dir():
                 return filename
             default_dir = Path(f"{VL.PROJECT_DIR}/CIL_Images/{filename}")
         elif category == "VOX":

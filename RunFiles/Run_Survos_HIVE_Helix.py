@@ -30,8 +30,9 @@ VirtualLab.Parameters(
            RunSim=False,
            RunDA=False,
            RunVoxelise=False,
-           RunCT_Scan=True,
-           RunCT_Recon=True)
+           RunCT_Scan=False,
+           RunCT_Recon=False,
+           RunImPreProc=True)
 # Hive anlysis
 VirtualLab.Mesh(
            ShowMesh=False,
@@ -50,3 +51,9 @@ VirtualLab.Voxelise()
 VirtualLab.CT_Scan()
 #CIL
 VirtualLab.CT_Recon()
+# image preproc
+VirtualLab.ImPreProc(
+    Normalise=True,
+    Register=False,
+    Helix=True,
+)

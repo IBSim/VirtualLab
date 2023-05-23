@@ -1,36 +1,42 @@
 """A bunch of useful utility functions"""
 import numpy as np
 
-def convert_units(values,input_units='mm',output_units='mm'):
-    '''
+
+def convert_units(values, input_units="mm", output_units="mm"):
+    """
     Function to convert unit_length from Vox_units into mesh_units
     units must be one of 'mm','cm' or 'm'.
-    '''
-    unit_list = ['mm','cm','m']
+    """
+    unit_list = ["mm", "cm", "m"]
     if input_units.lower() not in unit_list:
-        raise ValueError(f'Invalid Voxel units {input_units} must be one of {unit_list}')
+        raise ValueError(
+            f"Invalid Voxel units {input_units} must be one of {unit_list}"
+        )
     if output_units.lower() not in unit_list:
-        raise ValueError(f'Invalid Mesh units {output_units} must be one of {unit_list}')
+        raise ValueError(
+            f"Invalid Mesh units {output_units} must be one of {unit_list}"
+        )
 
-    if input_units == 'mm':
+    if input_units == "mm":
         numerator = 1.0
-    elif input_units == 'cm':
+    elif input_units == "cm":
         numerator = 10.0
     else:
         numerator = 1000.0
 
-    if output_units == 'mm':
+    if output_units == "mm":
         denominator = 1.0
-    elif output_units == 'cm':
+    elif output_units == "cm":
         denominator = 10.0
     else:
         denominator = 1000.0
-    
-    output=[0.0,0.0,0.0]
-    for I,_ in enumerate(values):
-        output[I] = values[I] * (numerator/denominator)
+
+    output = [0.0, 0.0, 0.0]
+    for I, _ in enumerate(values):
+        output[I] = values[I] * (numerator / denominator)
     return output
-    
+
+
 # check if greyscale can be converted into a vaild 8-bit int
 def check_greyscale(greyscale_value):
     """Function to check the user defined Greyscale values are valid 8-bit integers"""
@@ -90,7 +96,7 @@ def check_padding(Output_Resolution):
             )
 
 
-def check_unit_length(unit_length,mesh_units='mm',Voxel_units='mm'):
+def check_unit_length(unit_length, mesh_units="mm", Voxel_units="mm"):
     """check that unit_length is a list of three non-zero positive floats."""
     if not isinstance(unit_length, list):
         raise TypeError("Invalid unit_length. Must be a list.")
@@ -105,11 +111,16 @@ def check_unit_length(unit_length,mesh_units='mm',Voxel_units='mm'):
                 f"Invalid unit length {i}. Must be a floating point value"
                 " that is greater than 0."
             )
-    unit_length = convert_units(unit_length,Voxel_units,mesh_units)
+    unit_length = convert_units(unit_length, Voxel_units, mesh_units)
+
 
 def check_voxinfo(
-    unit_length=[0.0, 0.0, 0.0], gridsize=[0, 0, 0], mesh_min=None, mesh_max=None,
-    mesh_units='mm',Voxel_units='mm'
+    unit_length=[0.0, 0.0, 0.0],
+    gridsize=[0, 0, 0],
+    mesh_min=None,
+    mesh_max=None,
+    mesh_units="mm",
+    Voxel_units="mm",
 ):
     """
 
@@ -134,7 +145,7 @@ def check_voxinfo(
 
     #  check gridsize and unit_length are valid.
     check_gridsize(gridsize)
-    check_unit_length(unit_length,mesh_units,Voxel_units)
+    check_unit_length(unit_length, mesh_units, Voxel_units)
 
     if (gridsize == [0, 0, 0]) and (0.0 not in unit_length):
         # unit_length has been defined by user so check it is valid and
@@ -156,7 +167,7 @@ def check_voxinfo(
         raise TypeError("You must define one of either Gridsize or unit_length")
 
     else:
-        # Both have been defined by user in which case we calculate the image boundary's
+        # Both have been defined by user
         raise TypeError("You must define only one of either Gridsize or unit_length.")
 
     gridsize = np.array(gridsize)
@@ -169,40 +180,40 @@ def crop_center(img, outresx, outresy, outresz, rm_start=True):
     Take a 3D array and crop it from the centre in 3D.
     outresx, outresy, outresz represents your desired dims in x,y and z.
 
-    Note if these are smaller than the corresponding dimension of img that 
+    Note if these are larger than the corresponding dimension of img that
     dimension will be unchanged.
 
-    Also Note: ideally we want to remove an equal number of values from the start and 
-    end of each dimension. However this is obviously impossible if the difference 
-    between the current and desired dimension is not even. In which case we have 1 
+    Also Note: ideally we want to remove an equal number of values from the start and
+    end of each dimension. However this is obviously impossible if the difference
+    between the current and desired dimension is not even. In which case we have 1
     additional value to remove. Thus we have provided an extra param rm_start.
-    
+
     This is a bool to control where to remove the "extra" value from. If True (the default)
     it removes the it from the start of the dim. If False we remove it from the end.
 
     """
     x, y, z = img.shape
 
-# don't crop anything if output res is greater than the image current resolution in that dim.
-    if outresx > x :
+    # don't crop anything if output res is greater than the image current resolution in that dim.
+    if outresx > x:
         cropx = 0
         remx = 0
     else:
-    # otherwise drop an equal number of values from each side
-        cropx = (x - outresx)//2
-        if  (x - outresx) % 2 == 0:
+        # otherwise drop an equal number of values from each side
+        cropx = (x - outresx) // 2
+        if (x - outresx) % 2 == 0:
             remx = 0
         else:
-        # difference is odd so we need to remove an additional value from 
-        # either the right of left hand side. 
+            # difference is odd so we need to remove an additional value from
+            # either the right of left hand side.
             remx = 1
-        
+
     if outresy > y:
         cropy = 0
         remy = 0
     else:
-        cropy = (y - outresy)//2
-        if  (y - outresy) % 2 == 0:
+        cropy = (y - outresy) // 2
+        if (y - outresy) % 2 == 0:
             remy = 0
         else:
             remy = 1
@@ -211,12 +222,12 @@ def crop_center(img, outresx, outresy, outresz, rm_start=True):
         cropz = 0
         remz = 0
     else:
-        cropz = (z - outresz)//2
-        if  (z - outresz) % 2 == 0:
+        cropz = (z - outresz) // 2
+        if (z - outresz) % 2 == 0:
             remz = 0
         else:
             remz = 1
-    
+
     startx = cropx
     stopx = x - cropx
     starty = cropy
@@ -224,13 +235,13 @@ def crop_center(img, outresx, outresy, outresz, rm_start=True):
     startz = cropz
     stopz = z - cropz
 
-    if rm_start:    
+    if rm_start:
         # remove additional value from the start
         startx = startx + remx
         starty = starty + remy
         startz = startz + remz
     else:
-    # remove additional value from the end
+        # remove additional value from the end
         stopx = stopx - remx
         stopy = stopy - remy
         stopz = stopz - remz
@@ -240,26 +251,27 @@ def crop_center(img, outresx, outresy, outresz, rm_start=True):
 
 def padding(array, xx, yy, zz):
     """
-    :param array: numpy array
-    :param xx: desired height
-    :param yy: desired width
-    :param zz: desired length
-    :return: padded array
-    """
+    Take a 3D array and pad the edges with 0's in 3D.
+    xx, yy, zz represents your desired dims in x,y and z.
 
+    Note if these are smaller than the corresponding dimension of img that 
+    dimension will be unchanged.
+
+    """
+    
     h, w, l = array.shape
     if h < xx:
         a = (xx - h) // 2
         aa = xx - a - h
     else:
         a = 0
-        aa =0
-    if w < yy:    
+        aa = 0
+    if w < yy:
         b = (yy - w) // 2
         bb = yy - b - w
     else:
         b = 0
-        bb =0
+        bb = 0
     if l < zz:
         c = (zz - l) // 2
         cc = zz - c - l

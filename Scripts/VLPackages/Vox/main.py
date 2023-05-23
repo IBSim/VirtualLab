@@ -110,7 +110,7 @@ def voxelise(input_file, output_file, **kwargs):
     gridsize/unit_length and the boundaries of the mesh. This option allows you to evenly pad the
     voxelised image with zeros to match any resolution desired keeping the mesh in the centre.
     Note: If the specified resolution is smaller than the gridsize in any dimension it will
-    raise a type error. Default is None.
+    crop the image.
     """
     # get Kwargs if set or use default values
     gridsize = kwargs.get("gridsize", [0, 0, 0])

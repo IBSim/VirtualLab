@@ -333,11 +333,11 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
             GVXRDict["Beam"].Energy_units = Parameters.energy_units
 
         if hasattr(Parameters, "Tube_Angle"):
-            warn_Nikon(Use_Nikon_File, "Energy_units")
+            warn_Nikon(Use_Nikon_File, "Tube_Angle")
             GVXRDict["Beam"].Tube_Angle = Parameters.Tube_Angle
 
         if hasattr(Parameters, "Tube_Voltage"):
-            warn_Nikon(Use_Nikon_File, "Energy_units")
+            warn_Nikon(Use_Nikon_File, "Tube_Voltage")
             GVXRDict["Beam"].Tube_Voltage = Parameters.Tube_Voltage
 
         if hasattr(Parameters, "use_spekpy"):
@@ -457,11 +457,12 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
 
         if hasattr(Parameters, "image_format"):
             GVXRDict["im_format"] = Parameters.image_format
-
+        if hasattr(Parameters, "FFNorm"):
+            GVXRDict["FFNorm"] = Parameters.FFNorm
+        if hasattr(Parameters, "bitrate"):
+            GVXRDict["bitrate"] = Parameters.bitrate            
         if hasattr(Parameters, "use_tetra"):
             # Convert tetrahedron data into triangles
-            # tri_mesh_file = convert_tets_to_tri(IN_FILE)
-            # GVXRDict["mesh_file"] = tri_mesh_file
             GVXRDict["use_tetra"] = Parameters.use_tetra
 
         if hasattr(Parameters, "downscale"):
@@ -472,7 +473,16 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
                     f"Invalid parameter for GVXR.downscale {Parameters.downscale}, \
                             this must be between 0.0 and 1.0."
                 )
-        
+
+        if hasattr(Parameters, "fill_value"):
+            try:
+                GVXRDict["fill_value"] = float(Parameters.fill_value)
+            except:
+                raise ValueError(
+                    f"Invalid parameter for GVXR.fill_value {Parameters.fill_value}, \
+                            this must be a float or convertible to a float"
+                )
+                
         if hasattr(Parameters, "fill_percent"):
             if 0.0 < float(Parameters.fill_percent) <= 1.0:
                 GVXRDict["fill_percent"] = float(Parameters.fill_percent)

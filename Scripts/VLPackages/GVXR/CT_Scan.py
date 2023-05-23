@@ -16,13 +16,15 @@ def CT_scan(**kwargs):
     Amounts = kwargs.get("Amounts",[])
     Density = kwargs.get("Density",[])
     Headless = kwargs.get('Headless',False)
-    num_projections = kwargs.get('num_projections',180)
-    angular_step = kwargs.get('angular_step',1)
+    num_projections = kwargs.get('num_projections',1)
+    angular_step = kwargs.get('angular_step',0)
     im_format = kwargs.get('im_format',None)
     use_tetra = kwargs.get('use_tetra',False)
     downscale = kwargs.get('downscale',1.0)
     fill_percent = kwargs.get('fill_percent',None)
+    fill_value = kwargs.get('fill_value',None)
     FFNorm = kwargs.get('FFNorm',False)
+    bitrate = kwargs.get('bitrate','float32')
     print(gvxr.getVersionOfSimpleGVXR())
     print(gvxr.getVersionOfCoreGVXR())
     # Create an OpenGL context
@@ -201,8 +203,8 @@ def CT_scan(**kwargs):
         if FFNorm:
             projection = flat_field_normalize(projection,flat,dark)
         #fill in edge pixels with zeros to reduce reconstruction artifacts
-        projection = fill_edges(projection,fill_percent)    
-        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=32);
+        projection = fill_edges(projection,fill_percent,fill_value=fill_value)    
+        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=bitrate);
 
     
     if (not Headless):

@@ -245,7 +245,7 @@ def find_the_key(dictionary:dict, target_keys:str):
     """Function to pull out the keys of a dictionary as a list."""
     return {key: dictionary[key] for key in target_keys}
 
-def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8,angle_index=0):
+def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate='float32',angle_index=0):
     from PIL import Image, ImageOps
     import os
     import tifffile
@@ -262,16 +262,16 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8,angl
     else:
         raise ValueError('Angle_index for write image must be a non negative int')
 
-    if bitrate == 8:
+    if bitrate == 'int8':
         vox *= 255.0/vox.max()
         convert_opt='L'
-    elif bitrate == 16:
+    elif bitrate == 'int16':
         vox *= 65536/vox.max()
         convert_opt='I;16'
-    elif bitrate == 32:
+    elif bitrate == 'float32':
         convert_opt='F'
     else:
-        print("warning: bitrate not recognised assuming 8-bit greyscale")
+        print(f"warning: bitrate {bitrate} not recognized assuming 8-bit grayscale")
         convert_opt='L'
 
     im = Image.fromarray(vox)
@@ -281,7 +281,7 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8,angl
     im.close()
 
 
-def write_image3D(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
+def write_image3D(output_dir:str,vox:np.double,im_format:str='tiff',bitrate='float32'):
     from PIL import Image, ImageOps
     import os
     output_name = os.path.basename(os.path.normpath(output_dir))
@@ -289,13 +289,13 @@ def write_image3D(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
     #calcualte number of digits in max number of images for formating
     import math
     digits = int(math.log10(np.shape(vox)[0]))+1
-    if bitrate == 8:
+    if bitrate == 'int8':
         vox *= 255.0/vox.max()
         convert_opt='L'
-    elif bitrate == 16:
+    elif bitrate == 'int16':
         vox *= 65536/vox.max()
         convert_opt='I;16'
-    elif bitrate == 32:
+    elif bitrate == 'float32':
         convert_opt='F'
     else:
         print("warning: bitrate not recognised assuming 8-bit greyscale")

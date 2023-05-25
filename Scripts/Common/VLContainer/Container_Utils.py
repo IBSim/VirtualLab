@@ -162,13 +162,12 @@ def Exec_Container(package_info, command):
 
     # Find out what stdout is to decide where to send output (for different modes).
     # This is updated on the server to give the filename on the host instead of the one inside VL_Manager
-    
+
+    sys.stdout.flush()  # flush information writen by manager to the file
     if sys.stdout.name == "<stdout>":
         stdout = None 
     else :
-        sys.stdout.flush() # flush information writen by manager to the file
         stdout = sys.stdout.name
-
 
     # create new socket
     tcp_port = get_Vlab_Tcp_Port()
@@ -227,7 +226,7 @@ def Exec_Container_Manager(container_info, package_info, command, stdout=None):
 
 
 
-def MPI_Container(package_info, command, shared_dir):
+def MPI_Container(package_info, command, shared_dir,addpath=[]):
     """Function called inside the VL_Manager container to pass information to VL_server
     to run jobs in other containers."""
 
@@ -242,8 +241,9 @@ def MPI_Container(package_info, command, shared_dir):
         "msg": "MPI",
         "Cont_id": 123,
         "Cont_name": package_info["ContainerName"],
-        "shared_dir":shared_dir,
+        "shared_dir": shared_dir,
         "args": (package_info, command,shared_dir,tcp_port,host_name),
+        "kwargs": {'addpath':addpath}
     }
 
     # send data to relevant function in VLserver
@@ -254,15 +254,18 @@ def MPI_Container(package_info, command, shared_dir):
     sock.close()  # cleanup after ourselves
     return ReturnCode
 
-def _MPIFile(command):
+def _MPIFile(command,addpath):
+    addpath.append('/home/ibsim/VirtualLab')
+    addpath_str = ":".join(addpath)
     string = "#!/bin/bash\n" + \
              "source activate VirtualLab\n" + \
+             "export MPLBACKEND='Agg' \n" + \
              "export VL_TCP_PORT=$1 \n" + \
-             "export PYTHONPATH=/home/ibsim/VirtualLab:$PYTHONPATH\n" + \
+             f"export PYTHONPATH={addpath_str}:$PYTHONPATH\n" + \
              f"{command}\n"
     return string
 
-def MPI_Container_Manager(container_info, package_info, command, shared_dir, port,host_name):
+def MPI_Container_Manager(container_info, package_info, command, shared_dir, port, host_name,addpath=[]):
     """Function called on VL_server to run jobs on other containers."""
     
     container_cmd = container_info["container_cmd"]
@@ -278,7 +281,7 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
     # make file
     _command = command.split()
     command_inside = " ".join(_command[3:]) # command for running the function
-    contents = _MPIFile(command_inside)
+    contents = _MPIFile(command_inside,addpath)
     mpifile = "{}/MPIfile.sh".format(shared_dir)
     with open(mpifile,'w') as f:
         f.write(contents)

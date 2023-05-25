@@ -155,7 +155,7 @@ def containermap(self, func, *args, **kwds):
     else:
 
         try:
-            error = Utils.MPI_Container({'ContainerName':'Manager'}, command, self.VLshared_dir)    
+            error = Utils.MPI_Container({'ContainerName':'Manager'}, command, self.VLshared_dir,addpath=self.VLaddpath)    
             #subproc = Popen([command],shell=True)
             #error = subproc.wait()  # block until all done
 
@@ -195,22 +195,14 @@ def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True,
     NbEval = len(args_list)
 
     workdir = kwargs.get('workdir',None)
-    addpath = kwargs.get('addpath',[])
     source = kwargs.get('source',True)
-
-    # Ensure that sys.path is the same for pyinas MPI subprocess
-    PyPath_orig = os.environ.get('PYTHONPATH',"")
-
-    if addpath:
-        # Update PYTHONPATH with addpath for matching environment
-        os.environ["PYTHONPATH"] = "{}:{}".format(":".join(addpath), PyPath_orig)
 
     args_list = list(zip(*args_list)) # change format of args for this
     # Run functions in parallel of N using pyina
     pool = MpiPool(nodes=nb_parallel, source=source, workdir=workdir)
     pool.map = MethodType(containermap, pool)
     pool.VLshared_dir = VL.TEMP_DIR
-
+    pool.VLaddpath = VL._AddedPaths
 
     if kwargs_list == []:
         Res = pool.map(fnc, *args_list,onall=onall)
@@ -220,9 +212,6 @@ def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True,
         Res = pool.map(_fn_wrap_kwargs, fncs, *args_list, kwargs_list, onall=onall)
 
     Res = list(Res)
-
-    # Reset environment back to original
-    os.environ["PYTHONPATH"] = PyPath_orig
     
     return Res
 

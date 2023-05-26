@@ -385,9 +385,11 @@ def handle_messages(
                 send_data(client_socket, RC, debug)
             else:
                 # MPI
+                # information needed when spawning a new process
+                info = {'bind_points_default':bind_points_default,'gpu_flag':gpu_flag}
                 shared_dir = rec_dict['shared_dir']
                 with open(f"{shared_dir}/bind_points.pkl",'wb') as f:
-                    pickle.dump(bind_points_default,f)
+                    pickle.dump(info,f)
                 RC = MPI_Container_Manager(cont_info, *args, **kwargs)
                 send_data(client_socket, RC, debug)    
 
@@ -461,13 +463,11 @@ def process(vlab_dir, sock, debug, gpu_flag, bind_points_default):
 
 
 
-def handle_messages2(client_socket,bind_points_default):
-    # bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
-    #                     str(Path.home()):str(Path.home()),
-    #                     '/tmp':"/tmp",
-    #                     str(vlab_dir):"/home/ibsim/VirtualLab",
-    #                     }
-  
+def handle_messages2(client_socket, info):
+    pwd_dir = Utils.get_pwd()
+    bind_points_default = info['bind_points_default']
+    gpu_flag = info['gpu_flag']
+
     while True:
 
         rec_dict = receive_data(client_socket)
@@ -480,7 +480,7 @@ def handle_messages2(client_socket,bind_points_default):
         if event in ("Exec"):
             # will need to add option for docker when fixed
             
-            container_cmd = f"apptainer exec --contain"
+            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
 
             cont_name = rec_dict["Cont_name"]
             VL_MOD = Utils.load_module_config(vlab_dir)
@@ -493,7 +493,6 @@ def handle_messages2(client_socket,bind_points_default):
 
             cont_info["container_path"] = container_path
             cont_info["container_cmd"] = container_cmd
-            # cont_info["bind"]=bind_points_default
             cont_info['bind'] = bind_points_default
 
             # check apptainer sif file exists and if not build from docker version
@@ -548,12 +547,12 @@ def _server(temp_file,shared_dir):
 
     # get bind information from file
     with open(f"{shared_dir}/bind_points.pkl",'rb') as f:
-        bind_points_default = pickle.load(f)
+        info = pickle.load(f)
 
     client_socket, client_address = sock.accept()
     
     while client_socket:
-        return handle_messages2(client_socket, bind_points_default)
+        return handle_messages2(client_socket, info)
     
     sock.close()
 

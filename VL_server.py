@@ -31,7 +31,8 @@ from Scripts.Common.VLContainer.Container_Utils import (
     MPI_Container_Manager,
     get_vlab_dir,
     update_container,
-    is_bound
+    is_bound,
+    create_tcp_socket
 )
 
 vlab_dir = get_vlab_dir()
@@ -420,7 +421,6 @@ def handle_messages(
             client_socket.close()
             raise ValueError(f"Unknown message {event} received")
 
-
 def make_socket(host = '0.0.0.0', tcp_port=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -460,16 +460,12 @@ def process(vlab_dir, sock, debug, gpu_flag, bind_points_default):
         thread.daemon = True
         thread.start()
 
-
-
-
 def handle_messages2(client_socket, info):
     pwd_dir = Utils.get_pwd()
     bind_points_default = info['bind_points_default']
     gpu_flag = info['gpu_flag']
 
     while True:
-
         rec_dict = receive_data(client_socket)
 
         if rec_dict == None:
@@ -532,40 +528,58 @@ def handle_messages2(client_socket, info):
             RC = Exec_Container_Manager(cont_info, *args, **kwargs)
             send_data(client_socket, RC)
 
+        elif event in ('kill'):
+            client_socket.shutdown(socket.SHUT_RDWR)
+            client_socket.close()
+            return 1
 
-def _server(temp_file,shared_dir):
+
+            
+
+
+def start_server(temp_file,shared_dir):
     # Create TCP port
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(True)
     sock.bind(('0.0.0.0', 0)) # will find a free port on the host
     sock.listen(20)
-
     # write TCP-port to temp_file so that bash script can use it
     with open(temp_file,'w') as f:
         f.write(str(sock.getsockname()[1]))
-
     # get bind information from file
     with open(f"{shared_dir}/bind_points.pkl",'rb') as f:
         info = pickle.load(f)
+    while True:
+        client_socket, client_address = sock.accept()
+        a = handle_messages2(client_socket, info)
+        if a==1:
+            break
 
-    client_socket, client_address = sock.accept()
-    
-    while client_socket:
-        return handle_messages2(client_socket, info)
-    
-    sock.close()
+def kill_server(tcp_port):
+    # create new socket
+    host_name = socket.gethostname()
+    sock = create_tcp_socket(host_name,int(tcp_port))
 
+    # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
+    # on the server, where  'args' and 'kwargs' are passed to it.
+    info = {"msg": "kill"}
 
-def _get_host(temp_file):
+    # send data to relevant function in VLserver
+    send_data(sock, info)
+
+def get_host(temp_file):
+    ''' Used to get hostname when launching with MPI as environment variable not updated'''
     with open(temp_file,'w') as f:
         f.write(str(socket.gethostname()))
 
 
 if __name__ == "__main__":
-    if sys.argv[1] == 'server':
-        _server(*sys.argv[2:4])
+    if sys.argv[1] == 'server_start':
+        start_server(*sys.argv[2:4])
+    elif sys.argv[1] == 'server_kill':
+        kill_server(sys.argv[2])
     elif sys.argv[1] == 'hostname':
-        _get_host(sys.argv[2])
+        get_host(sys.argv[2])
     else:
         main()

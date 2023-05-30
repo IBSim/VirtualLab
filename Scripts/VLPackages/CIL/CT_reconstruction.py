@@ -33,7 +33,7 @@ def Check_GPU():
     
     
 def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
-        Headless=False, num_projections = 180,angular_step=1,
+        Headless=False, num_projections = 180,angular_step=1,bitrate='float32',
         im_format='tiff',Nikon=None,_Name=None):
     inputfile = f"{work_dir}/{Name}"
 
@@ -65,7 +65,7 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
     for I in range(0,recon_shape[0]):
         r_slice = recon.get_slice(vertical=I)
         r_slice = r_slice.as_array()
-        write_image(f'{work_dir}/../CIL_Images/{Name}',r_slice,bitrate=32,slice_index=I);
+        write_image(f'{work_dir}/../CIL_Images/{Name}',r_slice,bitrate=bitrate,slice_index=I);
 
     return
 
@@ -109,10 +109,10 @@ def CT_Recon_2D(work_dir,Name,Beam,Detector,Model,Pix_X,Spacing_X,
     os.makedirs(f'{work_dir}/../CIL_Images', exist_ok=True)
     #normailse data between 0 and 245
     # norm = ((recon - np.min(recon))/np.ptp(recon))*245
-    write_image(f'{work_dir}/../CIL_Images/{Name}',recon,bitrate=32);
+    write_image(f'{work_dir}/../CIL_Images/{Name}',recon,bitrate='float32');
     return
 
-def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate=8,slice_index=0):
+def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate='float32',slice_index=0):
     from PIL import Image, ImageOps
     import os
     import tifffile as tf
@@ -128,16 +128,17 @@ def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate=8,slice_
         else:
             raise ValueError('Slice_index for write image must be a non negative int')
 
-        if bitrate == 8:
-            vox *= 255.0/vox.max()
+        if bitrate == 'int8':
+            vox = (vox/vox.max())*255
             convert_opt='L'
-        elif bitrate == 16:
-            vox *= 65536/vox.max()
+        elif bitrate == 'int16':
+            vox = (vox/vox.max())*65536
             convert_opt='I;16'
-        elif bitrate == 32:
+        elif bitrate == 'float32':
             convert_opt='F'
         else:
-            print("warning: bitrate not recognised assuming 8-bit greyscale")
+            print("warning: bitrate not recognized assuming 8-bit grayscale")
+            vox = (vox/vox.max())*255
             convert_opt='L'
 
         im = Image.fromarray(vox)
@@ -147,6 +148,19 @@ def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate=8,slice_
         im.close()
     else:
         # write to tiff stack
+        if bitrate == 'int8':
+            vox = (vox/vox.max())*255
+            vox = vox.astype('unit8')
+        elif bitrate == 'int16':
+            vox = (vox/vox.max())*65536
+            vox = vox.astype('unit16')
+        elif bitrate == 'float32':
+            vox = vox.astype('float32')
+        else:
+            print("warning: bitrate not recognized assuming 8-bit grayscale")
+            vox = (vox/vox.max())*255
+            vox = vox.astype('unit8')
+        
         im_output=f"{output_dir}/{output_name}.tiff"
         if os.path.exists(im_output) and slice_index != 0:
             tf.imwrite(im_output,vox,bigtiff=True, append=True)

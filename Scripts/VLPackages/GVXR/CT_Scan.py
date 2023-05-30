@@ -16,6 +16,12 @@ def CT_scan(**kwargs):
     Amounts = kwargs.get("Amounts",[])
     Density = kwargs.get("Density",[])
     Headless = kwargs.get('Headless',False)
+
+    Tube_Voltage = kwargs.get("Tube_Voltage",None)
+    Tube_Angle = kwargs.get("Tube_Angle",12.0)
+    Filter_Material = kwargs.get("Filter_Material",None)
+    Filter_ThicknessMM = kwargs.get("Filter_ThicknessMM",None)
+
     num_projections = kwargs.get('num_projections',1)
     angular_step = kwargs.get('angular_step',0)
     im_format = kwargs.get('im_format',None)
@@ -120,17 +126,17 @@ def CT_scan(**kwargs):
         raise GVXRError(f"Invalid beam type {kwargs['Beam_Type']} defined in Input File, must be either point or parallel")
 
     gvxr.resetBeamSpectrum()
-    if kwargs["Tube_Voltage"] != 0.0:
+    if kwargs["Tube_Voltage"] != None:
         #generate an xray tube spectrum
         filters = []
-        if kwargs["Filter_Material"] != None and kwargs["Filter_ThicknessMM"] != None:
-            materiails = [kwargs["Filter_Material"]]
-            thickness = [kwargs["Filter_ThicknessMM"]]
+        if Filter_Material != None and Filter_ThicknessMM != None:
+            materiails = [Filter_Material]
+            thickness = [Filter_ThicknessMM]
             for mat, thick in zip(materiails,thickness):
                 filters.append([mat,thick])
-        T_angle = kwargs.get("Tube_Angle",12.0)
-        print(f"generating xray Tube spectrum for {kwargs['Tube_Voltage']} Kv tube.")
-        spectrum_filtered, k_filtered, f_filtered, units = loadXpecgenSpectrum(kwargs["Tube_Voltage"],filters=filters)
+        
+        print(f"generating xray Tube spectrum for {Tube_Voltage} Kv tube.")
+        spectrum_filtered, k_filtered, f_filtered, units = loadXpecgenSpectrum(Tube_Voltage,filters=filters)
     else:
     # generate spectrum from given energy and intensity values
         print("Generating Beam spectrum using supplied values of Energy and Intensity.")

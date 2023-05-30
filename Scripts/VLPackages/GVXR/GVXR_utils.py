@@ -173,7 +173,7 @@ def Check_Materials(Mat_list,Amounts,Density):
             if not all(isinstance(x, int) for x in Material):
                 raise ValueError(f'Invalid mixture {Material}. When using a mixture of elements they must be all be ints.')
             elif Amounts == []:
-                raise ValueError(f'When using a mixture of elements you must define but not GVXR.Amounts')
+                raise ValueError(f'When using a mixture of elements you must define GVXR.Amounts')
             elif len(Mat_list) != len(Amounts):
                raise ValueError(f'You have defined {len(Mat_list)} mixtures but {len(Amounts)} corresponding amounts. These must match')
             else:
@@ -263,15 +263,16 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate='float
         raise ValueError('Angle_index for write image must be a non negative int')
 
     if bitrate == 'int8':
-        vox *= 255.0/vox.max()
+        vox = (vox/vox.max())*255
         convert_opt='L'
     elif bitrate == 'int16':
-        vox *= 65536/vox.max()
+        vox = (vox/vox.max())*65536
         convert_opt='I;16'
     elif bitrate == 'float32':
         convert_opt='F'
     else:
         print(f"warning: bitrate {bitrate} not recognized assuming 8-bit grayscale")
+        vox = (vox/vox.max())*255
         convert_opt='L'
 
     im = Image.fromarray(vox)
@@ -361,7 +362,7 @@ def convert_tets_to_tri(mesh_file):
     root, ext = os.path.splitext(mesh_file)
     new_mesh_file = f"{root}_triangles{ext}"
     # This check helps us avoid having to repeat the conversion from tri to tet 
-    # for reach run when using one mesh file for multiple GVXR runs.
+    # for each run when using one mesh file for multiple GVXR runs.
     if os.path.exists(new_mesh_file):
         print(f"Found {new_mesh_file} so assuming conversion has already been done previously.")
         return new_mesh_file

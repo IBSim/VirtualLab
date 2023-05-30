@@ -123,7 +123,10 @@ class Method(Method_base):
 
             if hasattr(Parameters, "image_format"):
                 CILdict["im_format"] = Parameters.image_format
-
+                
+            if hasattr(Parameters, "bitrate"):
+                CILdict["bitrate"] = Parameters.bitrate
+                
             self.Data[CILName] = CILdict.copy()
         return
 

@@ -336,29 +336,28 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
             warn_Nikon(Use_Nikon_File, "Tube_Angle")
             GVXRDict["Beam"].Tube_Angle = Parameters.Tube_Angle
 
+        if hasattr(Parameters, "Filter_Material"):
+            warn_Nikon(Use_Nikon_File, "Filter_Material")
+            GVXRDict["Beam"].Filter_Material = Parameters.Filter_Material
+
+        if hasattr(Parameters, "Filter_ThicknessMM"):
+            warn_Nikon(Use_Nikon_File, "Filter_ThicknessMM")
+            GVXRDict["Beam"].Filter_ThicknessMM = Parameters.Filter_ThicknessMM
+
         if hasattr(Parameters, "Tube_Voltage"):
             warn_Nikon(Use_Nikon_File, "Tube_Voltage")
             GVXRDict["Beam"].Tube_Voltage = Parameters.Tube_Voltage
-
-        if hasattr(Parameters, "use_spekpy"):
-            warn_Nikon(Use_Nikon_File, "use_spekpy")
-            use_spekpy = Parameters.use_spekpy
+            use_spekpy == True
         else:
-            use_spekpy = None
+            use_spekpy == False
 
-        if use_spekpy == True:
-            GVXRDict["Beam"] = InitSpectrum(
-                Beam=dummy_Beam, Headless=GVXRDict["Headless"]
-            )
-        elif use_spekpy == False:
+        if use_spekpy == False:
             if hasattr(Parameters, "Energy") and hasattr(Parameters, "Intensity"):
-                warn_Nikon(Use_Nikon_File, "Energy")
-                warn_Nikon(Use_Nikon_File, "Intensity")
                 GVXRDict["Beam"].Energy = Parameters.Energy
                 GVXRDict["Beam"].Intensity = Parameters.Intensity
             else:
                 print(
-                    "you must Specify a beam Energy and Beam Intensity when not using Spekpy."
+                    "you must Specify a beam Energy and Beam Intensity when not using GVXR.Tube_Voltage."
                 )
                 sys.exit(1)
 

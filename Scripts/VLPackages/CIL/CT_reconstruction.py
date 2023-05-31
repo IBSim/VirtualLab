@@ -10,6 +10,8 @@ from cil.processors import TransmissionAbsorptionConverter
 from cil.utilities.display import show_geometry
 from cil.recon import FDK
 from cil.io import TIFFStackReader, NikonDataReader
+from Scripts.VLPackages.CIL.assemble_slices import assemble_slices
+
 class GPUError(Exception): 
     def __init__(self, value): 
         self.value = value
@@ -33,8 +35,8 @@ def Check_GPU():
     
     
 def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
-        Headless=False, num_projections = 180,angular_step=1,bitrate='float32',
-        im_format='tiff',Nikon=None,_Name=None):
+        Headless=False, num_projections = 180,angular_step=1,bitrate='int8',
+        im_format='tiff',Nikon=None,_Name=None,output_dir=output_dir):
     inputfile = f"{work_dir}/{Name}"
 
     dist_source_center = 0-Beam[1]
@@ -60,18 +62,18 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
     im_data.reorder(order='tigre')
     fdk =  FDK(im_data)
     recon = fdk.run()
-    os.makedirs(f'{work_dir}/../CIL_Images', exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
     recon_shape = recon.shape
     for I in range(0,recon_shape[0]):
         r_slice = recon.get_slice(vertical=I)
         r_slice = r_slice.as_array()
-        write_image(f'{work_dir}/../CIL_Images/{Name}',r_slice,bitrate=bitrate,slice_index=I);
+        write_image(f'{output_dir}/{Name}',r_slice,bitrate=bitrate,slice_index=I);
 
     return
 
 def CT_Recon_2D(work_dir,Name,Beam,Detector,Model,Pix_X,Spacing_X,
-        Headless=False, num_projections = 180,angular_step=1,
-        im_format='tiff',Nikon=None,_Name=None):
+        Headless=False, num_projections = 180,angular_step=1,bitrate='int8',
+        im_format='tiff',Nikon=None,_Name=None,output_dir=output_dir):
     inputfile = f"{work_dir}/{Name}"
 
     if Nikon:
@@ -91,10 +93,6 @@ def CT_Recon_2D(work_dir,Name,Beam,Detector,Model,Pix_X,Spacing_X,
         .set_panel(num_pixels=[Pix_X],pixel_size=[Spacing_X]) \
         .set_angles(angles=angles_rad, angle_unit='radian')
         ig = ag.get_ImageGeometry()
-    
-    #if not Headless:
-    #    breakpoint()
-    #    show_geometry(ag)
 
     
     im = TIFFStackReader(file_name=inputfile)
@@ -106,20 +104,18 @@ def CT_Recon_2D(work_dir,Name,Beam,Detector,Model,Pix_X,Spacing_X,
     fdk =  FDK(im_data)
     recon = fdk.run()
     recon = recon.as_array()
-    os.makedirs(f'{work_dir}/../CIL_Images', exist_ok=True)
-    #normailse data between 0 and 245
-    # norm = ((recon - np.min(recon))/np.ptp(recon))*245
-    write_image(f'{work_dir}/../CIL_Images/{Name}',recon,bitrate='float32');
+    os.makedirs(output_dir, exist_ok=True)
+    write_image(f'{output_dir}/{Name}',recon,bitrate='int8');
     return
 
-def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate='float32',slice_index=0):
+def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate='int8',slice_index=0):
     from PIL import Image, ImageOps
     import os
     import tifffile as tf
     output_name = os.path.basename(os.path.normpath(output_dir))
     os.makedirs(output_dir, exist_ok=True)
     if im_format:
-        #calcualte number of digits in max number of images for formating
+        #calcualte number of digits in max number of images for formatting
         import math
         if slice_index > 0:
             digits = int(math.log10(slice_index))+1
@@ -166,3 +162,11 @@ def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate='float32
             tf.imwrite(im_output,vox,bigtiff=True, append=True)
         else:
             tf.imwrite(im_output,vox,metadata=None,bigtiff=True)
+
+def Helix(**kwargs):
+    ''' 
+    Function to assemble slices from a helix scan into a single tiff file 
+    for further processing.
+    '''
+    Sim_Data = kwargs["Sim_Data"]
+    assemble_slices(Sim_Data)

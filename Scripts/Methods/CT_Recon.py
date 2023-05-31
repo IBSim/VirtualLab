@@ -36,6 +36,7 @@ class Method(Method_base):
 
             CILdict = {
                 "work_dir": "{}/GVXR-Images".format(VL.PROJECT_DIR),
+                "output_dir":"{}/CIL_Images".format(VL.PROJECT_DIR),
                 "Name": CILName,
             }
             # Define flag to display visualisations
@@ -135,8 +136,7 @@ class Method(Method_base):
     # *******************************************************************
 
     @staticmethod
-    def PoolRun(VL,CilDict):
-        funcname = "CT_Recon" # function to be executed within container
+    def PoolRun(VL,CilDict,funcname):
         funcfile = "{}/CT_reconstruction.py".format(CilDIR) # python file where 'funcname' is located
         
         RC = CT_Recon(funcfile, funcname, fnc_kwargs=CilDict)
@@ -149,7 +149,7 @@ class Method(Method_base):
             return
         VL.Logger("\n### Starting CT Reconstruction ###\n", Print=True)
         for key in self.Data.keys():
-            Errorfnc = self.PoolRun(VL,self.Data[key])
+            Errorfnc = self.PoolRun(VL,self.Data[key],'CT_Recon')
             if Errorfnc:
                 VL.Exit(
                     VLF.ErrorMessage(
@@ -158,6 +158,21 @@ class Method(Method_base):
                         )
                     )
                 )
+        if kwargs.get('Helical',False):
+            # assemble slices from a helical scan into a single tiff file.
+            VL.Logger("\n### Assembling slices from Helical scan ###\n", Print=True)
+                        
+            for key in self.Data.keys():
+                Errorfnc = self.PoolRun(VL,self.Data[key],'Helix')
+                if Errorfnc:
+                    VL.Exit(
+                        VLF.ErrorMessage(
+                            "The following Image CIL routine(s) finished with errors:\n{}".format(
+                                Errorfnc
+                            )
+                        )
+                    )
+            VL.Logger("\n### Slice Assembly Complete ###\n", Print=True)
 
         VL.Logger("\n### CT Reconstruction Complete ###", Print=True)        
 

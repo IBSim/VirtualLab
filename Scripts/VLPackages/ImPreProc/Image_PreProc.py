@@ -1,16 +1,9 @@
 from Scripts.VLPackages.ImPreProc.normTiff import normTiff 
 from Scripts.VLPackages.ImPreProc.normRawData import normRawData
 from Scripts.VLPackages.ImPreProc.registration import Register_image
-from Scripts.VLPackages.CIL.assemble_slices import assemble_slices
 import glob
 import os
 import textwrap
-
-def Helix(**kwargs):
-    ''' Function to assemble slices from a helix scan into a single tiff file for further processing'''
-    Sim_Data = kwargs["Sim_Data"]
-    assemble_slices(Sim_Data)
-
 
 def Normalise(**kwargs):
     Exp_Data = kwargs["Exp_Data"]

@@ -1,4 +1,3 @@
-import tifffile as tf
 import glob
 from PIL import Image, ImageOps
 import numpy as np

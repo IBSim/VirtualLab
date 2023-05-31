@@ -177,23 +177,7 @@ class Method(Method_base):
         # kwargs to control which processing steps occur
         Normalise = kwargs.get('Normalise',True)
         Register = kwargs.get('Register',True)
-        Helix = kwargs.get('Helix',False)
-        # Convert data from helix scan into a single tiff stack
-        if Helix:
-            VL.Logger("\n### Assembling slices from Helical scan ###\n", Print=True)
-                        
-            for key in self.Data.keys():
-                Errorfnc = self.PoolRun(VL,self.Data[key],'Helix')
-                if Errorfnc:
-                    VL.Exit(
-                        VLF.ErrorMessage(
-                            "The following Image Pre-Processing routine(s) finished with errors:\n{}".format(
-                                Errorfnc
-                            )
-                        )
-                    )
-            VL.Logger("\n### Slice Assembley Complete ###\n", Print=True)
-            
+                
         # do Normalisation
         if Normalise:
             VL.Logger("\n### Performing Image Normalisation ###\n", Print=True)

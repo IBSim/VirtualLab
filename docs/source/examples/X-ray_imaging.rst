@@ -120,7 +120,7 @@ the window or type ``q`` on the keyboard. The X-ray image itself can be found in
 
 .. _Dragon_01:
 
-.. figure:: https://gitlab.com/ibsim/media/-/blob/master/images/VirtualLab/GVXR_Dragon_1.png
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/GVXR_Dragon_1.png
 
     Visualization of X-Ray imaging for Dragon model
 
@@ -268,7 +268,7 @@ if the model is not correctly aligned initially.
 
 .. _Dragon_02:
 
-.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/GVXR_Dragon_2.tiff
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/GVXR_Dragon_2.png
 
     X-Ray Image of Dragon model after rotation.
 

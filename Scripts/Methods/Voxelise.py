@@ -184,29 +184,29 @@ class Method(Method_base):
         Return: list of floats corresponding to unit length in x,y and z
         """
 
-    # parse xtek file
-    with open(Nikon_file, "r") as f:
-        content = f.readlines()
+        # parse xtek file
+        with open(Nikon_file, "r") as f:
+            content = f.readlines()
 
-    content = [x.strip() for x in content]
+        content = [x.strip() for x in content]
 
-    unit_length = [None, None, None]
-    for line in content:
-        # number of projections
-        if line.startswith("VoxelSizeX"):
-            unit_length[0] = float(line.split("=")[1])
-        if line.startswith("VoxelSizeY"):
-            unit_length[1] = float(line.split("=")[1])
-        if line.startswith("VoxelSizeZ"):
-            unit_length[2] = float(line.split("=")[1])
+        unit_length = [None, None, None]
+        for line in content:
+            # number of projections
+            if line.startswith("VoxelSizeX"):
+                unit_length[0] = float(line.split("=")[1])
+            if line.startswith("VoxelSizeY"):
+                unit_length[1] = float(line.split("=")[1])
+            if line.startswith("VoxelSizeZ"):
+                unit_length[2] = float(line.split("=")[1])
 
-    if None in unit_length:
-        raise ValueError(
-            f"The provided nikon file does not appear to correctly define the unit length. \
-            Please check the file defines the VoxelSize for x, y and z. Unit_length has \
-            been read as: {unit_length}"
-        )
-    return unit_length
+        if None in unit_length:
+            raise ValueError(
+                f"The provided nikon file does not appear to correctly define the unit length. \
+                Please check the file defines the VoxelSize for x, y and z. Unit_length has \
+                been read as: {unit_length}")
+        
+        return unit_length
 
     def Run(self, VL):
         if not self.Data:

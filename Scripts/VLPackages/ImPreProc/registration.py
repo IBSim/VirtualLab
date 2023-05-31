@@ -9,20 +9,39 @@ def Register_image(moving, static, **kwargs):
     Samples = kwargs.get("Samples", 5000)
     resolutions = kwargs.get("Resolutions", 4)
     reg_params = kwargs.get("Reg_Params", None)
+    im_series = kwargs.get("im_series", True)
 
     root, ext = os.path.splitext(moving)
     output_fname = f'{root}_R{ext}'
-
-    fixed_image = itk.imread(static, itk.F)
-    moving_image = itk.imread(moving, itk.F)
-    if mask:
-        fixed_mask = itk.imread(mask, itk.UC)
-        fixed_mask = np.asarray(fixed_mask)
-        fixed_mask = np.where(fixed_mask > 1, fixed_mask, 1)
-        fixed_mask = itk.GetImageFromArray(fixed_mask)
+    if not im_series:
+        # Single tiff stack
+        fixed_image = itk.imread(static, itk.F)
+        moving_image = itk.imread(moving, itk.F)
+        if mask:
+            fixed_mask = itk.imread(mask, itk.UC)
+            fixed_mask = np.asarray(fixed_mask)
+            fixed_mask = np.where(fixed_mask > 1, fixed_mask, 1)
+            fixed_mask = itk.GetImageFromArray(fixed_mask)
+        else:
+            fixed_mask = None
     else:
-        fixed_mask = None
+        # image series
+        moving_files = glob.glob(f"{moving}/*.tiff")
+        static_files = glob.glob(f"{static}/*.tiff")
+        ,fixed_image = np.zeros([1417,1417,len(static_files)])
+        for static_im in static_files:
+            with open(static_im) as f:
+                fixed_image = itk.imread(f, itk.F)
 
+        with open(moving_im) as f:
+            moving_image = itk.imread(f, itk.F)
+        if mask:
+            fixed_mask = itk.imread(mask, itk.UC)
+            fixed_mask = np.asarray(fixed_mask)
+            fixed_mask = np.where(fixed_mask > 1, fixed_mask, 1)
+            fixed_mask = itk.GetImageFromArray(fixed_mask)
+        else:
+            fixed_mask = None
     if reg_params != None:
         # load in list of a prams if given
         if not isinstance(reg_params, list):

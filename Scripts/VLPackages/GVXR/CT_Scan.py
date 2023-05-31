@@ -18,7 +18,7 @@ def CT_scan(**kwargs):
     Density = kwargs.get("Density",[])
     Headless = kwargs.get('Headless',False)
 
-    Tube_Voltage = kwargs.get("Tube_Voltage",None)
+    Tube_Voltage = kwargs.get("Tube_Voltage",0.0)
     Tube_Angle = kwargs.get("Tube_Angle",12.0)
     Filter_Material = kwargs.get("Filter_Material",None)
     Filter_ThicknessMM = kwargs.get("Filter_ThicknessMM",None)
@@ -127,7 +127,7 @@ def CT_scan(**kwargs):
         raise GVXRError(f"Invalid beam type {kwargs['Beam_Type']} defined in Input File, must be either point or parallel")
 
     gvxr.resetBeamSpectrum()
-    if kwargs["Tube_Voltage"] != None:
+    if kwargs["Tube_Voltage"] != 0.0:
         #generate an xray tube spectrum
         filters = []
         if Filter_Material != None and Filter_ThicknessMM != None:

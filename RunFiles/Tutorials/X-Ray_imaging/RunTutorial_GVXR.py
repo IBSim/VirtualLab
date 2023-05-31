@@ -14,7 +14,7 @@ from Scripts.Common.VirtualLab import VLSetup
 Simulation='GVXR'
 Project='Tutorials'
 Parameters_Master='TrainingParameters_GVXR'
-Parameters_Var='TrainingParameters_GVXR_var'
+Parameters_Var=None
 
 #===============================================================================
 # Environment
@@ -28,17 +28,20 @@ VirtualLab=VLSetup(
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
-           NbJobs=2
+           NbJobs=1
            )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
+           RunMesh=True,
+           RunSim=True,
            RunCT_Scan=True
            )
 
 #===============================================================================
 # Methods
 #===============================================================================
-
+VirtualLab.Mesh()
+VirtualLab.Sim()
 VirtualLab.CT_Scan()

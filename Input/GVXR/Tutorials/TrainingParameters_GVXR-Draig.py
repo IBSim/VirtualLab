@@ -29,9 +29,9 @@ GVXR.mesh = 'welsh-dragon-small.stl'
 # for the whole dragon model.
 GVXR.Material_list = ["Al"]
 # Beam energy (default units are MeV)
-GVXR.Energy = 300
+GVXR.Energy = [0.08]
 # xray beam intensity (no. of x-ray photons)
-GVXR.Intensity = 1000
+GVXR.Intensity = [1000]
 # Position of x-ray beam
 GVXR.Beam_PosX = 0
 GVXR.Beam_PosY = -250
@@ -69,8 +69,6 @@ GVXR.energy_units = 'MeV'
 # String for output image format default is tiff
 GVXR.image_format = 'png'
 # set the output image bitrate can be any off int8, int16 or float32
-GVXR.Im_bitrate = 'int8'
+GVXR.bitrate = 'int8'
 # Initial rotation of cad model in degrees about the x,y and z axis
 GVXR.rotation = [0,0,0]
-# flat field normalize output image(s)
-GVXR.FFNorm = True

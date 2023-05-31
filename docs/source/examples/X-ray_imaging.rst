@@ -105,7 +105,7 @@ not already exist.
 
         VirtualLab -f RunFiles/RunTutorials.py
 
-Because we have set ``Mode='Interactive'`` in ``VirtualLab.Settings`` you should see a 3D visualisation 
+Because we have set ``Mode='Interactive'`` in ``VirtualLab.Settings`` you should see a 3D visualization 
 of the dragon model in the path of the X-Ray beam casting a shadow onto the X-Ray detector behind.
 
 You can use the mouse to zoom and rotate the scene to get a better view. Once finished you can close 
@@ -365,7 +365,6 @@ For this example we have used three "Miscellaneous" Settings
 
 - ``GVXR.Im_format`` sets the output image format
 - ``GVXR.Im_bitrate`` to set the output image bitrate
-- ``GVXR.FFNorm`` to perform flat-field normalization on output image
 
 
 ``GVXR.Im_format`` Allows you to select the image format for the final output. If it is omitted (or set to :code:`None`) 
@@ -374,8 +373,6 @@ format supported by Pillow (see the `PILLOW docs <https://pillow.readthedocs.io/
 
 ``GVXR.bitrate`` sets the bitrate used for output images. Can be 'int8'/'int16' for 8 and 16 bit grayscale or 'float32' 
 for raw intensity values. the default value is "float32".
-
-``GVXR.FFNorm`` is a Flag to perform flat-field normalization on output images. The default for this is False.
 
 .. _Xray_Example2:
 
@@ -403,26 +400,23 @@ called CIL and we will cover the reconstruction side of this process in a differ
 
         VirtualLab=VLSetup(
                 Simulation,
-                Project)
+                Project
+                )
 
         VirtualLab.Settings(
                 Mode='Interactive',
                 Launcher='Process',
-                NbJobs=1)
+                NbJobs=1
+                )
 
         VirtualLab.Parameters(
                 Parameters_Master,
                 Parameters_Var,
                 RunMesh=True,
                 RunSim=False,
-                RunDA=False,
-                RunVoxelise=False,
-                RunCT_Scan=True)
-
-        VirtualLab.Mesh(
-                ShowMesh=False,
-                MeshCheck=None)
-
+                RunCT_Scan=True
+                )
+        VirtualLab.Mesh()
         VirtualLab.CT_Scan()
 
 If you have previously completed Tutorial 3 you should already have the mesh 
@@ -468,9 +462,8 @@ using in this example.
 
 The second change to note here is we are now using a mesh with multiple 
 materials. As mentioned earlier this is only currently implemented for 
-salome med meshes using mesh regions. In our case we have defined 3 
-regions in the mesh on line 42 
-``Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}``
+salome med meshes using mesh regions. In our case the mesh has 3 regions
+Pipe, Block, and Tile. 
 
 For GVXR we have to define the corresponding materials using ``GVXR.Material_list``
 in this case the pipe and block are both made from Copper. whilst the tile is
@@ -482,10 +475,6 @@ made from the much denser Tungsten.
     Change the material of the tile region to an alloy of 90% Titanium and 
     10% Aluminum. Which for reference has an approximate density of 4.3254 
     g/cm^3.
-
-   Note: You do not need to change ``Sim.Materials`` as we are not using 
-   running a Code aster simulation. Thus you only need to change 
-   ``GVXR.Material_list``.
 
 Our final step for this section is to perform multiple X-ray images at 
 different angles. To achieve this we will use the parameters.
@@ -636,7 +625,6 @@ a default value of "-" indicates that this is a required parameter.
     "fill_value","value used to fill pixels at the image edges, when using fill_percent.","None"
     "Nikon_file","Name of or path to a Nikon parameter .xtekct file to read parameters from, 
     see section on Nikon file for more detailed explanation.","None"
-    "FFNorm","Flag to perform flat-field normalization on output images","False"
     "image_format","This option allows you to select the image format for the final output. 
     If it is omitted (or set to :code:`None`) the output defaults to a series of tiff images. 
     However, when this option is set the code outputs each projection in any format supported 

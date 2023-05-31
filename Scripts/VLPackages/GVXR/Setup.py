@@ -1,4 +1,4 @@
-def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
+def GVXR_Setup(GVXRDicts,PROJECT_DIR,PARAMETERS_DIR, mode):
     """
     GVXR - Simulation of X-ray CT scans
     """
@@ -7,6 +7,7 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
     import pydantic
     import pickle
     import os
+    import glob
     import sys
     from types import SimpleNamespace as Namespace
     from pydantic.dataclasses import dataclass, Field
@@ -59,6 +60,8 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
         "Model_Mesh_units",
         "rotation",
         "fill_percent",
+        "FFNorm",
+        "bitrate"
     ]
 
     def convert_tets_to_tri(mesh_file):
@@ -232,7 +235,7 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
         Model_Mesh_units: str = Field(default="mm")
 
     OUT_DIR = "{}/GVXR-Images".format(PROJECT_DIR)
-    IN_MESH_DIR = "{}/Meshes".format(VLC.InputDir)
+    IN_MESH_DIR = "{}/Meshes".format(PARAMETERS_DIR)
     OUT_MESH_DIR = "{}/Meshes".format(PROJECT_DIR)
 
     if not os.path.exists(OUT_DIR):
@@ -350,7 +353,7 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
             GVXRDict["Beam"].Tube_Voltage = Parameters.Tube_Voltage
             use_spekpy == True
         else:
-            use_spekpy == False
+            use_spekpy = False
 
         if use_spekpy == False:
             if hasattr(Parameters, "Energy") and hasattr(Parameters, "Intensity"):
@@ -510,5 +513,12 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
         Param_dir = "{}/run_params/".format(PROJECT_DIR)
         if not os.path.exists(Param_dir):
             os.makedirs(Param_dir)
+        previous_runs = glob.glob(f'{Param_dir}/setup_params_*.json')
+
+        if previous_runs != []:
+            # found params from previous runs so delete them 
+            for f in previous_runs:
+                os.remove(f)
+
         pth = "{}/setup_params_{}.json".format(Param_dir, GVXRName)
         dump_to_json(GVXRDict, pth)

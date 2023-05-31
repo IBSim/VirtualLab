@@ -55,32 +55,31 @@ object made from a single element.
    The *RunFile* ``RunTutorials.py`` should be set up as follows 
    to run this simulation::
 
-       Simulation='Tensile'
-       Project='Tutorials'
-       Parameters_Master='TrainingParameters_GVXR'
-       Parameters_Var=None
+        Simulation='GVXR'
+        Project='Tutorials'
+        Parameters_Master='TrainingParameters_GVXR-Draig'
+        Parameters_Var=None
+
+        #===============================================================================
+        # Environment
+        #===============================================================================
 
         VirtualLab=VLSetup(
-                   Simulation,
-                   Project
-                   )
+                Simulation,
+                Project
+                )
 
         VirtualLab.Settings(
-                   Mode='Interactive',
-                   Launcher='Process',
-                   NbJobs=1
-                   )
+                Mode='Interactive',
+                Launcher='Process',
+                NbJobs=1
+                )
 
         VirtualLab.Parameters(
-                   Parameters_Master,
-                   Parameters_Var,
-                   RunMesh=True,
-                   RunSim=True,
-                   RunCT_Scan=True,
-                   RunDA=True
-                   )
-
-        VirtualLab.CT_Scan()
+                Parameters_Master,
+                Parameters_Var,
+                RunCT_Scan=True
+                )
 
 
 The mesh we be using For this example is the Welsh Dragon 
@@ -92,13 +91,12 @@ by Default VirtualLab will look for the mesh file in ``Input/GVXR/Tutorials/Mesh
 will need to pace the downloaded stl file in that directory, creating it if it does 
 not already exist. 
 
-.. admonition:: Note
+.. admonition:: Tip
     :class: Tip
 
     You can alternatively place the mesh file in ``Output/GVXR/Tutorials/Meshes``.
     This is useful if you have a mesh generated from a previous step in VirtualLab. 
-    You can also use ``GVXR.mesh`` inside ``Input/GVXR/Tutorials/TrainingParameters_Dragon.py`` 
-    to specify the absolute path to the mesh file if you prefer.
+    You can also use ``GVXR.mesh`` to specify the absolute path to the mesh file if you prefer.
 
 .. admonition:: Action
    :class: Action
@@ -114,7 +112,7 @@ You can use the mouse to zoom and rotate the scene to get a better view. Once fi
 the window or type ``q`` on the keyboard. The X-ray image itself can be found in 
 ``Output/GVXR/Tutorials/GVXR_Images/Dragon.png``
 
-.. admonition:: Note
+.. admonition:: Tip
     :class: Tip
 
     To prevent this visualization from appearing in future runs simply set Mode to ``'Headless'`` 
@@ -122,7 +120,7 @@ the window or type ``q`` on the keyboard. The X-ray image itself can be found in
 
 .. _Dragon_01:
 
-.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ImageJ_01.png
+.. figure:: https://gitlab.com/ibsim/media/-/blob/master/images/VirtualLab/GVXR_Dragon_1.png
 
     Visualization of X-Ray imaging for Dragon model
 
@@ -150,8 +148,8 @@ For ease of discussion of this first example we will break the
 required parameters down into four sections:
 
 1. X-ray Beam parameters
-2. Sample Parameters
-3. Detector Parameters
+2. Detector Parameters
+3. Sample Parameters
 4. Misc. Parameters
 
 Setting up the Beam:
@@ -168,7 +166,8 @@ To set the position we use ``GVXR.Beam_PosX``, ``GVXR.Beam_PosY`` and  ``GVXR.Be
 the default units are mm. However, you can easily change this to essentially any metric 
 units by setting ``GVXR.Beam_Pos_units`` to the appropriate string ("mm","cm","m" etc ...)[1]_.
 
-For the beam shape we use ``GVXR.Beam_Type``. GVXR allows for two choices
+For the beam shape we use ``GVXR.Beam_Type``. GVXR allows for two choices:
+
 - Cone beam: ``GVXR.Beam_Type = 'point'``
 - Parallel beam (e.g. synchrotron): ``GVXR.Beam_Type = 'parallel'``
 
@@ -197,6 +196,22 @@ with a string to denote the energy units. This can be any of "eV", "keV" or "MeV
     happens to the resulting image. you may also wish to try changing the beam from a cone beam 
     to a parallel one.
 
+Setting up the Detector:
+------------------------
+
+Setting up the detector we need to specify its position, shape and physical size.
+
+Similar to the beam to set the position we use ``GVXR.Detect_PosX``, ``GVXR.Detect_PosY`` and
+``GVXR.Detect_PosZ`` again the default units are mm. However, you can easily change this to 
+essentially any metric units by setting ``GVXR.Detect_Pos_units`` to the appropriate string 
+("mm","cm","m" etc ...)[1]_.
+
+For the number of pixels in each direction we use ``GVXR.Pix_X`` and ``GVXR.Pix_Y``. Note: 
+somewhat confusingly, up for the detector (i.e. Y) is along the Z axis in GVXR.
+
+For the detector size we define the spacing between pixes with ``GVXR.Spacing_X`` and
+``GVXR.Spacing_Y`` again the default units are mm but this can be changed with 
+``GVXR.Spacing_units``.
 
 Setting up the Sample:
 ----------------------
@@ -204,6 +219,7 @@ Setting up the Sample:
 Next we need to set the properties of the Sample in this case our dragon model
 
 For our sample we need specify four things:
+
 1. A 3D model of the object 
 2. What the Sample is made from
 3. It's position
@@ -227,13 +243,14 @@ However unlike the beam position these are optional and if they are not given th
 be centered on the scene at the origin (that is [0,0,0]).
 
 For units you have two parameters:
+
 - ``GVXR.Model_Pos_units`` for the position
 - ``GVXR.Model_Mesh_units`` for the mesh itself
 
 The default units are mm. However, once again you can easily change this to essentially 
 any metric units by using the appropriate string ("mm","cm","m" etc ...).
 
-For scaling the mesh we have the otional values ``GVXR.Model_ScaleX``, ``GVXR.Model_ScaleY``
+For scaling the mesh we have the optional values ``GVXR.Model_ScaleX``, ``GVXR.Model_ScaleY``
 and ``GVXR.Model_ScaleZ``. These allow you to set a decimal scale factor in each dimension 
 to reduce of increase the size of the model as needed. e.g. ``GVXR.Model_ScaleX=1.5`` 
 will scale the model size by 1.5 times in the X direction.
@@ -251,7 +268,10 @@ if the model is not correctly aligned initially.
 
 .. _Dragon_02:
 
-.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/ImageJ_01.png
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/GVXR_Dragon_2.tiff
+
+    X-Ray Image of Dragon model after rotation.
+
 
 .. admonition:: A note about Rotation
     :class: Note
@@ -338,18 +358,37 @@ Thus ``GVXR.Density=[3.152]``
     (which for reference has a density of 3.987 g/cm^3).
 
 
+Misc. Settings:
+---------------
+
+For this example we have used three "Miscellaneous" Settings
+
+- ``GVXR.Im_format`` sets the output image format
+- ``GVXR.Im_bitrate`` to set the output image bitrate
+- ``GVXR.FFNorm`` to perform flat-field normalization on output image
+
+
+``GVXR.Im_format`` Allows you to select the image format for the final output. If it is omitted (or set to :code:`None`) 
+the output defaults to a series of tiff images. However, when this option is set the code outputs each projection in any 
+format supported by Pillow (see the `PILLOW docs <https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html>`_).
+
+``GVXR.bitrate`` sets the bitrate used for output images. Can be 'int8'/'int16' for 8 and 16 bit grayscale or 'float32' 
+for raw intensity values. the default value is "float32".
+
+``GVXR.FFNorm`` is a Flag to perform flat-field normalization on output images. The default for this is False.
+
 .. _Xray_Example2:
 
 Example 2: X-Ray CT-Scan with Multiple Materials
-***************************************************
+************************************************
 
 In this second example we will Simulate a X-ray CT scant using the `AMAZE <hive.html#sample>`_  
 mesh that was previously used for the `HIVE <../virtual_exp.html#HIVE>`_ analysis in tutorial 3.
 
 An X-Ray Computed Tomography (CT) scan involves taking multiple different X-Ray images of 
-a sample from multiple angles.These are then combined together used to create a 3D image 
-using special reconstruction software. VirtualLab has one such pice of software CIL 
-available and we will cover the reconstruction side of this process in a different tutorial.
+a sample from multiple angles. These are then combined together used to create a 3D image 
+using special reconstruction software. VirtualLab has one such pice of software available, 
+called CIL and we will cover the reconstruction side of this process in a different tutorial.
 
 .. admonition:: Action
    :class: Action
@@ -412,7 +451,7 @@ geometry and mesh using ``Scripts/Experiments/GVXR/Mesh/Monoblock.py``.
 
 You will also notice the Namespace ``GVXR`` has a few new options defined.
 
-Firstly we are now using a more realistic beam spectrum instead of a 
+Firstly, we are now using a more realistic beam spectrum instead of a 
 monochromatic source. This is achieved by replacing ``GVXR.Energy`` with
 ``GVXR.Tube_Voltage``. This tell VirtualLab to generate a beam spectrum 
 from a simulated X-Ray Tube using xspecgen, in this case running at 440 KV. 
@@ -427,6 +466,101 @@ using in this example.
 - ``GVXR.Filter_Material`` material used for beam filter, used to remove certain frequencies  
 - ``GVXR.Filter_ThicknessMM`` Thickness of beam filter
 
+The second change to note here is we are now using a mesh with multiple 
+materials. As mentioned earlier this is only currently implemented for 
+salome med meshes using mesh regions. In our case we have defined 3 
+regions in the mesh on line 42 
+``Sim.Materials = {'Block':'Copper_NL', 'Pipe':'Copper_NL', 'Tile':'Tungsten_NL'}``
+
+For GVXR we have to define the corresponding materials using ``GVXR.Material_list``
+in this case the pipe and block are both made from Copper. whilst the tile is
+made from the much denser Tungsten.
+
+.. admonition:: Action
+   :class: Action
+
+    Change the material of the tile region to an alloy of 90% Titanium and 
+    10% Aluminum. Which for reference has an approximate density of 4.3254 
+    g/cm^3.
+
+   Note: You do not need to change ``Sim.Materials`` as we are not using 
+   running a Code aster simulation. Thus you only need to change 
+   ``GVXR.Material_list``.
+
+Our final step for this section is to perform multiple X-ray images at 
+different angles. To achieve this we will use the parameters.
+
+- ``GVXR.num_projections``
+- ``GVXR.angular_step``
+
+These control the number of projections we want to take and the angle 
+in degrees to rotate the mesh between each image. The rotation is 
+clockwise about the Z-axis (up on the detector) although you can pass 
+in -ve values for angular step to go anti-clockwise, should you wish. 
+Hopefully these are somewhat self-explanatory. 
+
+.. admonition:: Challenge
+   :class: Action
+
+    Setup GVXR to produce 180 tiff images over a full rotation of the model 
+    (i.e. 360 degrees).
+
+
+.. _Xray_Example3:
+
+Example 3: Defining scans using a Nikon .xect files.
+****************************************************
+
+May CT scanners use the Nikon .xect format to define scan parameters.
+These are just specially formatted text files ending in the .xect file 
+extension. VirtualLab can read in parameters from these files.
+
+To use these files you need to use ``GVXR.Nikon_file`` which sets the 
+name of the nikon file you wish to use. This can either be in the Input 
+directory or the absolute path to the file.
+
+You will also at a minimum you need to define
+
+- ``GVXR.Name`` 
+- ``GVXR.Mesh`` 
+- ``GVXR.Materail_list`` 
+
+As well as possibly amounts and density depending on what materials you
+have specified. All other parameters are either optional or will be taken
+from the equivalent parameters in the nikon file. 
+
+The following is a table of parameters in the nikon file and there equivalent
+parameters in VirtualLab.
+
+.. csv-table:: Parameters used from Nikon files
+    :header: "Nikon Parameter", "Notes", "Equivalent Parameter"
+    :align: center
+
+    "Units", "Units for position of all objects","GVXR.Beam_Pos_units, 
+    GVXR.Det_Pos_units, GVXR.Model_Pos_units",
+    "Projections","Number of projections", "GVXR.num_projections",
+    "AngularStep", "Angular step between images in degrees.","GVXR.angular_step",
+    "DetectorPixelsX/Y", "number of pixels along X/Y axis","GVXR.Pix_X/Pix_Y",
+    "DetectorPixelSizeX/Y", "Size of pixels in X and Y", "GVXR.Spacing_X/Y",
+    "SrcToObject", "Distance in z from X-ray source to object, Note this is 
+    y in GVXR co-ordinates thus our beam position is defined as: 
+    [0,-SrcToObject,0]","GVXR.Beam_PosY",
+    "SrcToDetector","Distance in z from source to center of detector. 
+    Again this is equivalent to y in GVXR. Thus Detect_PosY is defined as: 
+    SrcToDetector-SrcToObject","GVXR.Detect_PosY",
+    "DetectorOffsetX/Y","detector offset from origin in X/Y", "Detect_PosX/Z",
+    "XraykV","Tube voltage in kV","GVXR.Tube_Voltage",
+    "Filter_Material","Material used for beam filter","GVXR.Filter_Material",
+    "Filter_ThicknessMM","Thickness of beam filter in mm","GVXR.Filter_ThicknessMM" 
+
+
+
+.. admonition:: Overriding values defined in a Nikon file.
+    :class: Note
+
+    You can define parameters in the input file that are also 
+    defined in the nikon file. If you do the parameters in the 
+    input file will override those in the nikon file.  
 
 
 .. _App1:
@@ -499,7 +633,7 @@ a default value of "-" indicates that this is a required parameter.
     the pixels from the 4 edges of the image (Top, bottom, left and right) with a specific 
     value fill_value. If fill_value is not specified then the value used is calculated automatically
     from the average of the image background.","0.0"
-    "fill_value","value used to fill pixels at the image edges with fill_percent.","None"
+    "fill_value","value used to fill pixels at the image edges, when using fill_percent.","None"
     "Nikon_file","Name of or path to a Nikon parameter .xtekct file to read parameters from, 
     see section on Nikon file for more detailed explanation.","None"
     "FFNorm","Flag to perform flat-field normalization on output images","False"

@@ -262,6 +262,7 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
         GVXRDict = {
             "mesh_file": IN_FILE,
             "output_file": "{}/{}".format(OUT_DIR, GVXRName),
+            "Output_dir": OUT_DIR,
         }
         # Define flag to display visualizations
         if mode == "Headless":

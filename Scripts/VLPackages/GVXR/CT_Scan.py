@@ -2,6 +2,7 @@
 from pickletools import uint8
 from gvxrPython3 import gvxr
 from gvxrPython3.utils import loadXpecgenSpectrum
+import matplotlib.pyplot as plt
 #import gvxrPython3 as gvxr
 import numpy as np
 import math
@@ -137,6 +138,13 @@ def CT_scan(**kwargs):
         
         print(f"generating xray Tube spectrum for {Tube_Voltage} Kv tube.")
         spectrum_filtered, k_filtered, f_filtered, units = loadXpecgenSpectrum(Tube_Voltage,filters=filters)
+        plt.plot(k_filtered, f_filtered)
+        # Display the labels
+        plt.xlabel('Energy [KeV]')
+        plt.ylabel('Number of Photons')
+        plt.title(f'X-Rray Tube spectrum for {Tube_Voltage} Kv tube')
+        plt.savefig(Kwargs['Output_dir']+'/beam_spec.png')
+
     else:
     # generate spectrum from given energy and intensity values
         print("Generating Beam spectrum using supplied values of Energy and Intensity.")

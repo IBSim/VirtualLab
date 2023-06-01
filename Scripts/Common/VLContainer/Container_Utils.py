@@ -226,7 +226,7 @@ def Exec_Container_Manager(container_info, package_info, command, stdout=None):
 
 
 
-def MPI_Container(package_info, command, shared_dir,addpath=[]):
+def MPI_Container(package_info, command, shared_dir,addpath=[],srun=False):
     """Function called inside the VL_Manager container to pass information to VL_server
     to run jobs in other containers."""
 
@@ -245,6 +245,8 @@ def MPI_Container(package_info, command, shared_dir,addpath=[]):
         "args": (package_info, command,shared_dir,tcp_port,host_name),
         "kwargs": {'addpath':addpath}
     }
+    if srun:
+        info['kwargs']['srun'] = True
 
     # send data to relevant function in VLserver
     send_data(sock, info)
@@ -265,7 +267,7 @@ def _MPIFile(command,addpath):
              f"{command}\n"
     return string
 
-def MPI_Container_Manager(container_info, package_info, command, shared_dir, port, host_name,addpath=[]):
+def MPI_Container_Manager(container_info, package_info, command, shared_dir, port, host_name,addpath=[],srun=False):
     """Function called on VL_server to run jobs on other containers."""
     
     container_cmd = container_info["container_cmd"]
@@ -278,21 +280,27 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
     bind_str = bind_list2string(container_info["bind"])  # convert bind list to string
     container_cmd += " --bind {}".format(bind_str)  # update command with bind points
 
-    # make file
     _command = command.split()
-    command_inside = " ".join(_command[3:]) # command for running the function
+    # command for running inside the container (to perform parallel evaluation of function)
+    if srun: command_inside = " ".join(_command[2:])
+    else: command_inside = " ".join(_command[3:]) 
+    # make file which initiates virtuallab requirememtns, e.g. conda environment
     contents = _MPIFile(command_inside,addpath)
     mpifile = "{}/MPIfile.sh".format(shared_dir)
     with open(mpifile,'w') as f:
         f.write(contents)
 
+    # create command to launch container and execute mpifile
     run_container = [container_cmd,container_info["container_path"]] + [f'bash {mpifile}'] 
     run_container = " ".join(run_container)
 
+    # command to be run on server
+    if srun: launch_str = " ".join(_command[:2])
+    else: launch_str = " ".join(_command[:3])
     vlab_dir = get_vlab_dir()
-    mpi_str = " ".join(_command[:3])
-    mpi_command = f"{mpi_str} {vlab_dir}/Scripts/Common/VLContainer/MPI.sh '{run_container}' {host_name} {port} {shared_dir} {vlab_dir}"
+    mpi_command = f"{launch_str} {vlab_dir}/Scripts/Common/VLContainer/MPI.sh '{run_container}' {host_name} {port} {shared_dir} {vlab_dir}"
 
+    # run subprocess
     container_process = subprocess.Popen(mpi_command, shell=True)
 
     ReturnCode = (

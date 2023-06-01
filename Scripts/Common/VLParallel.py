@@ -5,16 +5,15 @@ import copy
 from types import SimpleNamespace as Namespace, MethodType
 import pickle
 from contextlib import redirect_stderr, redirect_stdout
-import numpy as np
 import time
 
-from subprocess import Popen, call
+from subprocess import call
 import tempfile
 import logging
 import dill
 
-from pyina.launchers import MpiPool
-from pyina.tools import which_python, which_mpirun, which_strategy
+from pyina.launchers import MpiPool, SlurmPool
+from pyina.tools import which_strategy
 
 from Scripts.Common.VLContainer import Container_Utils as Utils
 from Scripts.Common.tools.Paralleliser import Paralleliser, _fn_wrap_kwargs
@@ -153,14 +152,12 @@ def containermap(self, func, *args, **kwds):
         error = False
         res = []
     else:
-
-        try:
-            error = Utils.MPI_Container({'ContainerName':'Manager'}, command, self.VLshared_dir,addpath=self.VLaddpath)    
-            #subproc = Popen([command],shell=True)
-            #error = subproc.wait()  # block until all done
-
-
-            # just to be sure... here's a loop to wait for results file ##
+        RC = Utils.MPI_Container({'ContainerName':'Manager'}, command, self.VLshared_dir,addpath=self.VLaddpath,srun=self.srun)    
+        if RC:
+            # error in parallel function evaluation
+            sys.exit(1)
+        else:
+            # all fine
             maxcount = self.timeout; counter = 0
             #print "before wait"
             while not os.path.exists(resfilename):
@@ -170,14 +167,9 @@ def containermap(self, func, *args, **kwds):
                 if counter >= maxcount:
                     print("Warning: exceeded timeout (%s s)" % maxcount)
                     break
-            #print "after wait"
-            # read result back
+
             res = dill.load(open(resfilename,'rb'))
 
-            #print "got result"
-        except:
-            error = True
-           
     ######################################################################
 
     # cleanup files
@@ -185,12 +177,11 @@ def containermap(self, func, *args, **kwds):
         self._save_out(resfilename) # pickled output
     self._cleanup(resfilename, modfile.name, argfile.name)
     if self.scheduler and not _SAVE[0]: self.scheduler._cleanup()
-    if error:
-        raise IOError("launch failed: %s" % command)
+
     return res
 
 
-def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True, **kwargs):
+def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True, srun=False, **kwargs):
 
     NbEval = len(args_list)
 
@@ -199,10 +190,14 @@ def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True,
 
     args_list = list(zip(*args_list)) # change format of args for this
     # Run functions in parallel of N using pyina
-    pool = MpiPool(nodes=nb_parallel, source=source, workdir=workdir)
+    if srun:
+        pool = SlurmPool(nodes=nb_parallel, source=source, workdir=workdir)
+    else:
+        pool = MpiPool(nodes=nb_parallel, source=source, workdir=workdir)
     pool.map = MethodType(containermap, pool)
     pool.VLshared_dir = VL.TEMP_DIR
     pool.VLaddpath = VL._AddedPaths
+    pool.srun = srun
 
     if kwargs_list == []:
         Res = pool.map(fnc, *args_list,onall=onall)
@@ -251,19 +246,24 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
         if launcher.lower()=='process':
             kwargs = {'workdir':VL.TEMP_DIR}
         elif launcher.lower() in ('mpi','mpi_worker'):
-            kwargs = {'workdir':VL.TEMP_DIR,
-                      'addpath':set(sys.path)-set(VL._pypath)}
+            kwargs = {'workdir':VL.TEMP_DIR}
         else: kwargs = {}
 
    
-        if launcher.lower().startswith('mpi'):
-            if launcher.lower() == 'mpi':
-                onall = False
-                N+=1 # add extra 1 to N for master mpi 
-            else: 
-                onall = True
-            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=onall, **kwargs)
+        if launcher.lower()=='mpi':
+            # create additional process for master (hence N+1)
+            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N+1, onall=False, **kwargs)
+        elif launcher.lower()=='mpi_worker':
+            # all processors are workers, including master
+            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=True, **kwargs)
+        elif launcher.lower()=='srun':
+            # all processors are workers, including master
+            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N+1, onall=False, srun=True, **kwargs)
+        elif launcher.lower()=='srun_worker':
+            # all processors are workers, including master
+            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=True, srun=True, **kwargs)
         else:
+            # either run using process or sequential
             Res = Paralleliser(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, method=launcher, nb_parallel=N,**kwargs)
         
         

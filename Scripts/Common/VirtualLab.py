@@ -279,11 +279,14 @@ class VLSetup:
             self._Launcher = "MPI"
         elif Launcher.lower() == "mpi_worker":
             self._Launcher = "MPI_Worker"
+        elif Launcher.lower() == "srun":
+            self._Launcher = "SRUN"   
+        elif Launcher.lower() == "srun_worker":
+            self._Launcher = "SRUN_Worker"            
         else:
             self.Exit(
                 VLF.ErrorMessage(
-                    "Launcher must be one of; 'Sequential',\
-                                     'Process', 'MPI'"
+                    "Launcher must be one of; 'Sequential','Process', 'MPI', 'MPI_worker', 'SRUN', 'SRUN_worker' "
                 )
             )
 

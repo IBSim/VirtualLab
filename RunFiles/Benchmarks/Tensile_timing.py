@@ -37,7 +37,7 @@ if launcher in ('seq','sequential'):
     launcher = dirname = 'sequential' ; NbJobs = 1 
 elif launcher == 'process':
     dirname = "{}_{}".format(launcher,NbJobs)
-elif launcher.startswith('mpi'):
+elif launcher.startswith(('mpi','srun')):
     NbNodes = os.environ.get('SLURM_NNODES',1) # may need to change this for different systems
     dirname = "{}_{}_{}".format(launcher,NbJobs,NbNodes)
 

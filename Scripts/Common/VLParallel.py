@@ -252,13 +252,13 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
    
         if launcher.lower()=='mpi':
             # create additional process for master (hence N+1)
-            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N+1, onall=False, **kwargs)
+            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=False, **kwargs)
         elif launcher.lower()=='mpi_worker':
             # all processors are workers, including master
             Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=True, **kwargs)
         elif launcher.lower()=='srun':
             # all processors are workers, including master
-            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N+1, onall=False, srun=True, **kwargs)
+            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=False, srun=True, **kwargs)
         elif launcher.lower()=='srun_worker':
             # all processors are workers, including master
             Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=True, srun=True, **kwargs)

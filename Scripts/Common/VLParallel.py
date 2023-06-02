@@ -157,16 +157,16 @@ def containermap(self, func, *args, **kwds):
             # error in parallel function evaluation
             sys.exit(1)
         else:
-            # all fine
-            maxcount = self.timeout; counter = 0
-            #print "before wait"
+            # no error on return code, but doesn't necessarily mean everything went fine.
+            # check for file with return values
+            counter = 0
             while not os.path.exists(resfilename):
                 call('sync', shell=True)
                 from time import sleep
                 sleep(1); counter += 1
-                if counter >= maxcount:
-                    print("Warning: exceeded timeout (%s s)" % maxcount)
-                    break
+                if counter >= self.timeout:
+                    # No results file found
+                    sys.exit("Error during parallel function evaluation: no results file found")
 
             res = dill.load(open(resfilename,'rb'))
 
@@ -181,19 +181,24 @@ def containermap(self, func, *args, **kwds):
     return res
 
 
-def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True, srun=False, **kwargs):
+def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True, srun=False,timeout=3, **kwargs):
 
     NbEval = len(args_list)
 
     workdir = kwargs.get('workdir',None)
     source = kwargs.get('source',True)
 
+    if nb_parallel > NbEval and onall:
+        nb_parallel = NbEval
+    elif nb_parallel > (NbEval+1) and not onall:
+        nb_parallel = NbEval+1
+
     args_list = list(zip(*args_list)) # change format of args for this
     # Run functions in parallel of N using pyina
     if srun:
-        pool = SlurmPool(nodes=nb_parallel, source=source, workdir=workdir)
+        pool = SlurmPool(nodes=nb_parallel, source=source, workdir=workdir,timeout=timeout)
     else:
-        pool = MpiPool(nodes=nb_parallel, source=source, workdir=workdir)
+        pool = MpiPool(nodes=nb_parallel, source=source, workdir=workdir,timeout=timeout)
     pool.map = MethodType(containermap, pool)
     pool.VLshared_dir = VL.TEMP_DIR
     pool.VLaddpath = VL._AddedPaths
@@ -249,15 +254,14 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
             kwargs = {'workdir':VL.TEMP_DIR}
         else: kwargs = {}
 
-   
         if launcher.lower()=='mpi':
-            # create additional process for master (hence N+1)
+            # one processor is reserved for the master, so N-1 tasks will actually be performed in parallel
             Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=False, **kwargs)
         elif launcher.lower()=='mpi_worker':
             # all processors are workers, including master
             Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=True, **kwargs)
         elif launcher.lower()=='srun':
-            # all processors are workers, including master
+            # one processor is reserved for the master, so N-1 tasks will actually be performed in parallel
             Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=False, srun=True, **kwargs)
         elif launcher.lower()=='srun_worker':
             # all processors are workers, including master

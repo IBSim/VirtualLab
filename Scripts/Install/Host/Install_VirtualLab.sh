@@ -198,7 +198,7 @@ else
   echo "##########################"  
   echo
   source .VLprofile # ensures VirtualLab bin directory is in $PATH
-  $VL_DIR"/bin/MakeExe.sh"
+  $VL_DIR"/bin/BuildVL"
 
 fi
 

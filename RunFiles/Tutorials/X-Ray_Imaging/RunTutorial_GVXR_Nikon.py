@@ -13,7 +13,7 @@ from Scripts.Common.VirtualLab import VLSetup
 
 Simulation='GVXR'
 Project='Tutorials'
-Parameters_Master='TrainingParameters_GVXR-Draig'
+Parameters_Master='TrainingParameters_GVXR_Nikon'
 Parameters_Var=None
 
 #===============================================================================
@@ -41,4 +41,5 @@ VirtualLab.Parameters(
 # Methods
 #===============================================================================
 
+VirtualLab.Mesh(ShowMesh=False)
 VirtualLab.CT_Scan()

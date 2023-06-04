@@ -32,6 +32,8 @@ GVXR.Material_list = ["Al"]
 GVXR.Energy = [0.08]
 # xray beam intensity (no. of x-ray photons)
 GVXR.Intensity = [1000]
+# Units for beam energy default is 'MeV' can be any of 'eV' 'KeV', 'MeV'
+GVXR.energy_units = 'MeV'
 # Position of x-ray beam
 GVXR.Beam_PosX = 0
 GVXR.Beam_PosY = -250
@@ -54,21 +56,16 @@ GVXR.Model_PosX = 0
 GVXR.Model_PosY = 0
 GVXR.Model_PosZ = 0
 GVXR.Model_Pos_units = 'mm'
-##############################################
-#############################
-# Fully Optional Parameters #
-#############################
+###############################################################################
 # spacing between detector pixels, determines the physical size of the detector.
 # default = 0.5 
 GVXR.SpacingX = 0.7
 GVXR.SpacingY = 0.7
 GVXR.Spacing_units='mm'
-# Units for beam energy default is 'MeV' can be any of 'eV' 'KeV', 'MeV'
-GVXR.energy_units = 'MeV'
-
+GVXR.num_projections=1
 # String for output image format default is tiff
-GVXR.image_format = 'png'
-# set the output image bitrate can be any off int8, int16 or float32
-GVXR.bitrate = 'int8'
+GVXR.image_format = 'tiff'
 # Initial rotation of cad model in degrees about the x,y and z axis
-GVXR.rotation = [0,0,0]
+GVXR.rotation = [0,0,90]
+# flat field normalize output image(s)
+GVXR.Im_bitrate='int8'

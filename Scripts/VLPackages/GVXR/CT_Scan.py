@@ -71,7 +71,6 @@ def CT_scan(**kwargs):
         all_mat_tags = {}
 
     if all_mat_tags == {}:
-        print ("[WARN] No materials defined in input file so we assume the whole mesh is made of a single material.")
         mat_tag_dict={0:['Un-Defined']}
         all_mat_tags = mat_tag_dict
         mat_ids = np.zeros(np.shape(triangles)[0],dtype = int) 

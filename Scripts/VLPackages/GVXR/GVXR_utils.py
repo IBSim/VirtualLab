@@ -393,7 +393,7 @@ def convert_tets_to_tri(mesh_file):
 
     return new_mesh_file
 
-def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value:float=None, nbins:int = 256):
+def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float=0.0,fill_value:float=None, nbins:int = 256):
     '''
     Function to fill in the edges of an xray projection with fill_value (default is 1.0 i.e. background).
     This is done to reduce ring/halo artifacts during reconstruction with CIL.

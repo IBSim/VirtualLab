@@ -61,7 +61,8 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,PARAMETERS_DIR, mode):
         "rotation",
         "fill_percent",
         "FFNorm",
-        "bitrate"
+        "bitrate",
+        "Recon_Method",
     ]
 
     def convert_tets_to_tri(mesh_file):

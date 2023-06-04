@@ -130,6 +130,15 @@ class Method(Method_base):
             if hasattr(Parameters, "bitrate"):
                 CILdict["bitrate"] = Parameters.bitrate
                 
+            if hasattr(Parameters, "Recon_Method"):
+                if Parameters.Recon_Method.upper() not in ['FBP','FDK']:
+                    raise ValueError(f"Invalid Recon_Method must be one of FBP or FDK")
+                CILdict["backend"] = Parameters.Recon_Method.upper()
+            if hasattr(Parameters, "Beam_Type"):
+                if Parameters.Recon_Method.upper() not in ['point','parallel']:
+                    raise ValueError(f"Invalid Beam_Type must be one of point or parallel")
+                CILdict["Beam_Type"] = Parameters.Beam_Type
+            
             self.Data[CILName] = CILdict.copy()
         return
 

@@ -8,7 +8,7 @@ from cil.framework import AcquisitionGeometry, AcquisitionData
 from cil.processors import TransmissionAbsorptionConverter
 # CIL display tools
 from cil.utilities.display import show_geometry
-from cil.recon import FDK
+from cil.recon import FDK, FBP
 from cil.io import TIFFStackReader, NikonDataReader
 from Scripts.VLPackages.CIL.assemble_slices import assemble_slices
 
@@ -36,7 +36,8 @@ def Check_GPU():
     
 def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
         Headless=False, num_projections = 180,angular_step=1,bitrate='int8',
-        im_format='tiff',Nikon=None,_Name=None,output_dir=output_dir):
+        im_format='tiff',Nikon=None,_Name=None,output_dir=output_dir,backend='FDK',
+        Beam_Type='point'):
     inputfile = f"{work_dir}/{Name}"
 
     dist_source_center = 0-Beam[1]
@@ -45,11 +46,20 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
     angles_deg =np.arange(angular_step,(num_projections+1)*angular_step,angular_step)
     np.savetxt('GVXR_angles.txt', angles_deg, delimiter=',',fmt='%f')
     angles_rad = angles_deg *(math.pi / 180)
-    ag = AcquisitionGeometry.create_Cone3D(source_position=Beam, detector_position=Detector, 
-    detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
-    rotation_axis_direction=[0,0,1])  \
-    .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
-    .set_angles(angles=angles_deg, angle_unit='degree')
+
+    if Beam_Type == 'parallel':
+        ag = AcquisitionGeometry.create_Parallel3D(source_position=Beam, detector_position=Detector, 
+        detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
+        rotation_axis_direction=[0,0,1])  \
+        .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
+        .set_angles(angles=angles_deg, angle_unit='degree')
+    else:
+        # point source
+        ag = AcquisitionGeometry.create_Cone3D(source_position=Beam, detector_position=Detector, 
+        detector_direction_x=[1, 0, 0], detector_direction_y=[0, 0, 1],rotation_axis_position=Model,
+        rotation_axis_direction=[0,0,1])  \
+        .set_panel(num_pixels=[Pix_X,Pix_Y],pixel_size=[Spacing_X,Spacing_Y]) \
+        .set_angles(angles=angles_deg, angle_unit='degree')
         
     ig = ag.get_ImageGeometry()
 
@@ -59,9 +69,16 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
     im_data = TransmissionAbsorptionConverter(white_level=im_data.max(),min_intensity=im_data.min())(im_data)
     Check_GPU()
     
-    im_data.reorder(order='tigre')
-    fdk =  FDK(im_data)
-    recon = fdk.run()
+    if backend == 'FDK':
+        im_data.reorder(order='tigre')
+        fdk =  FDK(im_data)
+        recon = fdk.run()
+
+    elif backend=='FBP':
+        im_data.reorder(order='astra')
+        fbp =  FBP(im_data,igg,backend='astra')
+        recon = fbp.run()
+
     os.makedirs(output_dir, exist_ok=True)
     recon_shape = recon.shape
     for I in range(0,recon_shape[0]):
@@ -73,7 +90,8 @@ def CT_Recon(work_dir,Name,Beam,Detector,Model,Pix_X,Pix_Y,Spacing_X,Spacing_Y,
 
 def CT_Recon_2D(work_dir,Name,Beam,Detector,Model,Pix_X,Spacing_X,
         Headless=False, num_projections = 180,angular_step=1,bitrate='int8',
-        im_format='tiff',Nikon=None,_Name=None,output_dir=output_dir):
+        im_format='tiff',Nikon=None,_Name=None,output_dir=output_dir,backend='FDK',
+        Beam_Type='point'):
     inputfile = f"{work_dir}/{Name}"
 
     if Nikon:
@@ -88,10 +106,19 @@ def CT_Recon_2D(work_dir,Name,Beam,Detector,Model,Pix_X,Spacing_X,
 
         angles_deg =np.arange(0,(num_projections+1)*angular_step,angular_step)
         angles_rad = angles_deg *(math.pi / 180)
-        ag = AcquisitionGeometry.create_Cone2D(source_position=Beam, detector_position=Detector, 
-        detector_direction_x=[1, 0],rotation_axis_position=Model)  \
-        .set_panel(num_pixels=[Pix_X],pixel_size=[Spacing_X]) \
-        .set_angles(angles=angles_rad, angle_unit='radian')
+
+        if Beam_Type=='parallel':
+            ag = AcquisitionGeometry.create_Parallel2D(source_position=Beam, detector_position=Detector, 
+            detector_direction_x=[1, 0],rotation_axis_position=Model)  \
+            .set_panel(num_pixels=[Pix_X],pixel_size=[Spacing_X]) \
+            .set_angles(angles=angles_rad, angle_unit='radian')
+        else:
+            #point source
+            ag = AcquisitionGeometry.create_Cone2D(source_position=Beam, detector_position=Detector, 
+            detector_direction_x=[1, 0],rotation_axis_position=Model)  \
+            .set_panel(num_pixels=[Pix_X],pixel_size=[Spacing_X]) \
+            .set_angles(angles=angles_rad, angle_unit='radian')
+
         ig = ag.get_ImageGeometry()
 
     
@@ -99,16 +126,23 @@ def CT_Recon_2D(work_dir,Name,Beam,Detector,Model,Pix_X,Spacing_X,
     im_data=im.read_as_AcquisitionData(ag)
     im_data = TransmissionAbsorptionConverter(white_level=255.0)(im_data)
     Check_GPU()
-    
-    im_data.reorder(order='tigre')
-    fdk =  FDK(im_data)
-    recon = fdk.run()
+
+    if backend == 'FDK':
+        im_data.reorder(order='tigre')
+        fdk =  FDK(im_data)
+        recon = fdk.run()
+
+    elif backend=='FBP':
+        im_data.reorder(order='astra')
+        fbp =  FBP(im_data,igg,backend='astra')
+        recon = fbp.run()
+
     recon = recon.as_array()
     os.makedirs(output_dir, exist_ok=True)
     write_image(f'{output_dir}/{Name}',recon,bitrate='int8');
     return
 
-def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate='int8',slice_index=0):
+def write_image(output_dir:str,vox:np.double,im_format:str=None,bitrate='int8',slice_index=1):
     from PIL import Image, ImageOps
     import os
     import tifffile as tf

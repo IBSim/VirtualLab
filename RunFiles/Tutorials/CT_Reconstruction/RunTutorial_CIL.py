@@ -2,6 +2,7 @@
 #===============================================================================
 # Header
 #===============================================================================
+
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
@@ -10,10 +11,10 @@ from Scripts.Common.VirtualLab import VLSetup
 # Definitions
 #===============================================================================
 
-Simulation='GVXR'
+Simulation='CIL'
 Project='Tutorials'
-Parameters_Master='TrainingParameters_GVXR'
-Parameters_Var='TrainingParameters_GVXR_var'
+Parameters_Master='TrainingParameters_CIL_Ex1'
+Parameters_Var=None
 
 #===============================================================================
 # Environment
@@ -25,23 +26,22 @@ VirtualLab=VLSetup(
            )
 
 VirtualLab.Settings(
-           Mode='Headless',
-            #Mode = 'Interactive',
-           Launcher='Sequential',
+           Mode='Interactive',
+           Launcher='Process',
            NbJobs=1
            )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunCT_Scan=False,
-           RunCT_Recon=True
+           RunMesh=True,
+           RunCT_Scan=True,
+           RunCT_Recon=True,
            )
 
 #===============================================================================
 # Methods
 #===============================================================================
-
+VirtualLab.Mesh(ShowMesh=False)
 VirtualLab.CT_Scan()
-
 VirtualLab.CT_Recon()

@@ -41,4 +41,5 @@ VirtualLab.Parameters(
 # Methods
 #===============================================================================
 
+VirtualLab.Mesh(ShowMesh=False)
 VirtualLab.CT_Scan()

@@ -7,6 +7,7 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
     import pydantic
     import pickle
     import os
+    import glob
     import sys
     from types import SimpleNamespace as Namespace
     from pydantic.dataclasses import dataclass, Field
@@ -344,7 +345,7 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
             warn_Nikon(Use_Nikon_File, "use_spekpy")
             use_spekpy = Parameters.use_spekpy
         else:
-            use_spekpy = None
+            use_spekpy = False
 
         if use_spekpy == True:
             GVXRDict["Beam"] = InitSpectrum(
@@ -500,5 +501,12 @@ def GVXR_Setup(GVXRDicts, PROJECT_DIR,PARAMETERS_DIR, mode):
         Param_dir = "{}/run_params/".format(PROJECT_DIR)
         if not os.path.exists(Param_dir):
             os.makedirs(Param_dir)
+        previous_runs = glob.glob(f'{Param_dir}/setup_params_*.json')
+
+        if previous_runs != []:
+            # found params from previous runs so delete them 
+            for f in previous_runs:
+                os.remove(f)
+                
         pth = "{}/setup_params_{}.json".format(Param_dir, GVXRName)
         dump_to_json(GVXRDict, pth)

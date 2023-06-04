@@ -21,7 +21,7 @@ def CT_scan(**kwargs):
     im_format = kwargs.get('im_format',None)
     use_tetra = kwargs.get('use_tetra',False)
     downscale = kwargs.get('downscale',1.0)
-    fill_percent = kwargs.get('fill_percent',None)
+    fill_percent = kwargs.get('fill_percent',0.0)
     FFNorm = kwargs.get('FFNorm',False)
     print(gvxr.getVersionOfSimpleGVXR())
     print(gvxr.getVersionOfCoreGVXR())
@@ -62,7 +62,6 @@ def CT_scan(**kwargs):
         all_mat_tags = {}
 
     if all_mat_tags == {}:
-        print ("[WARN] No materials defined in input file so we assume the whole mesh is made of a single material.")
         mat_tag_dict={0:['Un-Defined']}
         all_mat_tags = mat_tag_dict
         mat_ids = np.zeros(np.shape(triangles)[0],dtype = int) 
@@ -202,7 +201,7 @@ def CT_scan(**kwargs):
             projection = flat_field_normalize(projection,flat,dark)
         #fill in edge pixels with zeros to reduce reconstruction artifacts
         projection = fill_edges(projection,fill_percent)    
-        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=32);
+        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=8);
 
     
     if (not Headless):

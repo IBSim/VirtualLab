@@ -269,9 +269,9 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8,angl
         vox *= 65536/vox.max()
         convert_opt='I;16'
     elif bitrate == 32:
-        convert_opt='F'
+        convert_opt=None
     else:
-        print("warning: bitrate not recognised assuming 8-bit greyscale")
+        print(f"warning: bitrate {bitrate} not recognised assuming 8-bit greyscale")
         convert_opt='L'
 
     im = Image.fromarray(vox)
@@ -392,7 +392,7 @@ def convert_tets_to_tri(mesh_file):
 
     return new_mesh_file
 
-def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float,fill_value:float=None, nbins:int = 256):
+def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float=0.0,fill_value:float=None, nbins:int = 256):
     '''
     Function to fill in the edges of an xray projection with fill_value (default is 1.0 i.e. background).
     This is done to reduce ring/halo artifacts during reconstruction with CIL.

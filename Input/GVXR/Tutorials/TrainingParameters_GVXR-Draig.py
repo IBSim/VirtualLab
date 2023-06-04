@@ -22,34 +22,18 @@ GVXR.Name = 'Dragon'
 GVXR.mesh = 'welsh-dragon-small.stl'
 # chemical element corresponding to the material properties
 # of each region of the model. Can be any of Full name, Symbol
-# or Atomic number (Z). Cureently works for every element in the
-# peridic table up to Francium, that is elements 1-100.
-# Note: in this case we only supply one elenmt since .stl 
+# or Atomic number (Z). Currently works for every element in the
+# periodic table up to Francium, that is elements 1-100.
+# Note: in this case we only supply one element since .stl 
 # files have only one region. Thus we define one material 
 # for the whole dragon model.
-GVXR.Material_list = ["Cu"]
-# Flag to use specpy to gentrate a beam spectrum
-GVXR.use_spekpy = True
-GVXR.Tube_Voltage = 300
-GVXR.Tube_Angle = 12
+GVXR.Material_list = ["Al"]
 # Beam energy (default units are MeV)
-#GVXR.Energy = [0.08]
-# xray beam intensity (no. of x-ray photons) default = 1000
-#GVXR.Intensity = [1000]
-############################################
-# Nikon parameter input file
-# Use paramters read from .xtekct file
-#GVXR.Nikon_file = ''
-############################################
-############################################
-# Optional parmeters when using Nikon file #
-############################################
-# Anything you define from this block will 
-# override the values read in if using a 
-# .xtekct file. 
-# Note: thease are required prameters when 
-# NOT USING a .xtekct file.
-############################################
+GVXR.Energy = [0.08]
+# xray beam intensity (no. of x-ray photons)
+GVXR.Intensity = [1000]
+# Units for beam energy default is 'MeV' can be any of 'eV' 'KeV', 'MeV'
+GVXR.energy_units = 'MeV'
 # Position of x-ray beam
 GVXR.Beam_PosX = 0
 GVXR.Beam_PosY = -250
@@ -72,26 +56,16 @@ GVXR.Model_PosX = 0
 GVXR.Model_PosY = 0
 GVXR.Model_PosZ = 0
 GVXR.Model_Pos_units = 'mm'
-##############################################
-#############################
-# Fully Optional Parameters #
-#############################
-# Name of materail file
-#GVXR.Material_file = 'materials.csv'
+###############################################################################
 # spacing between detector pixels, determines the physical size of the detector.
 # default = 0.5 
 GVXR.SpacingX = 0.7
 GVXR.SpacingY = 0.7
 GVXR.Spacing_units='mm'
-# Units for beam energy default is 'MeV' can be any of 'eV' 'KeV', 'MeV'
-GVXR.energy_units = 'MeV'
-
-# The number of angles you want projections
-# (i.e the number of output images) default=180
-GVXR.num_projections = 361
-# The rotation angle between each image in degrees default=1
-GVXR.angular_step = 1 
-# String for output image format defualt of None leads to tiff stack
-#GVXR.image_format = 'png'
-# Inital rotation of cad model in degrees about the x,y and z axis
-GVXR.rotation = [0,0,0]
+GVXR.num_projections=1
+# String for output image format default is tiff
+GVXR.image_format = 'tiff'
+# Initial rotation of cad model in degrees about the x,y and z axis
+GVXR.rotation = [0,0,90]
+# flat field normalize output image(s)
+GVXR.Im_bitrate='int8'

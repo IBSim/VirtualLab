@@ -35,11 +35,13 @@ VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunMesh=True,
+           RunSim=True,
            RunCT_Scan=True
            )
 
 #===============================================================================
 # Methods
 #===============================================================================
-VirtualLab.Mesh(ShowMesh=False)
+VirtualLab.Mesh()
+VirtualLab.Sim()
 VirtualLab.CT_Scan()

@@ -346,7 +346,9 @@ parameters in VirtualLab.
     SrcToDetector-SrcToObject","GVXR.Detect_PosY",
     "DetectorOffsetX/Y","detector offset from origin in X/Y", "Detect_PosX/Z",
 
-
+Please note however that a real nikon file will in general have a lot more 
+parameters than these. As such any additional parameters defined in the 
+file, along with comments in square brackets will simply be ignored.
 
 .. admonition:: Overriding values defined in a Nikon file.
     :class: Note

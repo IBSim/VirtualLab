@@ -518,6 +518,43 @@ As well as possibly amounts and density depending on what materials you
 have specified. All other parameters are either optional or will be taken
 from the equivalent parameters in the nikon file. 
 
+.. admonition:: Action
+   :class: Action
+
+   As an example we will perform the same simulation as example 2 only 
+   this time we will define the setup with a nikon file. 
+   The of the *RunFile* ``RunTutorials.py`` should be setup as follows 
+   to run this simulation::
+
+        Simulation='GVXR'
+        Project='Tutorials'
+        Parameters_Master='TrainingParameters_GVXR_Nikon'
+        Parameters_Var=None
+
+        VirtualLab=VLSetup(
+                Simulation,
+                Project
+                )
+
+        VirtualLab.Settings(
+                Mode='Interactive',
+                Launcher='Process',
+                NbJobs=1
+                )
+
+        VirtualLab.Parameters(
+                Parameters_Master,
+                Parameters_Var,
+                RunCT_Scan=True
+                )
+
+        VirtualLab.Mesh(ShowMesh=False)
+        VirtualLab.CT_Scan()
+    
+    Launch **VirtualLab** using the following command::
+
+        VirtualLab -f RunFiles/RunTutorials.py
+
 The following is a table of parameters in the nikon file and there equivalent
 parameters in VirtualLab.
 
@@ -542,7 +579,9 @@ parameters in VirtualLab.
     "Filter_Material","Material used for beam filter","GVXR.Filter_Material",
     "Filter_ThicknessMM","Thickness of beam filter in mm","GVXR.Filter_ThicknessMM" 
 
-
+Please note however that a real nikon file will in general have a lot more 
+parameters than these. As such any additional parameters defined in the 
+file, along with comments in square brackets will simply be ignored.
 
 .. admonition:: Overriding values defined in a Nikon file.
     :class: Note

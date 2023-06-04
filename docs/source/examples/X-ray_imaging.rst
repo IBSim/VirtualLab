@@ -42,7 +42,7 @@ as we will be working through very similar examples.
 
 .. _Xray_Example1:
 
-Example X: First X-ray Simulations with GVXR 
+Example 1: First X-ray Simulations with GVXR 
 ********************************************
 
 In this first example we will demonstrate how to simulate a single X-Ray 
@@ -379,7 +379,7 @@ for raw intensity values. the default value is "float32".
 Example 2: X-Ray CT-Scan with Multiple Materials
 ************************************************
 
-In this second example we will Simulate a X-ray CT scant using the `AMAZE <hive.html#sample>`_  
+In this second example we will Simulate a X-ray CT scan using the `AMAZE <hive.html#sample>`_  
 mesh that was previously used for the `HIVE <../virtual_exp.html#HIVE>`_ analysis in tutorial 3.
 
 An X-Ray Computed Tomography (CT) scan involves taking multiple different X-Ray images of 
@@ -438,7 +438,7 @@ than the change of input file and the addition is the call to
         VirtualLab -f RunFiles/RunTutorials.py
 
 
-Looking at the file ``Input/Tensile/Tutorials/TrainingParameters_GVXR.py``
+Looking at the file ``Input/GVXR/Tutorials/TrainingParameters_GVXR.py``
 you will notice that the ``Namespace`` ``Mesh`` is setup 
 the same as in tutorial 3. That is, to generate the HIVE CAD 
 geometry and mesh using ``Scripts/Experiments/GVXR/Mesh/Monoblock.py``.

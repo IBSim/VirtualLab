@@ -12,22 +12,25 @@ import matplotlib.pyplot as plt
 from Scripts.Common.VirtualLab import VLSetup
 import Scripts.Common.VLFunctions as VLF
 
-NbSim = 2
-NbRepeat = 2
-Launcher = 'process'
+# flags 
 MakeMesh = False
 RunSim = True
 CreatePlot = False
+# parameters relating to benchmark 
+Launcher = 'process'
+NbSim = 2
+NbRepeat = 1
+
 
 # ====================================================================
 # Update running parameters with any passed via the command line
 parsed_kwargs= VLF.parsed_kwargs(sys.argv)
-NbSim = parsed_kwargs.get('NbSim',NbSim)
-NbRepeat = parsed_kwargs.get('NbRepeat',NbRepeat)
-Launcher = parsed_kwargs.get('Launcher',Launcher)
 MakeMesh = parsed_kwargs.get('MakeMesh',MakeMesh)
 RunSim = parsed_kwargs.get('RunSim',RunSim)
 CreatePlot = parsed_kwargs.get('CreatePlot',CreatePlot)
+Launcher = parsed_kwargs.get('Launcher',Launcher)
+NbSim = parsed_kwargs.get('NbSim',NbSim)
+NbRepeat = parsed_kwargs.get('NbRepeat',NbRepeat)
 
 # ====================================================================
 # Update running parameters with any passed via the command line
@@ -47,46 +50,47 @@ elif Launcher.startswith(('mpi','srun')):
 
 # mesh main
 Mesh = Namespace()
-Mesh.Name = 'Notch1' # name of mesh
-Mesh.File = 'DogBone' # Salome python file used to create mesh.
-# Geometric Parameters
-Mesh.Thickness = 0.003
-Mesh.HandleWidth = 0.024
-Mesh.HandleLength = 0.024
-Mesh.GaugeWidth = 0.012
-Mesh.GaugeLength = 0.04
-Mesh.TransRad = 0.012
-Mesh.HoleCentre = (0.0,0.0)
-Mesh.Rad_a = 0.0005
-Mesh.Rad_b = 0.001
-# Meshing Parameters
-Mesh.Length1D = 0.001
-Mesh.Length2D = 0.001
-Mesh.Length3D = 0.001
-Mesh.HoleSegmentN = 30
+Mesh.Name = 'NoVoid'
+Mesh.File = 'Disc'
+Mesh.Radius = 0.0063
+Mesh.HeightB = 0.00125
+Mesh.HeightT = 0.00125
+Mesh.Length1D = 0.00025
+Mesh.Length2D = 0.00025
+Mesh.Length3D = 0.00025
 
 # sim main
 Sim = Namespace()
-Sim.Name = '' # Name under which the simulation results will be saved.
-Sim.AsterFile = 'Tensile'
-Sim.Mesh = 'Notch1' # The mesh used in the simulation.
-Sim.Force = 1000000 # Force applied in force controlled analysis.
-Sim.Displacement = 0.01 # Enforced displacement in displacement controlled analysis.
-Sim.Materials = 'Copper' # Material specimen is made of. Properties can be found in the 'Materials' directory.
+Sim.Name = 'Single'
+Sim.AsterFile = 'Disc_Lin'
+Sim.Mesh = 'NoVoid'
+Sim.Model = '3D'
+Sim.Solver = 'MUMPS'
+Sim.Energy = 5.32468714
+Sim.LaserT= 'Trim'
+Sim.LaserS = 'Gauss'
+Sim.BottomHTC = 0
+Sim.TopHTC = 0
+Sim.ExtTemp = 20
+Sim.InitTemp = 20
+Sim.Materials = {'Top':'Copper', 'Bottom':'Copper'}
+Sim.dt = [(0.00002,100,2), (0.00025,200,4)]
+Sim.Theta = 0.5
 
 Main_parameters = Namespace(Mesh=Mesh, Sim = Sim)
 
 # sim var
 Sim = Namespace()
-Sim.Force = [1000]*NbSim
 Sim.Name = ["{}/Sim_{}".format(dirname,i) for i in range(NbSim)]
+
 Var_parameters = Namespace(Sim = Sim)
+
 
 # ====================================================================
 # Setup VirtualLab
 
-Simulation = 'Tensile'
-Project = 'Benchmarking/Tensile_timing'
+Simulation = 'LFA'
+Project = 'Benchmarking/LFA_timing'
 
 VirtualLab=VLSetup(
            Simulation,
@@ -110,7 +114,7 @@ VirtualLab.Mesh()
 
 # ====================================================================
 # Perform simulations
-pkl_file = "{}/Tensile_timing.pkl".format(VirtualLab.PROJECT_DIR)
+pkl_file = "{}/timing.pkl".format(VirtualLab.PROJECT_DIR)
 if RunSim:
     print("{} simulations performed using the {} launcher".format(NbSim,Launcher))
     times = []

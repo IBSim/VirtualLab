@@ -159,17 +159,17 @@ if CreatePlot:
     f, ax = plt.subplots()
     for key,val in data.items():
 
-        x,y = list(zip(*val))
-        y_ratio = np.array(y)/seq_time
-        ax.scatter(x,y_ratio, label=key)
+        NbSims,times = np.array(list(zip(*val)))
+        speed_up = seq_time*NbSims/times
+        ax.scatter(NbSims,speed_up, label=key)
 
     ax.legend()
-    xlims = ax.get_xlim()
-    ax.plot(xlims,[1,1],linestyle='--',c='k')
-    ax.set_xlim(*xlims)
-    ax.set_ylim(bottom=0.75)
+    xlim_upper = ax.get_xlim()[1]
+    ax.plot([1,xlim_upper],[1,xlim_upper],linestyle='-',c='k',label='Perfect scaling')
+    ax.set_xlim(left=0.5)
+    ax.set_ylim(bottom=0.5)
     ax.set_xlabel("No. parallel simulations")
-    ax.set_ylabel("Scaling ratio")
+    ax.set_ylabel("Speed up")
     f.savefig("{}/Timing.png".format(VirtualLab.PROJECT_DIR),format='png',dpi=600)
 
 

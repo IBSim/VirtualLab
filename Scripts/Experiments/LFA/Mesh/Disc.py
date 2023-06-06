@@ -92,7 +92,8 @@ def Create(Parameters):
         geompy = geomBuilder.New()
         smesh = smeshBuilder.New()
 
-    isVoid = True if Parameters.VoidHeight else False
+    VoidHeight = getattr(Parameters,'VoidHeight',0)
+    isVoid = True if VoidHeight else False
 
     ###
     ### GEOM component

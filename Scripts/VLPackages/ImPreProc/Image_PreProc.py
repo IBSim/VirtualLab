@@ -10,13 +10,6 @@ def Normalise(**kwargs):
     Sim_Data = kwargs["Sim_Data"]
 
     EXP_root, EXP_ext = os.path.splitext(Exp_Data)
-    if os.path.isdir(Sim_Data):
-        Sim_Data = glob.glob(f'{Sim_Data}/*.tiff')
-        if len(Sim_Data) !=1:
-            print(f'Sim_Data contains: {Sim_Data}')
-            raise ValueError(f'Sim_Data must either be a tiff stack or a directory containing a single tiff stack.')
-        Sim_Data = Sim_Data[0]
-    Sim_root, Sim_ext = os.path.splitext(Sim_Data)
     # Normalise Experimental Data
     if not EXP_ext:
         raise ValueError(f'Invalid file name {Exp_Data} filename must include a file extension.')
@@ -30,21 +23,32 @@ def Normalise(**kwargs):
         normRawData(Exp_Data,**kwargs)
     else:
         raise ValueError(f'Invalid input file {Exp_Data} file must be a tiff stack, .vol or .raw file.')
-    # Normalise GVXR Data
-    if not Sim_ext:
-        raise ValueError(f'Invalid file name {Sim_Data} filename must include a file extension.')
-    elif Sim_ext in ['.tiff','.tif']:
-        # Data is tiff stack
-        normTiff(Sim_Data,**kwargs)
-    else:
-        raise ValueError(f'Invalid input file {Sim_Data} file must be a tiff stack.')
+    
+    if Sim_Data != None:
+        if os.path.isdir(Sim_Data):
+            Sim_Data = glob.glob(f'{Sim_Data}/*.tiff')
+            if len(Sim_Data) !=1:
+                print(f'Sim_Data contains: {Sim_Data}')
+                raise ValueError(f'Sim_Data must either be a tiff stack or a directory containing a single tiff stack.')
+            Sim_Data = Sim_Data[0]
+        Sim_root, Sim_ext = os.path.splitext(Sim_Data)
+
+        # Normalise GVXR Data
+        if not Sim_ext:
+            raise ValueError(f'Invalid file name {Sim_Data} filename must include a file extension.')
+        elif Sim_ext in ['.tiff','.tif']:
+            # Data is tiff stack
+            normTiff(Sim_Data,**kwargs)
+        else:
+            raise ValueError(f'Invalid input file {Sim_Data} file must be a tiff stack.')
 
 def Register(**kwargs):
 
     kwargs['mask'] = kwargs.get("Vox_Data",None)
     Sim_Data = kwargs.get("Sim_Data")
     EXP_Data = kwargs.get("Exp_Data")
-
+    if Sim_Data == None:
+        raise ValueError(f"You must provide parameter ImPreProc.SIM_Data to give the location of Simulated data to process.")
     if os.path.isdir(Sim_Data):
         Sim_Data = glob.glob(f'{Sim_Data}/*_N.tiff')
         if len(Sim_Data) !=1:

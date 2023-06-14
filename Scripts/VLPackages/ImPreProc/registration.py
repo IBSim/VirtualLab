@@ -28,7 +28,7 @@ def Register_image(moving, static, **kwargs):
         # image series
         moving_files = glob.glob(f"{moving}/*.tiff")
         static_files = glob.glob(f"{static}/*.tiff")
-        ,fixed_image = np.zeros([1417,1417,len(static_files)])
+        fixed_image = np.zeros([1417,1417,len(static_files)])
         for static_im in static_files:
             with open(static_im) as f:
                 fixed_image = itk.imread(f, itk.F)

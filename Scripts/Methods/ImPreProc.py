@@ -48,8 +48,7 @@ class Method(Method_base):
                 Sim_Data = self.check_data(VL,VLF,Parameters.Sim_Data,category="SIM")
                 MethodDict["Sim_Data"] = Sim_Data
             else:
-                VL.Exit(VLF.ErrorMessage(
-                        f"You must provide parameter ImPreProc.SIM_Data to give location of Simulated data to process."))
+                MethodDict["Sim_Data"] = None
             # set location of cad2vox data for use as an array mask
             if hasattr(Parameters, "Vox_Data"):
                 Vox_data = check_data(VL,VLF,Parameters.Vox_Data,category="VOX")

@@ -83,15 +83,16 @@ Thermat = AFFE_MATERIAU(AFFE=(_F(MATER=TleThm, GROUP_MA='Tile'),
 # Create boundary conditions
 
 # Thermal load. Either uniform or EM results from ERMES simulation
-if Parameters.EMLoad == 'Uniform':
-    EMI = AFFE_CHAR_THER(FLUX_REP=_F(FLUN=Parameters.Flux, GROUP_MA='CoilFace'),MODELE=Thermod)
-elif Parameters.EMLoad == 'ERMES':
+AnalysisType = getattr(Parameters,'AnalysisType','ERMES')
+if AnalysisType.lower() == 'ermes':
     # Read in ERMES file created during PreAster
     ERMES = np.load('{}/ERMES.npy'.format(SimDict['TMP_CALC_DIR']))
     Load_EM = []
     for i,JH in enumerate(ERMES):
         Load_EM.append((_F(GROUP_MA="_{}".format(i),SOUR=JH)))
     EMI = AFFE_CHAR_THER(SOURCE = Load_EM, MODELE=Thermod)
+else:
+    EMI = AFFE_CHAR_THER(FLUX_REP=_F(FLUN=Parameters.Flux, GROUP_MA='CoilFace'),MODELE=Thermod)
 
 # Cooling due to coolant. HTC data generated during PreAster
 HTdata = np.fromfile(SimDict['HTData'],dtype=float,count=-1,sep=" ")
@@ -110,31 +111,31 @@ PipeHTC = AFFE_CHAR_THER_F(FLUX_NL=_F(FLUN=PipeFlux,GROUP_MA='PipeFace'),
 # Heat transfer between joins. TCC - Thermal Contact Conductance
 # As TCC goes to infiity behaviour moves towards perfect heat exchange
 # Tile-Block join
-if getattr(Parameters,'TileBlockTCC',None) != None:
-    # Imperfect heat exchange.
-    Con_TB = AFFE_CHAR_THER(MODELE=Thermod,
-                            ECHANGE_PAROI=_F(GROUP_MA_1='ContactTB',
-                                             GROUP_MA_2='ContactTB_double',
-                                             COEF_H=Parameters.TileBlockTCC))
-else:
-    #Perfect heat exchange
-    Con_TB = AFFE_CHAR_THER(MODELE=Thermod,
-                            LIAISON_MAIL=_F(GROUP_MA_MAIT='Block',
-                                             GROUP_MA_ESCL='ContactTB_double'))
+# if getattr(Parameters,'TileBlockTCC',None) != None:
+#     # Imperfect heat exchange.
+#     Con_TB = AFFE_CHAR_THER(MODELE=Thermod,
+#                             ECHANGE_PAROI=_F(GROUP_MA_1='ContactTB',
+#                                              GROUP_MA_2='ContactTB_double',
+#                                              COEF_H=Parameters.TileBlockTCC))
+# else:
+#     #Perfect heat exchange
+#     Con_TB = AFFE_CHAR_THER(MODELE=Thermod,
+#                             LIAISON_MAIL=_F(GROUP_MA_MAIT='Block',
+#                                              GROUP_MA_ESCL='ContactTB_double'))
 
-#Block-Pipe join
-if getattr(Parameters,'BlockPipeTCC',None) != None:
-    Con_BP = AFFE_CHAR_THER(MODELE=Thermod,
-                            ECHANGE_PAROI=_F(GROUP_MA_1='ContactBP',
-                                             GROUP_MA_2='ContactBP_double',
-                                             COEF_H=Parameters.BlockPipeTCC))
-else:
-    Con_BP = AFFE_CHAR_THER(MODELE=Thermod,
-                            LIAISON_MAIL=_F(GROUP_MA_MAIT='Pipe',
-                                             GROUP_MA_ESCL='ContactBP_double'))
-# List of boundary conditions applied
-Loading = [_F(CHARGE=EMI),_F(CHARGE=PipeHTC),_F(CHARGE=Con_TB),_F(CHARGE=Con_BP)]
-# Loading = [_F(CHARGE=EMI),_F(CHARGE=PipeHTC)]
+# #Block-Pipe join
+# if getattr(Parameters,'BlockPipeTCC',None) != None:
+#     Con_BP = AFFE_CHAR_THER(MODELE=Thermod,
+#                             ECHANGE_PAROI=_F(GROUP_MA_1='ContactBP',
+#                                              GROUP_MA_2='ContactBP_double',
+#                                              COEF_H=Parameters.BlockPipeTCC))
+# else:
+#     Con_BP = AFFE_CHAR_THER(MODELE=Thermod,
+#                             LIAISON_MAIL=_F(GROUP_MA_MAIT='Pipe',
+#                                              GROUP_MA_ESCL='ContactBP_double'))
+# # List of boundary conditions applied
+# Loading = [_F(CHARGE=EMI),_F(CHARGE=PipeHTC),_F(CHARGE=Con_TB),_F(CHARGE=Con_BP)]
+Loading = [_F(CHARGE=EMI),_F(CHARGE=PipeHTC)]
 
 # Radiation effects
 TileEmissivity = getattr(Parameters,'TileEmissivity',0)
@@ -207,15 +208,15 @@ Mechmat = AFFE_MATERIAU(AFFE=(_F(MATER=TleMch, GROUP_MA='Tile'),
 Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DY=0.0, GROUP_MA=('PipeIn','PipeOut')), #Pipe runs along y axis
                         DDL_IMPO=(_F(DX=0.0, DZ=0.0, GROUP_NO=('PipeInV2','PipeOutV2')),
                                   _F(DX=0.0, GROUP_NO=('PipeInV1', 'PipeOutV1'))),
-                       LIAISON_MAIL=(_F(GROUP_MA_MAIT='Pipe', GROUP_MA_ESCL='ContactBP_double'),
-                                     _F(GROUP_MA_MAIT='Block', GROUP_MA_ESCL='ContactTB_double')),
+                    #    LIAISON_MAIL=(_F(GROUP_MA_MAIT='Pipe', GROUP_MA_ESCL='ContactBP_double'),
+                    #                  _F(GROUP_MA_MAIT='Block', GROUP_MA_ESCL='ContactTB_double')),
                         MODELE=Mechmod)
 
 # Mechanical analysis
 ResMech = MECA_STATIQUE(CHAM_MATER=Mechmat,
                      EXCIT=(_F(CHARGE=Fix321)),
                      MODELE=Mechmod,
-                     SOLVEUR=_F(METHODE=Solver))
+                     SOLVEUR=_F(METHODE=Solver,RESI_RELA=1.E-05))
 
 # Get strain and equivalent stresses
 CALC_CHAMP(reuse=ResMech,

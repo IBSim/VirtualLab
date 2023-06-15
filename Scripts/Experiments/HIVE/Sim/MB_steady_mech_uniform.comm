@@ -204,12 +204,16 @@ Mechmat = AFFE_MATERIAU(AFFE=(_F(MATER=TleMch, GROUP_MA='Tile'),
                         MODELE=Mechmod)
 
 # Mechanical BC using 3-2-1 method to constrain. Both pipe ends are constrained
+Join = []
+if 'ContactTB' in group_names:
+    Join.append(_F(GROUP_MA_MAIT='Block', GROUP_MA_ESCL='ContactTB_double'))
+if 'ContactBP' in group_names:
+    Join.append(_F(GROUP_MA_MAIT='Pipe', GROUP_MA_ESCL='ContactBP_double'))
 
 Fix321 = AFFE_CHAR_MECA(FACE_IMPO=_F(DY=0.0, GROUP_MA=('PipeIn','PipeOut')), #Pipe runs along y axis
                         DDL_IMPO=(_F(DX=0.0, DZ=0.0, GROUP_NO=('PipeInV2','PipeOutV2')),
                                   _F(DX=0.0, GROUP_NO=('PipeInV1', 'PipeOutV1'))),
-                    #    LIAISON_MAIL=(_F(GROUP_MA_MAIT='Pipe', GROUP_MA_ESCL='ContactBP_double'),
-                    #                  _F(GROUP_MA_MAIT='Block', GROUP_MA_ESCL='ContactTB_double')),
+                        LIAISON_MAIL=Join,
                         MODELE=Mechmod)
 
 # Mechanical analysis

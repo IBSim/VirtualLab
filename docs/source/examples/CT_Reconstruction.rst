@@ -4,7 +4,7 @@ Performing X-Ray CT Reconstruction
 Introduction
 ************
 
-X-ray Coumputed Tomograpphy (CT)  is a common imaging method 
+X-ray Computed Tomography (CT)  is a common imaging method 
 used to to perform detailed analyses of the internal structure 
 of an object in non-destructive way.
 
@@ -38,7 +38,7 @@ We also recommend completing `the third tutorial <hive.html>`_ because
 we will be using the **Salome** mesh generated from the HIVE analysis 
 as part of one of the examples. All the previous tutorials 
 (that is tutorials 2, 4 and 5) are useful but not required 
-if your only interest is the CT reconstructioon features.
+if your only interest is the CT reconstruction features.
 
 We also recommend you have at least some understanding of how to use 
 CIL as a standalone package and have looked through the CIL 
@@ -52,7 +52,7 @@ Example 1: A simple CT-Reconstruction
 *************************************
 
 In this first example we will demonstrate how to we will Simulate a X-ray CT 
-scan and reocnstruct it using CIL.
+scan and reconstruct it using CIL.
 
 This is a continuation of Example 2 from the `X-ray imaging Tutorial 
 <X-ray_imaging.html>`_
@@ -64,28 +64,30 @@ This consists of a copper pipe and a block that is bonded to a tungsten
 tile in the previous tutorial we covered how to generate the X-ray images 
 using GVXR. Therefore we will not discuss the details of that here.
 
-Instead we will simply use GVXR as a blackbox to generate some X-ray images
+Instead we will simply use GVXR as a black box to generate some X-ray images
 for us to reconstruct.
 
-.. admonition:: Note to Rhydian about GPU requirements:
+.. admonition:: Note about GPU requirements:
     :class: Alert
 
     I have not had time to thoroughly test this and there is nothing in the 
-    CIL docs that confirms this. However I believe CIL requires a GPU to run.
-    On my laptop with only integrated graphics it crashes with very strange 
-    errors. However the only other systems I have tested on both have beefy
-    GPU'S so I can't confirm its not just my machine.
-
-    The main takeaway is I have set up the container for GPU compute and put
-    in a crude check for a working GPU (line 60 CT_Reconstruction.py). 
+    CIL docs that confirms this. However I believe CIL requires a dedicated 
+    GPU to run.On my laptop with only integrated graphics it crashes with 
+    very strange errors. I suspect this is due to a lack of Video Ram. 
     
-    It specific to nvidia but you may find AMD (or indeed intel) cards work.
-    The container should be agonistic as whist it has the nvidia stuff, the AMD 
-    drivers are part of the mainline linux kernel so should work with any 
-    container out of the box.
+    However the only other systems I have tested on both have beefy Nvidia 
+    GPUs so I can't confirm it's not just my machine.
 
-    However I have no other cards to test with so for now it seemed a sensible 
-    compromise but feel free to remove this and test if you get time.
+    The main takeaway is the container is setup for GPU compute and I have put
+    in a crude check for a working Nvidia GPU (line 60 CT_Reconstruction.py). 
+    
+    Although it has been setup for Nvidia GPUs, the container should be GPU agonistic.
+    This is because AMD and Intel GPUs use the mesa drivers which are part of 
+    the mainline linux kernel so should work with any container out of the box.
+
+    However I cannot confirm this as I have have no other cards to test with. 
+    Thus for now locking the production version to just Nvidia, given we know 
+    it works, seemed a sensible compromise.
 
 
 .. admonition:: Action
@@ -189,7 +191,7 @@ The following parameters are used by both CIL and GVXR:
     are entirely ignored by CIL as it does not need to know what they are. 
     
     Thus you can use any units you like (inches, furlongs, elephants) as long as
-    they are consistent. This is if you use mm for the beam position you just need
+    they are consistent. That is if you use mm for the beam position you just need
     to ensure use mm for all other cases ie. model position, detector 
     position and the pixel spacing. 
 
@@ -212,23 +214,24 @@ Removing reconstruction artifacts:
 
 You will notice that the reconstruction has a bright ring around the outside of the image.
 This is a normal artefact created by the reconstruction process as we are using X-ray images 
-without well defined edges. As solution to this is to essentially discard pixels around the 
+without well defined edges. A solution to this is to essentially discard pixels around the 
 border of the image. This is achieved with the parameter ``GVXR.fill_percent``.
 
-Setting this parameter allows you to fill a fixed number of pixels from the edges of the 
+Setting this parameter allows you to fill pixels from the edges of the 
 image with a fixed value. You supply the value as a decimal which represents the percentage 
 of pixels to fill rounded down. So for example 0.1 would be 10% of the pixels thus for a 140 by 200 image
 it would fill a total of 14 pixels in X and 20 pixels in Y. Note: These are filled equally from 
 each side of the image so in reality it would fill 7 from the left, 7 from the right and 10 from 
 top and bottom respectively.
 
-Note in reality this is not a perfect solution as you are losing information in the image thus 
+In reality this is not a perfect solution as you are losing information in the image thus 
 there is a balancing act between removing the reconstruction artifacts and preserving as much 
 of the image as possible.
 
 Also note the number of pixels removed is always rounded down and if you set to remove less than 
-1 pixel it will leave the image unchanged. So for our previous example 0.05 would fill 1% of the 
-pixels thus for a 140 by 200 image it would fill 1 pixel in X (1.4 rounded down) and 2 pixels in Y.
+1 pixel it will leave the image unchanged. So for our previous example ``GVXR.fill_percent=0.01`` 
+would fill 1% of the pixels. Thus for a 140 by 200 image it would fill 1 pixel in X 
+(1.4 rounded down) and 2 pixels in Y.
 
 An example of what this looks like can be see with the following figure:
 
@@ -244,7 +247,7 @@ The exact value that gets filled is normally automatically calculated by Virtual
 from the image background. Thus when using this parameter the change you see in X-Ray images may 
 only be subtle.  
 
-However if you want to instead use a specif value there is an optional parameter ``GVXR.fill_value``.  
+However if you want to instead use a specific value there is an optional parameter ``GVXR.fill_value``.  
 This allows you to set a specific the pixel value to fill e.g. 255 or 0 should you need it.
 
 .. admonition:: Removing the Ring Artefact
@@ -258,57 +261,73 @@ This allows you to set a specific the pixel value to fill e.g. 255 or 0 should y
 Example 2: Emulating a Helical scan
 ***********************************
 
-Note to Rhydain: This section is Currently WIP
+So far we have only demonstrated so called sequential `CT scanning 
+<https://en.wikipedia.org/wiki/CT_scan>`_ whereby we rotate the 
+object through the beam in steps. The main limitation of this technique 
+is that you can only scan objects that fit within the visible area of the detector.
 
-.. So far we have only demonstrated so called sequential `CT scanning 
-.. <https://en.wikipedia.org/wiki/CT_scan>`_ whereby we rotate the 
-.. object through the beam in steps. The main limitation of this technique 
-.. is that you can only scan objects that fit within the visible area of the detector.
+In principle we could fairly easily the size of the detector and/or the positions of 
+the source/model/detector to compensate. However in the real world these are 
+generally fixed to whatever machine you are imaging with. Thus In reality this would 
+be achieved by moving the object up and down through the beam as it is rotated 
+creating a spiral (helical) scan. However GVXR and CIL do not directly 
+support such scans. 
 
-.. In this second example we will Simulate a X-ray CT scan of an object that is larger than 
-.. the visible detector area. In reality this would be achieved through a spiral 
-.. (or helical scan). However GVXR and CIL do not directly support such scans. So we will 
-.. emulate this type of scan by taking individual slices across the Z-axis of the model and
-.. reconstructing them at the end.
+Therefore in this second example we will emulate this type of scan by taking a series of individual
+2D slices across one axis of the model and reconstructing them at the end.
 
-.. For this example we will use a variant of the HIVE mesh with longer pipes such that the 
-.. full mesh does not fit within the detector area.
+For this example we will use a variant of the HIVE mesh with longer pipes such that the 
+full mesh does not fit within the detector area.
 
-.. .. admonition:: Action
-..    :class: Action
+.. admonition:: Action
+   :class: Action
 
-..    The *RunFile* ``RunTutorials.py`` should be setup as follows 
-..    to run this simulation
-..         Simulation='CIL'
-..         Project='Tutorials'
-..         Parameters_Master='TrainingParameters_Survos-HIVE'
-..         Parameters_Var=None
-..         #===============================================================================
-..         # Environment
+   The *RunFile* ``RunTutorials.py`` should be setup as follows 
+   to run this simulation::
 
-..         VirtualLab=VLSetup(
-..                 Simulation,
-..                 Project)
+        Simulation='CIL'
+        Project='Tutorials'
+        Parameters_Master='TrainingParameters_CIL_Ex1'
+        Parameters_Var=None
 
-..         VirtualLab.Settings(
-..                 Mode='Interactive',
-..                 Launcher='Process',
-..                 NbJobs=10)
+        VirtualLab=VLSetup(
+                Simulation,
+                Project
+                )
 
-..         VirtualLab.Parameters(
-..                 Parameters_Master,
-..                 Parameters_Var,
-..                 RunMesh=False,
-..                 RunCT_Scan=False,
-..                 RunCT_Recon2D=False)
-..         # Hive anlysis
-..         VirtualLab.Mesh(
-..                 ShowMesh=False,
-..                 MeshCheck=None)
-..         #GVXR
-..         VirtualLab.CT_Scan()
-..         #CIL
-..         VirtualLab.CT_Recon2D(Helix=True)
+        VirtualLab.Settings(
+                Mode='Interactive',
+                Launcher='Process',
+                NbJobs=1
+                )
+
+        VirtualLab.Parameters(
+                Parameters_Master,
+                Parameters_Var,
+                RunMesh=True,
+                RunCT_Scan=True,
+                RunCT_Recon=True
+                )
+        VirtualLab.Mesh()
+        VirtualLab.CT_Scan()
+        VirtualLab.CT_Recon2D(Helix=True)
+
+
+The main change of note to the input file is the use of the new method CT_Recon2D and 
+it's additional parameter Helix. The CT_Recon2D method allows us to create 
+reconstructions from X-ray images that are one pixel high. The parameter files 
+have been setup to take N 1 pixel high X-ray images along the length of the pipe. 
+Starting with the model just above the beam, we gradually move the model down through 
+the beam the hight of 1 pixel [2]_ and take an image. This process is repeated until the beam 
+passes over the top of the model to create N 2D slices covering the full length of the pipe.
+
+The Helix parameter is an optional convenience parameter. If used VirtualLab will 
+apply a final post processing step to take the individual output images and merge 
+them into a single 3D tiff stack.
+
+
+.. [2] Note the actual distance the model moves in Y is in reality more complex an is determined 
+    by the height of the model, the height of the pixel and magnification factor.
 
 .. _CT_Example3:
 
@@ -373,26 +392,26 @@ a default value of "-" indicates that this is a required parameter.
 
     "Name","Name of the simulation",   "--"
     " "," "," "
-    "Beam_PosX","Position of beam in X", "--[2]_"
-    "Beam_PosY","Position of beam in Y", "--[2]_"
-    "Beam_PosZ","Position of beam in Z", "--[2]_"
+    "Beam_PosX","Position of beam in X", "--[3]_"
+    "Beam_PosY","Position of beam in Y", "--[3]_"
+    "Beam_PosZ","Position of beam in Z", "--[3]_"
     "Beam_Type","Type of Source used, can be either point or parallel","point"
     " ",,
-    "Model_PosX","Position of center of the Cad Mesh in X","0.0 [2]_"
-    "Model_PosY","Position of center of the Cad Mesh in Y","0.0 [2]_"
-    "Model_PosZ","Position of center of the Cad Mesh in Z","0.0 [2]_"
+    "Model_PosX","Position of center of the Cad Mesh in X","0.0 [3]_"
+    "Model_PosY","Position of center of the Cad Mesh in Y","0.0 [3]_"
+    "Model_PosZ","Position of center of the Cad Mesh in Z","0.0 [3]_"
     " ",,
-    "Detect_PosX","Position of X-Ray detector in X","--[2]_"
-    "Detect_PosY","Position of X-Ray detector in Y","--[2]_"
-    "Detect_PosZ","Position of X-Ray detector in Z","--[2]_"
-    "Pix_X","Number of pixels for the X-Ray detector in X", "--[2]_"
-    "Pix_Y","Number of pixels for the X-Ray detector in Y", "--[2]_"
+    "Detect_PosX","Position of X-Ray detector in X","--[3]_"
+    "Detect_PosY","Position of X-Ray detector in Y","--[3]_"
+    "Detect_PosZ","Position of X-Ray detector in Z","--[3]_"
+    "Pix_X","Number of pixels for the X-Ray detector in X", "--[3]_"
+    "Pix_Y","Number of pixels for the X-Ray detector in Y", "--[3]_"
     "SpacingX","distance between Pixels in X","0.5"
     "SpacingY","distance between Pixels in Y","0.5"
     " ",,
-    "num_projections","Number of projections generated for X-Ray CT Scan","1 [2]_"
+    "num_projections","Number of projections generated for X-Ray CT Scan","1 [3]_"
     "angular_step","Angular step in deg to rotate mesh between each projection, 
-    Note: rotation is about the Y-axis in GVXR co-ordinates","0 [2]_"
+    Note: rotation is about the Y-axis in GVXR co-ordinates","0 [3]_"
     " ",,
     "Nikon_file","Name of or path to a Nikon parameter .xtekct file to read parameters from, 
     see section on Nikon file for more detailed explanation.","None"
@@ -406,6 +425,6 @@ a default value of "-" indicates that this is a required parameter.
     "Recon_Method","used to specify reconstruction method and used by CIL. Can be either FBP or FDK", "FDK",
 
 
-.. [2] These values are not required when using a Nikon .xect file as their corresponding values will be read in from that. If 
+.. [3] These values are not required when using a Nikon .xect file as their corresponding values will be read in from that. If 
     they are defined when using a nikon file they will override the corresponding value in the Nikon file. See section on Nikon 
     files for more details.

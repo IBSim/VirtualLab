@@ -112,7 +112,7 @@ def GetAngle(dir1,dir2):
 def GEOM_Create(SampleSurface,SampleCentre,CoilVect,PipeVect,
                 CoilGeom, CoilCentre, CoilSystem, Parameters):
 
-    VacuumRadius = 0.2
+
 
     O = geompy.MakeVertex(0, 0, 0)
     OX = geompy.MakeVectorDXDYDZ(1, 0, 0)
@@ -196,7 +196,18 @@ def GEOM_Create(SampleSurface,SampleCentre,CoilVect,PipeVect,
     # Make chamber which includes the sample, coil and vacuum between
     # Make Vacuum around sample
     print('Create Vacuum around coil and sample')
-    Vacuum_orig = geompy.MakeSpherePntR(gSampleCentre, VacuumRadius)
+    VacuumSize = getattr(Parameters,'VacuumSize',0.2) # lengthscale associated with the vacuum
+    vac_shape = getattr(Parameters,'VacuumShape','sphere')
+
+    if vac_shape.lower() in ('cube','square'):
+        Vertex1 = geompy.MakeVertex(*(SampleCentre-VacuumSize))
+        Vertex2 = geompy.MakeVertex(*(SampleCentre+VacuumSize))
+        Vacuum_orig = geompy.MakeBoxTwoPnt(Vertex1, Vertex2)
+        VacSurfaceIx = [3,13,23,27,31,33]
+    elif vac_shape.lower() in ('sphere','circle'):
+        Vacuum_orig = geompy.MakeSpherePntR(gSampleCentre, VacuumSize)
+        VacSurfaceIx = [3]
+
     # cut sample geom from vacuum
     Vacuum = geompy.MakeCutList(Vacuum_orig, [Sample_solid], True)
     # partition vacuum with coil geometry
@@ -209,7 +220,7 @@ def GEOM_Create(SampleSurface,SampleCentre,CoilVect,PipeVect,
     Ix = SalomeFunc.ObjIndex(Chamber, SampleSurface, SampleSurfaceIx, Strict=True)[0]
     geomSampleSurface = SalomeFunc.AddGroup(Chamber, 'SampleSurface', Ix)
     # vacuum surface
-    Ix = SalomeFunc.ObjIndex(Chamber, Vacuum_orig, [3])[0]
+    Ix = SalomeFunc.ObjIndex(Chamber, Vacuum_orig, VacSurfaceIx)[0]
     geomVacuumSurface = SalomeFunc.AddGroup(Chamber, 'VacuumSurface', Ix)
     # vacuum (solid)
     geomVacuum = SalomeFunc.AddGroup(Chamber, 'Vacuum', [2])
@@ -225,8 +236,8 @@ def GEOM_Create(SampleSurface,SampleCentre,CoilVect,PipeVect,
 def MESH_Create(Chamber, SampleMesh, CoilMeshInfo, Parameters):
 
     print('Creating ERMES Mesh\n')
-    VacuumRadius = 0.2
-    VacuumSegment = 25
+    VacuumSize = getattr(Parameters,'VacuumSize',0.2)
+    VacuumSegment = getattr(Parameters,'VacuumSegment',25)
 
     # Create dictionary of groups to easily find
     ChamberGroups = geompy.GetExistingSubObjects(Chamber,True)
@@ -235,9 +246,10 @@ def MESH_Create(Chamber, SampleMesh, CoilMeshInfo, Parameters):
     # ==========================================================================
     ### Main Mesh
     # Mesh Parameters
-    Vacuum1D = getattr(Parameters,'Vacuum1D',2*np.pi*VacuumRadius/VacuumSegment)
-    Vacuum2D = getattr(Parameters,'Vacuum2D',Vacuum1D)
-    Vacuum3D = getattr(Parameters,'Vacuum3D',Vacuum1D)
+    vac_mesh_lengthscale = 2*np.pi*VacuumSize/VacuumSegment # base mesh size based on sphere, but can also be used for cube
+    Vacuum1D = getattr(Parameters,'Vacuum1D',vac_mesh_lengthscale)
+    Vacuum2D = getattr(Parameters,'Vacuum2D',vac_mesh_lengthscale)
+    Vacuum3D = getattr(Parameters,'Vacuum3D',vac_mesh_lengthscale)
 
     # This will be a mesh only of the coil and vacuum
     print('Adding mesh parameters for vacuum')

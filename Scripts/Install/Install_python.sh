@@ -185,6 +185,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   conda install -y furo sphinx_rtd_theme=0.4.3 sphinxcontrib-bibtex=1.0.0
   conda install -y --file $VL_DIR/requirements.txt
   conda install -y scikit-learn=0.24.1 iapws=1.4
+  conda install -c jpn ghalton
 
   sudo chown $SUDO_USER:$SUDO_USER -R ${conda_dir}/envs/$CONDAENV
   sudo chmod -R 0755 ${conda_dir}/envs/$CONDAENV

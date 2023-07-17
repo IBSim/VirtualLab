@@ -3,7 +3,7 @@ from itertools import product
 import numpy as np
 
 class Sampling():
-    def __init__(self, method, dim=0, range=[], bounds=True, seed=None,options={}):
+    def __init__(self, method, dim=0, range=[], bounds=False, seed=None,options={}):
         # Must have either a range or dimension
         if range:
             self.range = range

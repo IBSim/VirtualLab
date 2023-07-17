@@ -268,7 +268,7 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
             Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=True, srun=True, **kwargs)
         else:
             # either run using process or sequential
-            Res = Paralleliser(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, method=launcher, nb_parallel=N,**kwargs)
+            Res = Paralleliser(PoolWrap,PoolArgs,kwargs_list=kwargs_list, method=launcher, nb_parallel=N,**kwargs)
         
         
     except KeyboardInterrupt as e:

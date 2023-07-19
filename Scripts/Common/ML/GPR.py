@@ -290,6 +290,7 @@ def PrintParameters(model, output_ix=None):
 def GetModel(model_dir):
     likelihood, model, Dataspace, Parameters = LoadModel(model_dir)
     mod_wrap = ModelWrap(model,Dataspace)
+    mod_wrap.ModelParameters = getattr(Parameters,'ModelParameters',{})
     return mod_wrap
 
 def GetModelPCA(model_dir):
@@ -298,26 +299,45 @@ def GetModelPCA(model_dir):
     ScalePCA = np.load("{}/ScalePCA.npy".format(model_dir))
 
     mod_wrap = ModelWrapPCA(model,Dataspace,VT,ScalePCA)
+    mod_wrap.ModelParameters = getattr(Parameters,'ModelParameters',{})
     return mod_wrap
 
 # ==============================================================================
 # Model wrappers
 
 class ModelWrap(ML.ModelWrapBase):
-    def Predict(self,inputs, scale_outputs=True):
+    def Predict(self,inputs, scale_inputs=True,scale_outputs=True, return_confidence=False):
         if type(inputs) is not torch.Tensor:
             inputs = torch.from_numpy(inputs)
 
-        with torch.no_grad():
-            if hasattr(self.model,'models'):
-                pred = np.transpose([mod(inputs).mean.numpy() for mod in self.model.models])
-            else:
-                pred = self.model(inputs).mean.numpy()
+        if scale_inputs:
+            inputs = ML.DataScale(inputs,*self.Dataspace.InputScaler)
 
+        if hasattr(self.model,'models'):
+            with torch.no_grad():
+                pred = [mod(inputs) for mod in self.model.models]
+            mean = np.transpose([p.mean.numpy() for p in pred])
+
+            if return_confidence:
+                confidence = np.transpose([p.stddev.numpy() for p in pred])
+        else:
+            with torch.no_grad():
+                pred = self.model(inputs)
+            mean = pred.mean.numpy()
+            if return_confidence:
+                confidence = pred.stddev.numpy()
+            
         if scale_outputs:
-            pred = ML.DataRescale(pred,*self.Dataspace.OutputScaler)
+            mean = ML.DataRescale(mean,*self.Dataspace.OutputScaler)
+            if return_confidence:
+                confidence = ML.DataRescale(confidence,0,self.Dataspace.OutputScaler[1])
 
-        return pred
+        if return_confidence: 
+            return mean, confidence
+        else: 
+            return mean
+   
+
 
     def Gradient(self,inputs, scale_outputs=True):
         if type(inputs) is not torch.Tensor:

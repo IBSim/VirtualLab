@@ -582,16 +582,26 @@ class ModelWrapBase():
         else:
             return getattr(self.Dataspace,dset_name)
 
-    def GetDatasetInput(self,dset_name,to_numpy=False):
+    def GetTrainData(self,to_numpy=False,scale=True):
+        return self.GetDataset('Train',to_numpy=to_numpy,scale=scale)
+
+    def GetDataset(self,dset_name,to_numpy=False,scale=True):
+        return self.GetDatasetInput(dset_name,to_numpy=to_numpy,scale=scale), self.GetDatasetOutput(dset_name,to_numpy=to_numpy,scale=scale)
+
+    def GetDatasetInput(self,dset_name,to_numpy=False,scale=True):
         input = self._get_dset("{}In_scale".format(dset_name))
         if to_numpy:
             input = input.detach().numpy()
+        if scale:
+            input = self.RescaleInput(input)
         return input
 
-    def GetDatasetOutput(self,dset_name,to_numpy=False):
+    def GetDatasetOutput(self,dset_name,to_numpy=False, scale=True):
         output = self._get_dset("{}Out_scale".format(dset_name))
         if to_numpy:
             output = output.detach().numpy()
+        if scale:
+            output = self.RescaleOutput(output)            
         return output
 
     def AddDataset(self, data, dset_name):
@@ -600,8 +610,14 @@ class ModelWrapBase():
     def ScaleInput(self,input):
         return DataScale(input,*self.Dataspace.InputScaler)
 
+    def RescaleInput(self,input):
+        return DataRescale(input,*self.Dataspace.InputScaler)
+
     def ScaleOutput(self,output):
         return DataScale(output,*self.Dataspace.OutputScaler)
+
+    def RescaleOutput(self,output):
+        return DataRescale(output,*self.Dataspace.OutputScaler)
 
     def Predict_dset(self,dset_name, scale_outputs=True):
         inputs = self.GetDatasetInput(dset_name)

@@ -8,34 +8,59 @@ import VLFunctions as VLF
 from Scripts.Common.tools import MEDtools
 from Scripts.Common.ML import ML
 
+default_functions = ['Inputs','NodalMED']
+
 # ==============================================================================
 # Functions for gathering necessary data and writing to file
-def CompileData(VL,DADict):
-    Parameters = DADict["Parameters"]
+
+def CompileData(VL,DataDict):
+    return CompileDataAdd(VL,DataDict,{})
+
+def CompileDataAdd(VL,DataDict,add_funcs):
+    Parameters = DataDict["Parameters"]
+    Collect = Parameters.Collect
+    CompileData = Parameters.CompileData
+    group = getattr(Parameters,'Group','')
 
     # Top level directory containing directories of simulation results
-    ResDir_TLD = "{}/{}".format(VL.PROJECT_DIR,Parameters.CompileData)
+    ResDir_TLD = "{}/{}".format(VL.PROJECT_DIR,CompileData)
+    # TODO: check this directory exists
+
     # File which will store extracted data
     DataFile_path = "{}/{}".format(VL.PROJECT_DIR,Parameters.DataFile)
+    Collector(ResDir_TLD,Collect,DataFile_path,add_funcs=add_funcs,group=group)
+
+def Collector(ResDir_TLD, DataCollect, DataFile_path, add_funcs={},  group=None):
+    '''
+    ResDir_TLD: The results directory which will be iterated over
+    DataCollect: A list of dictionaries describing the different information to extract
+    DataFile_path: path to the file where data will be stored
+    add_funcs: a dictionary of any additional functions required
+        '''
+    available_funcs = _default_funcs()
+    available_funcs.update(add_funcs)
 
     names, functions, args, kwargs = [],[],[],[]
-    for _dict in Parameters.Collect:
+    for _dict in DataCollect:
         # checks
         if 'Name' not in _dict:
             print(VLF.ErrorMessage("'Name' must be specified in the Collect dictionary."))
             sys.exit()
-        else:
-            name = _dict['Name']
 
         if 'Function' not in _dict:
             print(VLF.ErrorMessage("'Function' must be specified in the Collect dictionary."))
             sys.exit()
-        else:
-            function = _dict['Function']
+
+        if group is not None: name = "{}/{}".format(group,_dict['Name'])
+        else: name = _dict['Name']
+        func_name = _dict['Function']
 
         # get function
-        # TODO: generalise this bit
-        fn = globals()[function]
+        if func_name not in available_funcs:
+            print(VLF.ErrorMessage("Function '{}' is not available. Please check it has been passed using the func_dict key word argument".format(func_name)))
+            sys.exit()       
+
+        fn = available_funcs[func_name]
 
         names.append(name)
         functions.append(fn)
@@ -49,18 +74,15 @@ def CompileData(VL,DADict):
     # ==========================================================================
     # Write the collected data to file
     for name, data in zip(names,data_list):
-        data_path = "{}/{}".format(Parameters.CompileData,name)
-        ML.Writehdf(DataFile_path, data_path, data)
+        ML.Writehdf(DataFile_path, name, data)    
 
-def Example1(ResDir_path):
-    # Do something with results in ResDir_path
-    ans=2
-    return ans
 
-def Example2(ResDir_path,a,var=3):
-    # Do something with results in ResDir_path
-    ans= 2*a + var
-    return ans
+def _default_funcs():
+    func_dict = {name:globals()[name] for name in default_functions}
+    return func_dict
+
+# ==============================================================================
+# useful functions which are likely used repeatedly
 
 def Inputs(ResDir_path, InputVariables, Parameters_basename ='Parameters.py'):
     ''' Get values for the variables specified in InputVariables.'''
@@ -70,16 +92,13 @@ def Inputs(ResDir_path, InputVariables, Parameters_basename ='Parameters.py'):
     Values = ML.GetInputs(Parameters, InputVariables)
     return Values
 
-# ==============================================================================
-# Code Aster
-def NodalResult(ResDir_path, ResFileName, ResName, GroupName=None,ComponentName=None):
+def NodalMED(ResDir_path, ResFileName, *args,**kwargs):
     ''' Get result 'ResName' at all nodes. Results for certain groups can be
         returned using GroupName argument.'''
-
     ResFilePath = "{}/{}".format(ResDir_path,ResFileName)
-    Temps = MEDtools.NodalResult(ResFilePath,ResName,GroupName=GroupName,ComponentName=ComponentName)
+    return MEDtools.NodalResult(ResFilePath,*args,**kwargs)
 
-    return  Temps
+
 
 def MaxNode(ResDir_path, ResFileName, ResName='Temperature'):
     TempField = NodalField(ResDir_path, ResFileName, ResName=ResName)
@@ -112,51 +131,4 @@ def VMisField(ResDir_path, ResFileName, ResName='Stress'):
 
     return VMis_nd
 
-def MaxVMis(ResDir_path, ResFileName, ResName='Temperature'):
-    VMis_all = VMisField(ResDir_path, ResFileName, ResName=ResName)
-    return VMis_all.max()
 
-def MinVMis(ResDir_path, ResFileName, ResName='Temperature'):
-    VMis_all = VMisField(ResDir_path, ResFileName, ResName=ResName)
-    return VMis_all.min()
-
-def Power_ERMES(ResDir_path, ResFileName, ResName='Joule_heating', GroupName=None):
-    ''' Get result 'ResName' at all nodes. Results for certain groups can be
-        returned using GroupName argument.'''
-
-
-    JH_Node = NodalResult(ResDir_path, ResFileName, ResName, GroupName=GroupName)
-
-    meshdata = MEDtools.MeshInfo("{}/{}".format(ResDir_path,ResFileName))
-
-    NodeIDs = list(range(1,meshdata.NbNodes+1))
-    Coor = meshdata.GetNodeXYZ(NodeIDs)
-    Sample = meshdata.GroupInfo('Sample')
-    Connect = Sample.Connect
-
-    _Ix = np.searchsorted(NodeIDs,Connect)
-
-    # work out volume of each element
-    elem_cd = Coor[_Ix]
-    v1,v2 = elem_cd[:,1] - elem_cd[:,0], elem_cd[:,2] - elem_cd[:,0]
-    v3 = elem_cd[:,3] - elem_cd[:,0]
-    cross = np.cross(v1,v2)
-    dot = (cross*v3).sum(axis=1)
-    Volumes = 1/float(6)*np.abs(dot)
-
-    # work out average joule heating per volume
-    _jh = JH_Node[_Ix]
-    JH_vol = _jh.mean(axis=1)
-
-    # Calculate power
-    Power = (Volumes*JH_vol).sum()
-
-    return Power
-
-
-def Variation_ERMES(ResDir_path, ResFileName, ResName='Joule_heating', GroupName=None):
-    from DA.PowerVariation_GPR import Variation
-    MeshFile = "{}/{}".format(ResDir_path,ResFileName)
-    JH_Node = NodalResult(ResDir_path, ResFileName, ResName, GroupName=GroupName)
-    var = Variation(MeshFile,JH_Node)[0]
-    return var

@@ -18,6 +18,41 @@ torch.set_default_dtype(torch_dtype)
 # ==============================================================================
 # VirtualLab compatible models
 
+def GPR_data(VL,DataDict):
+    Parameters = DataDict['Parameters']
+
+    NbTorchThread = getattr(Parameters,'NbTorchThread',None)
+    if NbTorchThread: torch.set_num_threads(NbTorchThread)
+
+    TrainInput = np.array(Parameters.TrainInputData)
+    TrainOutput = np.array(Parameters.TrainOutputData)
+
+    # if TrainOutput.ndim==2 and TrainOutput.shape[1]==1:
+    #     TrainOut = TrainOut.flatten()
+
+    # ==========================================================================
+    # Get parameters and build model
+    ModelParameters = getattr(Parameters,'ModelParameters',{})
+    TrainingParameters = getattr(Parameters,'TrainingParameters',{})
+    likelihood, model, Dataspace = GPR.BuildModel([TrainInput,TrainOutput],
+                            DataDict['CALC_DIR'], # where model will be saved to
+                            ModelParameters=ModelParameters,
+                            TrainingParameters=TrainingParameters)
+
+    # add Test data to Dataspace (where it is scaled using training data)
+
+    # TestInput = Parameters.TestInputData
+    # TestOutput = Parameters.TestOutputData
+    # ML.DataspaceAdd(Dataspace,Test=[TestInput,TestOutput])
+
+    # ==========================================================================
+    # Get performance metric of model
+    Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
+     }# 'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
+
+    Performance(model, Data, getattr(Parameters,'PrintParameters',False))
+
+
 def GPR_hdf5(VL,DADict):
     Parameters = DADict['Parameters']
 
@@ -254,12 +289,8 @@ def _pred(model,input,fast_pred_var=True):
         else:
             pred_mean = model(input).mean.numpy()
         return pred_mean
-
-    if fast_pred_var:
-        with torch.no_grad(),gpytorch.settings.fast_pred_var():
-            pred_mean = _predfn(model,input)
-    else:
-        with torch.no_grad():
-            pred_mean = _predfn(model,input)
+    
+    with torch.no_grad(), gpytorch.settings.debug(state=False), gpytorch.settings.fast_pred_var(fast_pred_var):
+        pred_mean = _predfn(model,input)
 
     return pred_mean

@@ -8,8 +8,8 @@ from Scripts.Common.tools import Sampling
 
 # ====================================================================
 # flags
-CreateMesh = False 
-RunSimulations = False
+CreateMesh = True
+RunSimulations = True
 ExtractData = True
 
 DispX = [-0.005,0.005]
@@ -79,7 +79,7 @@ Sim.Name = ''
 Sim.Mesh = 'HIVE_component' # The mesh used for the simulation
 Sim.Frequency = 101.3e3
 Sim.CoilType = CoilType
-Sim.Materials = {'Block':'Tungsten', 'Pipe':'Tungsten', 'Tile':'Tungsten'}
+Sim.Materials = {'Block':'Tungsten_NL', 'Pipe':'Tungsten_NL', 'Tile':'Tungsten_NL'}
 Sim.AsterFile = 'MB_steady_mech'
 Sim.Model = '3D'
 Sim.Solver = 'MUMPS'
@@ -112,9 +112,6 @@ Name_train = ["{}_coil/Train/Sim_{}".format(CoilType,i) for i in range(NTrain)]
 Name_test = ["{}_coil/Test/Sim_{}".format(CoilType,i) for i in range(NTest)]
 Sim.Name = Name_train + Name_test
 
-# Sim.Run = [0]*(NTrain+NTest)
-# Sim.Run[0]=1;Sim.Run[NTrain]=1
-
 Parameters_var = Namespace(Sim = Sim)
 
 VirtualLab.Parameters(Parameters_main,
@@ -123,7 +120,7 @@ VirtualLab.Parameters(Parameters_main,
                       )
 
 # change these depending on your system
-VirtualLab.Settings(Launcher='sequential', NbJobs=1) 
+VirtualLab.Settings(Launcher='process', NbJobs=5) 
 # run simulations
 VirtualLab.Sim(RunCoolant=True, RunERMES=True, RunAster=True)
 
@@ -131,6 +128,7 @@ VirtualLab.Sim(RunCoolant=True, RunERMES=True, RunAster=True)
 # ====================================================================
 # Extract data from simulation and put in hdf files
 # ====================================================================
+VirtualLab.Settings(Launcher='sequential')
 
 # get values for the power and variation on the surface 'CoilFace' and add to file PowerVariation.hdf
 DA = Namespace()

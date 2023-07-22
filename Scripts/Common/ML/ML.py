@@ -156,33 +156,34 @@ def Writehdf(File, data_path, array, attrs={}, group=None):
         dset.attrs.update(**attrs)
     Database.close()
 
-def Readhdf(File, data_paths,group=None):
+def _Readhdf(File_handle, data_path,group=None):
+    # add prefix to path
+    if group: data_path = "{}/{}".format(group,data_path)
+    # Check data is in file
+    if data_path not in File_handle:
+        print(VLF.ErrorMessage("data '{}' is not in file {}".format(data_path,File)))
+        sys.exit()
+    # Get data from file
+    _data = File_handle[data_path][:]
+    # Reshape 1D data to 2D
+    # if _data.ndim==1:
+    #     _data = _data.reshape((_data.size,1))
+    return _data
+
+def Readhdf(File, data_path, group=None):
     Database = Openhdf(File,'r')
-    if type(data_paths)==str: data_paths = [data_paths]
-    data = []
-    for data_path in data_paths:
-        # add prefix to pat
-        if group: data_path = "{}/{}".format(group,data_path)
-        # Check data is in file
-        if data_path not in Database:
-            print(VLF.ErrorMessage("data '{}' is not in file {}".format(data_path,File)))
-            sys.exit()
-        # Get data from file
-        _data = Database[data_path][:]
-        # Reshape 1D data to 2D
-        if _data.ndim==1:
-            _data = _data.reshape((_data.size,1))
-
-        data.append(_data)
-
+    if type(data_path)==str:
+        data = _Readhdf(Database,data_path,group)
+    else:
+        # assume its an iterable
+        data = [_Readhdf(Database,_data_path,group) for _data_path in data_path]
     Database.close()
-
     return data
 
 # ==============================================================================
 # Functions used for ML work
 
-def GetData(DataFile,DataNames,group=None, Nb=-1):
+def _GetData(DataFile,DataNames,group=None, Nb=-1):
     data = Readhdf(DataFile,DataNames,group=group) # read DataNames for DataFile
 
     for i in range(len(data)):
@@ -195,7 +196,31 @@ def GetData(DataFile,DataNames,group=None, Nb=-1):
             l,u = _Nb
             data[i] = data[i][l:u]
 
-    return np.vstack(data)
+    return data
+
+def _GetDataStacked(DataFile,DataName,group=None, Nb=-1):
+    data = _GetData(DataFile,DataName,group=group,Nb=Nb)
+    if type(DataName)==list: # get a list back
+        data = np.concatenate(data)
+    return data
+
+def GetData(DataFile,DataName,group=None, Nb=-1):
+    if type(DataName)==list and type(DataName[0])==list:
+        # multiple outputs which need to be stacked side by side
+        data = []
+        for _DataName in DataName:
+            _data = _GetDataStacked(DataFile,_DataName,group=group,Nb=Nb) 
+            if _data.ndim==1: 
+                _data = _data.reshape(-1,1)
+            data.append(_data)
+        data = np.concatenate(data,axis=1)
+    else:
+        # DataName can be string or a list
+        data = _GetDataStacked(DataFile,DataName,group=group,Nb=Nb)
+
+    return data
+
+    
 
 def GetDataML(DataFile,InputNames,OutputNames,options={}):
     ''' This function gets inputs and outputs for supervised ML. '''

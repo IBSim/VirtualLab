@@ -21,6 +21,7 @@ def MLP_hdf5(VL,DADict):
     NbTorchThread = getattr(Parameters,'NbTorchThread',None)
     if NbTorchThread: torch.set_num_threads(NbTorchThread)
 
+    # set seed, if provided
     seed = getattr(Parameters,'Seed',None)
     if seed is not None:
         torch.manual_seed(seed)
@@ -28,19 +29,14 @@ def MLP_hdf5(VL,DADict):
 
     # ==========================================================================
     # Get Train & test data from file DataFile_path
-
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TrainData[0])
-    TrainIn, TrainOut = ML.GetDataML(DataFile_path, *Parameters.TrainData[1:])
-
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TestData[0])
-    TestIn, TestOut = ML.GetDataML(DataFile_path, *Parameters.TestData[1:])
+    TrainIn, TrainOut = ML.VLGetDataML(VL,Parameters.TrainData)
+    TestIn, TestOut = ML.VLGetDataML(VL,Parameters.ValidationData)
 
     # ==========================================================================
     # Get parameters and build model
 
     ModelParameters = getattr(Parameters,'ModelParameters',{})
     TrainingParameters = getattr(Parameters,'TrainingParameters',{})
-
     model, Dataspace = NN.BuildModel([TrainIn,TrainOut],[TestIn,TestOut],
                             DADict['CALC_DIR'], ModelParameters=ModelParameters,
                             TrainingParameters=TrainingParameters)

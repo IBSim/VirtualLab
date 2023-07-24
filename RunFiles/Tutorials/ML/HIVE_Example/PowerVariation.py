@@ -15,15 +15,16 @@ from Scripts.Common.VirtualLab import VLSetup
 
 
 CoilType='Pancake' # this can be 'Pancake' or 'HIVE'
-CreateGPR = True
+CreateGPR = False
 AnalyseGPR = False
-
+CreateMLP = 0
+AnalyseMLP = 0
 
 # ====================================================================
 # Setup VirtualLab
 VirtualLab=VLSetup('HIVE','ML_analysis')
 
-VirtualLab.Settings(Launcher='process',NbJobs=2)
+VirtualLab.Settings(Launcher='sequential',NbJobs=1)
 
 # check data has been created, if not download
 DataFile = '{}_coil/PowerVariation.hdf'.format(CoilType)
@@ -37,7 +38,6 @@ ML = Namespace()
 ML.File = ('GPR_Models','GPR_hdf5')
 ML.TrainingParameters = {'Epochs':1000,'lr':0.05,'Print':50}
 ML.TrainData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Train'}]
-ML.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}]
 main_parameters = Namespace(ML=ML)
 
 ML = Namespace(Name = [],ModelParameters=[])
@@ -60,7 +60,7 @@ DA = Namespace()
 DA.Name = "Analysis/PowerVariation"
 DA.File = ['PowerVariation','GPR_compare']
 DA.MLModels = var_parameters.ML.Name # use the models defined earlier
-DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # train data is stored with the model, but test data is not
+DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # unseen data to analyse performance
 
 main_parameters = Namespace(DA=DA)
 
@@ -69,7 +69,45 @@ VirtualLab.Parameters(main_parameters,RunDA=AnalyseGPR)
 # analyse GPR models
 VirtualLab.DA()
 
+# ====================================================================
+# Define MLP parameters to create model
+
+ML = Namespace()
+ML.File = ('NN_Models','MLP_hdf5')
+ML.TrainingParameters = {'Epochs':1000,'lr':0.05,'Print':50}
+ML.TrainData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Train'}]
+ML.ValidationData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # data used to monitor for overfitting
+ML.Seed = 100 # initial weights of MLP are randomised so this ensures reproducability
+main_parameters = Namespace(ML=ML)
+
+ML = Namespace(Name = [],ModelParameters=[])
+Architectures = [[32,32],[16,32,16],[8,16,8,4]] # the hidden layers of the MLP
+for architecture in Architectures:
+    ML.ModelParameters.append({'Architecture':architecture})
+    arch_str = '_'.join(map(str,architecture)) # convert architecture to string and save under that name
+    ML.Name.append("PV/MLP/{}".format(arch_str))
+
+var_parameters = Namespace(ML=ML) 
+
+VirtualLab.Parameters(main_parameters,var_parameters,RunML=CreateMLP)
+
+# generate MLP models
+VirtualLab.ML()
 
 
+# ====================================================================
+# analyse performance of MLP model
 
+DA = Namespace()
+DA.Name = "Analysis/PowerVariation" # results will be saved to same directory as before
+DA.File = ['PowerVariation','MLP_compare']
+DA.MLModels = var_parameters.ML.Name # use the models defined earlier
+DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # unseen data to analyse performance
+
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=AnalyseMLP)
+
+# analyse the MLP models
+VirtualLab.DA()
 

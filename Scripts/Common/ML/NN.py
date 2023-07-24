@@ -1,10 +1,15 @@
 import os
+import sys
 
 import numpy as np
 import torch
 
 from . import ML
 from Scripts.Common import VLFunctions as VLF
+
+dtype = 'float64' # float64 is more accurate for optimisation purposes
+torch_dtype = getattr(torch,dtype)
+torch.set_default_dtype(torch_dtype)
 
 def BuildModel(TrainData, TestData, ModelDir, ModelParameters={},
              TrainingParameters={}, FeatureNames=None,LabelNames=None):
@@ -63,11 +68,11 @@ def LoadModel(ModelDir):
     else:
         ModelParameters, Parameters = {},None
 
-
-    _architecture = ModelParameters.pop('Architecture')
+    _ModelParameters = {**ModelParameters} # createa copy as removing values
+    _architecture = _ModelParameters.pop('Architecture')
     _architecture = AddIO(_architecture,Dataspace)
 
-    model = NN_FC(Architecture=_architecture,**ModelParameters)
+    model = NN_FC(Architecture=_architecture,**_ModelParameters)
 
     state_dict = torch.load("{}/Model.pth".format(ModelDir))
     model.load_state_dict(state_dict)
@@ -124,7 +129,7 @@ def TrainModel(model, Dataspace, Epochs=5000, lr=0.005, batch_size=32, Print=50,
         model.train()
 
         if epoch==0 or (epoch+1)%Print==0:
-            print("Epoch:{}, Train loss:{:.4e}, Test loss:{:.4e}".format(epoch,loss_train,loss_test))
+            print("Epoch:{}, Train loss:{:.4e}, Validation loss:{:.4e}".format(epoch+1,loss_train,loss_test))
 
     return loss_train_list, loss_test_list
 
@@ -171,6 +176,7 @@ def AddIO(Architecture,Dataspace):
 def GetModel(model_dir):
     model, Dataspace, Parameters = LoadModel(model_dir)
     mod_wrap = ModelWrap(model,Dataspace)
+    mod_wrap.ModelParameters = getattr(Parameters,'ModelParameters',{})
     return mod_wrap
 
 def GetModelPCA(model_dir):
@@ -178,12 +184,16 @@ def GetModelPCA(model_dir):
     VT = np.load("{}/VT.npy".format(model_dir))
     ScalePCA = np.load("{}/ScalePCA.npy".format(model_dir))
     mod_wrap = ModelWrapPCA(model,Dataspace,VT,ScalePCA)
+    mod_wrap.ModelParameters = getattr(Parameters,'ModelParameters',{})
     return mod_wrap
 
 class ModelWrap(ML.ModelWrapBase):
-    def Predict(self,inputs, scale_outputs=True):
+    def Predict(self,inputs, scale_inputs=True, scale_outputs=True):
         if type(inputs) is not torch.Tensor:
             inputs = torch.from_numpy(inputs)
+
+        if scale_inputs:
+            inputs = ML.DataScale(inputs,*self.Dataspace.InputScaler)
 
         with torch.no_grad():
             pred = self.model(inputs).numpy()

@@ -27,9 +27,6 @@ def GPR_data(VL,DataDict):
     TrainInput = np.array(Parameters.TrainInputData)
     TrainOutput = np.array(Parameters.TrainOutputData)
 
-    # if TrainOutput.ndim==2 and TrainOutput.shape[1]==1:
-    #     TrainOut = TrainOut.flatten()
-
     # ==========================================================================
     # Get parameters and build model
     ModelParameters = getattr(Parameters,'ModelParameters',{})
@@ -39,17 +36,17 @@ def GPR_data(VL,DataDict):
                             ModelParameters=ModelParameters,
                             TrainingParameters=TrainingParameters)
 
-    # add Test data to Dataspace (where it is scaled using training data)
-
-    # TestInput = Parameters.TestInputData
-    # TestOutput = Parameters.TestOutputData
-    # ML.DataspaceAdd(Dataspace,Test=[TestInput,TestOutput])
+    Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale]} # data for which performance metrics will be evaluated
+        
+    # ==========================================================================
+    # Get Test data (if provided)
+    if hasattr(Parameters,'TestData'):
+        TestIn, TestOut = ML.VLGetDataML(VL,Parameters.TestData)
+        ML.DataspaceAdd(Dataspace,Test=[TestIn,TestOut])
+        Data['Test'] = [Dataspace.TestIn_scale,Dataspace.TestOut_scale]
 
     # ==========================================================================
     # Get performance metric of model
-    Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
-     }# 'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
-
     Performance(model, Data, getattr(Parameters,'PrintParameters',False))
 
 
@@ -60,15 +57,8 @@ def GPR_hdf5(VL,DADict):
     if NbTorchThread: torch.set_num_threads(NbTorchThread)
 
     # ==========================================================================
-    # Get Train & test data from file DataFile_path
-
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TrainData[0])
-    TrainIn, TrainOut = ML.GetDataML(DataFile_path, *Parameters.TrainData[1:])
-
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TestData[0])
-    TestIn, TestOut = ML.GetDataML(DataFile_path, *Parameters.TestData[1:])
-    if TrainOut.ndim==2 and TrainOut.shape[1]==1:
-        TrainOut,TestOut = TrainOut.flatten(),TestOut.flatten()
+    # Get Train data
+    TrainIn, TrainOut = ML.VLGetDataML(VL,Parameters.TrainData)
 
     # ==========================================================================
     # Get parameters and build model
@@ -78,14 +68,18 @@ def GPR_hdf5(VL,DADict):
                             DADict['CALC_DIR'], ModelParameters=ModelParameters,
                             TrainingParameters=TrainingParameters)
 
-    # add Test data to Dataspace (where it is scaled using training data)
-    ML.DataspaceAdd(Dataspace,Test=[TestIn,TestOut])
+
+    Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale]} # data for which performance metrics will be evaluated
+        
+    # ==========================================================================
+    # Get Test data (if provided)
+    if hasattr(Parameters,'TestData'):
+        TestIn, TestOut = ML.VLGetDataML(VL,Parameters.TestData)
+        ML.DataspaceAdd(Dataspace,Test=[TestIn,TestOut])
+        Data['Test'] = [Dataspace.TestIn_scale,Dataspace.TestOut_scale]
 
     # ==========================================================================
     # Get performance metric of model
-    Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
-            'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
-
     Performance(model, Data, getattr(Parameters,'PrintParameters',False))
 
 def GPR_hdf5_Metrics(VL,DADict):

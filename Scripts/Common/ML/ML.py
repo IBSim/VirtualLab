@@ -220,14 +220,19 @@ def GetData(DataFile,DataName,group=None, Nb=-1):
 
     return data
 
-    
-
-def GetDataML(DataFile,InputNames,OutputNames,options={}):
+def GetDataML(DataFile,InputName,OutputName,options={}):
     ''' This function gets inputs and outputs for supervised ML. '''
-    in_data = GetData(DataFile,InputNames,**options)
-    out_data = GetData(DataFile,OutputNames,**options)
+    in_data = GetData(DataFile,InputName,**options)
+    out_data = GetData(DataFile,OutputName,**options)
     return in_data, out_data
 
+def VLGetDataML(VL,Data):
+
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Data[0])
+    return GetDataML(DataFile_path, *Data[1:])
+
+# ==============================================================================
+# Functions used to gather data
 def GetResPaths(ResDir,DirOnly=True,Skip=['_']):
     ''' This returns a naturally sorted list of the directories in ResDir'''
     ResPaths = []
@@ -262,17 +267,6 @@ def ExtractData_Dir(ResDir,functions,args,kwargs, parallel_options={}):
     # re-order results Res from N lists of length M to M lists of length N
     Res = list(zip(*Res))
     return Res
-
-def GetInputs(Parameters,commands):
-    ''' Using exec allows us to get individual values from dictionaries or lists.
-    i.e. a command of 'DataList[1]' will get the value from index 1 of the lists
-    'DataList'
-    '''
-
-    inputs = []
-    for i,command in enumerate(commands):
-        exec("inputs.append(Parameters.{})".format(command))
-    return inputs
 
 def ModelSummary(NbInput,NbOutput,TrainNb,**kwargs):
     ModelDesc = "Model Summary\n\n"\

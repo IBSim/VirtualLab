@@ -27,7 +27,6 @@ class Method(Method_base):
 
         os.makedirs(self.tmp_dir, exist_ok=True)
 
-        print(VL.ML.output_dir)
         FileDict = {}
         for Name, ParaDict in MLDicts.items():
             CALC_DIR = "{}/{}".format(self.output_dir, Name)

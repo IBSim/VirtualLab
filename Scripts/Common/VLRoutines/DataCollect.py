@@ -89,7 +89,9 @@ def Inputs(ResDir_path, InputVariables, Parameters_basename ='Parameters.py'):
 
     paramfile = "{}/{}".format(ResDir_path,Parameters_basename)
     Parameters = VLF.ReadParameters(paramfile)
-    Values = ML.GetInputs(Parameters, InputVariables)
+    Values = []
+    for command in InputVariables:
+        exec("Values.append(Parameters.{})".format(command))
     return Values
 
 def NodalMED(ResDir_path, ResFileName, *args,**kwargs):

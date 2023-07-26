@@ -282,40 +282,6 @@ def ModelSummary(NbInput,NbOutput,TrainNb,**kwargs):
 # ==============================================================================
 # ML model Optima
 
-def GetOptima(model, NbInit, bounds, seed=None, find='max', tol=0.01,
-              order='decreasing', success_only=True, constraints=(),fnc=None,fnc_args=None):
-    if seed!=None: np.random.seed(seed)
-    init_points = np.random.uniform(0,1,size=(NbInit,len(bounds)))
-
-    # go to default function
-    if fnc is None:
-        fnc = _model_opt
-        fnc_args = [model]
-
-    Optima = slsqp_multi(fnc, init_points, bounds=bounds,
-                         constraints=constraints,find=find, tol=tol,
-                         order=order, success_only=success_only,
-                         jac=True, args=fnc_args)
-    Optima_cd, Optima_val = Optima
-    return Optima_cd, Optima_val
-
-def GetExtrema(model,NbInit,bounds,seed=None):
-    # ==========================================================================
-    # Get min and max values for each
-    Extrema_cd, Extrema_val = [], []
-    for tp,order in zip(['min','max'],['increasing','decreasing']):
-        _Extrema_cd, _Extrema_val = GetOptima(model, NbInit, bounds,seed,
-                                              find=tp, order=order)
-        Extrema_cd.append(_Extrema_cd[0])
-        Extrema_val.append(_Extrema_val[0])
-    return np.array(Extrema_val), np.array(Extrema_cd)
-
-def _model_opt(X,model):
-    torch.set_default_dtype(torch.float64)
-    X = torch.tensor(X)
-    output_val,output_grad = model.OptimiseOutput(X)
-    return output_val.detach().numpy(), output_grad.detach().numpy()
-
 def temporary_numpy_seed(fnc,seed=None,args=()):
     ''' Function which will temporary set the numpy random seed to seed
         and peform a function evaluation.'''
@@ -329,9 +295,6 @@ def temporary_numpy_seed(fnc,seed=None,args=()):
         np.random.set_state(st0) # reset to original state
 
     return out
-
-
-
 
 def _init_points(nb_points,bounds):
     # checks
@@ -348,7 +311,7 @@ def GetRandomPoints(nb_points,bounds,seed=None):
 
 def Optimise(fnc, NbInit, bounds, fnc_args=(), seed=None, find='max', tol=0.01,
               order='decreasing', success_only=True,**kwargs):
-
+    ' generic function for identifying the optima'
     init_points = GetRandomPoints(NbInit,bounds,seed=seed)
     Optima_cd, Optima_val = slsqp_multi(fnc, init_points,
                              bounds=bounds, find=find, tol=tol, order=order,
@@ -356,6 +319,40 @@ def Optimise(fnc, NbInit, bounds, fnc_args=(), seed=None, find='max', tol=0.01,
                              **kwargs)
     return Optima_cd, Optima_val
 
+
+
+def _GetExtrema(fnc,NbInit,bounds,*args,**kwargs):
+    # ==========================================================================
+    # Get min and max values for each
+    Extrema_cd, Extrema_val = [], []
+    for find,order in zip(['min','max'],['increasing','decreasing']):
+        kwargs.update({'find':find,'order':order})
+        _Extrema_cd, _Extrema_val = Optimise(fnc,NbInit,bounds,*args,**kwargs)
+        Extrema_cd.append(_Extrema_cd[0])
+        Extrema_val.append(_Extrema_val[0])
+    return np.array(Extrema_cd),np.array(Extrema_val),
+
+def _GetExtremaMulti(X,fnc,ix,*args):
+    pred,grad = fnc(X,*args)
+    return pred[:,ix],grad[:,ix]
+
+def GetExtrema(fnc,NbInit,bounds,*args,**kwargs):
+    # calculates the min and max value for a given bounded area. Alaso works for multi output models
+    init_points = GetRandomPoints(NbInit,bounds)
+    fnc_args = kwargs.get('fnc_args',[])
+    pred = fnc(init_points,*fnc_args)[0]
+    
+    if pred.ndim==1:
+        # single output
+        return _GetExtrema(fnc,NbInit,bounds,*args,**kwargs)
+    else:
+        nb_output = pred.shape[1]
+        val,cd = [],[]
+        for i in range(nb_output):
+            kwargs['fnc_args'] = [fnc,i] + list(fnc_args)
+            _cd,_val = _GetExtrema(_GetExtremaMulti,NbInit,bounds,*args,**kwargs)
+            val.append(_val);cd.append(_cd)
+        return np.swapaxes(cd,0,1),np.transpose(val),
 
 def OptimiseLSE(fnc, target, NbInit, bounds, fnc_args=(), filter=True, scale_factor=1,find='min', **kwargs):
     lse_fnc_args = [target,fnc,fnc_args,scale_factor]
@@ -595,6 +592,16 @@ class ModelWrapBase():
         self.model = model
         self.Dataspace = Dataspace
 
+    def CheckInput(self,inputs):
+        if type(inputs) ==list:
+            inputs = torch.tensor(inputs)
+        if type(inputs) == np.ndarray:
+            inputs = torch.from_numpy(inputs)
+        # single input provided but needs to be shaped correctly
+        if inputs.ndim==1 and self.Dataspace.NbInput>1 and inputs.shape[0]==self.Dataspace.NbInput:
+            inputs = inputs.reshape((1,-1))
+        return inputs
+
     def _get_dset(self,dset_name):
         if not hasattr(self.Dataspace,dset_name):
             print('Error: {} is not associated with the dataspace'.format(dset_name))
@@ -626,17 +633,29 @@ class ModelWrapBase():
     def AddDataset(self, data, dset_name):
         DataspaceAdd(self.Dataspace,**{dset_name:data})
 
-    def ScaleInput(self,input):
-        return DataScale(input,*self.Dataspace.InputScaler)
+    def ScaleInput(self,input,index=None):
+        if index is None:
+            return DataScale(input,*self.Dataspace.InputScaler)
+        else:
+            return DataScale(input,*self.Dataspace.InputScaler[:,index])
 
-    def RescaleInput(self,input):
-        return DataRescale(input,*self.Dataspace.InputScaler)
+    def RescaleInput(self,input,index=None):
+        if index is None:
+            return DataRescale(input,*self.Dataspace.InputScaler)
+        else:
+            return DataRescale(input,*self.Dataspace.InputScaler[:,index])
 
-    def ScaleOutput(self,output):
-        return DataScale(output,*self.Dataspace.OutputScaler)
+    def ScaleOutput(self,output,index=None):
+        if index is None:
+            return DataScale(output,*self.Dataspace.OutputScaler)
+        else:
+            return DataScale(output,*self.Dataspace.OutputScaler[:,index])
 
-    def RescaleOutput(self,output):
-        return DataRescale(output,*self.Dataspace.OutputScaler)
+    def RescaleOutput(self,output,index=None):
+        if index is None:
+            return DataRescale(output,*self.Dataspace.OutputScaler)
+        else:
+            return DataRescale(output,*self.Dataspace.OutputScaler[:,index])
 
     def Predict_dset(self,dset_name, scale_outputs=True):
         inputs = self.GetDatasetInput(dset_name)

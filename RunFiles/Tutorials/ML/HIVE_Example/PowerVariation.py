@@ -17,8 +17,8 @@ from Scripts.Common.VirtualLab import VLSetup
 CoilType='Pancake' # this can be 'Pancake' or 'HIVE'
 CreateGPR = False
 AnalyseGPR = False
-CreateMLP = 0
-AnalyseMLP = 0
+CreateMLP = False
+AnalyseMLP = False
 
 # ====================================================================
 # Setup VirtualLab
@@ -30,6 +30,10 @@ VirtualLab.Settings(Launcher='sequential',NbJobs=1)
 DataFile = '{}_coil/PowerVariation.hdf'.format(CoilType)
 if not VirtualLab.InProject(DataFile):
     pass # Download data from somewhere
+
+# ====================================================================
+# GPR analysis
+# ====================================================================
 
 # ====================================================================
 # Define GPR parameters to create model
@@ -57,7 +61,7 @@ VirtualLab.ML()
 # analyse performance of GPR model
 
 DA = Namespace()
-DA.Name = "Analysis/PowerVariation"
+DA.Name = "Analysis/PowerVariation_GPR_{}".format(CoilType)
 DA.File = ['PowerVariation','GPR_compare']
 DA.MLModels = var_parameters.ML.Name # use the models defined earlier
 DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # unseen data to analyse performance
@@ -68,6 +72,24 @@ VirtualLab.Parameters(main_parameters,RunDA=AnalyseGPR)
 
 # analyse GPR models
 VirtualLab.DA()
+
+# ====================================================================
+# inisght
+
+DA = Namespace()
+DA.Name = "Analysis/PowerVariation_GPR_{}".format(CoilType)
+DA.File = ['PowerVariation','Insight_GPR']
+DA.MLModel = "PV/GPR/RBF" # chose a single model to gain insight from
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=True)
+
+VirtualLab.DA()
+
+
+# ====================================================================
+# MLP analysis
+# ====================================================================
 
 # ====================================================================
 # Define MLP parameters to create model
@@ -99,7 +121,7 @@ VirtualLab.ML()
 # analyse performance of MLP model
 
 DA = Namespace()
-DA.Name = "Analysis/PowerVariation" # results will be saved to same directory as before
+DA.Name = "Analysis/PowerVariation_{}".format(CoilType) # results will be saved to same directory as before
 DA.File = ['PowerVariation','MLP_compare']
 DA.MLModels = var_parameters.ML.Name # use the models defined earlier
 DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # unseen data to analyse performance
@@ -110,4 +132,7 @@ VirtualLab.Parameters(main_parameters,RunDA=AnalyseMLP)
 
 # analyse the MLP models
 VirtualLab.DA()
+
+
+
 

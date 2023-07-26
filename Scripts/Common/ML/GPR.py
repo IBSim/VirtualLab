@@ -306,9 +306,9 @@ def GetModelPCA(model_dir):
 # Model wrappers
 
 class ModelWrap(ML.ModelWrapBase):
-    def Predict(self,inputs, scale_inputs=True,scale_outputs=True, return_confidence=False):
-        if type(inputs) is not torch.Tensor:
-            inputs = torch.from_numpy(inputs)
+    def Predict(self,inputs, scale_inputs=True,rescale_outputs=True, return_confidence=False):
+        # convert input to torch tensor
+        inputs = self.CheckInput(inputs)
 
         if scale_inputs:
             inputs = ML.DataScale(inputs,*self.Dataspace.InputScaler)
@@ -327,7 +327,7 @@ class ModelWrap(ML.ModelWrapBase):
             if return_confidence:
                 confidence = pred.stddev.numpy()
             
-        if scale_outputs:
+        if rescale_outputs:
             mean = ML.DataRescale(mean,*self.Dataspace.OutputScaler)
             if return_confidence:
                 confidence = ML.DataRescale(confidence,0,self.Dataspace.OutputScaler[1])
@@ -338,32 +338,48 @@ class ModelWrap(ML.ModelWrapBase):
             return mean
    
 
+    def _grad_mean(self, model, inputs):
+        pred,grad = model.Gradient_mean(inputs)
+        return pred.detach().numpy(), grad.detach().numpy()
 
-    def Gradient(self,inputs, scale_outputs=True):
-        if type(inputs) is not torch.Tensor:
-            inputs = torch.from_numpy(inputs)
+    def _grad_pred_multi(self,models,inputs):
+        pred,grad = [],[]
+        for model in models:
+            _pred,_grad = self._grad_mean(model,inputs)
+            pred.append(_pred);grad.append(_grad)
+        return np.transpose(pred),np.transpose(grad)        
 
-        if hasattr(self.model,'models'):
-            pred,grad = [],[]
-            for _mod in self.model.models:
-                _pred,_grad = _mod.Gradient_mean(inputs)
-                pred.append(_pred.detach().numpy());grad.append(_grad.detach().numpy())
-            pred,grad = np.transpose(pred),np.transpose(grad)
-            if scale_outputs:
-                pred = ML.DataRescale(pred,*self.Dataspace.OutputScaler)
-                grad = ML.DataRescale(grad,0,self.Dataspace.OutputScaler[1])
+    def Gradient(self,inputs, scale_inputs=True, rescale_outputs=True, output_ix=None):
+        inputs = self.CheckInput(inputs)
 
-            grad = np.moveaxis(grad, 0, -1)
+        if scale_inputs:
+            inputs = ML.DataScale(inputs,*self.Dataspace.InputScaler)
+
+        if hasattr(self.model,'models'):# model has multiple outputs
+            if output_ix is None: # return all outputs
+                pred,grad = self._grad_pred_multi(self.model.models,inputs)
+                data = self.Dataspace.OutputScaler
+            elif type(output_ix) == int: # return a single output
+                pred,grad = self._grad_mean(self.model.models[output_ix],inputs)
+                data = self.Dataspace.OutputScaler[:,output_ix]
+            elif type(output_ix) in (list,np.ndarray): #return more than one output, dictated by output_ix
+                models = [self.model.models[i] for i in output_ix]
+                pred,grad = self._grad_pred_multi(models,inputs)
+                data = self.Dataspace.OutputScaler[:,output_ix]
+
+            if rescale_outputs:
+                pred = ML.DataRescale(pred,*data)
+                grad = ML.DataRescale(grad,0,data[1])
+
+            if grad.ndim==3:
+                grad = np.moveaxis(grad, 0, -1)
         else:
-            pred,grad = self.model.Gradient_mean(inputs)
-            pred,grad = pred.detach().numpy(),grad.detach().numpy()
-
-            if scale_outputs:
+            pred,grad = self._grad_mean(self.model,inputs)
+            if rescale_outputs:
                 pred = ML.DataRescale(pred,*self.Dataspace.OutputScaler)
                 grad = ML.DataRescale(grad,0,self.Dataspace.OutputScaler[1])
 
         return pred, grad
-
 
 class ModelWrapPCA(ModelWrap):
     def __init__(self,model,Dataspace,VT,ScalePCA):

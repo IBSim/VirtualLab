@@ -16,9 +16,9 @@ from Scripts.Common.VirtualLab import VLSetup
 
 CoilType='Pancake' # this can be 'Pancake' or 'HIVE'
 CreateGPR = False
-AnalyseGPR = False
+AnalyseGPR = True
 CreateMLP = False
-AnalyseMLP = False
+AnalyseMLP = True
 
 # ====================================================================
 # Setup VirtualLab
@@ -70,11 +70,10 @@ main_parameters = Namespace(DA=DA)
 
 VirtualLab.Parameters(main_parameters,RunDA=AnalyseGPR)
 
-# analyse GPR models
 VirtualLab.DA()
 
 # ====================================================================
-# inisght
+# create performance envelope
 
 DA = Namespace()
 DA.Name = "Analysis/PowerVariation_GPR_{}".format(CoilType)
@@ -82,7 +81,7 @@ DA.File = ['PowerVariation','Insight_GPR']
 DA.MLModel = "PV/GPR/RBF" # chose a single model to gain insight from
 main_parameters = Namespace(DA=DA)
 
-VirtualLab.Parameters(main_parameters,RunDA=True)
+VirtualLab.Parameters(main_parameters,RunDA=AnalyseGPR)
 
 VirtualLab.DA()
 
@@ -121,7 +120,7 @@ VirtualLab.ML()
 # analyse performance of MLP model
 
 DA = Namespace()
-DA.Name = "Analysis/PowerVariation_{}".format(CoilType) # results will be saved to same directory as before
+DA.Name = "Analysis/PowerVariation_MLP_{}".format(CoilType) # results will be saved to same directory as before
 DA.File = ['PowerVariation','MLP_compare']
 DA.MLModels = var_parameters.ML.Name # use the models defined earlier
 DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # unseen data to analyse performance
@@ -130,9 +129,18 @@ main_parameters = Namespace(DA=DA)
 
 VirtualLab.Parameters(main_parameters,RunDA=AnalyseMLP)
 
-# analyse the MLP models
 VirtualLab.DA()
 
+# ====================================================================
+# create performance envelope
 
+DA = Namespace()
+DA.Name = "Analysis/PowerVariation_MLP_{}".format(CoilType)
+DA.File = ['PowerVariation','Insight_MLP']
+DA.MLModel = "PV/MLP/32_32" # chose a single model to gain insight from
+main_parameters = Namespace(DA=DA)
 
+VirtualLab.Parameters(main_parameters,RunDA=AnalyseMLP)
+
+VirtualLab.DA()
 

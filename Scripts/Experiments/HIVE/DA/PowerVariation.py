@@ -119,22 +119,24 @@ def MLP_compare(VL,DataDict):
     plt.close()
 
 
-# constraints must have a separate function for the value and gradient
-def _FixedBoundVal(X,func,bound,*args):
-    return func(X,*args)[0] - bound
+def Insight_MLP(VL,DataDict):
+    Parameters = DataDict['Parameters']
+    MLModel = Parameters.MLModel
 
-def _FixedBoundGrad(X,func,bound,*args):
-    # although bound isn't defined here both this and _FixedBoundVal must have the same arguments
-    return func(X,*args)[1]
+    model_path = "{}/{}".format(VL.ML.output_dir,MLModel)
+    model = NN.GetModel(model_path) # load in model
+    _Insight(DataDict,model)
 
 def Insight_GPR(VL,DataDict):
     Parameters = DataDict['Parameters']
-    seed=100
-
     MLModel = Parameters.MLModel
 
     model_path = "{}/{}".format(VL.ML.output_dir,MLModel)
     model = GPR.GetModel(model_path) # load in model
+    _Insight(DataDict,model)
+
+def _Insight(DataDict,model):
+    seed=100
 
     # use a unit hypercube for better equality of gradients.
     # As a result scale inputs is false as its on the input range model was trained on
@@ -153,11 +155,9 @@ def Insight_GPR(VL,DataDict):
 
     Power = np.linspace(power_min,power_max,10)
     VarMin,VarMax = [],[]
-    for des_power in Power[1:-1]: # don't need min and max power as these are already calcuated
-
-        constraint_dict = {'type': 'eq', 'fun': _FixedBoundVal, 'jac':_FixedBoundGrad,
-                           'args':(model.Gradient,des_power,*fnc_args,0)}
-
+    for required_power in Power[1:-1]: # don't need min and max power as these are already calcuated
+        # get a dictionary for the constraint
+        constraint_dict = ML.FixedBound(required_power,model.Gradient,func_args=[*fnc_args,0])
         _cd,_val = ML.GetExtrema(model.Gradient,10,bounds,fnc_args=[*fnc_args,1],seed=seed,constraints=constraint_dict)
         _varmin,_varmax = _val
         VarMin.append(_varmin); VarMax.append(_varmax)

@@ -188,9 +188,9 @@ def GetModelPCA(model_dir):
     return mod_wrap
 
 class ModelWrap(ML.ModelWrapBase):
-    def Predict(self,inputs, scale_inputs=True, scale_outputs=True):
-        if type(inputs) is not torch.Tensor:
-            inputs = torch.from_numpy(inputs)
+    def Predict(self,inputs, scale_inputs=True, rescale_outputs=True):
+        # convert input to torch tensor
+        inputs = self.CheckInput(inputs)
 
         if scale_inputs:
             inputs = ML.DataScale(inputs,*self.Dataspace.InputScaler)
@@ -198,11 +198,30 @@ class ModelWrap(ML.ModelWrapBase):
         with torch.no_grad():
             pred = self.model(inputs).numpy()
 
-        if scale_outputs:
+        if rescale_outputs:
             pred = ML.DataRescale(pred,*self.Dataspace.OutputScaler)
 
         return pred
 
+    def Gradient(self,inputs, scale_inputs=True, rescale_outputs=True, output_ix=None):
+        # convert input to torch tensor
+        inputs = self.CheckInput(inputs)
+
+        if scale_inputs:
+            inputs = ML.DataScale(inputs,*self.Dataspace.InputScaler)
+
+        pred, grad = self.model.Gradient(inputs)
+
+        if rescale_outputs:
+            pred = self.RescaleOutput(pred)
+            grad = ML.DataRescale(grad,0,self.Dataspace.OutputScaler[1]) # slightly different rescaling for GPR
+
+        if output_ix is not None:
+            pred = pred[:,output_ix]
+            grad = grad[:,output_ix]
+
+        return pred, grad
+    
 class ModelWrapPCA(ModelWrap):
     def __init__(self,model,Dataspace,VT,ScalePCA):
         super().__init__(model,Dataspace)
@@ -253,12 +272,20 @@ class NN_FC(torch.nn.Module):
                 x = torch.nn.functional.leaky_relu(x)
         return x
 
-
-    def OptimiseOutput(self,x):
+    def Gradient(self,x,index=None):
         x.requires_grad=True
-        pred = self(x)[:,self.output_ix]
-        grads = torch.autograd.grad(pred.sum(), x)[0]
-        return pred, grads
+        pred = self(x)
+
+        if pred.ndim==1:
+            grads = torch.autograd.grad(pred.sum(), x)[0]
+        else:
+            grads = []
+            for i in range(pred.shape[1]):
+                _grads = torch.autograd.grad(pred[:,i].sum(), x,retain_graph=True)[0]
+                grads.append(_grads.numpy())
+            grads = np.swapaxes(grads,0,1)
+        
+        return pred.detach().numpy(), grads
 
     def _Gradient(self, input):
         '''

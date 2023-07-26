@@ -384,35 +384,32 @@ def LSE_filter(pred,target,err=0.05):
     return keep
 
 
-
 # ==============================================================================
 # Constraint for ML model
-def LowerBound(model,bound):
-    constraint_dict = {'fun': _bound, 'jac':_dbound,
-                       'type': 'ineq', 'args':(model,bound)}
+
+def LowerBound(bound,func,func_args=()):
+    constraint_dict = {'fun': _boundVal, 'jac':_boundGrad,
+                       'type': 'ineq', 'args':(bound,func,func_args)}
     return constraint_dict
 
-def UpperBound(model,bound):
-    constraint_dict = {'fun': _bound, 'jac':_dbound,
-                       'type': 'ineq', 'args':(model,bound,-1)}
+def UpperBound(bound,func,func_args=()):
+    constraint_dict = {'fun': _boundVal, 'jac':_boundGrad,
+                       'type': 'ineq', 'args':(bound,func,func_args,-1)}
     return constraint_dict
 
-def FixedBound(model,bound):
-    constraint_dict = {'fun': _bound, 'jac':_dbound,
-                       'type': 'eq', 'args':(model,bound)}
+def FixedBound(bound,func,func_args=()):
+    constraint_dict = {'fun': _boundVal, 'jac':_boundGrad,
+                       'type': 'eq', 'args':(bound,func,func_args)}
     return constraint_dict
 
-def _bound(X, model, bound, sign=1):
-    X = torch.tensor(np.atleast_2d(X))
-    # Function value
-    Pred = model(X).mean.detach().numpy()
-    return sign*(Pred - bound)
+def _boundVal(X,bound,func,fnc_args=(),sign=1):
+    val = func(X,*fnc_args)[0]
+    return sign*(val - bound)
 
-def _dbound(X, model, bound, sign=1):
-    X = torch.tensor(np.atleast_2d(X))
-    # Gradient
-    Grad = model.Gradient(X)
-    return sign*Grad
+def _boundGrad(X,bound,func,fnc_args=(),sign=1):
+    # although bound isn't defined here both this and _FixedBoundVal must have the same arguments
+    grad = func(X,*fnc_args)[1]
+    return sign*grad
 
 def InputQuery(model, NbInput, base=0.5, Ndisc=50):
 

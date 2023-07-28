@@ -16,3 +16,11 @@ def RunEval(Script, EvalList, ContainerInfo=None, AddPath = [], DataDict = {}, G
     
     Run(Script, ContainerInfo=ContainerInfo, AddPath = AddPath, DataDict = DataDict, GUI=GUI, tempdir = tempdir)
 
+def ShowMED(MedDict,**kwargs):
+    # remove DataDict if its in kwargs as it will be expanded later on
+    DataDict = kwargs.pop('DataDict') if 'DataDict' in kwargs else {}
+    DataDict['_ShowMED_'] = MedDict
+
+    Script = "{}/ShowMED.py".format(Dir)
+
+    Run(Script,DataDict=DataDict,**kwargs)

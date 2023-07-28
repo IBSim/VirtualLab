@@ -1,3 +1,4 @@
+import os
 import types
 
 import numpy as np
@@ -26,6 +27,42 @@ transferfunc_default = {'NumberOfTableValues' : 12}
 screenshot_default = {'FontScaling':'Do not scale fonts',
                       'ImageResolution':[842, 542], 
                       'TransparentBackground':1}
+
+# ==================================================================================
+def func_exec(add_funcs={}):
+    import SalomeFunc
+    ArgDict = SalomeFunc.GetArgs()
+    FncInfo = ArgDict['_PV_arg']
+
+    available_funcs = {}
+    available_funcs.update(add_funcs)
+    if len(FncInfo)==0: return
+    if type(FncInfo[0]) not in (list,tuple):
+        FncInfo = [FncInfo] # make in to a list
+
+    return_vals = []
+    args,kwargs = [],{}
+    for fnc_info in FncInfo:
+        if len(fnc_info) == 1: # only a function name provided with no arguments
+            funcname = fnc_info[0]
+        elif len(fnc_info) == 2: # function name and argument
+            funcname, args = fnc_info
+        elif len(fnc_info) == 3: # function name, args and kwargs
+            funcname, args, kwargs = fnc_info
+        else:
+            print('\n####################\n\nToo many values to unpack. Skipping {}\n\n####################\n'.format(fnc_info))
+            continue
+
+        if funcname not in available_funcs:
+            print('\n####################\n\nFunction {} not found, so skipping\n\n####################\n'.format(funcname))
+            continue
+
+        func = available_funcs[funcname]
+        ret = func(*args,**kwargs)
+        return_vals.append(ret)
+
+    return return_vals
+
 
 # ==================================================================================
 # useful functions
@@ -96,16 +133,16 @@ def Camera(FocalPoint,alpha1,alpha2,radius,ViewUp = [0,0,1]):
 
     return renderview
 
-def ImageCapture(renderView1, meddisplay, resname, filename, ResComponent='Res', CB={}, TF={}, Capture={}):
+def ImageCapture(renderView1, display, resname, filename, ResComponent='Res', CB={}, TF={}, Capture={}):
     # TODO: add in ability to colour by more than points
-    pvsimple.ColorBy(meddisplay, ('POINTS', resname, ResComponent))
+    pvsimple.ColorBy(display, ('POINTS', resname, ResComponent))
 
-    meddisplay.SetScalarBarVisibility(renderView1, True)
+    display.SetScalarBarVisibility(renderView1, True)
 
     # Get transfer function for result 'resname'  
     surfLUT = pvsimple.GetColorTransferFunction(resname)
     # update default transfer function with parameters passed using TF
-    _TF = {**transferfunc_default,**TF} 
+    _TF = {**transferfunc_default,**TF}
     surfLUT = ObjectUpdate(surfLUT,**_TF)
 
     # get color bar associated with the transfer function
@@ -125,164 +162,194 @@ def ImageCapture(renderView1, meddisplay, resname, filename, ResComponent='Res',
 # =========================================================================
 # compare results
 
-def CompareSingleFile(medfile, resnames, filenames,compare_ix=0,camera=None, render_view=None, res_type='Surface', CB={}, TF={}, Capture={}):
+def _CompareSingleFile(source, resnames, image_paths,compare_ix=0,camera=None, render_view=None, res_type='Surface', CB={}, TF={}, Capture={}):
+    '''
+    Function used to compare results stores in the same source
+    source - the data sources
+    resnames - list, name of the results
+    image_paths - list, paths to where the images will be saved
+    '''
     # perform checks
-    if len(resnames) != len(filenames):
-        # lengths of result names and filenames are not compatible
-        raise Exception("Lengths of result names and file names must be equal")
+    if len(resnames) != len(image_paths): # lengths are not compatible
+        raise Exception("Length of result names and image file paths are not equal")
 
     pvsimple.HideAll()
 
-    # get render view
-    if render_view is not None:
-        renderView1 = render_view # use the render view provided
-    else:
-        renderView1 = GetRenderView(camera) # get renderview
+    # if provided use the render view, else create one using the camera settings
+    renderView1 = render_view if render_view is not None else GetRenderView(camera)
 
-    meddisplay = pvsimple.Show(medfile, renderView1)
-    meddisplay.Representation = res_type
+    display = pvsimple.Show(source, renderView1)
+    display.Representation = res_type
 
     # get the range of values for the chosen result (default is the first) & add to transfer function dictionary
-    range = DataRange(medfile, resnames[compare_ix])
+    range = DataRange(source, resnames[compare_ix])
     _TF = {'RescaleTransferFunction':range,**TF}
     
     # make images
-    for res,fname in zip(resnames,filenames):
-        ImageCapture(renderView1,meddisplay,res,fname,CB=CB,TF=_TF,Capture=Capture)
+    for resname,image_path in zip(resnames,image_paths):
+        ImageCapture(renderView1, display, resname, image_path,
+                    CB=CB,TF=_TF,Capture=Capture)
 
-    meddisplay = pvsimple.Hide(medfile, renderView1) # hide display
+    pvsimple.Hide(source, renderView1) # hide display
 
-def CompareMultiFile(medfiles, resnames, filenames,compare_ix=0, camera=None, render_view=None, res_type='Surface', CB={}, TF={}, Capture={}):
-    if len(medfiles) != len(filenames):
-        # lengths of med results and filenames are not compatible
-        raise Exception("Lengths of results and file names must be equal")
+
+def _CompareMultiFile(sources, resnames, image_paths,compare_ix=0, camera=None, render_view=None, res_type='Surface', CB={}, TF={}, Capture={}):
+    '''
+    Function used to compare results between multiple sources
+    sources - the data sources
+    resnames - list/string, name of the results
+    image_paths - list, paths to where the images will be saved
+    '''
+    # perform checks
+    if len(sources) != len(image_paths): # lengths of data sources and image paths are not compatible
+        raise Exception("Length of data sources and image file paths are not equal")
 
     if type(resnames)==str:
-        resnames = [resnames]*len(medfiles) # make in to list of appropriate length
-    elif len(medfiles) != len(resnames):
-        # lengths of resnames and results must be the same length
-        raise Exception("Lengths of results and result names must be equal")
-
+        resnames = [resnames]*len(sources) # make in to list of appropriate length
+    elif len(sources) != len(resnames): # lengths of resnames and sources must be the same length
+        raise Exception("Lengths of data sources and result names must be equal")
 
     pvsimple.HideAll()
 
-    # get render view
-    if render_view is not None:
-        renderView1 = render_view # use the render view provided
-    else:
-        renderView1 = GetRenderView(camera) # get renderview
+    # if provided use the render view, else create one using the camera settings
+    renderView1 = render_view if render_view is not None else GetRenderView(camera)
 
     # get the range of values for the chosen result (default is the first) & add to transfer function dictionary.
-    range = DataRange(medfiles[compare_ix],resnames[compare_ix])
+    range = DataRange(sources[compare_ix],resnames[compare_ix])
     _TF = {'RescaleTransferFunction':range,**TF}
 
     # capture images
-    for medfile,resname,fname in zip(medfiles,resnames,filenames):
-        meddisplay = pvsimple.Show(medfile, renderView1)
-        meddisplay.Representation = res_type
-        ImageCapture(renderView1,meddisplay,resname,fname,CB=CB,TF=_TF,Capture=Capture)
-        pvsimple.Hide(medfile, renderView1)
+    for source,resname,image_path in zip(sources,resnames,image_paths):
+        display = pvsimple.Show(source, renderView1)
+        display.Representation = res_type
+        ImageCapture(renderView1,display,resname,image_path,
+                    CB=CB,TF=_TF,Capture=Capture)
+        pvsimple.Hide(source, renderView1)
 
-def Compare(results, resnames, filenames, **kwargs):
-    if type(results) in (tuple,list):
+def Compare(source, resnames, image_paths, **kwargs):
+    if type(source) in (tuple,list):
         # results are in a multiple files
-        CompareMultiFile(results, resnames, filenames,**kwargs)
+        _CompareMultiFile(source, resnames, image_paths,**kwargs)
     else :
         # a single results file with many results
-        CompareSingleFile(results, resnames, filenames,**kwargs)            
+        _CompareSingleFile(source, resnames, image_paths,**kwargs)            
 
-def DifferenceSingleFile(medfile, resnames, filename, camera=None, render_view=None, absolute_difference=False, 
-                         res_type='Surface', diff_resname='Difference', zero_centre=False, CB={}, TF={}, Capture={}):
-    if len(resnames) != 2:
-        # incorrect number of result names given
-        raise Exception("Number of results must be equal to 2")
+# =========================================================================
+# difference results
+
+def _DiffCapture(source, resnames, image_path, camera=None, render_view=None, relative=False, absolute_difference=False, 
+                 res_type='Surface', diff_resname='Diff', zero_centre=False, CB={}, TF={}, Capture={}):
+
+    ''' 
+    Function to capture image of the difference between two results.
+    source - paraview data source
+    resnames - name of the results to calculate the difference between
+    image_path - path to where the image will be saved
+    relative - whether or not the difference is scaled by the result
+    '''
 
     pvsimple.HideAll()
 
-    # get render view
-    if render_view is not None:
-        renderView1 = render_view # use the render view provided
-    else:
-        renderView1 = GetRenderView(camera) # get renderview
+    # if provided use the render view, else create one using the camera settings
+    renderView1 = render_view if render_view is not None else GetRenderView(camera)
 
-    # calculate difference
-    calculator1 = pvsimple.Calculator(Input=medfile)
-    func_str = '{}-{}'.format(*resnames)
-    if absolute_difference:
-        func_str = 'abs({})'.format(func_str)
-    calculator1.Function = func_str
+    # calculation which will be made 
+    if relative: #scale by the second result
+        calc_string = '({0}-{1})/{1}'.format(*resnames) # (result 1 - result 2 scaled by result 2)
+    else: # dont scale by results
+        calc_string = '{}-{}'.format(*resnames) # (result 1 - result 2)
+
+    if absolute_difference: # give the absolute difference
+        calc_string = 'abs({})'.format(calc_string)
+
+    # use calculator filter to make result
+    calculator1 = pvsimple.Calculator(Input=source)
+    calculator1.Function = calc_string
     calculator1.ResultArrayName = diff_resname
 
-    meddisplay = pvsimple.Show(calculator1, renderView1)
-    meddisplay.Representation = res_type
+    # show result
+    display = pvsimple.Show(calculator1, renderView1)
+    display.Representation = res_type
 
-    # enable data to be centred around zero
+    # update transfer function depending on whether or not the data is centred
     if zero_centre:
         Range = DataRange(calculator1,diff_resname)
-        maxabs = np.abs(DataRange).max()
-        DataRange = [-maxabs,maxabs ]
-        _TF = {'RescaleTransferFunction':DataRange,**TF}
+        maxabs = np.abs(Range).max()
+        Range = [-maxabs,maxabs ]
+        _TF = {'RescaleTransferFunction':Range,**TF}
     else:
         _TF = {**TF}
 
     # capture image
-    ImageCapture(renderView1,meddisplay,diff_resname,filename,CB=CB,TF=_TF,Capture=Capture)
+    ImageCapture(renderView1, display, diff_resname, image_path,
+                 CB=CB,TF=_TF,Capture=Capture)
 
     # hide result
-    meddisplay = pvsimple.Hide(calculator1, renderView1) 
+    pvsimple.Hide(calculator1, renderView1)
 
-def DifferenceMultiFile(medfiles, resnames, filename, camera=None, render_view=None, absolute_difference=False, 
-                         res_type='Surface', diff_resname='Difference', CB={}, TF={}, Capture={}):
-    # perform checks
-    if len(medfiles) != 2:
-        # lengths of result names and filenames are not compatible
+def _DiffSingle(source, resnames, image_path, **kwargs):
+    '''
+    function used when both results are in a single source
+    '''
+    # =============================================================
+    # perform checks    
+    if len(resnames) != 2: # incorrect number of result names given
         raise Exception("Number of results must be equal to 2")
+    
+    # =============================================================
+    _DiffCapture(source,resnames,image_path, **kwargs)
 
+def _DiffMulti(sources, resnames, image_path, **kwargs):
+    '''
+    function used when results are in two different sources
+    '''
+    # =============================================================
+    # perform checks
+    if len(sources) != 2: # lengths of result names and filenames are not compatible
+        raise Exception("Number of sources must be equal to 2")
+    if type(resnames) == tuple: 
+        resnames = list(resnames) # as we will be indexing
+    if type(resnames) == list and len(resnames) !=2:
+        # lengths of resnames and results must be the same length
+        raise Exception("Number of results must be equal to 2")
+    elif type(resnames) == str:
+        pass
+    else:
+        raise TypeError('resnames must be a string or a list')
+
+    # =============================================================
+    # combine results from multiple sources in to one
+    combined_source = pvsimple.AppendAttributes(Input=sources)
+    # format names
     if type(resnames)==str:
         resnames = [resnames,'{}_input_1'.format(resnames)]
-    elif type(resnames) in (list,tuple) and len(resnames) !=2:
-        # lengths of resnames and results must be the same length
-        raise Exception("Lengths of results and result names must be equal")
-    
-    pvsimple.HideAll()
+    elif resnames[0]==resnames[1]:
+        resnames = [resnames,'{}_input_1'.format(resnames)]
 
-    # get render view
-    if render_view is not None:
-        renderView1 = render_view # use the render view provided
-    else:
-        renderView1 = GetRenderView(camera) # get renderview
+    # =============================================================
+    _DiffCapture(combined_source, resnames, image_path, **kwargs)
 
-    # calculate difference
-    appendAttributes1 = pvsimple.AppendAttributes(Input=medfiles)
-    calculator1 = pvsimple.Calculator(Input=appendAttributes1)
+def Difference(source, resnames, filenames, **kwargs):
+    '''
+    Function to capture image of the difference between two results.
+    source - paraview data source(s)
+    resnames - name(s) of the results to calculate the difference between
+    image_path - path to where the image will be saved
+    kwargs - see _DiffCapture
+    '''
 
-    func_str = '{}-{}'.format(*resnames)
-    if absolute_difference:
-        func_str = 'abs({})'.format(func_str)
-    calculator1.Function = func_str
-    calculator1.ResultArrayName = diff_resname
+    if type(source) in (tuple,list): # results are in a multiple files
+        _DiffMulti(source, resnames, filenames,**kwargs)
+    else : # a single results file containing both results
+        _DiffSingle(source, resnames, filenames,**kwargs)     
 
-    # enable data to be centred around zero
-    DataRange = DataRange(calculator1,diff_resname)
-    if zero_centre:
-        maxabs = np.abs(DataRange).max()
-        DataRange = [-maxabs,maxabs ]
-    _TF = {'RescaleTransferFunction':DataRange,**TF}
+def RelativeDifference(*args, **kwargs):
+    kwargs['relative'] = True
+    return Difference(*args,**kwargs)
+
+def CompareAndDiff(source, resnames, image_paths_compare, image_path_diff,compare_kwargs={},diff_kwargs={}):
+    # do difference first as the error catching is better
+    Difference(source,resnames,image_path_diff,**diff_kwargs)
+    Compare(source,resnames,image_paths_compare,**compare_kwargs)
 
 
-    meddisplay = pvsimple.Show(calculator1, renderView1)
-    meddisplay.Representation = res_type
-
-    # capture image
-    ImageCapture(renderView1,meddisplay,diff_resname,filename,CB=CB,TF=_TF,Capture=Capture)
-
-    # hide result
-    meddisplay = pvsimple.Hide(calculator1, renderView1)     
-
-def Difference(results, resnames, filenames, **kwargs):
-    if type(results) in (tuple,list):
-        # results are in a multiple files
-        DifferenceMultiFile(results, resnames, filenames,**kwargs)
-    else :
-        # a single results file with many results
-        DifferenceSingleFile(results, resnames, filenames,**kwargs)     

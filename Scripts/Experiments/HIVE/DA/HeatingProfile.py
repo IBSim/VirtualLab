@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from Scripts.Common.ML import ML, GPR, NN
 from Scripts.Common.tools import MEDtools
 from Scripts.Common.tools.MED4Py import WriteMED
+from Scripts.VLPackages.ParaViS import API as ParaViS
 
 dirname = os.path.dirname(os.path.abspath(__file__))
 
@@ -24,15 +25,6 @@ def _MakeMEDResult(MeshFile,ResFile,FieldResult={}):
         values_full = np.zeros(mesh.NbNodes)
         values_full[NodeIDs-1] = values
         res_obj.add_nodal_result(values_full,ResName)
-
-def RunPV(Script,eval_list,GUI=True):
-    from Scripts.VLPackages.Salome import API as Salome
-
-    if not os.path.isfile(Script):
-        sys.exit("The following file does not exist:\n\n{}\n".format(Script))
-
-    data_dict = {'_PV_arg':eval_list}
-    Salome.Run(Script, DataDict=data_dict, GUI=GUI)
 
 def CreateImage_GPR(VL,DataDict):
 
@@ -73,5 +65,5 @@ def CreateImage_GPR(VL,DataDict):
         arg4 = "{}/Ex{}_Error.png".format(DataDict['CALC_DIR'],ix)
         func_evals.append([funcname,(arg1,arg2,arg3,arg4)])
 
-    RunPV(PVFile,func_evals)
+    ParaViS.RunEval(PVFile,func_evals,GUI=True)
 

@@ -33,6 +33,7 @@ def HeatingProfileCompare(res_file,result_names,filenames_compare,filename_diff)
 
 
 if __name__=='__main__':
-    PVFunc.func_exec(globals())
+    EvalList = PVFunc.GetEvalInfo()
+    PVFunc.FuncEval(EvalList,globals())
 
 

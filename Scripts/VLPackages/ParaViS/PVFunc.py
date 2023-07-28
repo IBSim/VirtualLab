@@ -29,10 +29,13 @@ screenshot_default = {'FontScaling':'Do not scale fonts',
                       'TransparentBackground':1}
 
 # ==================================================================================
-def func_exec(add_funcs={}):
+def GetEvalInfo():
     import SalomeFunc
     ArgDict = SalomeFunc.GetArgs()
     FncInfo = ArgDict['_PV_arg']
+    return FncInfo
+
+def FuncEval(FncInfo, add_funcs={}):
 
     available_funcs = {}
     available_funcs.update(add_funcs)

@@ -14,7 +14,7 @@ This is an API for the VL_Manager container to send information to the server
 to run analysis using the Salome package (which is installed in a different container). 
 '''
 
-def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = '/tmp'):
+def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, GUI=False, tempdir = '/tmp'):
     '''
     AddPath: Additional paths that Salome will be able to import from
     DataDict: a dictionary of the arguments that Salome will get
@@ -27,8 +27,6 @@ def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, OutFile=None, G
         # Get default container info
         ContainerInfo = GetInfo('Salome') 
        
-
-
     # Add paths provided to python path for subprocess
     AddPath = [AddPath] if type(AddPath) == str else AddPath
     PyPath = AddPath + ['/home/ibsim/VirtualLab',Dir]

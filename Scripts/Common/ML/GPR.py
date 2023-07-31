@@ -381,21 +381,13 @@ class ModelWrap(ML.ModelWrapBase):
 
         return pred, grad
 
-class ModelWrapPCA(ModelWrap):
+class ModelWrapPCA(ModelWrap,ML.ModelWrapPCABase):
     def __init__(self,model,Dataspace,VT,ScalePCA):
-        super().__init__(model,Dataspace)
-        self.VT = VT
-        self.ScalePCA = ScalePCA
-        self.PredictPC = super().Predict
-        self.GradientPC = super().Gradient
+        super().__init__(model, Dataspace)
+        ML.ModelWrapPCABase.__init__(self,VT,ScalePCA)
 
-    def Predict(self,inputs,scale_inputs=True,rescale_outputs=True):
-        PC_pred = self.PredictPC(inputs,scale_inputs=scale_inputs, rescale_outputs=True) # get prediction on PCs
-        FullPred = self.Reconstruct(PC_pred,scale=rescale_outputs)
-        return FullPred
-
-    def Gradient(self,inputs,scale_outputs=True):
-        pred,grad = self.GradientPC(inputs)
+    def GradientFull(self,inputs,scale_outputs=True):
+        pred,grad = self.Gradient(inputs)
         FullPred = self.Reconstruct(pred,scale=scale_outputs)
 
         FullGrad = []
@@ -408,20 +400,7 @@ class ModelWrapPCA(ModelWrap):
 
         return FullPred,FullGrad
 
-    def PredictFull_dset(self,dset_name,scale_outputs=True):
-        inputs = self.GetDatasetInput(dset_name)
-        return self.Predict(inputs,scale_outputs=scale_outputs)
 
-    def Compress(self,output,scale=True):
-        if scale:
-            output = ML.DataScale(output,*self.ScalePCA)
-        return output.dot(self.VT.T)
-
-    def Reconstruct(self,PC,scale=True):
-        recon = PC.dot(self.VT)
-        if scale:
-            recon = ML.DataRescale(recon,*self.ScalePCA)
-        return recon
 
 
 

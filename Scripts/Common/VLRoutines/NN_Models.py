@@ -44,7 +44,7 @@ def MLP_hdf5(VL,DADict):
     # ==========================================================================
     # Get performance metric of model
     Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
-            'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
+            'Validation':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
 
     NN.Performance(model,Data)
 
@@ -61,13 +61,11 @@ def MLP_PCA_hdf5(VL,DADict):
 
     # ==========================================================================
     # Get Train & test data from file DataFile_path
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TrainData[0])
-    TrainIn, TrainOut = ML.GetDataML(DataFile_path, *Parameters.TrainData[1:])
+    TrainIn, TrainOut = ML.VLGetDataML(VL,Parameters.TrainData)
     ScalePCA = ML.ScaleValues(TrainOut,scaling='centre')
     TrainOut_centre = ML.DataScale(TrainOut,*ScalePCA)
 
-    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Parameters.TestData[0])
-    TestIn, TestOut = ML.GetDataML(DataFile_path, *Parameters.TestData[1:])
+    TestIn, TestOut = ML.VLGetDataML(VL,Parameters.ValidationData)
     TestOut_centre = ML.DataScale(TestOut,*ScalePCA)
 
     np.save("{}/ScalePCA.npy".format(DADict['CALC_DIR']),ScalePCA)
@@ -97,7 +95,7 @@ def MLP_PCA_hdf5(VL,DADict):
     # ==========================================================================
     # Get performance metric of model
     Data = {'Train':[Dataspace.TrainIn_scale,Dataspace.TrainOut_scale],
-            'Test':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
-
+            'Validation':[Dataspace.TestIn_scale,Dataspace.TestOut_scale]}
+    
     NN.Performance(model,Data)
     NN.Performance_PCA(model, Data, VT, Dataspace.OutputScaler, mean=True)

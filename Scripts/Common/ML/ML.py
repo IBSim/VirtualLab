@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-from types import SimpleNamespace as Namespace
+from types import SimpleNamespace as Namespace, MethodType
 
 import numpy as np
 import torch
@@ -657,3 +657,25 @@ class ModelWrapBase():
     def Predict_dset(self,dset_name, scale_outputs=True):
         inputs = self.GetDatasetInput(dset_name)
         return self.Predict(inputs,scale_outputs=scale_outputs)
+
+class ModelWrapPCABase():
+
+    def __init__(self, VT, ScalePCA):
+        self.VT = VT
+        self.ScalePCA = ScalePCA
+
+    def Compress(self,output,scale=True):
+        if scale:
+            output = DataScale(output,*self.ScalePCA)
+        return output.dot(self.VT.T)
+
+    def Reconstruct(self,PC,scale=True):
+        recon = PC.dot(self.VT)
+        if scale:
+            recon = DataRescale(recon,*self.ScalePCA)
+        return recon
+
+    def PredictFull(self,inputs,scale_outputs=True):
+        PC_pred = self.Predict(inputs,rescale_outputs=True) # get prediction on PCs
+        FullPred = self.Reconstruct(PC_pred,scale=scale_outputs)
+        return FullPred

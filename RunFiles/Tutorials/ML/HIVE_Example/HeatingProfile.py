@@ -61,12 +61,11 @@ DA.MLModel = 'HeatProfile/GPR'
 # TODO: Download this mesh with data
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 DA.TestData = [DataFile, 'Features', 'SurfaceJH',{'group':'Test'}]
-DA.Index = [1]
-
+DA.Index = [1] # index of result in TestData to create images for
 
 main_parameters = Namespace(DA=DA)
 
-VirtualLab.Parameters(main_parameters)
+VirtualLab.Parameters(main_parameters,RunDA=AnalyseGPR)
 
 VirtualLab.DA()
 
@@ -77,3 +76,36 @@ VirtualLab.DA()
 
 # ====================================================================
 # Define MLP parameters to create model
+
+ML = Namespace()
+ML.Name = 'HeatProfile/MLP'
+ML.File = ('NN_Models','MLP_PCA_hdf5')
+ML.TrainingParameters = {'Epochs':1000,'lr':0.005,'Print':50}
+ML.TrainData = [DataFile, 'Features', 'SurfaceJH',{'group':'Train'}]
+ML.ValidationData = [DataFile, 'Features', 'SurfaceJH',{'group':'Test'}]
+ML.ModelParameters = {'Architecture':[8,16,8]} 
+ML.Seed = 100 # initial weights of MLP are randomised so this ensures reproducability
+ML.Metric = {'nb_components':10}
+main_parameters = Namespace(ML=ML)
+
+VirtualLab.Parameters(main_parameters,RunML=CreateMLP)
+
+# generate GPR models
+VirtualLab.ML()
+
+# ====================================================================
+# analyse performance of MLP model
+DA = Namespace()
+DA.Name = 'Analysis/HeatingProfile/MLP_{}'.format(CoilType)
+DA.File = ('HeatingProfile','CreateImage_MLP')
+DA.MLModel = 'HeatProfile/MLP'
+# TODO: Download this mesh with data
+DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
+DA.TestData = [DataFile, 'Features', 'SurfaceJH',{'group':'Test'}]
+DA.Index = [1] # index of result in TestData to create images for
+
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=AnalyseMLP)
+
+VirtualLab.DA()

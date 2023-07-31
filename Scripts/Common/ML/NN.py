@@ -221,32 +221,13 @@ class ModelWrap(ML.ModelWrapBase):
             grad = grad[:,output_ix]
 
         return pred, grad
-    
-class ModelWrapPCA(ModelWrap):
+
+
+class ModelWrapPCA(ModelWrap,ML.ModelWrapPCABase):
     def __init__(self,model,Dataspace,VT,ScalePCA):
-        super().__init__(model,Dataspace)
-        self.VT = VT
-        self.ScalePCA = ScalePCA
+        super().__init__(model, Dataspace)
+        ML.ModelWrapPCABase.__init__(self,VT,ScalePCA)
 
-    def PredictFull(self,inputs,scale_outputs=True):
-        PC_pred = self.Predict(inputs,scale_outputs=True) # get prediction on PCs
-        FullPred = self.Reconstruct(PC_pred,scale=scale_outputs)
-        return FullPred
-
-    def PredictFull_dset(self,dset_name,scale_outputs=True):
-        inputs = self.GetDatasetInput(dset_name)
-        return self.PredictFull(inputs,scale_outputs=scale_outputs)
-
-    def Compress(self,output,scale=True):
-        if scale:
-            output = ML.DataScale(output,*self.ScalePCA)
-        return output.dot(self.VT.T)
-
-    def Reconstruct(self,PC,scale=True):
-        recon = PC.dot(self.VT)
-        if scale:
-            recon = ML.DataRescale(recon,*self.ScalePCA)
-        return recon
 
 # ==============================================================================
 # Vanilla NN

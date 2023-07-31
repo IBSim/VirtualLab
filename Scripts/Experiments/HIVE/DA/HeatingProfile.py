@@ -30,12 +30,26 @@ def CreateImage_GPR(VL,DataDict):
 
     Parameters = DataDict['Parameters']
     MLModel = Parameters.MLModel
+    model_path = "{}/{}".format(VL.ML.output_dir,MLModel)
+    model = GPR.GetModelPCA(model_path) # load in model
+
+    _CreateImage(VL,DataDict,model)
+
+def CreateImage_MLP(VL,DataDict):
+
+    Parameters = DataDict['Parameters']
+    MLModel = Parameters.MLModel
+    model_path = "{}/{}".format(VL.ML.output_dir,MLModel)
+    model = NN.GetModelPCA(model_path) # load in model
+
+    _CreateImage(VL,DataDict,model)
+
+def _CreateImage(VL,DataDict, model):
+
+    Parameters = DataDict['Parameters']
     MeshName = Parameters.MeshName
     TestData = Parameters.TestData
     Index = Parameters.Index
-
-    model_path = "{}/{}".format(VL.ML.output_dir,MLModel)
-    model = GPR.GetModelPCA(model_path) # load in model
 
     TestIn, TestOut = ML.VLGetDataML(VL,TestData)
 
@@ -46,7 +60,7 @@ def CreateImage_GPR(VL,DataDict):
 
     # get predictions for those specified by Index
     InputIx = TestIn[Index]
-    prediction = model.Predict(InputIx)
+    prediction = model.PredictFull(InputIx)
     # add results to dictionary to create results MED file
     FieldResults = {}
     for ix,simulation,mlmodel in zip(Index,TestOut[Index],prediction):

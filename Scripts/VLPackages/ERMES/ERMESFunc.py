@@ -81,7 +81,7 @@ def MeshGlobal2Local(Connectivity,NodeNum):
     # checks 
     return np.searchsorted(NodeNum,Connectivity)
 
-def _Variation(ElemRes,elem_cd,surface_norm):
+def _VariationOrig(ElemRes,elem_cd,surface_norm):
     m,p = ElemRes.shape
 
     # get a vector of values augmented by the joule heating value, which is added in the direction of the urface normal
@@ -101,7 +101,7 @@ def _Variation(ElemRes,elem_cd,surface_norm):
     return var
 
 
-def Variation(NodeRes,Connectivity,NodeCoords,NodeNum=None):
+def VariationOrig(NodeRes,Connectivity,NodeCoords,NodeNum=None):
 
     m,p = Connectivity.shape
     n = len(NodeRes)
@@ -121,15 +121,49 @@ def Variation(NodeRes,Connectivity,NodeCoords,NodeNum=None):
 
     if NodeRes.ndim==1:
         ElemRes = NodeRes[Connectivity] # results in the shape of the connectivity
-        var = _Variation(ElemRes,elem_cd,surface_norm)
+        var = _VariationOrig(ElemRes,elem_cd,surface_norm)
     else:
         var = []
         for _NodeRes in NodeRes:
             ElemRes = _NodeRes[Connectivity]
-            _var = _Variation(ElemRes,elem_cd,surface_norm)
+            _var = _VariationOrig(ElemRes,elem_cd,surface_norm)
             var.append(_var)
         var = np.array(var)
 
+    return var
+
+def _Variation(a1,a2,v1,v2):
+    g = a2[:,None]*v1 - a1[:,None]*v2
+    var = np.linalg.norm(g,axis=1) # work out the variation for each element
+    var = var.sum() # sum up all variations
+    return var
+
+def Variation(NodeRes,Connectivity,NodeCoords,NodeNum=None):
+    ''' A simplified implementation of VariationOrig. This returns the same value but for much less computation'''
+    m,p = Connectivity.shape # m is the number of elements, p is the number of points hwich make up the element
+    n,d = NodeCoords.shape # n is the number of nodes which make up the mesh, d is the dimension
+    n2 = NodeRes.shape[-1]
+
+    if n!=n2:
+        raise Exception('The number of nodes in the results ({}) are not equal to the number of nodes which make up the mesh ({})'.format(n2,n))
+        
+    if NodeNum is not None:
+        Connectivity = MeshGlobal2Local(Connectivity,NodeNum)
+
+    elem_cd = NodeCoords[Connectivity]
+    elem_res = (NodeRes.T[Connectivity]).T # compatibility with multiple variation values
+
+    v1,v2 = elem_cd[:,1] - elem_cd[:,0], elem_cd[:,2] - elem_cd[:,0]
+    a1,a2 = elem_res[:,1] - elem_res[:,0], elem_res[:,2] - elem_res[:,0]
+
+    if NodeRes.ndim==1:
+        var = _Variation(a1,a2,v1,v2)
+    else:
+        var = []
+        for i in range(NodeRes.shape[0]):
+            _var = _Variation(a1[i],a2[i],v1,v2)
+            var.append(_var)
+        var = np.array(var)
     return var
 
 def VariationMED(ERMESResFile,SurfaceName):
@@ -140,7 +174,7 @@ def VariationMED(ERMESResFile,SurfaceName):
     meshdata.Close()
 
     JH_Node = MEDtools.NodalResult(ERMESResFile,'Joule_heating',GroupName=SurfaceName)
-
+    
     var = Variation(JH_Node,surface_data.Connect,surface_coords,surface_data.Nodes)
     return var
 

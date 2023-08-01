@@ -22,9 +22,9 @@ def HeatingProfileCompare(res_file,result_names,filenames_compare,filename_diff)
     medfile = PVFunc.OpenMED(res_file)
     extractGroup1 = pvsimple.ExtractGroup(Input=medfile)
     extractGroup1.AllGroups = ['GRP_CoilFace']
-
+    # Create plot of the ML model and simulation result with the same colour bar (which is taken from the data at index 1)
     PVFunc.Compare(extractGroup1,result_names,filenames_compare,
-                   camera=aerial_camera,CB=JouleCB,TF=JouleTF)
+                   camera=aerial_camera,CB=JouleCB,TF=JouleTF,compare_ix=1)
 
     CB = {**JouleCB,'Title':'\u0394 {}'.format(JouleCB['Title'])}
     PVFunc.Difference(extractGroup1,result_names,filename_diff,

@@ -61,7 +61,8 @@ DA.MLModel = 'HeatProfile/GPR'
 # TODO: Download this mesh with data
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 DA.TestData = [DataFile, 'Features', 'SurfaceJH',{'group':'Test'}]
-DA.Index = [1] # index of result in TestData to create images for
+# create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
+DA.Index = [1,2]
 
 main_parameters = Namespace(DA=DA)
 
@@ -102,7 +103,8 @@ DA.MLModel = 'HeatProfile/MLP'
 # TODO: Download this mesh with data
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 DA.TestData = [DataFile, 'Features', 'SurfaceJH',{'group':'Test'}]
-DA.Index = [1] # index of result in TestData to create images for
+# create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
+DA.Index = [1,2] 
 
 main_parameters = Namespace(DA=DA)
 

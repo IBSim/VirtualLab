@@ -168,9 +168,6 @@ def GPR_PCA_hdf5(VL,DADict):
         TestOutRecon = ML.DataRescale(TestOutCompress.dot(VT),*ScalePCA)
         _ReconstructionAccuracy(TestOut,TestOutRecon, 'Test')
 
-    return
-
-
     # ==========================================================================
     # Get parameters and build model
     ModelParameters = getattr(Parameters,'ModelParameters',{})

@@ -9,6 +9,7 @@ from Scripts.Common.ML import ML, GPR, NN
 from Scripts.Common.tools import MEDtools
 from Scripts.Common.tools.MED4Py import WriteMED
 from Scripts.VLPackages.ParaViS import API as ParaViS
+from Scripts.VLPackages.ERMES.ERMESFunc import Variation
 
 dirname = os.path.dirname(os.path.abspath(__file__))
 
@@ -34,6 +35,7 @@ def CreateImage_GPR(VL,DataDict):
     model = GPR.GetModelPCA(model_path) # load in model
 
     _CreateImage(VL,DataDict,model)
+    _Variation(VL,DataDict,model)
 
 def CreateImage_MLP(VL,DataDict):
 
@@ -43,6 +45,27 @@ def CreateImage_MLP(VL,DataDict):
     model = NN.GetModelPCA(model_path) # load in model
 
     _CreateImage(VL,DataDict,model)
+    _Variation(VL,DataDict,model)
+
+def _Variation(VL,DataDict,model):
+
+    Parameters = DataDict['Parameters']
+    TestIn, TestOut = ML.VLGetDataML(VL,Parameters.TestData)
+    meshfile = "{}/{}.med".format(VL.MESH_DIR,Parameters.MeshName)
+
+    mesh = MEDtools.MeshInfo(meshfile)
+    CoilFace = mesh.GroupInfo('CoilFace')
+    CoilFaceCoords = mesh.GetNodeXYZ(CoilFace.Nodes)
+
+    prediction = model.PredictFull(TestIn)
+    pred_variation = Variation(prediction,CoilFace.Connect,CoilFaceCoords,CoilFace.Nodes)
+    true_variation = Variation(TestOut,CoilFace.Connect,CoilFaceCoords,CoilFace.Nodes)
+
+    metrics = ML.GetMetrics(pred_variation,true_variation)
+
+    print()
+    print('Variation prediction using Joule heating prediction on surface\n')
+    print(metrics.sum())
 
 def _CreateImage(VL,DataDict, model):
 

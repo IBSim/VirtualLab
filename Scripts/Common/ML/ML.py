@@ -112,7 +112,7 @@ def Rsq(Predicted,Target,axis=None):
     MSE_val = ((Predicted - Target)**2).sum(axis=axis)
     return 1-(MSE_val/divisor)
 
-def GetMetrics2(pred,target):
+def GetMetrics(pred,target):
 
     N = 1 if pred.ndim==1 else pred.shape[1]
 
@@ -126,6 +126,8 @@ def GetMetrics2(pred,target):
     pd.options.display.float_format = '{:.3e}'.format
     return df
 
+def GetMetrics2(*args,**kwargs):
+    return GetMetrics(*args,**kwargs)
 
 # ==============================================================================
 # Functions used for reading & writing data

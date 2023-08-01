@@ -54,6 +54,12 @@ def main():
         default=None,
     )
     parser.add_argument(
+        "-g",
+        "--GUI",
+        help="Name of software to open in the GUI.",
+        default=None,
+    )
+    parser.add_argument(
         "-X",
         "--debug",
         help="Flag to print debug messages for networking.",
@@ -148,6 +154,8 @@ def main():
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
+    elif args.GUI:
+        Run_file = f"{vlab_dir}/bin/OpenGUI.py"
     elif args.Run_file == None:
         print("****************************************************************")
         print("Error: you must specify a path to a valid RunFile with option -f")
@@ -156,6 +164,7 @@ def main():
         sys.exit(1)
     else:
         Run_file = args.Run_file
+
     Run_file = Utils.check_file_in_container(vlab_dir, Run_file)
 
 
@@ -217,6 +226,10 @@ def main():
                 kOption_dict[key] = value
     else:
         options = ""
+
+    if args.GUI:
+        options = f"-g {args.GUI}"
+
 
     ####################################################
     # pass debug and dry_run flags in as k options if set

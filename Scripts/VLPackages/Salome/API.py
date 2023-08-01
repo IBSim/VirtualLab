@@ -29,21 +29,28 @@ def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, GUI=False, temp
        
     # Add paths provided to python path for subprocess
     AddPath = [AddPath] if type(AddPath) == str else AddPath
-    PyPath = AddPath + ['/home/ibsim/VirtualLab',Dir]
-    PyPath = ":".join(PyPath)
+    AddPath = AddPath + ['/home/ibsim/VirtualLab',Dir]
+    PyPath = "-p {}".format(":".join(AddPath))
 
-    _argstr = []
     if DataDict:
         pth = "{}/DataDict_{}.pkl".format(tempdir,uuid.uuid4())
         with open(pth,'wb') as f:
             pickle.dump(DataDict,f)
-        _argstr.append('DataDict={}'.format(pth))
-    argstr = ",".join(_argstr)
+        argstr = "-a DataDict={}".format(pth)
+    else:
+        argstr = ""
 
-    GUIflag = 'g' if GUI else 't'
+    GUIflag = '-r g' if GUI else '-r t'
    
     Wrapscript = "{}/SalomeExec.sh".format(Dir)
-    command = "{} -c {} -f {} -a {} -p {} -r {} ".format(Wrapscript, ContainerInfo['Command'], Script, argstr, PyPath, GUIflag)
-                                                         
+    command = "{} -c {} -f {} {} {} {} ".format(Wrapscript, ContainerInfo['Command'], Script, argstr, GUIflag, PyPath)
+
+    RC = Utils.Exec_Container(ContainerInfo, command)
+    return RC
+
+def OpenGUI():
+    ContainerInfo = GetInfo('Salome') 
+    Wrapscript = "{}/SalomeExec.sh".format(Dir)
+    command = "{} -c {} -r {} ".format(Wrapscript, ContainerInfo['Command'], 'g')
     RC = Utils.Exec_Container(ContainerInfo, command)
     return RC

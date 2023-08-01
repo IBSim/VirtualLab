@@ -30,10 +30,13 @@ if [[ $# == 0 ]]; then
   echo "Error: VirtualLab requires an option."
   exit_abnormal
 fi
-while getopts ":f:h:k:P:s:" options; do
+while getopts ":f:h:k:P:s:g:" options; do
   case "${options}" in
     k)
       Args="$Args ${OPTARG}"
+      ;;
+    g)
+      Args="${OPTARG}"
       ;;
     f)
       CONFIG_FNAME=${OPTARG}

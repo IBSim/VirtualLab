@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import os
 
-from Scripts.VLPackages.Salome.API import Run as _Run
+from Scripts.VLPackages.Salome import API as Salome 
 
 Dir = os.path.dirname(os.path.abspath(__file__))
 
 def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, GUI=False, tempdir = '/tmp'):
     AddPath.append(Dir)
-    _Run(Script, ContainerInfo=ContainerInfo, AddPath = AddPath, DataDict = DataDict, GUI=GUI, tempdir = tempdir)
+    Salome.Run(Script, ContainerInfo=ContainerInfo, AddPath = AddPath, DataDict = DataDict, GUI=GUI, tempdir = tempdir)
 
 def RunEval(Script, EvalList, ContainerInfo=None, AddPath = [], DataDict = {}, GUI=False, tempdir = '/tmp'):
 
@@ -24,3 +24,9 @@ def ShowMED(MedDict,**kwargs):
     Script = "{}/ShowMED.py".format(Dir)
 
     Run(Script,DataDict=DataDict,**kwargs)
+
+
+def OpenGUI():
+    Script = "{}/OpenGUI.py".format(Dir)
+    Run(Script,GUI=True)
+    

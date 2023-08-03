@@ -2,11 +2,9 @@ import os
 import sys
 
 import numpy as np
-import torch
-import gpytorch
 import matplotlib.pyplot as plt
 
-from Scripts.Common.ML import ML, GPR
+from Scripts.Common.ML import GPR, NN
 
 '''
 Example script for how to create Gaussian Process regression (GPR) models in
@@ -25,7 +23,6 @@ def GPR_analysis_1D(VL,DataDict):
     plot_name = Parameters.PlotName
 
     model_dir = "{}/{}".format(VL.ML.output_dir,model_name)
-
     mod = GPR.GetModel(model_dir)
 
     x = np.linspace(*plot_range,100)
@@ -47,6 +44,28 @@ def GPR_analysis_1D(VL,DataDict):
     plt.close()
 
 
+def MLP_analysis_1D(VL,DataDict):
+    Parameters = DataDict['Parameters']
+    model_name = Parameters.ModelName
+    plot_range = Parameters.Range
+    plot_name = Parameters.PlotName
 
+    model_dir = "{}/{}".format(VL.ML.output_dir,model_name)
+    mod = NN.GetModel(model_dir)
+
+    x = np.linspace(*plot_range,100)
+    y_mod = mod.Predict(x)
+    y_true = f_1D(x)
+    train_x,train_y = mod.GetTrainData(to_numpy=True)
+
+    plt.figure()
+    plt.scatter(train_x,train_y,marker='x')
+    plt.plot(x,y_true,label='x * sin(x)',c='g')
+    plt.plot(x,y_mod,label='Model',c='b')
+    plt.legend()
+    plt.xlabel('x')
+    plt.ylabel('f')
+    plt.savefig("{}/{}.png".format(DataDict['CALC_DIR'],plot_name))
+    plt.close()
 
 

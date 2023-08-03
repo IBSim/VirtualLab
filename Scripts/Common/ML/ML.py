@@ -163,7 +163,7 @@ def _Readhdf(File_handle, data_path,group=None):
     if group: data_path = "{}/{}".format(group,data_path)
     # Check data is in file
     if data_path not in File_handle:
-        print(VLF.ErrorMessage("data '{}' is not in file {}".format(data_path,File)))
+        print(VLF.ErrorMessage("data '{}' is not in file {}".format(data_path,File_handle)))
         sys.exit()
     # Get data from file
     _data = File_handle[data_path][:]
@@ -677,7 +677,21 @@ class ModelWrapPCABase():
             recon = DataRescale(recon,*self.ScalePCA)
         return recon
 
-    def PredictFull(self,inputs,scale_outputs=True):
-        PC_pred = self.Predict(inputs,rescale_outputs=True) # get prediction on PCs
+    def PredictFull(self,inputs,scale_inputs=True,scale_outputs=True):
+        PC_pred = self.Predict(inputs,scale_inputs=scale_inputs, rescale_outputs=True) # get prediction on PCs
         FullPred = self.Reconstruct(PC_pred,scale=scale_outputs)
         return FullPred
+
+    def GradientFull(self,inputs,scale_inputs=True):
+        pred,grad = self.Gradient(inputs,scale_inputs=scale_inputs,rescale_outputs=True)
+        FullPred = self.Reconstruct(pred,scale=True)
+
+        FullGrad = []
+        for i in range(self.Dataspace.NbInput):
+            _grad = grad[:,:,i].dot(self.VT)
+            if True:
+                _grad = DataRescale(_grad,0,self.ScalePCA[1]) # as its gradient we set the bias term to zero
+            FullGrad.append(_grad)
+        FullGrad = np.moveaxis(FullGrad, 0, -1)
+
+        return FullPred,FullGrad

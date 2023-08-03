@@ -224,7 +224,7 @@ class ModelWrap(ML.ModelWrapBase):
 
         if rescale_outputs:
             pred = self.RescaleOutput(pred)
-            grad = ML.DataRescale(grad,0,self.Dataspace.OutputScaler[1]) # slightly different rescaling for GPR
+            grad = np.einsum('ijk,j->ijk', grad, self.Dataspace.OutputScaler[1])
 
         if output_ix is not None:
             pred = pred[:,output_ix]
@@ -238,6 +238,19 @@ class ModelWrapPCA(ModelWrap,ML.ModelWrapPCABase):
         super().__init__(model, Dataspace)
         ML.ModelWrapPCABase.__init__(self,VT,ScalePCA)
 
+    # def GradientFull(self,inputs,scale_outputs=True):
+    #     pred,grad = self.Gradient(inputs)
+    #     FullPred = self.Reconstruct(pred,scale=scale_outputs)
+
+    #     FullGrad = []
+    #     for i in range(self.Dataspace.NbInput):
+    #         _grad = grad[:,:,i].dot(self.VT)
+    #         if scale_outputs:
+    #             _grad = ML.DataRescale(_grad,0,self.ScalePCA[1]) # as its gradient we set the bias term to zero
+    #         FullGrad.append(_grad)
+    #     FullGrad = np.moveaxis(FullGrad, 0, -1)
+
+    #     return FullPred,FullGrad
 
 # ==============================================================================
 # Vanilla NN

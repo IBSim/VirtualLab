@@ -11,10 +11,13 @@ dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)
 torch.set_default_dtype(torch_dtype)
 
+
+
 def BuildModel(TrainData, TestData, ModelDir, ModelParameters={},
              TrainingParameters={}, FeatureNames=None,LabelNames=None):
 
     TrainIn,TrainOut = TrainData
+
     # Create dataspace to conveniently keep data together
     Dataspace = ML.DataspaceTrain(TrainData,Test=TestData)
 
@@ -22,13 +25,11 @@ def BuildModel(TrainData, TestData, ModelDir, ModelParameters={},
     # get model
     # Add input and output to architecture
 
-    if 'Architecture' not in ModelParameters:
-        sys.exit('Must have architecture')
+    AddIO(ModelParameters,Dataspace)
 
-    _architecture = ModelParameters.pop('Architecture')
-    _architecture = AddIO(_architecture,Dataspace)
+    model = NN_FC(**ModelParameters)
 
-    model = NN_FC(Architecture=_architecture, **ModelParameters)
+    mod_wrap = ModelWrap(model,Dataspace)
 
     NbWeights = GetNbWeights(model)
     ML.ModelSummary(Dataspace.NbInput,Dataspace.NbOutput,Dataspace.NbTrain,
@@ -36,7 +37,7 @@ def BuildModel(TrainData, TestData, ModelDir, ModelParameters={},
                     Labels=LabelNames)
 
     # Train model
-    Convergence = TrainModel(model, Dataspace, **TrainingParameters)
+    Convergence = TrainModel(mod_wrap, **TrainingParameters)
     model.eval()
 
     SaveModel(ModelDir,model,TrainIn,TrainOut,Convergence)
@@ -68,11 +69,9 @@ def LoadModel(ModelDir):
     else:
         ModelParameters, Parameters = {},None
 
-    _ModelParameters = {**ModelParameters} # createa copy as removing values
-    _architecture = _ModelParameters.pop('Architecture')
-    _architecture = AddIO(_architecture,Dataspace)
+    AddIO(ModelParameters,Dataspace)
 
-    model = NN_FC(Architecture=_architecture,**_ModelParameters)
+    model = NN_FC(**ModelParameters)
 
     state_dict = torch.load("{}/Model.pth".format(ModelDir))
     model.load_state_dict(state_dict)
@@ -89,24 +88,25 @@ def LoadModel(ModelDir):
 #         return loss
 #     return _loss_wrap
 
-def TrainModel(model, Dataspace, Epochs=5000, lr=0.005, batch_size=32, Print=50,
+def TrainModel(mod_wrap,**kwargs):
+    model = mod_wrap.model
+    TrainData = mod_wrap.GetTrainData(scale=False)
+    ValidData = mod_wrap.GetDataset('Test',scale=False)
+    return _TrainModel(model,TrainData,ValidData,**kwargs)
+
+def _TrainModel(model,TrainData,ValidData, Epochs=5000, lr=0.005, batch_size=32, Print=50,
                ConvStart=None, ConvAvg=10, tol=1e-4, norm_outputs=True,
                Verbose=False):
-
-    if norm_outputs:
-        TrainOut,TestOut = Dataspace.TrainOut_scale,Dataspace.TestOut_scale
-    else:
-        TrainOut = ML.DataRescale(Dataspace.TrainOut_scale.detach().numpy(),*Dataspace.OutputScaler)
-        Dataspace.TrainOut_scale = torch.from_numpy(TrainOut)
-        TestOut = ML.DataRescale(Dataspace.TestOut_scale.detach().numpy(),*Dataspace.OutputScaler)
-        Dataspace.TestOut_scale = torch.from_numpy(TestOut)
 
     model.train()
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     loss_func = torch.nn.MSELoss(reduction='mean')
 
-    train_dataset = torch.utils.data.TensorDataset(Dataspace.TrainIn_scale, Dataspace.TrainOut_scale)
+    TrainIn,TrainOut = TrainData
+    ValidIn,ValidOut = ValidData
+
+    train_dataset = torch.utils.data.TensorDataset(TrainIn,TrainOut)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     loss_train_list, loss_test_list = [],[]
@@ -123,8 +123,8 @@ def TrainModel(model, Dataspace, Epochs=5000, lr=0.005, batch_size=32, Print=50,
         # validate
         model.eval() # Change to eval to switch off gradients and dropout
         with torch.no_grad():
-            loss_train = loss_func(model(Dataspace.TrainIn_scale), Dataspace.TrainOut_scale).detach().numpy()
-            loss_test = loss_func(model(Dataspace.TestIn_scale), Dataspace.TestOut_scale).detach().numpy()
+            loss_train = loss_func(model(TrainIn), TrainOut).detach().numpy()
+            loss_test = loss_func(model(ValidIn), ValidOut).detach().numpy()
             loss_test_list.append(loss_test); loss_train_list.append(loss_train)
         model.train()
 
@@ -167,8 +167,13 @@ def Performance_PCA(model,Data, VT, OutputScaler, mean=True):
 def GetNbWeights(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-def AddIO(Architecture,Dataspace):
-    return [Dataspace.NbInput] + Architecture + [Dataspace.NbOutput]
+def AddIO(ModelParameters,Dataspace):
+    if 'Architecture' not in ModelParameters:
+        ValueError('Model parameters must contain the Architecture')
+
+    ModelParameters['Architecture'] = [Dataspace.NbInput, *ModelParameters['Architecture'], Dataspace.NbOutput]
+
+    return ModelParameters
 
 # ==============================================================================
 # Model wrappers
@@ -188,6 +193,11 @@ def GetModelPCA(model_dir):
     return mod_wrap
 
 class ModelWrap(ML.ModelWrapBase):
+    def CheckInput(self,inputs):
+        inputs = super().CheckInput(inputs)
+        if inputs.ndim==1 and self.Dataspace.NbInput==1:
+            inputs = inputs.reshape((-1,1))
+        return inputs
     def Predict(self,inputs, scale_inputs=True, rescale_outputs=True):
         # convert input to torch tensor
         inputs = self.CheckInput(inputs)

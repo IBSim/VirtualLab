@@ -105,7 +105,7 @@ def GetDataRange(input,resname,restype):
 
     res_available = list(data.keys())
     if resname not in res_available:
-        print("Warning: {} not in the list of available results")
+        print("Warning: {} not in the list of available results".format(resname))
         return
 
     ix = res_available.index(resname)

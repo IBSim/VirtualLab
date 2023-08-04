@@ -1,7 +1,6 @@
 import os
-import sys
 import time
-from types import SimpleNamespace as Namespace, MethodType
+from types import SimpleNamespace as Namespace
 
 import numpy as np
 import torch
@@ -10,7 +9,6 @@ from natsort import natsorted
 import pandas as pd
 
 from Scripts.Common.Optimisation import slsqp_multi
-from Scripts.Common import VLFunctions as VLF
 from Scripts.Common.tools import Paralleliser
 
 # ==============================================================================
@@ -136,8 +134,7 @@ def Openhdf(File,style,timer=5):
     ''' Repeatedly attemps to open hdf file if it is held by another process for
     the time allocated by timer '''
     if style=='r' and not os.path.isfile(File):
-        print(VLF.ErrorMessage("The following file does not exist:\n{}".format(File)))
-        sys.exit()
+        raise Exception("Cant open file {} as it does not exist".format(File))
     st = time.time()
     while True:
         try:
@@ -145,7 +142,7 @@ def Openhdf(File,style,timer=5):
             return Database
         except OSError:
             if time.time() - st > timer:
-                sys.exit('Timeout on opening hdf file')
+                raise TimeoutError("Could not open file {} after {}s of trying".format(File, timer))
 
 def Writehdf(File, data_path, array, attrs={}, group=None):
     if group: data_path = "{}/{}".format(group,data_path)
@@ -162,9 +159,10 @@ def _Readhdf(File_handle, data_path,group=None):
     # add prefix to path
     if group: data_path = "{}/{}".format(group,data_path)
     # Check data is in file
+
     if data_path not in File_handle:
-        print(VLF.ErrorMessage("data '{}' is not in file {}".format(data_path,File_handle)))
-        sys.exit()
+        raise Exception("Dataset '{}' is not in the file {}".format(data_path,File_handle.filename))
+
     # Get data from file
     _data = File_handle[data_path][:]
     # Reshape 1D data to 2D
@@ -358,14 +356,15 @@ def GetExtrema(fnc,NbInit,bounds,*args,**kwargs):
 
 def OptimiseLSE(fnc, target, NbInit, bounds, fnc_args=(), filter=True, scale_factor=1,find='min', **kwargs):
     lse_fnc_args = [target,fnc,fnc_args,scale_factor]
-    cd,val = Optimise(_LSE_func, NbInit, bounds, fnc_args=lse_fnc_args, find=find, **kwargs)
+    cd,val_lse = Optimise(_LSE_func, NbInit, bounds, fnc_args=lse_fnc_args, find=find, **kwargs)
+
+    val = fnc(cd,*fnc_args)[0] # no need for gradient
 
     if filter:
-        pred = fnc(cd,*fnc_args)[0] # no need for gradient
-        keep = LSE_filter(pred,target,err=0.05)
-        return cd[keep], val[keep]
-    else:
-        return cd, val
+        keep = LSE_filter(val,target,err=0.05)
+        cd, val, val_lse =  cd[keep], val[keep], val_lse[keep]
+
+    return cd, val, val_lse
 
 def _LSE_func(X,target,fnc,fnc_args,scale_factor=1):
     ''' Function for solving least squares error optimisation.
@@ -677,19 +676,22 @@ class ModelWrapPCABase():
             recon = DataRescale(recon,*self.ScalePCA)
         return recon
 
-    def PredictFull(self,inputs,scale_inputs=True,scale_outputs=True):
+    def RescaleField(self,field):
+        return DataRescale(field,*self.ScalePCA)
+
+    def PredictFull(self,inputs,scale_inputs=True,rescale_outputs=True):
         PC_pred = self.Predict(inputs,scale_inputs=scale_inputs, rescale_outputs=True) # get prediction on PCs
-        FullPred = self.Reconstruct(PC_pred,scale=scale_outputs)
+        FullPred = self.Reconstruct(PC_pred,scale=rescale_outputs)
         return FullPred
 
-    def GradientFull(self,inputs,scale_inputs=True):
+    def GradientFull(self,inputs,scale_inputs=True,rescale_outputs=True):
         pred,grad = self.Gradient(inputs,scale_inputs=scale_inputs,rescale_outputs=True)
-        FullPred = self.Reconstruct(pred,scale=True)
+        FullPred = self.Reconstruct(pred,scale=rescale_outputs)
 
         FullGrad = []
         for i in range(self.Dataspace.NbInput):
             _grad = grad[:,:,i].dot(self.VT)
-            if True:
+            if rescale_outputs:
                 _grad = DataRescale(_grad,0,self.ScalePCA[1]) # as its gradient we set the bias term to zero
             FullGrad.append(_grad)
         FullGrad = np.moveaxis(FullGrad, 0, -1)

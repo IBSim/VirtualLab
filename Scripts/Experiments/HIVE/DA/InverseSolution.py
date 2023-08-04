@@ -25,7 +25,8 @@ def CreateImage_GPR(VL,DataDict):
     model_path = "{}/{}".format(VL.ML.output_dir,MLModel)
     model = GPR.GetModelPCA(model_path) # load in model
 
-    _CreateImage(VL,DataDict,model)
+    # _CreateImage(VL,DataDict,model)
+    _InverseSolution(VL,DataDict,model)
 
 def CreateImage_MLP(VL,DataDict):
 
@@ -84,21 +85,51 @@ def _MaxField(X,fnc,fnc_args):
     grad = grad[_nb,ix]
     return pred, grad
 
-def _IS_max(model)
+def _IS_max(model):
 
     bounds = [[0,1]]*model.Dataspace.NbInput
     fnc = model.GradientFull
-    fnc_args = [False] # inputs are assumed to be in [0,1] 
+    fnc_args = [False] # arguments for model.GradientFull (inputs are assumed to be in [0,1])
     _fnc_args = [fnc,fnc_args] # the arguments passed to _MaxField
 
     cd_scale,val = ML.Optimise(_MaxField,10,bounds,fnc_args=_fnc_args,seed=100)
     cd = model.RescaleInput(cd_scale)
-    print('Max temperature: {:.2f} C'.format(val[0]))
-    print('Parameters to achieve it: {}\n'.format(cd[0]))
+
+    best_cd,best_val = cd[0], val[0]
+    best_cd_str = ", ".join(["{:.2e}".format(v) for v in best_cd])
+    print('###############################################\n')
+    print('Parameter combination which will deliver a maximum temperature of {:.2f} C:\n'.format(best_val))
+    print(best_cd_str)
+    print('\n###############################################\n')
+
+def _MaxTempInverse(model,max_temp,bounds=None,NbInit=100,seed=123):
+
+    bounds = [[0,1]]*model.Dataspace.NbInput
+    fnc = model.GradientFull
+    fnc_args = [False] # arguments for model.GradientFull (inputs are assumed to be in [0,1])
+    _fnc_args = [fnc,fnc_args] # the arguments passed to _MaxField
+
+    cd_scale, val, val_lse = ML.OptimiseLSE(_MaxField, max_temp, NbInit, bounds,
+                             seed=seed, fnc_args=_fnc_args)
+    cd = model.RescaleInput(cd_scale)
+    return cd, val, val_lse
+
+def _MaxTemp(model):
+    DesiredTemp = 600
+    cd,val,val_lse = _MaxTempInverse(model,DesiredTemp)
+
+    print('###############################################\n')
+    print('Different parameter combinations which will deliver {:.2f} C:\n'.format(DesiredTemp))
+    for _cd in cd[:5]:
+        best_cd_str = ", ".join(["{:.2e}".format(v) for v in _cd])
+        print(best_cd_str)
+    print('\n###############################################\n')
 
 def _InverseSolution(VL,DataDict, model):
     _IS_max(model)
-    pass
+    _MaxTemp(model)
+
+
 
 
 

@@ -136,7 +136,7 @@ def Camera(FocalPoint,alpha1,alpha2,radius,ViewUp = [0,0,1]):
 
     return renderview
 
-def ImageCapture(renderView1, display, resname, filename, ResComponent='Res', CB={}, TF={}, Capture={}):
+def _ImageCapture(renderView1, display, resname, filename, ResComponent='Res', CB={}, TF={}, Capture={}):
     # TODO: add in ability to colour by more than points
     pvsimple.ColorBy(display, ('POINTS', resname, ResComponent))
 
@@ -161,6 +161,23 @@ def ImageCapture(renderView1, display, resname, filename, ResComponent='Res', CB
 
     return locals()
 
+
+def ImageCapture(source, resnames, image_paths, camera=None, render_view=None, res_type='Surface', CB={}, TF={}, Capture={}):
+
+    if type(resnames)==str: resnames = [resnames]
+    if type(image_paths)==str: image_paths = [image_paths]
+
+    if len(resnames) != len(image_paths): # lengths are not compatible
+        raise Exception("Length of result names and image file paths are not equal")
+    
+    renderView1 = render_view if render_view is not None else GetRenderView(camera)
+
+    display = pvsimple.Show(source, renderView1)
+    display.Representation = res_type
+
+    for resname,image_path in zip(resnames,image_paths):
+        _ImageCapture(renderView1, display, resname, image_path,
+                    CB=CB,TF=TF,Capture=Capture)
 
 # =========================================================================
 # compare results
@@ -190,7 +207,7 @@ def _CompareSingleFile(source, resnames, image_paths,compare_ix=0,camera=None, r
     
     # make images
     for resname,image_path in zip(resnames,image_paths):
-        ImageCapture(renderView1, display, resname, image_path,
+        _ImageCapture(renderView1, display, resname, image_path,
                     CB=CB,TF=_TF,Capture=Capture)
 
     pvsimple.Hide(source, renderView1) # hide display
@@ -225,7 +242,7 @@ def _CompareMultiFile(sources, resnames, image_paths,compare_ix=0, camera=None, 
     for source,resname,image_path in zip(sources,resnames,image_paths):
         display = pvsimple.Show(source, renderView1)
         display.Representation = res_type
-        ImageCapture(renderView1,display,resname,image_path,
+        _ImageCapture(renderView1,display,resname,image_path,
                     CB=CB,TF=_TF,Capture=Capture)
         pvsimple.Hide(source, renderView1)
 
@@ -284,7 +301,7 @@ def _DiffCapture(source, resnames, image_path, camera=None, render_view=None, re
         _TF = {**TF}
 
     # capture image
-    ImageCapture(renderView1, display, diff_resname, image_path,
+    _ImageCapture(renderView1, display, diff_resname, image_path,
                  CB=CB,TF=_TF,Capture=Capture)
 
     # hide result

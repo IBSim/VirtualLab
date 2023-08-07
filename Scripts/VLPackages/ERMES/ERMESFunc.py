@@ -151,14 +151,15 @@ def Variation(NodeRes,Connectivity,NodeCoords,NodeNum=None):
         Connectivity = MeshGlobal2Local(Connectivity,NodeNum)
 
     elem_cd = NodeCoords[Connectivity]
-    elem_res = (NodeRes.T[Connectivity]).T # compatibility with multiple variation values
-
     v1,v2 = elem_cd[:,1] - elem_cd[:,0], elem_cd[:,2] - elem_cd[:,0]
-    a1,a2 = elem_res[:,1] - elem_res[:,0], elem_res[:,2] - elem_res[:,0]
 
     if NodeRes.ndim==1:
+        elem_res = NodeRes[Connectivity]
+        a1,a2 = elem_res[:,1] - elem_res[:,0], elem_res[:,2] - elem_res[:,0]
         var = _Variation(a1,a2,v1,v2)
     else:
+        elem_res = (NodeRes.T[Connectivity]).T # compatibility with multiple variation values
+        a1,a2 = elem_res[:,1] - elem_res[:,0], elem_res[:,2] - elem_res[:,0]
         var = []
         for i in range(NodeRes.shape[0]):
             _var = _Variation(a1[i],a2[i],v1,v2)

@@ -94,43 +94,41 @@ def Inputs(ResDir_path, InputVariables, Parameters_basename ='Parameters.py'):
         exec("Values.append(Parameters.{})".format(command))
     return Values
 
-def NodalMED(ResDir_path, ResFileName, *args,**kwargs):
+def NodalMED(ResDir_path, ResFileName, dset_name, scale=1,**kwargs):
     ''' Get result 'ResName' at all nodes. Results for certain groups can be
         returned using GroupName argument.'''
     ResFilePath = "{}/{}".format(ResDir_path,ResFileName)
-    return MEDtools.NodalResult(ResFilePath,*args,**kwargs)
+    data = MEDtools.NodalResult(ResFilePath,dset_name,**kwargs)
+    return data*scale
+
+def MaxNodalMED(ResDir_path, ResFileName, dset_name,**kwargs):
+    return (NodalMED(ResDir_path, ResFileName, dset_name,**kwargs)).max()
+
+def MinNodalMED(ResDir_path, ResFileName, dset_name,**kwargs):
+    return (NodalMED(ResDir_path, ResFileName, dset_name,**kwargs)).min()
 
 
+# def VMisField(ResDir_path, ResFileName, ResName='Stress'):
+#     ''' Get temperature values at all nodes'''
 
-def MaxNode(ResDir_path, ResFileName, ResName='Temperature'):
-    TempField = NodalField(ResDir_path, ResFileName, ResName=ResName)
-    return TempField.max()
+#     # Get temperature values from results
+#     ResFilePath = "{}/{}".format(ResDir_path,ResFileName)
+#     Stress = MEDtools.ElementResult(ResFilePath,ResName)
+#     Stress = Stress.reshape((int(Stress.size/6),6))
 
-def MinNode(ResDir_path, ResFileName, ResName='Temperature'):
-    TempField = NodalField(ResDir_path, ResFileName, ResName=ResName)
-    return TempField.min()
+#     VMis = (((Stress[:,0] - Stress[:,1])**2 + (Stress[:,1] - Stress[:,2])**2 + \
+#               (Stress[:,2] - Stress[:,0])**2 + 6*(Stress[:,3:]**2).sum(axis=1)  )/2)**0.5
 
-def VMisField(ResDir_path, ResFileName, ResName='Stress'):
-    ''' Get temperature values at all nodes'''
+#     mesh = MEDtools.MeshInfo(ResFilePath)
+#     cnct = mesh.ConnectByType('Volume')
 
-    # Get temperature values from results
-    ResFilePath = "{}/{}".format(ResDir_path,ResFileName)
-    Stress = MEDtools.ElementResult(ResFilePath,ResName)
-    Stress = Stress.reshape((int(Stress.size/6),6))
+#     # extrapolate element value to node to reduce storage requirements
+#     sumvmis,sumcount = np.zeros(mesh.NbNodes),np.zeros(mesh.NbNodes)
+#     for i,vm in zip(cnct,VMis):
+#         sumvmis[i-1]+=vm
+#         sumcount[i-1]+=1
+#     VMis_nd = sumvmis/sumcount
 
-    VMis = (((Stress[:,0] - Stress[:,1])**2 + (Stress[:,1] - Stress[:,2])**2 + \
-              (Stress[:,2] - Stress[:,0])**2 + 6*(Stress[:,3:]**2).sum(axis=1)  )/2)**0.5
-
-    mesh = MEDtools.MeshInfo(ResFilePath)
-    cnct = mesh.ConnectByType('Volume')
-
-    # extrapolate element value to node to reduce storage requirements
-    sumvmis,sumcount = np.zeros(mesh.NbNodes),np.zeros(mesh.NbNodes)
-    for i,vm in zip(cnct,VMis):
-        sumvmis[i-1]+=vm
-        sumcount[i-1]+=1
-    VMis_nd = sumvmis/sumcount
-
-    return VMis_nd
+#     return VMis_nd
 
 

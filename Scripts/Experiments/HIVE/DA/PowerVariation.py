@@ -1,11 +1,10 @@
-import os
-import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
 import bisect
 
 from Scripts.Common.ML import ML, GPR, NN
+from Scripts.Common.Optimisation import optimisation
 
 def GPR_compare(VL,DataDict):
     '''
@@ -13,7 +12,7 @@ def GPR_compare(VL,DataDict):
     '''
     Parameters = DataDict['Parameters']
 
-    MLModels = Parameters.MLModels
+    MLModels = Parameters.FixedModels
     TestData = Parameters.TestData
 
     TestIn, TestOut = ML.VLGetDataML(VL,TestData)
@@ -146,7 +145,7 @@ def _Insight(DataDict,model):
     # get the minima and maxima for each output & the coordinates to deliver it
     # model.Gradient returns the predicted value and the gradient
     # dont scale outputs during optimisation as it can give bad solutions when values are small
-    extrema_inputs, extrema_val = ML.GetExtrema(model.Gradient,100,bounds,fnc_args=fnc_args,seed=seed)
+    extrema_inputs, extrema_val = optimisation.GetExtrema(model.Gradient,100,bounds,fnc_args=fnc_args,seed=seed)
     power_min, var_min = extrema_val[0]
     power_min_input, var_min_input = extrema_inputs[0]
     power_max, var_max = extrema_val[1]
@@ -157,8 +156,8 @@ def _Insight(DataDict,model):
     VarMin,VarMax = [],[]
     for required_power in Power[1:-1]: # don't need min and max power as these are already calcuated
         # get a dictionary for the constraint
-        constraint_dict = ML.FixedBound(required_power,model.Gradient,func_args=[*fnc_args,0])
-        _cd,_val = ML.GetExtrema(model.Gradient,10,bounds,fnc_args=[*fnc_args,1],seed=seed,constraints=constraint_dict)
+        constraint_dict = optimisation.FixedBound(required_power,model.Gradient,func_args=[*fnc_args,0])
+        _cd,_val = optimisation.GetExtrema(model.Gradient,10,bounds,fnc_args=[*fnc_args,1],seed=seed,constraints=constraint_dict)
         _varmin,_varmax = _val
         VarMin.append(_varmin); VarMax.append(_varmax)
 

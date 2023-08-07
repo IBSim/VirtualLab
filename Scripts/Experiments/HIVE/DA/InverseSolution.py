@@ -5,8 +5,8 @@ import shutil
 import numpy as np
 
 from Scripts.Common.ML import ML, GPR, NN
+from Scripts.Common.Optimisation import optimisation
 from Scripts.Common.tools.MED4Py import WriteMED
-from Scripts.Common.tools import MEDtools
 from Scripts.VLPackages.ParaViS import API as ParaViS
 
 dirname = os.path.dirname(os.path.abspath(__file__))
@@ -142,7 +142,7 @@ def _MaxValue(model,scale=1):
     fnc_args = [False] # arguments for model.GradientFull (inputs are assumed to be in [0,1])
     _fnc_args = [fnc,fnc_args,scale] # the arguments passed to _MaxField
 
-    cd_scale,val = ML.Optimise(_MaxField,50,bounds,fnc_args=_fnc_args,seed=100)
+    cd_scale,val = optimisation.GetOptima(_MaxField,50,bounds,fnc_args=_fnc_args,seed=100)
     cd = model.RescaleInput(cd_scale)
 
     return cd, val
@@ -156,7 +156,7 @@ def _ReachMaxValue(model,max_temp,bounds=None,NbInit=10,seed=123):
     fnc_args = [False] # arguments for model.GradientFull (inputs are assumed to be in [0,1])
     _fnc_args = [fnc,fnc_args] # the arguments passed to _MaxField
 
-    cd_scale, val, val_lse = ML.OptimiseLSE(_MaxField, max_temp, NbInit, bounds,
+    cd_scale, val, val_lse = optimisation.GetOptimaLSE(_MaxField, max_temp, NbInit, bounds,
                              seed=seed, fnc_args=_fnc_args)
     cd = model.RescaleInput(cd_scale)
     return cd, val, val_lse
@@ -170,7 +170,7 @@ def _ReachMaxValueConstraint(model_t, model_vm, max_temp,bounds=None,NbInit=10,s
     func_con = model_t.GradientFull
     func_con_args = [False] # arguments for model.GradientFull (inputs are assumed to be in [0,1])
     _func_con_args = [func_con,func_con_args]
-    constraint_dict = ML.FixedBound(max_temp,_MaxField,_func_con_args)
+    constraint_dict = optimisation.FixedBound(max_temp,_MaxField,_func_con_args)
 
     func = model_vm.GradientFull
     func_args = [False] # arguments for model.GradientFull (inputs are assumed to be in [0,1])

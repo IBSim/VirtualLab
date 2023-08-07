@@ -174,11 +174,11 @@ def _ReachMaxValueConstraint(model_t, model_vm, max_temp,bounds=None,NbInit=10,s
 
     func = model_vm.GradientFull
     func_args = [False] # arguments for model.GradientFull (inputs are assumed to be in [0,1])
-    _func_args = [func,func_args,10**6]
+    _func_args = [func,func_args]
 
-    cd_scale, val_scale = ML.Optimise(_MaxField,NbInit,bounds,fnc_args=_func_args,seed=seed,constraints=constraint_dict)
+    cd_scale, val = optimisation.GetOptima(_MaxField,NbInit,bounds,fnc_args=_func_args,seed=seed,constraints=constraint_dict)
     cd = model_vm.RescaleInput(cd_scale) #  can use either model_t or model_vm
-    val = val_scale*10**6
+
     return cd, val
 
 def _MaxTemp(model,DataDict, resfile):
@@ -237,7 +237,7 @@ def _MaxVM(model,DataDict,resfile):
     '''
     Identify the inputs which will deliver the maximum possible VonMises stress
     '''
-    cd, val = _MaxValue(model,scale=10**6)
+    cd, val = _MaxValue(model)
     best_cd,best_val = cd[0], val[0]
     best_cd_str = ", ".join(["{:.2e}".format(v) for v in best_cd])
 
@@ -268,7 +268,7 @@ def _ReachTempMaxVM(model_t,model_vm,DataDict,resfile):
     best_cd,best_val = cd[0],val[0]
     best_cd_str = ", ".join(["{:.2e}".format(v) for v in best_cd])
     print('###############################################\n')
-    print('Parameter combination which delivers {:.2f} C and maximises the Von Mises stress, delivering {:.2f} MPa:\n'.format(DesiredTemp,best_val/10**6))
+    print('Parameter combination which delivers {:.2f} C and maximises the Von Mises stress, delivering {:.2f} MPa:\n'.format(DesiredTemp,best_val))
     print(best_cd_str)
     print('\n###############################################\n')
 

@@ -19,7 +19,7 @@ DiffTF = {**PVFunc.transferfunc_default,'ApplyPreset':['Linear Green (Gr4L)', Tr
 TempCB = {**PVFunc.colorbar_default,'Title':'Temperature (C)'}
 TempTF = {**PVFunc.transferfunc_default,'ApplyPreset':['RdOrYl', True]}
 
-VonMisesCB = {**PVFunc.colorbar_default,'Title':'VonMises (Pa)','ComponentTitle':'','RangeLabelFormat' : '%-#.3e'}
+VonMisesCB = {**PVFunc.colorbar_default,'Title':'VonMises (MPa)','ComponentTitle':''}
 VonMisesTF = {**PVFunc.transferfunc_default,'ApplyPreset':['BuGn', True]}
 
 def HeatingProfileCompare(res_file,result_names,filenames_compare,filename_diff):

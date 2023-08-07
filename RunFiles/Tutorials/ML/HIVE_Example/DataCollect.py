@@ -230,7 +230,7 @@ DA.Collect = [{'Name':'Features',
             {'Name':'VonMises',
             'Function':'NodalMED',
             'args':["Aster/Thermal.rmed","Stress_Eq_Nd"],
-            'kwargs':{ 'ComponentName':"VMIS"}
+            'kwargs':{ 'scale':1/10**6,'ComponentName':"VMIS"}
             },                    
             ]
 Parameters_main = Namespace(DA=DA)

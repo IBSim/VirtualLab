@@ -540,12 +540,20 @@ class ModelWrapPCABase():
             output = DataScale(output,*self.ScalePCA)
         return output.dot(self.VT.T)
 
-    def Reconstruct(self,PC,scale=True):
-        recon = PC.dot(self.VT)
+    def _Reconstruct(self,PC,VT,ScalePCA, scale=True):
+        recon = PC.dot(VT)
         if scale:
-            recon = DataRescale(recon,*self.ScalePCA)
+            recon = DataRescale(recon,*ScalePCA)
         return recon
 
+    def Reconstruct(self,PC,scale=True,index=None):
+        if index is None:
+            recon = self._Reconstruct(PC,self.VT,self.ScalePCA,scale=scale)
+        else:
+            VT,ScalePCA = self.VT[:,index],self.ScalePCA[:,index]
+            recon = self._Reconstruct(PC,VT,ScalePCA)
+        return recon
+            
     def RescaleField(self,field):
         return DataRescale(field,*self.ScalePCA)
 
@@ -554,16 +562,27 @@ class ModelWrapPCABase():
         FullPred = self.Reconstruct(PC_pred,scale=rescale_outputs)
         return FullPred
 
-    def GradientFull(self,inputs,scale_inputs=True,rescale_outputs=True):
-        pred,grad = self.Gradient(inputs,scale_inputs=scale_inputs,rescale_outputs=True)
-        FullPred = self.Reconstruct(pred,scale=rescale_outputs)
-
+    def _ReconstructGradient(self,grad,VT,ScalePCA,scale=True):
         FullGrad = []
         for i in range(self.Dataspace.NbInput):
-            _grad = grad[:,:,i].dot(self.VT)
-            if rescale_outputs:
-                _grad = DataRescale(_grad,0,self.ScalePCA[1]) # as its gradient we set the bias term to zero
+            _grad = grad[:,:,i].dot(VT)
+            if scale:
+                _grad = DataRescale(_grad,0,ScalePCA[1]) # as its gradient we set the bias term to zero
             FullGrad.append(_grad)
         FullGrad = np.moveaxis(FullGrad, 0, -1)
+        return FullGrad
+
+    def ReconstructGradient(self,grad,scale=True,index=None):
+        if index is None:
+            FullGrad= self._ReconstructGradient(grad,self.VT,self.ScalePCA,scale=scale)
+        else:
+            VT,ScalePCA = self.VT[:,index],self.ScalePCA[:,index]
+            FullGrad = self._ReconstructGradient(grad,VT,ScalePCA)
+        return FullGrad
+
+    def GradientFull(self,inputs,scale_inputs=True,rescale_outputs=True,index=None):
+        pred,grad = self.Gradient(inputs,scale_inputs=scale_inputs,rescale_outputs=True)
+        FullPred = self.Reconstruct(pred,scale=rescale_outputs,index=index)
+        FullGrad = self.ReconstructGradient(grad,scale=rescale_outputs,index=index)
 
         return FullPred,FullGrad

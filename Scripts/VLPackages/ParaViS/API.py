@@ -16,7 +16,17 @@ def RunEval(Script, EvalList, ContainerInfo=None, AddPath = [], DataDict = {}, G
     
     Run(Script, ContainerInfo=ContainerInfo, AddPath = AddPath, DataDict = DataDict, GUI=GUI, tempdir = tempdir)
 
-def ShowMED(MedDict,**kwargs):
+def ShowMED(MedInfo,**kwargs):
+
+    if type(MedInfo)==str: 
+        MedDict = {'Result':MedInfo}
+    elif type(MedInfo)==list:
+        MedDict = {'Result_{}'.format(i):name for i,name in enumerate(MedInfo)}
+    elif type(MedInfo)==dict:
+        MedDict = MedInfo
+    else:
+        raise TypeError('Unexpected type for MED file')
+
     # remove DataDict if its in kwargs as it will be expanded later on
     DataDict = kwargs.pop('DataDict') if 'DataDict' in kwargs else {}
     DataDict['_ShowMED_'] = MedDict

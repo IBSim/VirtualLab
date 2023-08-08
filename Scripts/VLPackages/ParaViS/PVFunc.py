@@ -118,14 +118,13 @@ def DataRange(input,resname):
 # ==================================================================================
 # Image capture
 
-def Camera(FocalPoint,alpha1,alpha2,radius,ViewUp = [0,0,1]):
+def UpdateCamera(renderview,FocalPoint,alpha1,alpha2,radius,ViewUp = [0,0,1]):
     ''' Positions camera using polar spherical coordinates.
         Focal points - focal point for camera
         alpha1 - rotation around z axis
         alpha2 - rotation from z axis 
         radius - distance of camera from focal point'''
 
-    renderview = pvsimple.GetActiveViewOrCreate('RenderView')
     CameraPosition = [FocalPoint[0] + radius*np.cos(np.deg2rad(alpha2))*np.sin(np.deg2rad(alpha1)),
                       FocalPoint[1] - radius*np.cos(np.deg2rad(alpha2))*np.cos(np.deg2rad(alpha1)),
                       FocalPoint[2] + radius*np.sin(np.deg2rad(alpha2))]
@@ -135,6 +134,10 @@ def Camera(FocalPoint,alpha1,alpha2,radius,ViewUp = [0,0,1]):
     renderview.CameraViewUp = ViewUp
 
     return renderview
+
+def Camera(*args,**kwargs):
+    renderview = pvsimple.GetActiveViewOrCreate('RenderView')
+    return UpdateCamera(renderview,*args,**kwargs)
 
 def _ImageCapture(renderView1, display, resname, filename, ResComponent='Res', CB={}, TF={}, Capture={}):
     # TODO: add in ability to colour by more than points

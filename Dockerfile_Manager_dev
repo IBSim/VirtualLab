@@ -31,16 +31,12 @@ USER ibsim
 WORKDIR /tmp
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=linux
-# Install miniconda instead of full anaconda to space space in final image.
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-bash Miniconda3-latest-Linux-x86_64.sh -b && \
-sudo rm Miniconda3-latest-Linux-x86_64.sh
 
 # Download and install VirtualLab and its requirements
 RUN sudo chmod 755 /home/ibsim/patch.sh && \
     wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/RL_InstallUpdate/Scripts/Install/Install_VirtualLab.sh && \
     chmod 755 Install_VirtualLab.sh && \
-    sudo ./Install_VirtualLab.sh -P c -y
+    sudo ./Install_VirtualLab.sh -P y -y
 EXPOSE 9000
 USER root
 # RUN mkdir /home/ibsim/VirtualLab/.log

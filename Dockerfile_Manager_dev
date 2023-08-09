@@ -33,8 +33,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=linux
 
 # Download and install VirtualLab and its requirements
-RUN sudo chmod 755 /home/ibsim/patch.sh && \
-    wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/RL_InstallUpdate/Scripts/Install/Install_VirtualLab.sh && \
+RUN sudo chmod 755 /home/ibsim/patch.sh
+
+RUN wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/RL_InstallUpdate/Scripts/Install/Install_VirtualLab.sh && \
     chmod 755 Install_VirtualLab.sh && \
     sudo ./Install_VirtualLab.sh -P y -y
 EXPOSE 9000

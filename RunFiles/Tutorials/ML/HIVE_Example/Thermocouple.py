@@ -13,7 +13,10 @@ import numpy as np
 from Scripts.Common.VirtualLab import VLSetup
 
 CoilType='Pancake' # this can be 'Pancake' or 'HIVE'
-AnalyseGPR = True
+EstimatedField_GPR = False
+Sensitivity_GPR = True
+EstimatedField_MLP = False
+Sensitivity_MLP = True
 
 # ====================================================================
 # Setup VirtualLab
@@ -21,18 +24,17 @@ VirtualLab=VLSetup('HIVE','ML_analysis')
 
 VirtualLab.Settings(Launcher='sequential',NbJobs=1)
 
-# check data has been created, if not download
-DataFile = '{}_coil/TempNodal.hdf'.format(CoilType)
-if not VirtualLab.InProject(DataFile):
-    pass # Download data from somewhere (and possibly mesh)
+DataFile = '{}_coil/TempNodal.hdf'.format(CoilType) # data already downloaded for previous analysis
 
 # ====================================================================
 # GPR analysis
 # ====================================================================
 
+# identify the full temperature field from the thermocouples specified by ThermocoupleConfig
+# and create plots comparing this with the simulation for those specified by Index
 DA = Namespace()
-DA.Name = 'Analysis/Thermocouple/GPR_{}'.format(CoilType)
-DA.File = ('Thermocouple','FullFieldEstimate')
+DA.Name = 'Analysis/{}/Thermocouple/GPR/Comparison'.format(CoilType)
+DA.File = ('Thermocouple','FullFieldEstimate_GPR')
 DA.MLModel = 'Temperature/GPR'
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
@@ -44,10 +46,77 @@ DA.ThermocoupleConfig = [['TileSideA',0.5,0.5],
                         ['TileBack',0.5,0.5],
                         ['BlockFront',0.5,0.5], 
                         ['BlockBack',0.5,0.5], 
-                        ['BlockBottom',0.5,0.5]][:5]
+                        ['BlockBottom',0.5,0.5]]
 
 main_parameters = Namespace(DA=DA)
 
-VirtualLab.Parameters(main_parameters,RunDA=AnalyseGPR)
+VirtualLab.Parameters(main_parameters,RunDA=EstimatedField_GPR)
+
+VirtualLab.DA()
+
+
+# highligh the sensitivity of the results to the placement of the thermocouples
+DA = Namespace()
+DA.Name = 'Analysis/{}/Thermocouple/GPR/Sensitivity'.format(CoilType)
+DA.File = ('Thermocouple','Sensitivity_GPR')
+DA.MLModel = 'Temperature/GPR'
+DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
+# create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
+DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
+DA.CandidateSurfaces = ['TileSideA','TileSideB','TileFront','TileBack','BlockFront','BlockBack','BlockBottom']
+DA.NbThermocouples = 3
+DA.NbConfig = 5 # number of random combinations of thermocouple placements to test
+
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=Sensitivity_GPR)
+
+VirtualLab.DA()
+
+
+
+# ====================================================================
+# MLP analysis
+# ====================================================================
+
+# identify the full temperature field from the thermocouples specified by ThermocoupleConfig
+# and create plots comparing this with the simulation
+DA = Namespace()
+DA.Name = 'Analysis/{}/Thermocouple/MLP/Compare'.format(CoilType)
+DA.File = ('Thermocouple','FullFieldEstimate_MLP')
+DA.MLModel = 'Temperature/MLP'
+DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
+DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
+# create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
+DA.Index = [1]
+DA.ThermocoupleConfig = [['TileSideA',0.5,0.5], 
+                        ['TileFront',0.5,0.5], 
+                        ['TileSideB',0.5,0.5], 
+                        ['TileBack',0.5,0.5],
+                        ['BlockFront',0.5,0.5], 
+                        ['BlockBack',0.5,0.5], 
+                        ['BlockBottom',0.5,0.5]]
+
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=EstimatedField_MLP)
+
+VirtualLab.DA()
+
+# highligh the sensitivity of the results to the placement of the thermocouples
+DA = Namespace()
+DA.Name = 'Analysis/{}/Thermocouple/MLP/Sensitivity'.format(CoilType)
+DA.File = ('Thermocouple','Sensitivity_MLP')
+DA.MLModel = 'Temperature/MLP'
+DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
+# create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
+DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
+DA.CandidateSurfaces = ['TileSideA','TileSideB','TileFront','TileBack','BlockFront','BlockBack','BlockBottom']
+DA.NbThermocouples = 3
+DA.NbConfig = 5 # number of random combinations of thermocouple placements to test
+
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=Sensitivity_MLP)
 
 VirtualLab.DA()

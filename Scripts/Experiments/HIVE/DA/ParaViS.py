@@ -84,6 +84,41 @@ def CaptureVonMises(res_file,result_names,filenames):
     PVFunc.ImageCapture(res_obj,result_names,filenames,CB=VonMisesCB,TF=VonMisesTF)
 
 
+def PlotTC(mesh_file,points,image_dir,radius=0.002):
+    pvsimple.HideAll()
+
+    res_obj = PVFunc.OpenMED(mesh_file)
+    renderView1 = PVFunc.GetRenderView(camera_default)
+    # renderView1.OrientationAxesVisibility = 0
+
+    meddisplay = pvsimple.Show(res_obj, renderView1)
+    meddisplay.Representation = 'Surface'
+    meddisplay.DiffuseColor = [0.5529411764705883, 0.5529411764705883, 0.5529411764705883] # colour the mesh
+
+    #===============================================================================
+    # Add spheres at thermocouple locations
+    for c in points:
+        # create a new 'Sphere'
+        sphere1 = pvsimple.Sphere(Center = c,Radius = radius)
+        # set active source
+        pvsimple.SetActiveSource(sphere1)
+        # show data in view
+        sphere1Display = pvsimple.Show(sphere1, renderView1)
+        sphere1Display.DiffuseColor = [0.6666666666666666, 0.3333333333333333, 0.0] # colour the spheres
+
+    pic1 = camera_default
+    pic2 = camera_default.copy()
+    pic2[1] = pic2[1] + 180
+    pic3 = [camera_default[0],0,-90,0.15] 
+
+    for i,pic in enumerate([pic1,pic2,pic3]):
+        filename = "{}/Angle_{}.png".format(image_dir,i+1)
+        renderView1 = PVFunc.UpdateCamera(renderView1,*pic)
+        pvsimple.SaveScreenshot(filename, renderView1,**PVFunc.screenshot_default)
+
+
+
+
 if __name__=='__main__':
     EvalList = PVFunc.GetEvalInfo()
     PVFunc.FuncEval(EvalList,globals())

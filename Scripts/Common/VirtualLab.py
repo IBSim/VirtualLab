@@ -490,8 +490,12 @@ class VLSetup:
         # Strip .py off the end if it's in the name
         if os.path.splitext(Rel_Parameters)[1] == ".py":
             Rel_Parameters = os.path.splitext(Rel_Parameters)[0]
-
         Abs_Parameters = "{}/{}.py".format(self.PARAMETERS_DIR, Rel_Parameters)
+
+        return self._ImportParameters(Abs_Parameters,ParameterArgs=ParameterArgs)
+
+    def _ImportParameters(self, Abs_Parameters, ParameterArgs=None):
+        
         # Check File exists
         if not os.path.exists(Abs_Parameters):
             message = "The following Parameter file does not exist:\n{}".format(
@@ -504,11 +508,12 @@ class VLSetup:
             arg_path = "{}/{}.pkl".format(self.TEMP_DIR, uuid.uuid4())
             VLF.WriteArgs(arg_path, ParameterArgs)
             sys.argv.append("ParameterArgs={}".format(arg_path))
-
-        Parameters = VLF.GetModule(Abs_Parameters)
-
-        if ParameterArgs != None:
+            Parameters = VLF.GetModule(Abs_Parameters)
             sys.argv.pop(-1)
+        else:
+            Parameters = VLF.GetModule(Abs_Parameters)
+
+        Parameters = Namespace(**Parameters.__dict__)            
 
         return Parameters
 

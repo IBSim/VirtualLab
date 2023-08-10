@@ -40,6 +40,8 @@ RUN wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/${br
     chmod 755 Install_VirtualLab.sh && \
     sudo ./Install_VirtualLab.sh -b ${branch} -P y -y
 
+ENV PYTHONPATH "/home/ibsim/.local/lib/python3.6/site-packages:${PYTHONPATH}"
+
 EXPOSE 9000
 USER root
 # RUN mkdir /home/ibsim/VirtualLab/.log

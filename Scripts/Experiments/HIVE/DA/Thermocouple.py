@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from Scripts.Common.ML import ML, GPR, NN
-from Scripts.Common.Optimisation import optimisation
+from Scripts.Common.Optimisation import optimisation, GA_Parallel, GA
 from Scripts.Common.tools.MED4Py import WriteMED
 from Scripts.VLPackages.ParaViS import API as ParaViS
 from Scripts.Common.tools import MEDtools
@@ -104,7 +104,7 @@ def _Sensitivity(VL,DataDict,model):
     TestData = Parameters.TestData
     nbexample = getattr(Parameters,'NbExample',5)
     TestIn, TestOut = ML.VLGetDataML(VL,TestData)
-    TestOut = TestOut[:nbexample]
+    TestFields = TestOut[:nbexample]
     # get full path of mesh file
     MeshName = Parameters.MeshName
     meshfile = "{}/{}.med".format(VL.MESH_DIR,MeshName)
@@ -122,18 +122,13 @@ def _Sensitivity(VL,DataDict,model):
     config_score,tc_configs = [],[]
     x = list(range(NbConfig))
     for _ in x:
+        # generate a random configuration of NbTC thermocouples on the candidate surfaces
         TC_config = _random_tc_config(CandidateSurfaces,NbTC)
-        interpolation = _InterpolateTC(TC_config,meshfile)
-        nb_field = []
-        for temp_field in TestOut:
-            temp_at_TC =_TCValues(interpolation,temp_field)
-            cd,val = _InverseTC(model,temp_at_TC,interpolation,NbInit=NbInit)
-            unique_parameters,unique_field = _UniqueSol(model,cd,meshfile)
-            _nb_field = len(unique_parameters)
-            if _nb_field!=0: 
-                nb_field.append(_nb_field)
-        config_score.append(np.mean(nb_field))
         tc_configs.append(TC_config)
+        # ascertain how good the configuration is at identifying a unique temperature field
+        score = _nb_field_avg(model,TC_config,meshfile,TestFields,NbInit=50)
+        config_score.append(score)
+        
 
     # ===============================================================================
     # create a plot showing the average number of admissible fields for each configuration
@@ -168,6 +163,158 @@ def _Sensitivity(VL,DataDict,model):
     # dict1 = {'sol_{}'.format(i):val for i,val in enumerate(unique_field)}
     # _AddResult(resfile_tmp,**dict1)
     # ParaViS.ShowMED(resfile_tmp,GUI=True)
+
+def Optimise_GPR(VL,DataDict):
+    '''
+    Routine which uses GPR model to optimise the location of thermocouples
+    '''
+    Parameters = DataDict['Parameters']
+    MLModel = Parameters.MLModel
+    model = GPR.GetModelPCA("{}/{}".format(VL.ML.output_dir,MLModel)) # load temperature model
+
+    _Optimise(VL,DataDict,model)
+
+def Optimise_MLP(VL,DataDict):
+    '''
+    Routine which uses MLP model to optimise the location of thermocouples
+    '''
+    Parameters = DataDict['Parameters']
+    MLModel = Parameters.MLModel
+    model = NN.GetModelPCA("{}/{}".format(VL.ML.output_dir,MLModel)) # load temperature model
+
+    _Optimise(VL,DataDict,model)
+
+def _Optimise(VL,DataDict,model):
+    Parameters = DataDict['Parameters']
+    GA = GA_Parallel('sequential',1,seed=123)
+
+    TestData = Parameters.TestData
+    TestIn, TestOut = ML.VLGetDataML(VL,TestData)
+    nbexample = getattr(Parameters,'NbExample',5)
+    TestFields = TestOut[:nbexample]
+
+    MeshName = Parameters.MeshName
+    meshfile = "{}/{}.med".format(VL.MESH_DIR,MeshName)
+
+    CandidateSurfaces = Parameters.CandidateSurfaces
+    NbTC = Parameters.NbThermocouples
+
+    GA_func = _nb_field_avg_wrap(model, CandidateSurfaces, meshfile, TestFields)
+    update_func = _update_wrap(CandidateSurfaces)
+    
+    # ======================================================================
+    # Stopping criterion
+    StopCriteria = ['reach_1','saturate_10']
+    NbGen=2
+    NbPop=5
+    MatingProb = 0.2
+    NbMating = max(2,int(NbPop*MatingProb))
+    MutationProb = 0.1
+    low,high = 0,1 
+    TC_space = [range(len(CandidateSurfaces)), {'low':low,'high':high},{'low':low,'high':high}]
+    ga_instance = GA(num_generations=NbGen,
+                     num_parents_mating=NbMating,
+                     gene_space=TC_space*NbTC,
+                     sol_per_pop=NbPop,
+                     num_genes=NbTC*3,
+                     fitness_func=GA_func,
+                     on_fitness=update_func,
+                     parent_selection_type='rank',
+                     crossover_probability=1,
+                     mutation_probability=MutationProb,
+                     save_best_solutions=True,
+                     stop_criteria=StopCriteria)
+
+    ga_instance.run()
+
+    fitnesses = -1*np.array(ga_instance.best_solutions_fitness)
+
+    if (fitnesses==1).any(): 
+        # multiple solutions, so we give 5 examples
+        TC_configs = []
+        for ix in np.where(fitnesses==1)[0]:
+            TC_config = _gene2surface(CandidateSurfaces,ga_instance.best_solutions[ix])
+            TC_configs.append(TC_config)
+            if len(TC_configs)==5:break
+    else: 
+        # only one configuration gives the best score
+        TC_configs = [ _gene2surface(CandidateSurfaces,ga_instance.best_solutions[np.argmin(fitnesses)])]
+
+    print("\nOptimal thermocouple configuration\n")
+    for TC_config in TC_configs:
+        for surf_name,x1,x2 in TC_config:
+            print("{}, ({:.4f},{:.4f})".format(surf_name,x1,x2))
+
+        # ======================================================================
+    # plot ga performance
+    plt.figure()
+    plt.plot(fitnesses, linewidth=2, marker='x', color='k')
+    plt.xlabel('Generation',fontsize=14)
+    plt.ylabel("No. admissible fields (avg)",fontsize=14)
+    plt.savefig("{}/GA_history.png".format(DataDict['CALC_DIR']))
+    plt.close()
+
+    config_dir = "{}/OptimalConfig".format(DataDict['CALC_DIR'])
+    if os.path.isdir(config_dir): shutil.rmtree(config_dir)
+    os.makedirs(config_dir)
+    tc_coords = _LocationTC(TC_configs[0],meshfile)
+    args = [meshfile,tc_coords,config_dir]
+    paravis_evals = [['PlotTC',args]]
+
+    ParaViS.RunEval(PVFile,paravis_evals,GUI=True)    
+
+
+def _nb_field_avg_wrap(model,CandidateSurfaces,meshfile,temp_fields,NbInit=50):
+    def scoring(ga_instance,solution,solution_idx):
+        # convert number system for surfaces to names
+        TC_config = _gene2surface(CandidateSurfaces,solution)
+        score = _nb_field_avg(model,TC_config,meshfile,temp_fields,NbInit=NbInit)
+        return -1*score # since the algorithm is seeking for maxima
+    return scoring
+
+def _gene2surface(CandidateSurfaces,solution):
+    return [[CandidateSurfaces[int(solution[i])], solution[i+1], solution[i+2]] for i in range(0,len(solution),3)]
+
+def _update_wrap(CandidateSurfaces):
+    def _update(ga_instance,junk):
+        ''' Used by pygad to print update at each generation.'''
+        num_gen = ga_instance.generations_completed
+
+        gen_sol, best_gen = ga_instance.best_solution(ga_instance.last_generation_fitness)[:2]
+
+        best_prev = max(ga_instance.best_solutions_fitness) if num_gen>0 else 0
+
+        print('\n==================================================')
+        print("Generation: {}, Best gen.: {:.4f}, Best prev: {:.4f}".format(num_gen, -1*best_gen, -1*best_prev))
+
+        if num_gen==0 or (num_gen>0 and best_gen>best_prev):
+            print("Best Placements:\n")
+            TC_config = _gene2surface(CandidateSurfaces,gen_sol)
+            for surf_name,x1,x2 in TC_config:
+                print("{}, ({:.4f},{:.4f})".format(surf_name,x1,x2))
+    return _update
+
+def _nb_field_avg(model,TC_config,meshfile,temp_fields,NbInit=50):
+    '''
+    Calculate the number of admissible fields which work for a given thermocouple configuration.
+    This score is averaged out over the number of fields in temp_fields for an unbiased estimate.
+    model: the ML model used
+    TC_config: the thermocouple configuration
+    meshfile: path to the MED meshfile
+    temp_fields: the 'ground truth' temperature fields extracted from simulations
+    '''
+    if temp_fields.ndim==1: temp_fields = [temp_fields]
+
+    interpolation = _InterpolateTC(TC_config,meshfile)
+    nb_field = []
+    for temp_field in temp_fields:
+        temp_at_TC =_TCValues(interpolation,temp_field)
+        cd,val = _InverseTC(model,temp_at_TC,interpolation,NbInit=NbInit)
+        unique_parameters,unique_field = _UniqueSol(model,cd,meshfile)
+        _nb_field = len(unique_parameters)
+        if _nb_field!=0: 
+            nb_field.append(_nb_field)
+    return np.mean(nb_field)
 
 def _LocationTC(TC_config,meshfile):
     # returns the coordinates of the thermocouples

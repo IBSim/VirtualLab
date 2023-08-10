@@ -14,9 +14,10 @@ from Scripts.Common.VirtualLab import VLSetup
 
 CoilType='Pancake' # this can be 'Pancake' or 'HIVE'
 EstimatedField_GPR = False
-Sensitivity_GPR = True
+Sensitivity_GPR = False
 EstimatedField_MLP = False
-Sensitivity_MLP = True
+Sensitivity_MLP = False
+Optimise_MLP = True
 
 # ====================================================================
 # Setup VirtualLab
@@ -73,6 +74,22 @@ VirtualLab.Parameters(main_parameters,RunDA=Sensitivity_GPR)
 
 VirtualLab.DA()
 
+# optimise the location of thermocouples
+DA = Namespace()
+DA.Name = 'Analysis/{}/Thermocouple/GPR/Optimise'.format(CoilType)
+DA.File = ('Thermocouple','Optimise_GPR')
+DA.MLModel = 'Temperature/GPR'
+DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
+# create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
+DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
+DA.CandidateSurfaces = ['TileSideA','TileSideB','TileFront','TileBack','BlockFront','BlockBack','BlockBottom']
+DA.NbThermocouples = 3
+
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=Optimise_MLP)
+
+VirtualLab.DA()
 
 
 # ====================================================================
@@ -118,5 +135,22 @@ DA.NbConfig = 5 # number of random combinations of thermocouple placements to te
 main_parameters = Namespace(DA=DA)
 
 VirtualLab.Parameters(main_parameters,RunDA=Sensitivity_MLP)
+
+VirtualLab.DA()
+
+# optimise the location of thermocouples
+DA = Namespace()
+DA.Name = 'Analysis/{}/Thermocouple/MLP/Optimise'.format(CoilType)
+DA.File = ('Thermocouple','Optimise_MLP')
+DA.MLModel = 'Temperature/MLP'
+DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
+# create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
+DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
+DA.CandidateSurfaces = ['TileSideA','TileSideB','TileFront','TileBack','BlockFront','BlockBack','BlockBottom']
+DA.NbThermocouples = 3
+
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=Optimise_MLP)
 
 VirtualLab.DA()

@@ -1,15 +1,10 @@
 
 import os
-import sys
-import shutil
-import pandas as pd
 
 import numpy as np
 import torch
-import gpytorch
 
-from Scripts.Common.tools import MEDtools
-from Scripts.Common.ML import ML, NN, Adaptive
+from Scripts.Common.ML import ML, NN
 
 dtype = 'float64' # float64 is more accurate for optimisation purposes
 torch_dtype = getattr(torch,dtype)

@@ -314,11 +314,27 @@ def PCA(Data,centre=True):
     return U,s,VT
 
 
-def PCA_threshold(eigens,threshold):
+def _PCA_threshold(eigens,threshold):
     eigens_cs = np.cumsum(eigens)
     eigens_cs = eigens_cs/eigens_cs[-1] # scaled cumulative sum
     threshold_ix = np.argmax( eigens_cs >= threshold) + 1
     return threshold_ix
+
+def PCA_threshold_eigen(eigenvalues,threshold):
+    if type(threshold)==list:
+        threshold_ix = [_PCA_threshold(eigenvalues,_threshold) for _threshold in threshold]
+    else:
+        threshold_ix = _PCA_threshold(eigenvalues,threshold)
+    return threshold_ix
+
+def PCA_threshold(s,threshold):
+    eigenvalues = GetEigenvalues(s)
+    return PCA_threshold_eigen(eigenvalues,threshold)
+
+def GetEigenvalues(s):
+    rank = len(s)
+    eigenvalues = s**2
+    return eigenvalues/(rank-1)
 
 def GetPC(Data,metric={},centre=True,check_variance=False):
     _data = np.copy(Data)
@@ -356,36 +372,37 @@ def PCA_track(TrainData,TestData,centre=True):
 
     U,s,VT = PCA(TrainData,centre=False)
 
-    Traindata_compress = TrainData.dot(VT.T)
-    Testdata_compress = TestData.dot(VT.T)
+    return PCA_sensitivity(VT,TrainData,TestData)
 
-    train_recon,test_recon = np.zeros(TrainData.shape),np.zeros(TestData.shape)
-    train_rmse,test_rmse = [],[]
-    for i in range(VT.shape[0]):
-        train_recon += Traindata_compress[:,i:i+1].dot(VT[i:i+1])
-        _train_rmse = RMSE(train_recon,TrainData, axis=0).mean()
-        train_rmse.append(_train_rmse)
+def _PCA_sensitivity(VT,data):
+    data_compress = data.dot(VT.T)
+    recon = np.zeros(data.shape)
+    rmse = []
+    for i,vt in enumerate(VT):
+        recon += np.outer(data_compress[:,i],vt)
+        _rmse = RMSE(recon,data, axis=0).mean()
+        rmse.append(_rmse)
+    return rmse
 
-        test_recon += Testdata_compress[:,i:i+1].dot(VT[i:i+1])
-        _test_rmse = RMSE(test_recon,TestData, axis=0).mean()
-        test_rmse.append(_test_rmse)
-
-    return train_rmse,test_rmse
+def PCA_sensitivity(VT,TrainData,TestData):
+    return _PCA_sensitivity(VT,TrainData), _PCA_sensitivity(VT,TestData)
 
 
-def PCA_check_convergence(loss_data,convergence=0.99,nb_convergence=3):
+def PCA_recon_convergence(loss_data,convergence=0.99,nb_convergence=3):
     loss_data = np.array(loss_data)
     frac = loss_data[1:]/loss_data[:-1]
 
+    ix = len(loss_data)-1
     for j in range(len(frac) - nb_convergence):
         check_conv = frac[j:j+nb_convergence]
         if (np.array(check_conv)>convergence).all():
+            ix = j
             break
-    return j
+    return ix
 
 def PCA_convergence(TrainData,TestData,centre=True):
     train_rmse,test_rmse = PCA_track(TrainData,TestData,centre=centre)
-    convergence_ix = _PCA_check_convergence(test_rmse)
+    convergence_ix = PCA_recon_convergence(test_rmse)
     return convergence_ix
 
 

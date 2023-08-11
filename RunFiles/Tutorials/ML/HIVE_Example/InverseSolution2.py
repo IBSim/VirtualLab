@@ -15,10 +15,11 @@ from Scripts.Common.VirtualLab import VLSetup
 
 
 CoilType='Pancake' # this can be 'Pancake' or 'HIVE'
-CreateGPR = True
-AnalyseGPR = True
-CreateMLP = True
-AnalyseMLP = True
+PCA_Analysis = True
+CreateGPR = False
+AnalyseGPR = False
+CreateMLP = False
+AnalyseMLP = False
 
 # ====================================================================
 # Setup VirtualLab
@@ -30,6 +31,18 @@ VirtualLab.Settings(Launcher='sequential',NbJobs=1)
 DataFile = '{}_coil/VMNodal.hdf'.format(CoilType)
 if not VirtualLab.InProject(DataFile):
     pass # Download data from somewhere (and possibly mesh)
+
+DA = Namespace()
+DA.Name = 'Analysis/{}/InverseSolution_VM/PCA_Sensitivity'.format(CoilType)
+DA.File = ('MLtools','PCA_Sensitivity')
+DA.TrainData = [DataFile, 'Features', 'VonMises',{'group':'Train'}]
+DA.TestData = [DataFile, 'Features', 'VonMises',{'group':'Test'}]
+
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=PCA_Analysis)
+
+VirtualLab.DA()
 
 # ====================================================================
 # GPR analysis
@@ -56,7 +69,7 @@ VirtualLab.ML()
 # ====================================================================
 # analyse performance of GPR model
 DA = Namespace()
-DA.Name = 'Analysis/InverseSolution_VM/GPR_{}'.format(CoilType)
+DA.Name = 'Analysis/{}/InverseSolution_VM/GPR'.format(CoilType)
 DA.File = ('InverseSolution','AnalysisVM_GPR')
 DA.MLModel_T = 'Temperature/GPR'
 DA.MLModel_VM = 'VonMises/GPR'
@@ -97,7 +110,7 @@ VirtualLab.ML()
 # ====================================================================
 # analyse performance of MLP model
 DA = Namespace()
-DA.Name = 'Analysis/InverseSolution_VM/MLP_{}'.format(CoilType)
+DA.Name = 'Analysis/{}/InverseSolution_VM/MLP'.format(CoilType)
 DA.File = ('InverseSolution','AnalysisVM_MLP')
 DA.MLModel_T = 'Temperature/MLP'
 DA.MLModel_VM = 'VonMises/MLP'

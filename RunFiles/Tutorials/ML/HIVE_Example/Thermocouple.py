@@ -15,6 +15,7 @@ from Scripts.Common.VirtualLab import VLSetup
 CoilType='Pancake' # this can be 'Pancake' or 'HIVE'
 EstimatedField_GPR = False
 Sensitivity_GPR = False
+Optimise_GPR = False
 EstimatedField_MLP = False
 Sensitivity_MLP = False
 Optimise_MLP = True
@@ -36,7 +37,7 @@ DataFile = '{}_coil/TempNodal.hdf'.format(CoilType) # data already downloaded fo
 DA = Namespace()
 DA.Name = 'Analysis/{}/Thermocouple/GPR/Comparison'.format(CoilType)
 DA.File = ('Thermocouple','FullFieldEstimate_GPR')
-DA.MLModel = 'Temperature/GPR'
+DA.MLModel = 'Temperature/{}/GPR'.format(CoilType)
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
 # create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
@@ -60,7 +61,7 @@ VirtualLab.DA()
 DA = Namespace()
 DA.Name = 'Analysis/{}/Thermocouple/GPR/Sensitivity'.format(CoilType)
 DA.File = ('Thermocouple','Sensitivity_GPR')
-DA.MLModel = 'Temperature/GPR'
+DA.MLModel = 'Temperature/{}/GPR'.format(CoilType)
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 # create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
 DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
@@ -78,7 +79,7 @@ VirtualLab.DA()
 DA = Namespace()
 DA.Name = 'Analysis/{}/Thermocouple/GPR/Optimise'.format(CoilType)
 DA.File = ('Thermocouple','Optimise_GPR')
-DA.MLModel = 'Temperature/GPR'
+DA.MLModel = 'Temperature/{}/GPR'.format(CoilType)
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 # create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
 DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
@@ -87,7 +88,7 @@ DA.NbThermocouples = 3
 
 main_parameters = Namespace(DA=DA)
 
-VirtualLab.Parameters(main_parameters,RunDA=Optimise_MLP)
+VirtualLab.Parameters(main_parameters,RunDA=Optimise_GPR)
 
 VirtualLab.DA()
 
@@ -101,7 +102,7 @@ VirtualLab.DA()
 DA = Namespace()
 DA.Name = 'Analysis/{}/Thermocouple/MLP/Compare'.format(CoilType)
 DA.File = ('Thermocouple','FullFieldEstimate_MLP')
-DA.MLModel = 'Temperature/MLP'
+DA.MLModel = 'Temperature/{}/MLP'.format(CoilType)
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
 # create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
@@ -124,7 +125,7 @@ VirtualLab.DA()
 DA = Namespace()
 DA.Name = 'Analysis/{}/Thermocouple/MLP/Sensitivity'.format(CoilType)
 DA.File = ('Thermocouple','Sensitivity_MLP')
-DA.MLModel = 'Temperature/MLP'
+DA.MLModel = 'Temperature/{}/MLP'.format(CoilType)
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 # create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
 DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]
@@ -142,7 +143,7 @@ VirtualLab.DA()
 DA = Namespace()
 DA.Name = 'Analysis/{}/Thermocouple/MLP/Optimise'.format(CoilType)
 DA.File = ('Thermocouple','Optimise_MLP')
-DA.MLModel = 'Temperature/MLP'
+DA.MLModel = 'Temperature/{}/MLP'.format(CoilType)
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 # create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
 DA.TestData = [DataFile, 'Features', 'Temperature',{'group':'Test'}]

@@ -48,7 +48,7 @@ ML = Namespace(Name = [],ModelParameters=[])
 GPR_kernels = ['RBF','Matern_0.5','Matern_1.5','Matern_2.5']
 for kernel in GPR_kernels:
     ML.ModelParameters.append({'kernel':kernel})
-    ML.Name.append("PV/GPR/{}".format(kernel))
+    ML.Name.append("PV/{}/GPR/{}".format(CoilType,kernel))
 
 var_parameters = Namespace(ML=ML) 
 
@@ -61,7 +61,7 @@ VirtualLab.ML()
 # analyse performance of GPR model
 
 DA = Namespace()
-DA.Name = "Analysis/PowerVariation_GPR_{}".format(CoilType)
+DA.Name = "Analysis/{}/PowerVariation/GPR".format(CoilType)
 DA.File = ['PowerVariation','GPR_compare']
 DA.MLModels = var_parameters.ML.Name # use the models defined earlier
 DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # unseen data to analyse performance
@@ -76,9 +76,9 @@ VirtualLab.DA()
 # create performance envelope
 
 DA = Namespace()
-DA.Name = "Analysis/PowerVariation_GPR_{}".format(CoilType)
+DA.Name = "Analysis/{}/PowerVariation/GPR".format(CoilType)
 DA.File = ['PowerVariation','Insight_GPR']
-DA.MLModel = "PV/GPR/RBF" # chose a single model to gain insight from
+DA.MLModel = "PV/{}/GPR/RBF".format(CoilType) # chose a single model to gain insight from
 main_parameters = Namespace(DA=DA)
 
 VirtualLab.Parameters(main_parameters,RunDA=AnalyseGPR)
@@ -106,7 +106,7 @@ Architectures = [[32,32],[16,32,16],[8,16,8,4]] # the hidden layers of the MLP
 for architecture in Architectures:
     ML.ModelParameters.append({'Architecture':architecture})
     arch_str = '_'.join(map(str,architecture)) # convert architecture to string and save under that name
-    ML.Name.append("PV/MLP/{}".format(arch_str))
+    ML.Name.append("PV/{}/MLP/{}".format(CoilType,arch_str))
 
 var_parameters = Namespace(ML=ML) 
 
@@ -120,7 +120,7 @@ VirtualLab.ML()
 # analyse performance of MLP model
 
 DA = Namespace()
-DA.Name = "Analysis/PowerVariation_MLP_{}".format(CoilType) # results will be saved to same directory as before
+DA.Name = "Analysis/{}/PowerVariation/MLP".format(CoilType) # results will be saved to same directory as before
 DA.File = ['PowerVariation','MLP_compare']
 DA.MLModels = var_parameters.ML.Name # use the models defined earlier
 DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # unseen data to analyse performance
@@ -135,9 +135,9 @@ VirtualLab.DA()
 # create performance envelope
 
 DA = Namespace()
-DA.Name = "Analysis/PowerVariation_MLP_{}".format(CoilType)
+DA.Name = "Analysis/{}/PowerVariation/MLP".format(CoilType)
 DA.File = ['PowerVariation','Insight_MLP']
-DA.MLModel = "PV/MLP/32_32" # chose a single model to gain insight from
+DA.MLModel = "PV/{}/MLP/32_32".format(CoilType) # chose a single model to gain insight from
 main_parameters = Namespace(DA=DA)
 
 VirtualLab.Parameters(main_parameters,RunDA=AnalyseMLP)

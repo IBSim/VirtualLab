@@ -13,10 +13,11 @@ from Scripts.Common.VirtualLab import VLSetup
 
 
 CoilType='Pancake' # this can be 'Pancake' or 'HIVE'
+PCA_Analysis = True
 CreateGPR = False
-AnalyseGPR = True
+AnalyseGPR = False
 CreateMLP = False
-AnalyseMLP = True
+AnalyseMLP = False
 
 
 # ====================================================================
@@ -30,6 +31,19 @@ DataFile = '{}_coil/JouleHeating.hdf'.format(CoilType)
 if not VirtualLab.InProject(DataFile):
     pass # Download data from somewhere
 
+
+DA = Namespace()
+DA.Name = 'Analysis/{}/HeatingProfile/PCA_Sensitivity'.format(CoilType)
+DA.File = ('MLtools','PCA_Sensitivity')
+DA.TrainData = [DataFile, 'Features', 'SurfaceJH',{'group':'Train'}]
+DA.TestData = [DataFile, 'Features', 'SurfaceJH',{'group':'Test'}]
+
+main_parameters = Namespace(DA=DA)
+
+VirtualLab.Parameters(main_parameters,RunDA=PCA_Analysis)
+
+VirtualLab.DA()
+
 # ====================================================================
 # GPR analysis
 # ====================================================================
@@ -38,7 +52,7 @@ if not VirtualLab.InProject(DataFile):
 # Define GPR parameters to create model
 
 ML = Namespace()
-ML.Name = 'HeatProfile/GPR'
+ML.Name = 'HeatProfile/{}/GPR'.format(CoilType)
 ML.File = ('GPR_Models','GPR_PCA_hdf5')
 ML.TrainingParameters = {'Epochs':1000,'lr':0.05,'Print':50}
 ML.TrainData = [DataFile, 'Features', 'SurfaceJH',{'group':'Train'}]
@@ -55,9 +69,9 @@ VirtualLab.ML()
 # ====================================================================
 # analyse performance of GPR model
 DA = Namespace()
-DA.Name = 'Analysis/HeatingProfile/GPR_{}'.format(CoilType)
+DA.Name = 'Analysis/{}/HeatingProfile/GPR'.format(CoilType)
 DA.File = ('HeatingProfile','CreateImage_GPR')
-DA.MLModel = 'HeatProfile/GPR'
+DA.MLModel = 'HeatProfile/{}/GPR'.format(CoilType)
 # TODO: Download this mesh with data
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 DA.TestData = [DataFile, 'Features', 'SurfaceJH',{'group':'Test'}]
@@ -79,7 +93,7 @@ VirtualLab.DA()
 # Define MLP parameters to create model
 
 ML = Namespace()
-ML.Name = 'HeatProfile/MLP'
+ML.Name = 'HeatProfile/{}/MLP'.format(CoilType)
 ML.File = ('NN_Models','MLP_PCA_hdf5')
 ML.TrainingParameters = {'Epochs':1000,'lr':0.005,'Print':50}
 ML.TrainData = [DataFile, 'Features', 'SurfaceJH',{'group':'Train'}]
@@ -97,9 +111,9 @@ VirtualLab.ML()
 # ====================================================================
 # analyse performance of MLP model
 DA = Namespace()
-DA.Name = 'Analysis/HeatingProfile/MLP_{}'.format(CoilType)
+DA.Name = 'Analysis/{}/HeatingProfile/MLP'.format(CoilType)
 DA.File = ('HeatingProfile','CreateImage_MLP')
-DA.MLModel = 'HeatProfile/MLP'
+DA.MLModel = 'HeatProfile/{}/MLP'.format(CoilType)
 # TODO: Download this mesh with data
 DA.MeshName = 'HIVE_component' # name of the mesh used to generate the analysis (see DataCollect.py)
 DA.TestData = [DataFile, 'Features', 'SurfaceJH',{'group':'Test'}]

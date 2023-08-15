@@ -7,7 +7,7 @@ ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
     LANGUAGE=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
-    PATH="/home/ibsim/VirtualLab/bin:/opt/ERMES/ERMES-CPlas-v12.5:/opt/SalomeMeca/appli_V2019.0.3_universal:${PATH}" \
+    PATH="/home/ibsim/VirtualLab/bin:/opt/ERMES/ERMES-CPlas-v12.5:/opt/SalomeMeca/appli_V2019.0.3_universal:/home/ibsim/miniconda3/bin:${PATH}" \
     BASH_ENV=/home/ibsim/patch.sh
 
 # Get Ubuntu updates and basic packages
@@ -34,21 +34,22 @@ WORKDIR /tmp
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=linux
 # Install miniconda instead of full anaconda to space space in final image.
-#RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-#bash Miniconda3-latest-Linux-x86_64.sh -b && \
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+bash Miniconda3-latest-Linux-x86_64.sh -b && \
 #chmod a+rwx /opt/miniconda3 && \
-#sudo rm Miniconda3-latest-Linux-x86_64.sh
+sudo rm Miniconda3-latest-Linux-x86_64.sh
 
 # uncomment this line and lines to use local copy of slaome instead of downloading every time. 
 # Can be useful since the download is flaky
 #COPY misc/salome_meca-2019.0.3-1-universal.tgz /home/ibsim/salome_meca-2019.0.3-1-universal.tgz
 
-# Download and install VirtualLab and its requirements
 ARG branch=RL_InstallUpdate
+
+# Download and install VirtualLab and its requirements
 RUN sudo chmod 755 /home/ibsim/patch.sh && \
     wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_VirtualLab.sh?inline=false && \
     chmod 755 Install_VirtualLab.sh && \
-    sudo ./Install_VirtualLab.sh -b ${branch} -S y -E y -P n -y && \
+    sudo ./Install_VirtualLab.sh -b ${branch} -S y -E y -P c -y && \
     sudo rm /home/ibsim/VirtualLab/Scripts/Install/ERMES-CPlas-v12.5.zip && \
     sudo rm /home/ibsim/salome_meca-2019.0.3-1-universal.run && \
     sudo rm /home/ibsim/salome_meca-2019.0.3-1-universal.tgz && \

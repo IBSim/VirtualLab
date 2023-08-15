@@ -49,7 +49,7 @@ ARG branch=RL_InstallUpdate
 RUN sudo chmod 755 /home/ibsim/patch.sh && \
     wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_VirtualLab.sh?inline=false && \
     chmod 755 Install_VirtualLab.sh && \
-    sudo ./Install_VirtualLab.sh -b ${branch} -S y -E y -P c -y && \
+    sudo ./Install_VirtualLab.sh -b ${branch} -S y -E y -P n -y && \
     sudo rm /home/ibsim/VirtualLab/Scripts/Install/ERMES-CPlas-v12.5.zip && \
     sudo rm /home/ibsim/salome_meca-2019.0.3-1-universal.run && \
     sudo rm /home/ibsim/salome_meca-2019.0.3-1-universal.tgz && \

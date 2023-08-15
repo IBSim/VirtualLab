@@ -33,11 +33,6 @@ USER ibsim
 WORKDIR /tmp
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=linux
-# Install miniconda instead of full anaconda to space space in final image.
-#RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-#bash Miniconda3-latest-Linux-x86_64.sh -b && \
-#chmod a+rwx /opt/miniconda3 && \
-#sudo rm Miniconda3-latest-Linux-x86_64.sh
 
 # uncomment this line and lines to use local copy of slaome instead of downloading every time. 
 # Can be useful since the download is flaky
@@ -45,14 +40,18 @@ ENV TERM=linux
 
 # Download and install VirtualLab and its requirements
 ARG branch=RL_InstallUpdate
-RUN sudo chmod 755 /home/ibsim/patch.sh && \
-    wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_VirtualLab.sh?inline=false && \
-    chmod 755 Install_VirtualLab.sh && \
-    sudo ./Install_VirtualLab.sh -b ${branch} -S y -E y -P n -y && \
-    sudo rm /home/ibsim/VirtualLab/Scripts/Install/ERMES-CPlas-v12.5.zip && \
-    sudo rm /home/ibsim/salome_meca-2019.0.3-1-universal.run && \
-    sudo rm /home/ibsim/salome_meca-2019.0.3-1-universal.tgz && \
+
+RUN sudo chmod 755 /home/ibsim/patch.sh 
+
+RUN wget -O Install_Salome.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_Salome.sh?inline=false && \
+    chmod 755 Install_Salome.sh && \
+    sudo ./Install_Salome.sh && \
     mkdir /home/ibsim/flasheur && \
     chmod 777 /home/ibsim/flasheur
+
+RUN wget -O Install_ERMES.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_ERMES.sh?inline=false && \
+    chmod 755 Install_ERMES.sh && \
+    sudo ./Install_ERMES.sh && \
+
 USER root
 

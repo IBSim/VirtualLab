@@ -1,0 +1,67 @@
+# Not working
+
+#FROM ibsim/base:latest
+FROM quay.io/tianyikillua/code_aster:v13
+# Build script amended from https://github.com/tianyikillua/code_aster_on_docker
+
+# Set locale environment
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    LANGUAGE=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive \
+    PATH="/home/ibsim/VirtualLab/bin:/opt/ERMES/ERMES-CPlas-v12.5:/home/ibsim/miniconda3/bin:${PATH}" \
+    BASH_ENV=/home/ibsim/patch.sh
+
+# Get Ubuntu updates and basic packages
+USER root
+
+RUN apt-get update && \
+    apt-get upgrade -y --with-new-pkgs -o Dpkg::Options::="--force-confold" && \
+    apt-get install -y \
+    ubuntu-drivers-common \
+    tzdata \
+    unzip \
+    xterm \
+    libglu1 \
+    nano \
+    git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Add a new user
+RUN adduser --disabled-password --gecos "" ibsim && \
+    adduser ibsim sudo && \
+    echo "%sudo ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    chown -R ibsim /home/ibsim && \
+    chmod +x /etc/my_init.d/set-home-permissions.sh
+
+# Create a sharable zone
+USER ibsim
+RUN touch /home/ibsim/.sudo_as_admin_successful && \
+    mkdir /home/ibsim/shared
+VOLUME /home/ibsim/shared
+
+COPY misc/patch.sh /home/ibsim/patch.sh
+
+WORKDIR /tmp
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=linux
+# Install miniconda instead of full anaconda to space space in final image.
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+bash Miniconda3-latest-Linux-x86_64.sh -b && \
+rm Miniconda3-latest-Linux-x86_64.sh
+
+
+COPY misc/set-home-permissions.sh /etc/my_init.d/set-home-permissions.sh
+
+USER ibsim
+# Download and install VirtualLab and its requirements
+RUN sudo chmod 755 /home/ibsim/patch.sh && \
+    wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/BT-Container/Scripts/Install/Install_VirtualLab.sh?inline=false && \
+    chmod 755 Install_VirtualLab.sh && \
+    sudo ./Install_VirtualLab.sh -S y -E y -P c -y && \
+    sudo rm /home/ibsim/VirtualLab/Scripts/Install/ERMES-CPlas-v12.5.zip && /
+    mkdir /home/ibsim/flasheur && /
+    chmod 777 /home/ibsim/flasheur
+
+USER root

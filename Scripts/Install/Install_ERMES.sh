@@ -27,6 +27,9 @@ else
   sudo -u ${SUDO_USER:-$USER} echo '  export PATH="'$ERMES_DIR'/'$ERMES_VER':$PATH"'  >> $USER_HOME/.bashrc
   export PATH="$ERMES_DIR"/"$ERMES_VER:$PATH"
 
+  # delete downloads to reduce size of container
+  rm $ERMES_VER.zip
+
   ### Test to check if adding to path worked
   if hash ERMESv12.5 2>/dev/null; then
     ### If exists

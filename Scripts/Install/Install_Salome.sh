@@ -83,6 +83,13 @@ else
   sudo -u ${SUDO_USER:-$USER} echo 'export PATH="'$SALOME_DIR'/appli_'$SALOME_BIN':$PATH"'  >> $USER_HOME/.bashrc
   export PATH="$SALOME_DIR"/appli_"$SALOME_BIN:$PATH"
 
+  # delete downloads to reduce size of container
+  rm "$SALOME_VER".tgz
+  rm "$SALOME_VER".run
+
+  mkdir $USER_HOME/flasheur
+  chmod 777 $USER_HOME/flasheur
+
   ### Test to check if adding to path worked
   if hash salome 2>/dev/null; then
     ### If exists

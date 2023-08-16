@@ -149,8 +149,11 @@ if [[ $EUID -ne 0 ]]; then
    echo 'Re-run with "sudo ./Install_VirtualLab.sh {options}".'
    exit_abnormal
 fi
-while getopts "d:AP:S:E:C:G:yh" options; do
+while getopts "b:d:AP:S:E:C:G:yh" options; do
   case "${options}" in
+    b)
+      BRANCH=${OPTARG}
+      ;;  
     d)
       VL_DIR=$(readlink -m ${OPTARG})
       echo " - VirtualLab will be installed in '$VL_DIR'."
@@ -387,7 +390,7 @@ else
 fi
 #END
 
-sudo -u ${SUDO_USER:-$USER} git checkout dev
+sudo -u ${SUDO_USER:-$USER} git checkout $BRANCH
 ### Run initial VirtualLab setup
 echo
 
@@ -412,7 +415,7 @@ else
   banner "Skipping python installation" "blue" "*"
 fi
 
-check_for_conda
+# check_for_conda
 
 ### Install salome if flagged
 if [ "$SALOME_INST" == "y" ]; then

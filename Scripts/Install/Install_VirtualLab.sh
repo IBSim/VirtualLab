@@ -394,14 +394,14 @@ sudo -u ${SUDO_USER:-$USER} git checkout $BRANCH
 ### Run initial VirtualLab setup
 echo
 
-source "$VL_DIR/SetupConfig.sh"
+# source "$VL_DIR/SetupConfig.sh"
 #./SetupConfig.sh
 #sudo -u ${SUDO_USER:-$USER} ./SetupConfig.sh
 
 #sudo chown $(basename "${SUDO_USER}") $VL_DIR/VLconfig.py
-sudo chown ${SUDO_USER} $VL_DIR/VLconfig.py
-chmod 0755 $VL_DIR/VLconfig.py
-source "$VL_DIR/VLconfig.py"
+#sudo chown ${SUDO_USER} $VL_DIR/VLconfig.py
+#chmod 0755 $VL_DIR/VLconfig.py
+#source "$VL_DIR/VLconfig.py"
 
 #: <<'END'
 ### Install/configure python/conda if flagged

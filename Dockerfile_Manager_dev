@@ -34,8 +34,8 @@ ENV TERM=linux
 
 RUN sudo chmod 755 /home/ibsim/patch.sh
 
+ARG branch=RL_dev
 # Download and install VirtualLab and its requirements
-ARG branch=RL_InstallUpdate
 RUN wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_VirtualLab.sh && \
     chmod 755 Install_VirtualLab.sh && \
     sudo ./Install_VirtualLab.sh -b ${branch} -P y -y

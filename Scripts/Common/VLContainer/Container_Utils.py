@@ -4,6 +4,10 @@ import pickle
 import sys
 import subprocess
 import os
+import uuid
+
+
+
 
 def _tmpfile_pkl(tempdir="/tmp"):
     import uuid
@@ -493,26 +497,58 @@ def log_net_info(logger, message, screen=False):
         logger.debug(message)
 
 
-def update_container(Apptainer_file, Module):
-    import os
-    import subprocess
 
-    # check apptainer sif file exists and if not build from docker version
-    if not os.path.exists(Apptainer_file):
-        print(
-            f"Apptainer file {Apptainer_file} does not appear to exist so building. This may take a while."
+def build_container(Apptainer_file, container_loc):
+    try:
+        os.makedirs(os.path.dirname(Apptainer_file),exist_ok=True) # make sure the directory exists for the container to go into 
+        proc = subprocess.check_call(
+            f"apptainer build "
+            f'{Apptainer_file} {container_loc}',
+            shell=True,
         )
-        try:
-            os.makedirs(os.path.dirname(Apptainer_file),exist_ok=True) # make sure the directory exists for the container to go into 
-            proc = subprocess.check_call(
-                f"apptainer build "
-                f'{Apptainer_file} docker://{Module["Docker_url"]}:{Module["Tag"]}',
-                shell=True,
-            )
-        except subprocess.CalledProcessError as E:
-            print(E.stderr)
-            raise E
+    except subprocess.CalledProcessError as E:
+        print(E.stderr)
+        raise E
     return
+
+def get_container_path(Module):
+    return f'docker://{Module["Docker_url"]}:{Module["Tag"]}'
+
+def _upgrade_container(Apptainer_file,container_loc):
+
+    basename,ext = os.path.splitext(Apptainer_file)
+    random_suffix = str(uuid.uuid4())
+    Apptainer_file_tmp = "{}_{}{}".format(basename,random_suffix,ext)
+
+    ret = build_container(Apptainer_file_tmp,container_loc)
+    os.remove(Apptainer_file)
+    os.rename(Apptainer_file_tmp,Apptainer_file)
+
+    return ret
+
+def upgrade_container(ContainerName,Apptainer_file, container_loc):
+    print(f'Building {ContainerName} container\n')
+    if os.path.exists(Apptainer_file):
+        return _upgrade_container(Apptainer_file,container_loc)
+    elif not os.path.exists(Apptainer_file):
+        return build_container(Apptainer_file, container_loc)
+    
+def check_container(ContainerName,Apptainer_file,container_loc):
+    # check apptainer sif file exists and if not build from docker version
+    if os.path.exists(Apptainer_file): return 
+
+    print("Container doesn't seem to exist so building\n")
+    print_container_info(ContainerName,Apptainer_file,container_loc)
+    print('This may take a while\n')
+
+    return build_container(Apptainer_file,container_loc)
+
+def print_container_info(ContainerName,Apptainer_file,container_loc):
+    print(f"Container name: {ContainerName}")
+    print(f"Repo name: {container_loc}")
+    print(f"Container location: {Apptainer_file}\n")
+
+
 
 
 def get_vlab_dir(parsed_dir=None):

@@ -18,6 +18,7 @@ from pathlib import Path
 import pickle
 
 from Scripts.VLServer import Server_utils as Utils
+import Scripts.Common.VLContainer.Container_Utils as CU
 from Scripts.Common.VLContainer.Container_Utils import (
     check_platform,
     send_data,
@@ -30,7 +31,6 @@ from Scripts.Common.VLContainer.Container_Utils import (
     Exec_Container_Manager,
     MPI_Container_Manager,
     get_vlab_dir,
-    update_container,
     is_bound,
     create_tcp_socket
 )
@@ -40,6 +40,7 @@ vlab_dir = get_vlab_dir()
 config_dict = Utils.filetodict("{}/VLconfig.py".format(vlab_dir))
 ContainerDir = config_dict.get('ContainerDir',f"{vlab_dir}/Containers")
 
+VL_MOD = Utils.load_module_config(vlab_dir)
 
 ##########################################################################################
 ####################  ACTUAL CODE STARTS HERE !!!! #######################################
@@ -94,7 +95,13 @@ def main():
         "--bind",
         help="Additional files/directories to mount to containers.",
         default='',
-    )    
+    )
+    parser.add_argument(
+        "-U",
+        "--upgrade_container",
+        help="Force containers to be pulled to get newest versions.",
+        default=''
+    )           
     # parser.add_argument(
     #     "-C",
     #     "--nvccli",
@@ -112,9 +119,19 @@ def main():
     #     action="store_false",
     # )
 
+    ##############################################################
+    # check for any unknown arguments parsed
     args, unknownargs = parser.parse_known_args()
     if unknownargs:
-       sys.exit(f'Unknown option: {unknownargs[0]}')
+       print(f'Unknown option: {unknownargs[0]}\n')
+       parser.print_help(sys.stderr)
+       sys.exit(1)
+
+    ###############################################################
+    # upgrade containers if flag used
+    if args.upgrade_container: # string is not empty
+        _upgrade_container(args.upgrade_container)
+
 
     ################################################################
     # Note: Docker and nvcclli are work in progress options. As such
@@ -126,9 +143,6 @@ def main():
     args.Docker = False
     args.nvccli = False
     ###############################################################
-
-    # Set flag to allow cmd switch between Apptainer and docker when using linux host.
-    use_Apptainer = check_platform() and not args.Docker
 
     if len(sys.argv) == 1:
         if os.path.exists(f"{vlab_dir}/Citation.md"):
@@ -148,16 +162,21 @@ def main():
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
-    elif args.Run_file == None:
-        print("****************************************************************")
-        print("Error: you must specify a path to a valid RunFile with option -f")
-        print("****************************************************************")
-        parser.print_help(sys.stderr)
-        sys.exit(1)
     else:
         Run_file = args.Run_file
+
+    if Run_file:
+        _run_file(Run_file,args)
+
+def _run_file(Run_file,args):
+    '''
+    Function which spins up server to communicate with the run file to use other containers
+    '''
+    
     Run_file = Utils.check_file_in_container(vlab_dir, Run_file)
 
+    # Set flag to allow cmd switch between Apptainer and docker when using linux host.
+    use_Apptainer = check_platform() and not args.Docker
 
     # ==========================================================================
     # make bindings to container
@@ -261,7 +280,7 @@ def main():
     lock = threading.Lock()
     thread = threading.Thread(
         target=process,
-        args=(vlab_dir, sock, args.debug, gpu_flag, bind_points_default),
+        args=(vlab_dir, sock, args, gpu_flag, bind_points_default),
     )
 
     thread.daemon = True
@@ -277,20 +296,14 @@ def main():
     bind_str = bind_list2string(bind_points_default)
 
     if use_Apptainer:
-        if Manager['Apptainer_file'].startswith('/'):
-            # full path provided
-            Apptainer_file = Manager['Apptainer_file']
-        else:
-            # relative path from container dir
-            Apptainer_file = f"{ContainerDir}/{Manager['Apptainer_file']}"
-
-        if not os.path.exists(Apptainer_file):
-            update_container(Apptainer_file, Manager)
+        Apptainer_file = _ContainerFull(Manager['Apptainer_file'])
+        container_loc = CU.get_container_path(Manager)
+        CU.check_container('Manager', Apptainer_file, container_loc)
 
         proc = subprocess.Popen(
                 f"apptainer exec -H {pwd_dir} --contain --writable-tmpfs \
                                  --bind {bind_str} {Apptainer_file} "
-                f'{Manager["Startup_cmd"]} {options} -f {Run_file} ',
+                f'/home/ibsim/VirtualLab/bin/VL_Manager {options} -f {Run_file} ',
                 shell=True,
                                )
     else:
@@ -307,16 +320,46 @@ def main():
     err = proc.wait()
     sys.exit(err)
 
+def _ContainerFull(ApptainerFile):
+    if not ApptainerFile.startswith('/'): # relative path from container dir
+        ApptainerFile = f"{ContainerDir}/{ApptainerFile}"
+    return ApptainerFile
 
-def handle_messages(
-    client_socket, net_logger, debug, gpu_flag, bind_points_default
-):
+def _upgrade_container(container_str):
 
-    VL_MOD = Utils.load_module_config(vlab_dir)
-    # list of messages to simply relay from Container_id to Target_id
-    relay_list = ["Continue", "Waiting", "Error"]
+    container_list = []
+    if container_str=='all':
+        for container_name,container_info in VL_MOD.items():
+            Apptainer_file = _ContainerFull(container_info['Apptainer_file'])
+            if os.path.exists(Apptainer_file):
+                container_list.append(container_name) # add files which have already been downloaded
+    else:
+        _container_list = container_str.split(',') # download named files (comma separated)
+        for container_name in _container_list:
+            # check the names given are available
+            if container_name not in VL_MOD:
+                print(f'\nError: Container {container_name} is not available to be upgraded\n')
+            else:
+                container_list.append(container_name)
+
+    print('The following containers will be upgraded:\n')
+    info = []
+    for container_name in container_list:
+        container_info = VL_MOD[container_name]
+        Apptainer_file = _ContainerFull(container_info['Apptainer_file'])
+        container_loc = CU.get_container_path(container_info)
+        CU.print_container_info(container_name,Apptainer_file,container_loc)
+        info.append([container_name,Apptainer_file,container_loc])
+    print('This may take a while\n')
+
+    for _info in info:
+        CU.upgrade_container(*_info)
+
+
+def handle_messages(client_socket, net_logger, parsed_args, gpu_flag, bind_points_default):
+
     while True:
-        rec_dict = receive_data(client_socket, debug)
+        rec_dict = receive_data(client_socket, parsed_args.debug)
 
         if rec_dict == None:
             log_net_info(net_logger, "Socket has been closed")
@@ -334,43 +377,16 @@ def handle_messages(
         if event in ("Exec","MPI"):
             # will need to add option for docker when fixed
             
-            container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
-
             cont_name = rec_dict["Cont_name"]
             cont_info = VL_MOD[cont_name]
 
-            if cont_info["Apptainer_file"].startswith('/'):
-                container_path = cont_info["Apptainer_file"] # full path provided
-            else:
-                container_path = f"{ContainerDir}/{cont_info['Apptainer_file']}" # relative path from container dir
+            Apptainer_file = _ContainerFull(cont_info['Apptainer_file'])
+            container_loc = CU.get_container_path(cont_info)
+            CU.check_container('Manager', Apptainer_file, container_loc)
 
-            cont_info["container_path"] = container_path
-            cont_info["container_cmd"] = container_cmd
-            cont_info["bind"]=bind_points_default
-
-            # check apptainer sif file exists and if not build from docker version
-            if not os.path.exists(container_path):
-                os.makedirs(os.path.dirname(container_path),exist_ok=True)
-                # sif file doesn't exist
-                if "Docker_url" in cont_info:
-                    print(
-                        f"Apptainer file {container_path} does not appear to exist so building. This may take a while."
-                    )
-                    try:
-                        proc = subprocess.check_call(
-                            f"apptainer build "
-                            f'{container_path} docker://{cont_info["Docker_url"]}:{cont_info["Tag"]}',
-                            shell=True,
-                        )
-                    except subprocess.CalledProcessError as E:
-                        print(E.stderr)
-                        raise E
-
-                else:
-                    print(
-                        f"Apptainer file {container_path} does not exist and no information about its location is provided.\n Exiting"
-                    )
-                    sys.exit()
+            cont_info["container_path"] = Apptainer_file
+            cont_info["container_cmd"] = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
+            cont_info["bind"] = bind_points_default
 
             args = rec_dict.get("args", ())
             kwargs = rec_dict.get("kwargs", {})
@@ -383,7 +399,7 @@ def handle_messages(
                     kwargs["stdout"] = stdout
                     
                 RC = Exec_Container_Manager(cont_info, *args, **kwargs)
-                send_data(client_socket, RC, debug)
+                send_data(client_socket, RC, parsed_args.debug)
             else:
                 # MPI
                 # information needed when spawning a new process
@@ -392,34 +408,7 @@ def handle_messages(
                 with open(f"{shared_dir}/bind_points.pkl",'wb') as f:
                     pickle.dump(info,f)
                 RC = MPI_Container_Manager(cont_info, *args, **kwargs)
-                send_data(client_socket, RC, debug)    
-
-        elif event == "Build":
-            # recive list of containers to be built
-            cont_names = rec_dict["Cont_names"]
-            dont_exist = []
-            for Cont in cont_names:
-                print(f"Build {Cont}")
-                Module = VL_MOD.get(Cont, None)
-                if Module == None:
-                    # add to list of containers not found.
-                    dont_exist.append(Cont)
-                else:
-                    update_container(Module, vlab_dir)
-            if dont_exist == []:
-                message = {"msg": "Done Building"}
-            else:
-                message = {"msg": "Build Error", "Cont_names": dont_exist}
-            send_data(client_socket, message)
-
-        elif event in relay_list:
-            Target_id = str(rec_dict["Target_id"])
-            Target_socket = waiting_cnt_sockets[Target_id]
-            send_data(Target_socket, rec_dict, debug)
-        else:
-            client_socket.shutdown(socket.SHUT_RDWR)
-            client_socket.close()
-            raise ValueError(f"Unknown message {event} received")
+                send_data(client_socket, RC, parsed_args.debug)    
 
 def make_socket(host = '0.0.0.0', tcp_port=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -434,7 +423,7 @@ def make_socket(host = '0.0.0.0', tcp_port=None):
     sock.listen(20)
     return sock
 
-def process(vlab_dir, sock, debug, gpu_flag, bind_points_default):
+def process(vlab_dir, sock, *args):
     """Function that runs in a thread to handle communication ect."""
     cont_ready = threading.Event()
     sock_lock = threading.Lock()
@@ -452,9 +441,7 @@ def process(vlab_dir, sock, debug, gpu_flag, bind_points_default):
             args=(
                 client_socket,
                 net_logger,
-                debug,
-                gpu_flag,
-                bind_points_default,
+                *args
             ),
         )
         thread.daemon = True
@@ -575,11 +562,13 @@ def get_host(temp_file):
 
 
 if __name__ == "__main__":
-    if sys.argv[1] == 'server_start':
+    routine = sys.argv[1] if len(sys.argv)>1 else ''
+
+    if routine == 'server_start':
         start_server(*sys.argv[2:4])
-    elif sys.argv[1] == 'server_kill':
+    elif routine == 'server_kill':
         kill_server(sys.argv[2])
-    elif sys.argv[1] == 'hostname':
+    elif routine == 'hostname':
         get_host(sys.argv[2])
     else:
         main()

@@ -45,7 +45,20 @@ VL_MOD = Utils.load_module_config(vlab_dir)
 ##########################################################################################
 ####################  ACTUAL CODE STARTS HERE !!!! #######################################
 ##########################################################################################
-def main():
+
+def main():    
+    routine = sys.argv[1] if len(sys.argv)>1 else ''
+
+    if routine == 'server_start':
+        start_server(*sys.argv[2:4])
+    elif routine == 'server_kill':
+        kill_server(sys.argv[2])
+    elif routine == 'hostname':
+        get_host(sys.argv[2])
+    else:
+        runVL()
+
+def runVL():
     # read in CMD arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -327,20 +340,25 @@ def _ContainerFull(ApptainerFile):
 
 def _upgrade_container(container_str):
 
-    container_list = []
-    if container_str=='all':
+    if container_str=='current':
+        container_list = []
         for container_name,container_info in VL_MOD.items():
             Apptainer_file = _ContainerFull(container_info['Apptainer_file'])
             if os.path.exists(Apptainer_file):
                 container_list.append(container_name) # add files which have already been downloaded
+    elif container_str=='all':
+        container_list = list(VL_MOD.keys())
     else:
         _container_list = container_str.split(',') # download named files (comma separated)
+        container_list = []
         for container_name in _container_list:
             # check the names given are available
             if container_name not in VL_MOD:
                 print(f'\nError: Container {container_name} is not available to be upgraded\n')
             else:
                 container_list.append(container_name)
+
+    if len(container_list)==0: return
 
     print('The following containers will be upgraded:\n')
     info = []
@@ -382,7 +400,7 @@ def handle_messages(client_socket, net_logger, parsed_args, gpu_flag, bind_point
 
             Apptainer_file = _ContainerFull(cont_info['Apptainer_file'])
             container_loc = CU.get_container_path(cont_info)
-            CU.check_container('Manager', Apptainer_file, container_loc)
+            CU.check_container(cont_name, Apptainer_file, container_loc)
 
             cont_info["container_path"] = Apptainer_file
             cont_info["container_cmd"] = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
@@ -561,14 +579,7 @@ def get_host(temp_file):
         f.write(str(socket.gethostname()))
 
 
-if __name__ == "__main__":
-    routine = sys.argv[1] if len(sys.argv)>1 else ''
 
-    if routine == 'server_start':
-        start_server(*sys.argv[2:4])
-    elif routine == 'server_kill':
-        kill_server(sys.argv[2])
-    elif routine == 'hostname':
-        get_host(sys.argv[2])
-    else:
-        main()
+
+if __name__ == "__main__":
+    main()

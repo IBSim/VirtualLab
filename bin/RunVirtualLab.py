@@ -17,30 +17,15 @@ import sys
 from pathlib import Path
 import pickle
 
-from Scripts.VLServer import Server_utils as Utils
+import Scripts.VLServer.Server_utils as SU
 import Scripts.Common.VLContainer.Container_Utils as CU
-from Scripts.Common.VLContainer.Container_Utils import (
-    check_platform,
-    send_data,
-    receive_data,
-    setup_networking_log,
-    log_net_info,
-    bind_list2string,
-    bind_str2dict,
-    path_change_binder,
-    Exec_Container_Manager,
-    MPI_Container_Manager,
-    get_vlab_dir,
-    is_bound,
-    create_tcp_socket
-)
 
-vlab_dir = get_vlab_dir()
+vlab_dir = CU.get_vlab_dir()
 # do it this way as can't import VLconfig with VirtualLab binary
-config_dict = Utils.filetodict("{}/VLconfig.py".format(vlab_dir))
+config_dict = SU.filetodict("{}/VLconfig.py".format(vlab_dir))
 ContainerDir = config_dict.get('ContainerDir',f"{vlab_dir}/Containers")
 
-VL_MOD = Utils.load_module_config(vlab_dir)
+VL_MOD = SU.load_module_config(vlab_dir)
 
 ##########################################################################################
 ####################  ACTUAL CODE STARTS HERE !!!! #######################################
@@ -186,10 +171,10 @@ def _run_file(Run_file,args):
     Function which spins up server to communicate with the run file to use other containers
     '''
     
-    Run_file = Utils.check_file_in_container(vlab_dir, Run_file)
+    Run_file = SU.check_file_in_container(vlab_dir, Run_file)
 
     # Set flag to allow cmd switch between Apptainer and docker when using linux host.
-    use_Apptainer = check_platform() and not args.Docker
+    use_Apptainer = CU.check_platform() and not args.Docker
 
     # ==========================================================================
     # make bindings to container
@@ -208,24 +193,24 @@ def _run_file(Run_file,args):
 
     # bind points defined in VLconfig
     _bind_points = config_dict.get('bind','')
-    _bind_dict_add = bind_str2dict(_bind_points)
+    _bind_dict_add = CU.bind_str2dict(_bind_points)
 
     # add bind points given by command line
-    _bind_dict = bind_str2dict(args.bind)
+    _bind_dict = CU.bind_str2dict(args.bind)
     _bind_dict_add.update(_bind_dict)
     for key,val in _bind_dict_add.items():
         if key in bind_points_default: continue
         bind_points_default[key] = val
 
     # Add present working directory to the list of bind points if not already included
-    pwd_dir = Utils.get_pwd()
-    if not is_bound(pwd_dir,bind_points_default):
+    pwd_dir = SU.get_pwd()
+    if not CU.is_bound(pwd_dir,bind_points_default):
         bind_points_default[pwd_dir] = pwd_dir
 
 
     for dir_type in ['InputDir','MaterialsDir','OutputDir']:
         _path = config_dict[dir_type]
-        if not is_bound(_path,bind_points_default):
+        if not CU.is_bound(_path,bind_points_default):
             message = "\n*************************************************************************\n" \
             f"Error: The '{dir_type}' directory '{_path}'\n" \
             "is not bound to the container. This can be corrected either using the \n" \
@@ -242,7 +227,7 @@ def _run_file(Run_file,args):
         # Note: -K can be set multiple times so we need these loops to format them correctly to be passed on
         for N, opt in enumerate(args.options):
             for n, _ in enumerate(opt):
-                Utils.check_k_options(opt[n])
+                SU.check_k_options(opt[n])
                 options = options + " -k " + opt[n]
                 key = opt[n].split("=")[0]
                 value = opt[n].split("=")[1]
@@ -280,7 +265,7 @@ def _run_file(Run_file,args):
     host = socket.gethostname()
     if args.tcp_port:
         # use given port number
-        tcp_port = Utils.check_valid_port(args.tcp_port)
+        tcp_port = SU.check_valid_port(args.tcp_port)
         sock = make_socket(host,tcp_port)
     else:
         # run on free port
@@ -298,7 +283,7 @@ def _run_file(Run_file,args):
 
     thread.daemon = True
 
-    Modules = Utils.load_module_config(vlab_dir)
+    Modules = SU.load_module_config(vlab_dir)
     Manager = Modules["Manager"]
 
     thread.start()
@@ -306,7 +291,7 @@ def _run_file(Run_file,args):
     lock.acquire()
 
     # convert default bind points to container style string
-    bind_str = bind_list2string(bind_points_default)
+    bind_str = CU.bind_list2string(bind_points_default)
 
     if use_Apptainer:
         Apptainer_file = _ContainerFull(Manager['Apptainer_file'])
@@ -377,20 +362,20 @@ def _upgrade_container(container_str):
 def handle_messages(client_socket, net_logger, parsed_args, gpu_flag, bind_points_default):
 
     while True:
-        rec_dict = receive_data(client_socket, parsed_args.debug)
+        rec_dict = CU.receive_data(client_socket, parsed_args.debug)
 
         if rec_dict == None:
-            log_net_info(net_logger, "Socket has been closed")
+            CU.log_net_info(net_logger, "Socket has been closed")
             return
         event = rec_dict["msg"]
 
         container_id = rec_dict["Cont_id"]
-        log_net_info(
+        CU.log_net_info(
             net_logger,
             f'Server - received "{event}" event from container {container_id}',
         )
 
-        pwd_dir = Utils.get_pwd()
+        pwd_dir = SU.get_pwd()
                  
         if event in ("Exec","MPI"):
             # will need to add option for docker when fixed
@@ -413,11 +398,11 @@ def handle_messages(client_socket, net_logger, parsed_args, gpu_flag, bind_point
                 stdout = kwargs.get("stdout", None)
                 if stdout is not None and not os.path.isdir(os.path.dirname(stdout)):
                     # stdout is a file path within VL_Manager so need to get the path on the host
-                    stdout = path_change_binder(stdout, bind_points_default)
+                    stdout = CU.path_change_binder(stdout, bind_points_default)
                     kwargs["stdout"] = stdout
                     
-                RC = Exec_Container_Manager(cont_info, *args, **kwargs)
-                send_data(client_socket, RC, parsed_args.debug)
+                RC = CU.Exec_Container_Manager(cont_info, *args, **kwargs)
+                CU.send_data(client_socket, RC, parsed_args.debug)
             else:
                 # MPI
                 # information needed when spawning a new process
@@ -425,8 +410,8 @@ def handle_messages(client_socket, net_logger, parsed_args, gpu_flag, bind_point
                 shared_dir = rec_dict['shared_dir']
                 with open(f"{shared_dir}/bind_points.pkl",'wb') as f:
                     pickle.dump(info,f)
-                RC = MPI_Container_Manager(cont_info, *args, **kwargs)
-                send_data(client_socket, RC, parsed_args.debug)    
+                RC = CU.MPI_Container_Manager(cont_info, *args, **kwargs)
+                CU.send_data(client_socket, RC, parsed_args.debug)    
 
 def make_socket(host = '0.0.0.0', tcp_port=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -446,7 +431,7 @@ def process(vlab_dir, sock, *args):
     cont_ready = threading.Event()
     sock_lock = threading.Lock()
     log_dir = f"{vlab_dir}/.log/network_log"
-    net_logger = setup_networking_log(log_dir)
+    net_logger = CU.setup_networking_log(log_dir)
 
     ################################
     while True:
@@ -466,12 +451,12 @@ def process(vlab_dir, sock, *args):
         thread.start()
 
 def handle_messages2(client_socket, info):
-    pwd_dir = Utils.get_pwd()
+    pwd_dir = SU.get_pwd()
     bind_points_default = info['bind_points_default']
     gpu_flag = info['gpu_flag']
 
     while True:
-        rec_dict = receive_data(client_socket)
+        rec_dict = CU.receive_data(client_socket)
 
         if rec_dict == None:
             return
@@ -484,7 +469,7 @@ def handle_messages2(client_socket, info):
             container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
 
             cont_name = rec_dict["Cont_name"]
-            VL_MOD = Utils.load_module_config(vlab_dir)
+            VL_MOD = SU.load_module_config(vlab_dir)
             cont_info = VL_MOD[cont_name]
 
             if cont_info["Apptainer_file"].startswith('/'):
@@ -527,11 +512,11 @@ def handle_messages2(client_socket, info):
             stdout = kwargs.get("stdout", None)
             if stdout is not None and not os.path.isdir(os.path.dirname(stdout)):
                 # stdout is a file path within VL_Manager so need to get the path on the host
-                stdout = path_change_binder(stdout, bind_points_default)
+                stdout = CU.path_change_binder(stdout, bind_points_default)
                 kwargs["stdout"] = stdout
                 
-            RC = Exec_Container_Manager(cont_info, *args, **kwargs)
-            send_data(client_socket, RC)
+            RC = CU.Exec_Container_Manager(cont_info, *args, **kwargs)
+            CU.send_data(client_socket, RC)
 
         elif event in ('kill'):
             client_socket.shutdown(socket.SHUT_RDWR)
@@ -564,14 +549,14 @@ def start_server(temp_file,shared_dir):
 def kill_server(tcp_port):
     # create new socket
     host_name = socket.gethostname()
-    sock = create_tcp_socket(host_name,int(tcp_port))
+    sock = CU.create_tcp_socket(host_name,int(tcp_port))
 
     # Create info dictionary to send to VLserver. The msg 'Exec' calls Exec_Container_Manager
     # on the server, where  'args' and 'kwargs' are passed to it.
     info = {"msg": "kill"}
 
     # send data to relevant function in VLserver
-    send_data(sock, info)
+    CU.send_data(sock, info)
 
 def get_host(temp_file):
     ''' Used to get hostname when launching with MPI as environment variable not updated'''

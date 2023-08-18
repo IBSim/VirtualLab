@@ -7,7 +7,7 @@ ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
     LANGUAGE=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
-    PATH="/home/ibsim/VirtualLab/bin:/home/ibsim/miniconda3/bin:${PATH}" \
+    PATH="/home/ibsim/.local/bin:/home/ibsim/VirtualLab/bin:${PATH}" \
     BASH_ENV=/home/ibsim/patch.sh
 
 # Get Ubuntu updates and basic packages
@@ -31,19 +31,16 @@ USER ibsim
 WORKDIR /tmp
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=linux
-# Install miniconda instead of full anaconda to space space in final image.
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-bash Miniconda3-latest-Linux-x86_64.sh -b && \
-sudo rm Miniconda3-latest-Linux-x86_64.sh
+
+RUN sudo chmod 755 /home/ibsim/patch.sh
 
 ARG branch=dev
 # Download and install VirtualLab and its requirements
-RUN sudo chmod 755 /home/ibsim/patch.sh && \
-    wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_VirtualLab.sh && \
+RUN wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_VirtualLab.sh && \
     chmod 755 Install_VirtualLab.sh && \
-    sudo ./Install_VirtualLab.sh -b ${branch} -P c -y
+    sudo ./Install_VirtualLab.sh -b ${branch} -P y -y
 
-
+ENV PYTHONPATH "/home/ibsim/.local/lib/python3.6/site-packages:${PYTHONPATH}"
 
 EXPOSE 9000
 USER root

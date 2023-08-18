@@ -123,6 +123,7 @@ def containermap(self, func, *args, **kwds):
     # serialize function and arguments to files
     modfile = self._modularize(func)
     argfile = self._pickleargs(args, kwds)
+
     # Keep the above handles as long as you want the tempfiles to exist
     if _SAVE[0]:
         _HOLD.append(modfile)
@@ -152,7 +153,7 @@ def containermap(self, func, *args, **kwds):
         error = False
         res = []
     else:
-        RC = Utils.MPI_Container({'ContainerName':'Manager'}, command, self.VLshared_dir,addpath=self.VLaddpath,srun=self.srun)    
+        RC = Utils.MPI_Container({'ContainerName':'Manager'}, command, self.VLshared_dir,addpath=self.VLaddpath,srun=self.srun)
         if RC:
             # error in parallel function evaluation
             sys.exit(1)
@@ -180,9 +181,7 @@ def containermap(self, func, *args, **kwds):
 
     return res
 
-
 def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True, srun=False,timeout=3, **kwargs):
-
     NbEval = len(args_list)
 
     workdir = kwargs.get('workdir',None)
@@ -216,36 +215,23 @@ def Container_MPI(fnc, VL, args_list, kwargs_list=[], nb_parallel=1, onall=True,
     return Res
 
 
+def ParallelEval(VL,fnc,args_list,kwargs_list=[],launcher=None,Nb_parallel=None):
+    '''
+    Function for a high throughput parallel evaluation of a function 'fnc'  for the arguments 
+    specified in args_list. 
+    VL - VirtualLab class
+    fnc - function to evaluate in parallel
+    args_list - the arguments passed to fnc. This has the form [[args for eval 1],[args for eval 2],....]
+    kwargs_list - keyword arguments which can be passed to fnc. This has the form [{kwargs for eval 1},{kwargs for eval 2},...]
+    launcher - the launcher to use. If not provided uses that specified in the VL class
+    Nb_parallel - number of evaluations to make in parallel. If not provided the value associated with NbJobs of the VL class is used
+    '''
 
-def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
-
-    if args_list:
-        assert len(args_list)==len(Dicts)
     if kwargs_list:
-        assert len(kwargs_list)==len(Dicts)
+        assert len(kwargs_list)==len(args_list)
 
-    analysis_names = list(Dicts.keys())
-    analysis_data = []
-    for analysis_name in analysis_names:
-        Dicts[analysis_name]['_Name'] = analysis_name
-        analysis_data.append(Dicts[analysis_name])
-
-    if not N: N = VL._NbJobs
+    if not Nb_parallel: Nb_parallel = VL._NbJobs
     if not launcher: launcher = VL._Launcher
-
-    VL_dict = VL.__dict__.copy()
-    VL_dict = Namespace(**VL_dict)
-
-    # create list fof arguments
-    PoolArgs = []
-    for i,_dict in enumerate(analysis_data):
-        a = [fnc,VL_dict,_dict]
-        # add args_list info, if it exists
-        if args_list:
-            _arg = args_list[i]
-            if type(_arg) in (list,tuple): a.extend(_arg)
-            else: a.append(_arg)
-        PoolArgs.append(a)
 
     try:
         if launcher.lower()=='process':
@@ -256,20 +242,19 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
 
         if launcher.lower()=='mpi':
             # one processor is reserved for the master, so N-1 tasks will actually be performed in parallel
-            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=False, **kwargs)
+            Res = Container_MPI(fnc,VL,args_list,kwargs_list=kwargs_list, nb_parallel=Nb_parallel, onall=False, **kwargs)
         elif launcher.lower()=='mpi_worker':
             # all processors are workers, including master
-            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=True, **kwargs)
+            Res = Container_MPI(fnc,VL,args_list,kwargs_list=kwargs_list, nb_parallel=Nb_parallel, onall=True, **kwargs)
         elif launcher.lower()=='srun':
             # one processor is reserved for the master, so N-1 tasks will actually be performed in parallel
-            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=False, srun=True, **kwargs)
+            Res = Container_MPI(fnc,VL,args_list,kwargs_list=kwargs_list, nb_parallel=Nb_parallel, onall=False, srun=True, **kwargs)
         elif launcher.lower()=='srun_worker':
             # all processors are workers, including master
-            Res = Container_MPI(PoolWrap,VL,PoolArgs,kwargs_list=kwargs_list, nb_parallel=N, onall=True, srun=True, **kwargs)
+            Res = Container_MPI(fnc,VL,args_list,kwargs_list=kwargs_list, nb_parallel=Nb_parallel, onall=True, srun=True, **kwargs)
         else:
             # either run using process or sequential
-            Res = Paralleliser(PoolWrap,PoolArgs,kwargs_list=kwargs_list, method=launcher, nb_parallel=N,**kwargs)
-        
+            Res = Paralleliser(fnc,args_list,kwargs_list=kwargs_list, method=launcher, nb_parallel=Nb_parallel,**kwargs)
         
     except KeyboardInterrupt as e:
         VL.Cleanup()
@@ -278,8 +263,39 @@ def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,N=None):
         trb = traceback.format_exception(etype=type(exc), value=exc, tb = exc.__traceback__)
 
         sys.exit("".join(trb))
+    
+    return Res
+
+def VLPool(VL,fnc,Dicts,args_list=[],kwargs_list=[],launcher=None,Nb_parallel=None):
+    '''
+    Main driving function behind parallelisation of routines for VirtualLab with the PoolWrap function.
+    '''
+
+    analysis_names = list(Dicts.keys())
+    analysis_data = []
+    for analysis_name in analysis_names:
+        Dicts[analysis_name]['_Name'] = analysis_name
+        analysis_data.append(Dicts[analysis_name])
+
+    VL_dict = VL.__dict__.copy()
+    VL_dict = Namespace(**VL_dict)
+
+    # create list of arguments in the format PoolWrap is expecting
+    PoolWrapArgs = [[fnc,VL_dict,_dict] for _dict in analysis_data]
+
+    # add any additional arguments specified with args_list (optional)
+    if args_list:
+        assert len(args_list)==len(Dicts)
+        for i,_arg in args_list:
+            if type(_arg) in (list,tuple):
+                PoolWrapArgs[i].extend(_arg)
+            else:
+                PoolWrapArgs[i].append(_arg)
+ 
+    Res = ParallelEval(VL,PoolWrap,PoolWrapArgs,kwargs_list=kwargs_list,launcher=launcher,Nb_parallel=Nb_parallel)
 
     # Check if errors have been returned & update dictionaries
     Errorfnc = PoolReturn(analysis_data,Res)
 
     return Errorfnc
+

@@ -20,7 +20,7 @@ docs/source/_build
 
 # Whitelist these directories
 !bin/
-bin/VirtualLab
+bin/_VirtualLab
 !docs/
 docs/build
 !Config/

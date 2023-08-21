@@ -78,6 +78,11 @@ if [[ $@ ]]; then
   exit_abnormal
 fi
 
+echo
+echo "Installing VirtualLab"
+echo "~~~~~~~~~~~~~~~~~~~~~"
+echo
+
 # provide information about install (unless its called by main)
 if [ "$MESSAGE" = true ] ; then
   echo
@@ -192,13 +197,13 @@ else
   python3 $fname -B $BRANCH $INST_DIR $SKIP
   rm $fname
 
-  # build VirtualLab binary
-  echo
-  echo "Building VirtualLab binary"
-  echo "##########################"  
-  echo
-  source .VLprofile # ensures VirtualLab bin directory is in $PATH
-  $VL_DIR"/bin/BuildVL"
+  # # build VirtualLab binary
+  # echo
+  # echo "Building VirtualLab binary"
+  # echo "##########################"  
+  # echo
+  # source .VLprofile # ensures VirtualLab bin directory is in $PATH
+  #$VL_DIR"/bin/BuildVL"
 
 fi
 

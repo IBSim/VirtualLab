@@ -97,6 +97,7 @@ While this platform has been written for use from the command line, some capabil
    :hidden:
 
    install
+   containers
    structure
    virtual_exp
    runsim/index

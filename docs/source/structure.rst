@@ -69,3 +69,8 @@ This directory will be created when the first **VirtualLab** analysis is perform
 This directory is structured similarly to the `Input`_ directory, where you will find a directory for the *Simulation* type followed by one of the *Project* name.
 
 The 'project directory' (:file:`Output/$SIMULATON/$PROJECT`) will hold all data generated for the *Project*, such as: meshes; simulation results; visualisation images; analysis reports. The structure of the project directory is detailed in `this section <runsim/runfile.html#project>`_.
+
+VLconfig
+********
+
+:file:`VLconfig.py` in the VirtualLab directory is used to configure the use of **VirtualLab** on your system. As standard, the location of the Input and Output directories are located in the VirtualLab directory, however these can be changed to a different location by updating the InputDir or OutputDir in :file:`VLconfig.py`. 

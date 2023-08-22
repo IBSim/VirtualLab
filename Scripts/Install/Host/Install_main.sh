@@ -148,7 +148,7 @@ fi
 if [ "$APPTAINER" == "y" ]; then
   ### Install Apptainer
   fname=Install_Apptainer-bin.sh
-  
+  wget "${INST_PATH}"/"${fname}" 
   chmod 755 $fname
   ./$fname
   rm $fname

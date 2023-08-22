@@ -1,8 +1,9 @@
 FROM ubuntu:20.04
 
-FROM continuumio/miniconda3:4.9.2 as dependencies
+FROM continuumio/miniconda3:22.11.1 as dependencies
 
 # By default this Dockerfile builds with the latest release of CadQuery 2
+# miniconda version changed by Llion, unsure if comment above holds true
 ARG cq_version=2.1
 
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 \
@@ -26,8 +27,8 @@ RUN conda init bash \
     && . /root/.bashrc && \
     conda activate paramak_env && \
     conda install -c cadquery -c conda-forge cadquery=master && \
-    conda install -c conda-forge gmsh=4.9.3 && \
-    conda install -c conda-forge python-gmsh=4.9.3 && \
+    conda install -c conda-forge gmsh=4.9.4 && \
+    conda install -c conda-forge python-gmsh=4.9.4 && \
     conda install -c conda-forge 'moab>=5.3.0' && \
     pip install paramak
     

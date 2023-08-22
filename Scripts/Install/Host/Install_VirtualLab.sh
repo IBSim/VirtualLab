@@ -207,6 +207,8 @@ else
 
 fi
 
+source .VLprofile # ensures VirtualLab is in $PATH
+
 ### Test to check if installation worked
 if hash VirtualLab 2>/dev/null; then
   ### If exists
@@ -217,6 +219,7 @@ if hash VirtualLab 2>/dev/null; then
   echo
   echo "##########################################"
   echo
+  VirtuaLab
 else
   ### VirtualLab still not installed
   echo

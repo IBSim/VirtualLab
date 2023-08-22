@@ -2,17 +2,11 @@
 
 set -e
 USER_HOME=$(eval echo ~${SUDO_USER})
-#if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
 #########################
 ### This script is used to install Apptainer and its dependencies.
 ### It first attempts to detect whether it is already installed.
 #########################
-
-### Standard update
-sudo apt update -y
-sudo apt upgrade -y
-sudo apt install -y build-essential
 
 ### Test to check if Apptainer already exists in current shell's PATH
 if hash apptainer 2>/dev/null; then
@@ -25,6 +19,11 @@ else
   echo "Installing apptainer"
   echo "~~~~~~~~~~~~~~~~~~~~"
   echo
+
+  ### Standard update
+  sudo apt update -y
+  sudo apt upgrade -y
+  sudo apt install -y build-essential
 
   sudo apt update
   sudo apt install -y software-properties-common

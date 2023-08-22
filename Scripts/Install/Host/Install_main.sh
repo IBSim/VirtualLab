@@ -139,8 +139,7 @@ if [ "$GIT" == "y" ]; then
   ### Install git
 
   fname=Install_git.sh
-  url="${PATH}/"$fname
-  wget $url
+  wget "${INST_PATH}"/"${fname}" 
   chmod 755 $fname
   ./$fname
   rm $fname
@@ -149,8 +148,7 @@ fi
 if [ "$APPTAINER" == "y" ]; then
   ### Install Apptainer
   fname=Install_Apptainer-bin.sh
-  url="${PATH}/"$fname
-  wget $url
+  
   chmod 755 $fname
   ./$fname
   rm $fname
@@ -158,8 +156,7 @@ fi
 
 ### Download VirtualLab repo and configure it on the system
 fname=Install_VirtualLab.sh
-url="${PATH}/"$fname
-wget $url
+wget "${INST_PATH}"/"${fname}" 
 chmod 755 $fname
 sudo -u ${SUDO_USER:-$USER} ./$fname -B $BRANCH -I $VL_BINARY $INST_DIR $SKIP -Z
 rm $fname

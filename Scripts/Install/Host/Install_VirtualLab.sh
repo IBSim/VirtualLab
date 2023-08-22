@@ -118,7 +118,7 @@ if [ "$VL_BINARY" = "python" ] ; then
   echo "#############################"
   echo
 
-  pip3 install gitpython pyinstaller
+  pip3 install gitpython #pyinstaller
 
 elif [ "$VL_BINARY" = "conda" ] ; then
   echo
@@ -129,7 +129,7 @@ elif [ "$VL_BINARY" = "conda" ] ; then
   conda create -y -n VirtualLab python=3.9
   conda activate VirtualLab
   conda install -y -c conda-forge gitpython
-  python3 -m pip install pyinstaller
+  #python3 -m pip install pyinstaller
 
 elif [ "$VL_BINARY" = "N" ] ; then
   echo

@@ -43,65 +43,115 @@ def main():
     else:
         runVL()
 
-def runVL():
+def parsed_args():
+    # slightly modified help function
+    class CapitalisedHelpFormatter(argparse.HelpFormatter):
+        def __init__(self,prog):
+            # instead of it usage showing to run this filename (RunVirtualLab.py)
+            super(CapitalisedHelpFormatter, self).__init__(prog,width=80,max_help_position=45,indent_increment=2)
+
+        def _format_action_invocation(self, action):
+            # combine short and long name version together
+            if not action.option_strings or action.nargs == 0:
+                return super()._format_action_invocation(action)
+            default = self._get_default_metavar_for_optional(action)
+            args_string = self._format_args(action, default)
+            return ', '.join(action.option_strings) + '  ' + args_string
+    
+        def add_usage(self, usage, actions, groups, prefix=None):
+            # change program name from name of this file to VirtualLab
+            if prefix is None:
+                prefix = 'Usage:\n'
+
+            usage = '  VirtualLab [options]'
+
+            return super(CapitalisedHelpFormatter, self).add_usage(
+            usage, actions, groups, prefix)
+
     # read in CMD arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(add_help=False, formatter_class=CapitalisedHelpFormatter)
+
+    parser.add_argument(
+        "-h",
+        "--help",
+        help="show this help message and exit",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        help="Display version number and citation information",
+        action="store_true", 
+    )
     parser.add_argument(
         "-f",
         "--Run_file",
-        help="Where " "RUN_FILE" " is the path of the python run file.",
+        metavar='filename',
+        help="Where 'filename' is the path to the python run file.",
         default=None,
+    )
+    parser.add_argument(
+        "-B",
+        "--bind",
+        metavar='stringArray',
+        help="A user-bind path specification. spec has the format src[:dest], where src and dest are outside and inside paths. \
+              If dest is not given, it is set equal to src. Multiple bind paths can be given by a comma separated list.",
+        default='',
+    )
+    parser.add_argument(
+        "-C",
+        "--container-build",
+        metavar='ContainerName',
+        help="Build 'container name'. Multiple containers can be given by a comma separated list.\
+              'current' will build the latest container of each container which is already installed.\
+              'all' will build all available containers.",
+        default='',
+    )  
+    parser.add_argument(
+        "-K",
+        "--options",
+        metavar='arg=val',
+        help="Overwrite the value specified for variables/keyword arguments specified in the Run file.",
+        default=None,
+        action="append",
+        nargs='*',
     )
     parser.add_argument(
         "-X",
         "--debug",
-        help="Flag to print debug messages for networking.",
+        help=argparse.SUPPRESS,
         action="store_true",
     )
     parser.add_argument(
-        "-T", "--test", help="Flag to initiate comms testing.", action="store_true"
+        "-T", 
+        "--test", 
+        help="Flag to perform simple communication test between two containers.", 
+        action="store_true"
     )
     parser.add_argument(
         "-N",
-        "--no_nvidia",
+        "--no-nvidia",
         help="Flag to turn on/off nvidia support.",
         action="store_false",
     )
     parser.add_argument(
         "-d",
-        "--dry_run",
+        "--dry-run",
         help="Flag to perform dry run.",
         action="store_true",
     )
     parser.add_argument(
-        "-K",
-        "--options",
-        help="Overwrite the value specified for variables/keyword arguments specified in the Run file.",
-        default=None,
-        action="append",
-        nargs="*",
-    )
-    parser.add_argument(
         "-P",
-        "--tcp_port",
-        help="tcp port to use for server communication.",
+        "--tcp-port",
+        metavar='port',
+        help="Port number to use for communication with server.",
         default=None,
         type=int,
+
     )
-    parser.add_argument(
-        "-B",
-        "--bind",
-        help="Additional files/directories to mount to containers.",
-        default='',
-    )
-    parser.add_argument(
-        "-U",
-        "--upgrade_container",
-        help="Force containers to be pulled to get newest versions.",
-        default=''
-    )           
+         
     # parser.add_argument(
-    #     "-C",
+    #     "-c",
     #     "--nvccli",
     #     help="Flag to use nvidia continer toolkit instead of default --nv.",
     #     action="store_true",
@@ -110,39 +160,25 @@ def runVL():
     #     "-D",
     #     "--Docker",VLconfig.VL_HOST_DIR
     # )
-    # parser.add_argument(
-    #     "-V",
-    #     "--version",
-    #     help="Display version number and citation information",
-    #     action="store_false",
-    # )
+
 
     ##############################################################
     # check for any unknown arguments parsed
     args, unknownargs = parser.parse_known_args()
     if unknownargs:
-       print(f'Unknown option: {unknownargs[0]}\n')
+       print(f"Error: unknown option '{unknownargs[0]}' passed to VirtualLab\n")
        parser.print_help(sys.stderr)
        sys.exit(1)
 
-    ###############################################################
-    # upgrade containers if flag used
-    if args.upgrade_container: # string is not empty
-        _upgrade_container(args.upgrade_container)
+    if args.version:
+        print('VirtualLab 2.0.0\n') # TODO: read in version number here 
+        with open(
+            f"{vlab_dir}/Citation.md"
+        ) as f:  # Write citation message to screen
+            print(f.read())
+        sys.exit()
 
-
-    ################################################################
-    # Note: Docker and nvcclli are work in progress options. As such
-    # I don't want to totally remove them since they will be needed
-    # if/when we fix the issues. However, I also don't want them to
-    # appear as valid options with --help so when they are needed
-    # simply delete/uncomment the appropriate lines.
-    ###############################################################
-    args.Docker = False
-    args.nvccli = False
-    ###############################################################
-
-    if len(sys.argv) == 1:
+    if len(sys.argv) == 1 or args.help:
         if os.path.exists(f"{vlab_dir}/Citation.md"):
             with open(
                 f"{vlab_dir}/Citation.md"
@@ -156,6 +192,31 @@ def runVL():
         # finally print usage to screen
         parser.print_help(sys.stderr)
         sys.exit(1)
+
+    return args
+        
+def runVL():
+
+    args = parsed_args()
+
+    ###############################################################
+    # upgrade containers if flag used
+    if args.container_build: # string is not empty
+        _upgrade_container(args.container_build)
+
+
+    ################################################################
+    # Note: Docker and nvcclli are work in progress options. As such
+    # I don't want to totally remove them since they will be needed
+    # if/when we fix the issues. However, I also don't want them to
+    # appear as valid options with --help so when they are needed
+    # simply delete/uncomment the appropriate lines.
+    ###############################################################
+    args.Docker = False
+    args.nvccli = False
+    ###############################################################
+
+
 
     # set flag to run tests instate of the normal run file
     if args.test:

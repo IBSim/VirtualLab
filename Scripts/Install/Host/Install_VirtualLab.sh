@@ -219,7 +219,7 @@ if hash VirtualLab 2>/dev/null; then
   echo
   echo "##########################################"
   echo
-  VirtuaLab
+  VirtualLab
 else
   ### VirtualLab still not installed
   echo

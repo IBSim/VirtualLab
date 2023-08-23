@@ -45,7 +45,8 @@ RUN echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/user/CILworkspace/CIL/in
 RUN conda init bash && . ~/.bashrc
 #cudatoolkit=10.2
 # read from file of exact packages due to issues with newer verison somewhere
-RUN conda create --name VirtualLab --file=/modules/cil_conda_packages.txt python=3.9 -c simpleitk -c pytorch -c conda-forge -c ccpi -c intel -c astra-toolbox/label/dev
+COPY /modules/cil_conda_packages.txt /tmp/cil_conda_packages.txt
+RUN conda create --name VirtualLab --file=/tmp/cil_conda_packages.txt python=3.9 -c simpleitk -c pytorch -c conda-forge -c ccpi -c intel -c astra-toolbox/label/dev
 
 WORKDIR /home/user/
 RUN echo 'install/' >> /home/user/CILworkspace/CIL/.gitignore && echo 'build/' >> /home/user/CILworkspace/CIL/.gitignore

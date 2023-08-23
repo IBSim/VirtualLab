@@ -17,7 +17,7 @@ The **VirtualLab** platform has been designed so that only a small number of pre
     - Notes
   * - Linux
     - Mint 19/Ubuntu 20.04+
-    - Any reasonably modern distro should work. **VirtualLab** has been tested on various desktops and laptops running Ubuntu 20.04 LTS and a supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
+    - Any reasonably modern distro should work. **VirtualLab** has been tested on various desktops and laptops running Ubuntu 20.04 LTS and a supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros.
   
 As Apptainer is only available on Linux this is currently the only officially supported OS. 
 
@@ -83,10 +83,10 @@ The installer will then take you through a series of menus and download the late
   The above will install the most recent version of **VirtualLab**. The latest development version can be installed from the dev branch using the following::
 
       BRANCH=dev
-      wget https://gitlab.com/ibsim/virtuallab/-/raw/${BRANCH}/Scripts/Install/Host/Install_main.sh && \
-      chmod 755 Install_main.sh && \
-      ./Install_main.sh -B $BRANCH  && \
-      rm Install_main.sh && \
+      wget https://gitlab.com/ibsim/virtuallab/-/raw/${BRANCH}/Scripts/Install/Host/Install_VirtualLab.sh && \
+      chmod 755 Install_VirtualLab.sh && \
+      ./Install_VirtualLab.sh -B $BRANCH  && \
+      rm Install_VirtualLab.sh && \
       source ~/.VLprofile
 
   where the -B flag indicates the branch from which **VirtualLab** will be installed. 
@@ -96,7 +96,7 @@ Next you will need to install Apptainer. This can either be installed using the 
     wget https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Host/Install_Apptainer-bin.sh && \
     chmod 755 Install_Apptainer-bin.sh && \
     sudo ./Install_Apptainer-bin.sh -y  && \
-    rm Install_Apptainer-bin.sh && \
+    rm Install_Apptainer-bin.sh
 
 or by following the most up-to-date instructions from their website:
 
@@ -116,16 +116,31 @@ To test out that the installation has worked as expected run the following comma
 
 :bash:`VirtualLab --test`
 
-This will download **VirtualLab**'s 'Manager' container along with a small test container to make sure things are set up correctly. It also spits out a randomly selected programming joke as a nice whimsical bonus.
+
+
+This will download **VirtualLab**'s `containers.html#manager`_ container along with a small test container to make sure things are set up correctly. It also spits out a randomly selected programming joke as a nice whimsical bonus.
 
 For more on how to use **VirtualLab** we recommend working through the `Tutorials <examples/index.html>`_ section.
 
 MPI
 ***
 
-**VirtualLab** is able to perform analysis on multi-node systems as well as personal computers. For this MPI is required, and needs to be compatible with the MPI installed within **VirtualLab**'s 'Manager' container, which is `MPICH <https://www.mpich.org/>`_. To install MPICH run the following command ::
+**VirtualLab** is able to perform analysis on multi-node systems as well as personal computers. For this MPI is required, and needs to be compatible with the MPI installed within **VirtualLab**'s `containers.html#manager`_ container, which is `MPICH <https://www.mpich.org/>`_. To install MPICH run the following command ::
 
   sudo apt install mpich
+
+To test out that **VirtualLab** is compatible with MPI run the following ::
+
+  VirtualLab -f RunFiles/MPI_test.py
+
+You should see an output similar to this (order will differ) ::
+
+  Hello! I'm rank 0 from 5 running in total...
+  Hello! I'm rank 2 from 5 running in total...
+  Hello! I'm rank 1 from 5 running in total...
+  Hello! I'm rank 4 from 5 running in total...
+  Hello! I'm rank 3 from 5 running in total...
+
 
 .. warning:: **GlibC issues with Ubuntu 22.04+**
   
@@ -153,8 +168,3 @@ MPI
   However, this does not mean they do not exist. Therefore, we cannot 100% guarantee you won't have any issues. This is also the reason we recommend backing up your original config in step 2, just in case. Also, for future 
   reference, these fixes where applied to ubuntu 22.04 with Apptainer version 1.0.5. Your millage may vary with future updates.
 
-
-
-References
-**********
-.. footbibliography::

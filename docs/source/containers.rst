@@ -13,8 +13,8 @@ If you're unfamiliar with containers, here's a quick overview from `opensource.c
 
     *In a way, containers behave like a virtual machine. To the outside world, they can look like their own complete system. But unlike a virtual machine, rather than creating a whole virtual operating system, containers don't need to replicate an entire operating system, only the individual components they need in order to operate. This gives a significant performance boost and reduces the size of the application. They also operate much faster, as unlike traditional virtualization the process is essentially running natively on its host, just with an additional layer of protection around it."*
 
-Why we use them?
-*****************
+Why do we use them?
+*********************
 
 We have chosen containers as the main way of distributing **VirtualLab** for a number of reasons:
 
@@ -41,9 +41,9 @@ The central component of the **VirtualLab** platform is the 'Manager' container.
 SalomeMeca
 ###########
 
-Container which includes the 2019 version of `SalomeMeca <https://code-aster.org/V2/spip.php?article303>`. **SalomeMeca** is the pre and post-processing software `SALOME <https://www.salome-platform.org/>`_ with the Finite Element (FE) solver `Code_Aster <https://code-aster.org/V2/spip.php?article272>` integrated within it.
+Container which includes the 2019 version of `SalomeMeca <https://code-aster.org/V2/spip.php?article303>`_. **SalomeMeca** is the pre and post-processing software `SALOME <https://www.salome-platform.org/>`_ with the Finite Element (FE) solver `Code_Aster <https://code-aster.org/V2/spip.php?article272>`_ integrated within it.
 
-This container also includes the electro-magnetic FE solver `ERMES <http://tts.cimne.com/ermes/index.html>`.
+This container also includes the electro-magnetic FE solver `ERMES <http://tts.cimne.com/ermes/index.html>`_.
 
 Cad2Vox
 ########

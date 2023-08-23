@@ -116,16 +116,14 @@ To test out that the installation has worked as expected run the following comma
 
 :bash:`VirtualLab --test`
 
-
-
-This will download **VirtualLab**'s `containers.html#manager`_ container along with a small test container to make sure things are set up correctly. It also spits out a randomly selected programming joke as a nice whimsical bonus.
+This will download **VirtualLab**'s `manager <containers.html#manager>`_ container along with a small test container to make sure things are set up correctly. It also spits out a randomly selected programming joke as a nice whimsical bonus.
 
 For more on how to use **VirtualLab** we recommend working through the `Tutorials <examples/index.html>`_ section.
 
 MPI
 ***
 
-**VirtualLab** is able to perform analysis on multi-node systems as well as personal computers. For this MPI is required, and needs to be compatible with the MPI installed within **VirtualLab**'s `containers.html#manager`_ container, which is `MPICH <https://www.mpich.org/>`_. To install MPICH run the following command ::
+**VirtualLab** is able to perform analysis on multi-node systems as well as personal computers. For this MPI is required, and needs to be compatible with the MPI installed within **VirtualLab**'s `manager <containers.html#manager>`_ container, which is `MPICH <https://www.mpich.org/>`_. To install MPICH run the following command ::
 
   sudo apt install mpich
 

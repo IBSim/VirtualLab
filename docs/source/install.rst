@@ -1,10 +1,10 @@
 .. role:: bash(code)
    :language: bash
 	      
-Installation
-============
+Installation & configuration
+============================
 
-To use **VirtualLab** there are very few prerequisites. To use VirtualLab only Apptainer is strictly required. However git is required for the installation.
+The **VirtualLab** platform has been designed so that only a small number of prerequisites are needed for its use. `Containers <containers.html>`_ are used to house various codes and software, meaning that a containerisation tool is required, with `Apptainer <https://apptainer.org/>`_ the chosen tool. The **VirtualLab** python package only requires gitpython (and therefore git), and can be used with either native python (including pip) or conda. 
 
 **VirtualLab** Supports the following operating systems:
 
@@ -19,6 +19,11 @@ To use **VirtualLab** there are very few prerequisites. To use VirtualLab only A
     - Mint 19/Ubuntu 20.04+
     - Any reasonably modern distro should work. **VirtualLab** has been tested on various desktops and laptops running Ubuntu 20.04 LTS and a supercomputer running Redhat Linux enterprise 9. However, as with all things Linux results may vary on other distros [1]_.
   
+As Apptainer is only available on Linux this is currently the only officially supported OS. 
+
+.. note::
+    Apptainer's website does contain instructions for using it Windows and MacOs. However, this through a virtual machine which prevents the use of GPUs for modules that support them. It also has a negative impact on performance as such we don't recommend using Apptainer on non Linux systems. 
+
 Quick Installation
 ******************
 
@@ -33,60 +38,60 @@ Terminal::
 
     wget https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Host/Install_main.sh && \
     chmod 755 Install_main.sh && \
-    sudo ./Install_main.sh -y  && \
+    ./Install_main.sh -y  && \
     rm Install_main.sh && \
     source ~/.VLprofile
 
-Running the above will install both git and apptainer along with the VirtualLab python package using standard python. The third line of the above is equivalent to 
-
-::
-
-  sudo ./Install_main.sh -g y -a y -I p -y
-
-The -g flag indicates whether to install git, -a for the installation of apptainer, and -I the method of using VirtualLab's python package. If you'd prefer to use conda then change :code:`-I p` to :code:`-I c`, where a conda environment named 'VirtualLab' will be created with the required python dependencies. 
-
-If, for example, you didnt need to install git the third line in the above installation would become
-
-::
-
-  sudo ./Install_main.sh -g n -y
-
-The -y flag skips any installation dialogue, installing VirtualLab in the default location of $HOME/VirtualLab. For a non-standard installation this flag can be removed. 
+Running the above will install both git and apptainer along with the VirtualLab python package using standard python.
 
 .. note::
+  Install_main.sh contains a couple of sudo commands, therefore you will be promted to enter your password.
 
-  For the latest development version of **VirtualLab** run the following::
+The :code:`-y` in the third line of the above signals to skip the installation dialogue and install **VirtualLab** in the default location :file:`/home/$USER/VirtualLab`. This flag can be removed if youd require a non-standard install. 
 
-      wget https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Host/Install_main.sh && \
-      chmod 755 Install_main.sh && \
-      sudo ./Install_main.sh -B dev -y  && \
-      rm Install_main.sh && \
-      source ~/.VLprofile
+.. note::
+  If youd like to install **VirtualLab** using conda or to get the latest development version see `here <install.html#standard-install>`_.
 
-  Here the -B flag indicates the branch from which **VirtualLab** will be installed, which in this case is dev. 
+To test out the install follow the steps outlined `here <install.html#testing>`_.
 
-
-At this point the **VirtualLab** package will have been installed, however none of the containers it requires have yet been downloaded. These will be installed as and when they are needed for the analysis in question. 
-
-The size of these containers can be quite large. As standard, these containers will be saved to a directory named 'Containers' in the VirtualLab directory. If you'd prefer these containers be saved elsewhere, this can be changed in :file:`VLconfig.py` file in the VirtualLab directory, see `VLconfig <../structure.html#VLconfig>`_ for more details. 
-
-Next run the following command
-
-:bash:`VirtualLab --test`
-
-This will download **VirtualLab**'s 'Manager' container along with a small test container to make sure things are set up correctly. For more on how to use **VirtualLab** we recommend working through the `Tutorials <examples/index.html>`_ section.
-
-
-Installation with the install script
-*************************************
+Standard install
+*****************
 
 To use the install/update script you will need to install git. This can be easily done by either following the instructions on `git's website <https://git-scm.com/download/linux>`_ or, on Ubuntu based distros, you can run the following in a terminal.
 
 :bash:`sudo apt install git`
 
-Next you will need to install Apptainer. This can either be installed using the following
+**VirtualLab** is primarily command line only so you will need to run the following commands in a terminal to install the **VirtualLab** python package  ::
+  
+      wget https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Host/Install_VirtualLab.sh && \
+      chmod 755 Install_VirtualLab.sh && \
+      ./Install_VirtualLab.sh  && \
+      rm Install_VirtualLab.sh && \
+      source ~/.VLprofile
 
-::
+The installer will then take you through a series of menus and download the latest version of the code.
+
+.. note:: 
+  
+  If you'd prefer to use conda instead of native python you will need to add :code:`-I conda` to the third line, e.g. ::
+
+    ./Install_VirtualLab.sh -I conda
+
+  This will create an environment named VirtualLab.
+
+.. note::
+  The above will install the most recent version of **VirtualLab**. The latest development version can be installed from the dev branch using the following::
+
+      BRANCH=dev
+      wget https://gitlab.com/ibsim/virtuallab/-/raw/${BRANCH}/Scripts/Install/Host/Install_main.sh && \
+      chmod 755 Install_main.sh && \
+      ./Install_main.sh -B $BRANCH  && \
+      rm Install_main.sh && \
+      source ~/.VLprofile
+
+  where the -B flag indicates the branch from which **VirtualLab** will be installed. 
+
+Next you will need to install Apptainer. This can either be installed using the following::
 
     wget https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Host/Install_Apptainer-bin.sh && \
     chmod 755 Install_Apptainer-bin.sh && \
@@ -98,36 +103,29 @@ or by following the most up-to-date instructions from their website:
 * `Quick start <https://apptainer.org/docs/user/main/quick_start.html>`_
 * `Install Apptainer <https://apptainer.org/docs/admin/main/installation.html>`_
 
+At this point the **VirtualLab** package will have been installed, however none of the containers it requires have yet been downloaded. These will be installed as and when they are needed for the analysis in question. 
 
-Once you have git and Apptainer installed you can download the automated install/update script with the following `here <https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Host/Install_VirtualLab.sh>` or with the following
+The size of these containers can be quite large. As standard, these containers will be saved to a directory named 'Containers' in the VirtualLab directory. If you'd prefer these containers be saved elsewhere, this can be changed in :file:`VLconfig.py` file in the VirtualLab directory, see `code configuration <../structure.html#code-configuration>`_ for more details. 
 
-::
+To test out the install follow the steps outlined `here <install.html#testing>`_.
 
-    wget https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Host/Install_VirtualLab.sh
+Testing
+*******
 
-Both the Installer and **VirtualLab** itself are primarily command line only so you will need to run the following commands in a terminal
-
-:bash:`chmod +x Install_VirtualLab`
-
-:bash:`./Install_VirtualLab -I p` 
-
-for installation with standard python. The installer will then take you through a series of menus and download the latest version of the code.
-
-We recommend you run a quick test to ensure everything is working this can be done with the following command:
+To test out that the installation has worked as expected run the following command
 
 :bash:`VirtualLab --test`
 
-The :bash:`--test` option downloads a minimal test container and runs a series of tests to check everything is working. It also spits out a randomly selected programming joke as a nice whimsical bonus. For more on how to use **VirtualLab** we recommend the `Tutorials <examples/index.html>`_ section.
+This will download **VirtualLab**'s 'Manager' container along with a small test container to make sure things are set up correctly. It also spits out a randomly selected programming joke as a nice whimsical bonus.
+
+For more on how to use **VirtualLab** we recommend working through the `Tutorials <examples/index.html>`_ section.
 
 MPI
 ***
 
-**VirtualLab** is able to perform analysis on multi-node systems as well as personal computers. For this MPI is required, and needs to be compatible with the MPI installed within **VirtualLab**'s 'Manager' container, which is `MPICH <https://www.mpich.org/>`. To install MPICH run the following command
-
-::
+**VirtualLab** is able to perform analysis on multi-node systems as well as personal computers. For this MPI is required, and needs to be compatible with the MPI installed within **VirtualLab**'s 'Manager' container, which is `MPICH <https://www.mpich.org/>`_. To install MPICH run the following command ::
 
   sudo apt install mpich
-
 
 .. warning:: **GlibC issues with Ubuntu 22.04+**
   

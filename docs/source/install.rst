@@ -122,7 +122,7 @@ Firstly, a setup file is required which contains all of the packages required fo
     source $HOME/.VLprofile
   fi
 
-This loads anaconda, git, apptainer and mpich (which is needed for multi-node use, see `MPI <install.html#mpi>`_ for details). This file also fixes a small bug with conda specific to sunbird. It then sources :file:`.VLprofile`, which is created as part of the **VirtualLab** install. 
+This loads anaconda, git, apptainer and mpich (which is needed for multi-node use, see `MPI <install.html#id4>`_ for details). This file also fixes a small bug with conda specific to sunbird. It then sources :file:`.VLprofile`, which is created as part of the **VirtualLab** install. 
 
 This file can be easily downloaded and sourced with the following ::
 
@@ -140,7 +140,7 @@ Next **VirtualLab** can be installed with the following ::
   ./Install_VirtualLab.sh -B $BRANCH -I conda
   rm Install_VirtualLab.sh
 
-This installation is exactly the same as that outlined in `<install.html#standard-install>`_, where more details can be found. 
+This installation is exactly the same as that outlined `here <install.html#standard-install>`_, where more details can be found. 
 
 Test out that the installation has worked correctly with the following ::
 

@@ -1,8 +1,8 @@
 .. role:: bash(code)
    :language: bash
 	      
-Installation & configuration
-============================
+Installation
+==============
 
 The **VirtualLab** platform has been designed so that only a small number of prerequisites are needed for its use. `Containers <containers.html>`_ are used to house various codes and software, meaning that a containerisation tool is required, with `Apptainer <https://apptainer.org/>`_ the chosen tool. The **VirtualLab** python package only requires gitpython (and therefore git), and can be used with either native python (including pip) or conda. 
 
@@ -61,11 +61,24 @@ To use the install/update script you will need to install git. This can be easil
 
 :bash:`sudo apt install git`
 
+Next you will need to install Apptainer. This can either be installed using the following::
+
+    wget https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Host/Install_Apptainer-bin.sh && \
+    chmod 755 Install_Apptainer-bin.sh && \
+    sudo ./Install_Apptainer-bin.sh -y  && \
+    rm Install_Apptainer-bin.sh
+
+or by following the most up-to-date instructions from their website:
+
+* `Quick start <https://apptainer.org/docs/user/main/quick_start.html>`_
+* `Install Apptainer <https://apptainer.org/docs/admin/main/installation.html>`_
+
 **VirtualLab** is primarily command line only so you will need to run the following commands in a terminal to install the **VirtualLab** python package  ::
   
-      wget https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Host/Install_VirtualLab.sh && \
+      BRANCH=master
+      wget https://gitlab.com/ibsim/virtuallab/-/raw/${BRANCH}/Scripts/Install/Host/Install_VirtualLab.sh && \
       chmod 755 Install_VirtualLab.sh && \
-      ./Install_VirtualLab.sh  && \
+      ./Install_VirtualLab.sh -B $BRANCH  && \
       rm Install_VirtualLab.sh && \
       source ~/.VLprofile
 
@@ -80,34 +93,94 @@ The installer will then take you through a series of menus and download the late
   This will create an environment named VirtualLab.
 
 .. note::
-  The above will install the most recent version of **VirtualLab**. The latest development version can be installed from the dev branch using the following::
 
-      BRANCH=dev
-      wget https://gitlab.com/ibsim/virtuallab/-/raw/${BRANCH}/Scripts/Install/Host/Install_VirtualLab.sh && \
-      chmod 755 Install_VirtualLab.sh && \
-      ./Install_VirtualLab.sh -B $BRANCH  && \
-      rm Install_VirtualLab.sh && \
-      source ~/.VLprofile
-
-  where the -B flag indicates the branch from which **VirtualLab** will be installed. 
-
-Next you will need to install Apptainer. This can either be installed using the following::
-
-    wget https://gitlab.com/ibsim/virtuallab/-/raw/master/Scripts/Install/Host/Install_Apptainer-bin.sh && \
-    chmod 755 Install_Apptainer-bin.sh && \
-    sudo ./Install_Apptainer-bin.sh -y  && \
-    rm Install_Apptainer-bin.sh
-
-or by following the most up-to-date instructions from their website:
-
-* `Quick start <https://apptainer.org/docs/user/main/quick_start.html>`_
-* `Install Apptainer <https://apptainer.org/docs/admin/main/installation.html>`_
-
+  The above will install the most recent version of **VirtualLab** from the master branch. For the most recent development version change BRANCH=dev in the above. 
+  
 At this point the **VirtualLab** package will have been installed, however none of the containers it requires have yet been downloaded. These will be installed as and when they are needed for the analysis in question. 
 
 The size of these containers can be quite large. As standard, these containers will be saved to a directory named 'Containers' in the VirtualLab directory. If you'd prefer these containers be saved elsewhere, this can be changed in :file:`VLconfig.py` file in the VirtualLab directory, see `code configuration <../structure.html#code-configuration>`_ for more details. 
 
 To test out the install follow the steps outlined `here <install.html#testing>`_.
+
+Instalaltion on HPC system
+***************************
+
+Due to the limited number of prerequisits, installation of **VirtualLab** on HPC clusters is straight forward. The steps outlined here are for the `sunbird <https://portal.supercomputing.wales/index.php/about-sunbird/>`_ cluster, however a similar procedure should work for other HPC systems.
+
+Firstly, a setup file is required which contains all of the packages required for **VirtualLab** to work correctly. For sunbird, this file looks like this ::
+
+  module load anaconda/2023.03 git/2.19.2 apptainer/1.0.3 mpi/mpich/3.2.1
+
+  # sunbird specific bug fix to ensure conda works correctly
+  source /apps/local/languages/anaconda/2023.03/etc/profile.d/conda.sh # must match loaded anaconda version
+  set -a
+  . /apps/local/languages/anaconda/2023.03/etc/profile.d/conda.sh
+  set +a
+
+  # sources .VLprofile (if its available) to ensure paths such as the VirtualLab directory are discovarable
+  if [ -f "$HOME/.VLprofile" ] ; then
+    source $HOME/.VLprofile
+  fi
+
+This loads anaconda, git, apptainer and mpich (which is needed for multi-node use, see `MPI <install.html#mpi>`_ for details). This file also fixes a small bug with conda specific to sunbird. It then sources :file:`.VLprofile`, which is created as part of the **VirtualLab** install. 
+
+This file can be easily downloaded and sourced with the following ::
+
+  cd # more convenient if this file is in home directory, but doesn't have to be
+  wget "https://gitlab.com/ibsim/virtuallab_bin/-/raw/dev/VL_setup.sh"
+  source VL_setup.sh 
+
+On other HPC systems the versions for the packages would need to be changed to reflect the versions available. 
+
+Next **VirtualLab** can be installed with the following ::
+
+  BRANCH=master # branch to install from
+  wget "https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/Host/Install_VirtualLab.sh"
+  chmod 755 Install_VirtualLab.sh
+  ./Install_VirtualLab.sh -B $BRANCH -I conda
+  rm Install_VirtualLab.sh
+
+This installation is exactly the same as that outlined in `<install.html#standard-install>`_, where more details can be found. 
+
+Test out that the installation has worked correctly with the following ::
+
+  VirtualLab --test
+
+see `here <install.html#testing>`_ for more details on this. 
+
+.. note::
+
+  On sunbird the computing nodes do not have access to the internet, therefore any containers required for an analysis will need to be pulled and built using the login node. Therefore the above test will need to be performed on the login node.
+  
+Performing analysis using **VirtualLab** on sunbird can then performed using the a SLURM script such as this ::
+
+  #!/bin/bash --login
+  #SBATCH --job-name=VirtualLab
+  #SBATCH --output=VL%J
+  #SBATCH --time=0-00:10
+  #SBATCH --ntasks=1
+  #SBATCH --mem-per-cpu=6000
+  #SBATCH --account=scwXXXX
+
+  module purge
+  source ~/VL_setup.sh # gets all the necessary packages
+
+  VirtualLab -f ~/VirtualLab/Run.py # runs analysis
+
+The first few lines specify the resources required to run the analysis, followed by sourcing VL_setup.sh to ensure the required packages are loaded. Following this the analysis outlined :file:`Run.py` in the :file:`VirtualLab` directory is performed, which is a simple tensile test. 
+
+.. note::
+
+  This analysis requires **salome meca** to create meshes and perform FEA, therefore this container will need to be built on the login node before hand. 
+
+  A convenient method of building container is by using the :code:`-C` option followed by the name of the containers. To build the **salome meca** container use the following command ::
+
+    VirtualLab -C SalomeMeca
+  
+The above SLURM script can then be submitted with the following ::
+
+  sbatch #PATH/#TO/#SLURM_FILE
+
 
 Testing
 *******

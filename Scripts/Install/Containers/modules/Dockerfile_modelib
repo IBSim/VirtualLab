@@ -1,0 +1,35 @@
+FROM ubuntu:20.04
+
+ARG mode
+
+RUN (apt-get update && apt-get upgrade -y -q && apt-get dist-upgrade -y -q && apt-get -y -q autoclean && apt-get -y -q autoremove)
+
+RUN apt-get update && apt-get install --no-install-recommends -y software-properties-common  gpg-agent
+
+ENV GCC_VERSION 11
+
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test && apt-get update \
+     && apt-get install -y gcc-$GCC_VERSION g++-$GCC_VERSION gfortran-$GCC_VERSION
+
+RUN apt-get update && apt-get install -y --no-install-recommends git cmake python3 make libreadline-dev libncurses5-dev ssh ca-certificates curl zsh nano less python3-pip ninja-build
+
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$GCC_VERSION 100 --slave /usr/bin/g++ g++ /usr/bin/g++-$GCC_VERSION --slave /usr/bin/gfortran gfortran /usr/bin/gfortran-$GCC_VERSION
+
+RUN git clone https://gitlab.com/libeigen/eigen.git
+
+RUN git clone https://github.com/giacomo-po/MoDELib
+
+RUN cd MoDELib/ && \  
+    git checkout Modelib2 && \
+    cd tools/DDomp/ && \
+    sed -i 's|set(CMAKE_CXX_COMPILER "/opt/local/bin/g++")|set(CMAKE_CXX_COMPILER "/usr/bin/g++")|g' CMakeLists.txt && \
+    sed -i 's|set(EigenRootDir "/usr/local/include")|set(EigenRootDir "/eigen")|g' CMakeLists.txt && \
+    cmake . && \ 
+    make
+
+RUN cd MoDELib/ && \  
+    git checkout Modelib2 && \
+    cd tools/MicrostructureGenerator/ && \
+    sed -i 's|set(EigenRootDir "/usr/local/include")|set(EigenRootDir "/eigen")|g' CMakeLists.txt && \
+    cmake . && \ 
+    make

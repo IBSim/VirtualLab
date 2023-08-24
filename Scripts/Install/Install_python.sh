@@ -68,17 +68,17 @@ sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y build-essential
 
-source "$VL_DIR/VLconfig.py" # Enables this script to be run seperately
+#source "$VL_DIR/VLconfig.py" # Enables this script to be run seperately
 
 if [ "$PYTHON_INST" == "y" ]; then
   ### Install python and required packages
-  sudo apt install -y python3.8
+  req="matplotlib==3.2.1 h5py==3.1.0 numpy==1.19.2 scipy==1.4.1 pathos==0.2.7 requests natsort pandas pygad"
   sudo apt install -y python3-pip
   #sudo apt install -y python3-sphinx
-  sudo pip3 install --user -U sphinx
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user -U sphinx
   sudo -u ${SUDO_USER:-$USER} pip3 install --user furo sphinx-rtd-theme==0.4.3 sphinxcontrib-bibtex==1.0.0
-  sudo -u ${SUDO_USER:-$USER} pip3 install --user -r $VL_DIR/requirements.txt
-  sudo -u ${SUDO_USER:-$USER} pip3 install --user scikit-learn==0.24.1
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user $req
+  sudo -u ${SUDO_USER:-$USER} pip3 install --user torch gpytorch scikit-learn==0.24.1
   sudo -u ${SUDO_USER:-$USER} pip3 install --user -U --no-deps iapws==1.4
 
   # install pyina (uses MPI)
@@ -178,13 +178,14 @@ elif [ "$PYTHON_INST" == "c" ]; then
   fi
 
   ### Install conda packages
+  req="matplotlib==3.2.1 h5py==3.1.0 numpy==1.19.2 scipy==1.4.1 pathos==0.2.7 requests natsort pandas"
   conda activate $CONDAENV
   conda config --append channels conda-forge
 
   conda install -y sphinx
   conda install -y furo sphinx_rtd_theme=0.4.3 sphinxcontrib-bibtex=1.0.0
-  conda install -y --file $VL_DIR/requirements.txt
-  conda install -y scikit-learn=0.24.1 iapws=1.4
+  conda install -y $req
+  conda install -y pytorch gpytorch scikit-learn=0.24.1 
 
   sudo chown $SUDO_USER:$SUDO_USER -R ${conda_dir}/envs/$CONDAENV
   sudo chmod -R 0755 ${conda_dir}/envs/$CONDAENV
@@ -198,7 +199,7 @@ elif [ "$PYTHON_INST" == "c" ]; then
   # install pyina (uses MPI)
   conda install pip
   sudo apt install -y mpich
-  sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install mpi4py dill pox
+  sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install mpi4py dill pox pygad
   sudo -u ${SUDO_USER:-$USER} env "PATH=$PATH" pip install -U pyina
   source ~/.profile # This adds $HOME/.local/bin to $PATH which is needed by pyina
 
@@ -229,7 +230,7 @@ fi
 
 echo
 ### Build VirtualLab documentation using sphinx
-source $VL_DIR/Scripts/Install/Install_docs.sh
+#source $VL_DIR/Scripts/Install/Install_docs.sh
 
 
 #: <<'END'

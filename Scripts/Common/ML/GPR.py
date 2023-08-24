@@ -187,6 +187,7 @@ def TrainModel(model, Epochs=5000, lr=0.01, Print=50,
     likelihood.train()
 
     MultiOutput = True if hasattr(model,'models') else False
+
     # Create the necessary loss functions and optimisers
     if MultiOutput and not SumOutput:
         # Each output of the model is trained seperately
@@ -286,6 +287,106 @@ def PrintParameters(model, output_ix=None):
 
     print(Rstr,end='')
 
+def GetModel(model_dir):
+    likelihood, model, Dataspace, Parameters = LoadModel(model_dir)
+    mod_wrap = ModelWrap(model,Dataspace)
+    return mod_wrap
+
+def GetModelPCA(model_dir):
+    likelihood, model, Dataspace, Parameters = LoadModel(model_dir)
+    VT = np.load("{}/VT.npy".format(model_dir))
+    ScalePCA = np.load("{}/ScalePCA.npy".format(model_dir))
+
+    mod_wrap = ModelWrapPCA(model,Dataspace,VT,ScalePCA)
+    return mod_wrap
+
+# ==============================================================================
+# Model wrappers
+
+class ModelWrap(ML.ModelWrapBase):
+    def Predict(self,inputs, scale_outputs=True):
+        if type(inputs) is not torch.Tensor:
+            inputs = torch.from_numpy(inputs)
+
+        with torch.no_grad():
+            if hasattr(self.model,'models'):
+                pred = np.transpose([mod(inputs).mean.numpy() for mod in self.model.models])
+            else:
+                pred = self.model(inputs).mean.numpy()
+
+        if scale_outputs:
+            pred = ML.DataRescale(pred,*self.Dataspace.OutputScaler)
+
+        return pred
+
+    def Gradient(self,inputs, scale_outputs=True):
+        if type(inputs) is not torch.Tensor:
+            inputs = torch.from_numpy(inputs)
+
+        if hasattr(self.model,'models'):
+            pred,grad = [],[]
+            for _mod in self.model.models:
+                _pred,_grad = _mod.Gradient_mean(inputs)
+                pred.append(_pred.detach().numpy());grad.append(_grad.detach().numpy())
+            pred,grad = np.transpose(pred),np.transpose(grad)
+            if scale_outputs:
+                pred = ML.DataRescale(pred,*self.Dataspace.OutputScaler)
+                grad = ML.DataRescale(grad,0,self.Dataspace.OutputScaler[1])
+
+            grad = np.moveaxis(grad, 0, -1)
+        else:
+            pred,grad = self.model.Gradient_mean(inputs)
+            pred,grad = pred.detach().numpy(),grad.detach().numpy()
+
+            if scale_outputs:
+                pred = ML.DataRescale(pred,*self.Dataspace.OutputScaler)
+                grad = ML.DataRescale(grad,0,self.Dataspace.OutputScaler[1])
+
+        return pred, grad
+
+
+class ModelWrapPCA(ModelWrap):
+    def __init__(self,model,Dataspace,VT,ScalePCA):
+        super().__init__(model,Dataspace)
+        self.VT = VT
+        self.ScalePCA = ScalePCA
+
+    def PredictFull(self,inputs,scale_outputs=True):
+        PC_pred = self.Predict(inputs,scale_outputs=True) # get prediction on PCs
+        FullPred = self.Reconstruct(PC_pred,scale=scale_outputs)
+        return FullPred
+
+    def GradientFull(self,inputs,scale_outputs=True):
+        pred,grad = self.Gradient(inputs)
+        FullPred = self.Reconstruct(pred,scale=scale_outputs)
+
+        FullGrad = []
+        for i in range(self.Dataspace.NbInput):
+            _grad = grad[:,:,i].dot(self.VT)
+            if scale_outputs:
+                _grad = ML.DataRescale(_grad,0,self.ScalePCA[1]) # as its gradient we set the bias term to zero
+            FullGrad.append(_grad)
+        FullGrad = np.moveaxis(FullGrad, 0, -1)
+
+        return FullPred,FullGrad
+
+    def PredictFull_dset(self,dset_name,scale_outputs=True):
+        inputs = self.GetDatasetInput(dset_name)
+        return self.PredictFull(inputs,scale_outputs=scale_outputs)
+
+    def Compress(self,output,scale=True):
+        if scale:
+            output = ML.DataScale(output,*self.ScalePCA)
+        return output.dot(self.VT.T)
+
+    def Reconstruct(self,PC,scale=True):
+        recon = PC.dot(self.VT)
+        if scale:
+            recon = ML.DataRescale(recon,*self.ScalePCA)
+        return recon
+
+
+
 
 # ==============================================================================
 # GPR models
@@ -327,7 +428,10 @@ class ExactGPmodel(gpytorch.models.ExactGP):
         # pred = self.likelihood(self(x))
         mean = self(x).mean
         dmean = torch.autograd.grad(mean.sum(), x)[0]
-        return dmean, mean
+        return mean, dmean
+
+    def OptimiseOutput(self,x):
+        return self.Gradient_mean(x)
 
     def Gradient_variance(self, x):
         x.requires_grad=True
@@ -335,7 +439,7 @@ class ExactGPmodel(gpytorch.models.ExactGP):
             # pred = self.likelihood(self(x))
             var = self(x).variance
             dvar = torch.autograd.grad(var.sum(), x)[0]
-        return dvar, var
+        return var, dvar
 
 class MultitaskGPModel(gpytorch.models.ExactGP):
     ''' Multitask GPR model. '''
@@ -344,6 +448,7 @@ class MultitaskGPModel(gpytorch.models.ExactGP):
 
         ard_num_dims = train_x.shape[1] if ard else None
         ndim = train_y.shape[1]
+
 
         self.mean_module = gpytorch.means.MultitaskMean(
             gpytorch.means.ConstantMean(), num_tasks=ndim

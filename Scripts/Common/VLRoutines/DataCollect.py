@@ -72,12 +72,12 @@ def Inputs(ResDir_path, InputVariables, Parameters_basename ='Parameters.py'):
 
 # ==============================================================================
 # Code Aster
-def NodalResult(ResDir_path, ResFileName, ResName, GroupName=None):
+def NodalResult(ResDir_path, ResFileName, ResName, GroupName=None,ComponentName=None):
     ''' Get result 'ResName' at all nodes. Results for certain groups can be
         returned using GroupName argument.'''
 
     ResFilePath = "{}/{}".format(ResDir_path,ResFileName)
-    Temps = MEDtools.NodalResult(ResFilePath,ResName,GroupName=GroupName)
+    Temps = MEDtools.NodalResult(ResFilePath,ResName,GroupName=GroupName,ComponentName=ComponentName)
 
     return  Temps
 
@@ -152,3 +152,11 @@ def Power_ERMES(ResDir_path, ResFileName, ResName='Joule_heating', GroupName=Non
     Power = (Volumes*JH_vol).sum()
 
     return Power
+
+
+def Variation_ERMES(ResDir_path, ResFileName, ResName='Joule_heating', GroupName=None):
+    from DA.PowerVariation_GPR import Variation
+    MeshFile = "{}/{}".format(ResDir_path,ResFileName)
+    JH_Node = NodalResult(ResDir_path, ResFileName, ResName, GroupName=GroupName)
+    var = Variation(MeshFile,JH_Node)[0]
+    return var

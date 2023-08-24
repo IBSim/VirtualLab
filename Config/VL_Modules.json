@@ -1,45 +1,32 @@
 {
     "Manager": {
         "Docker_url": "ibsim/virtuallab",
-        "Tag": "latest",
-        "Apptainer_file": "Containers/VL_Manager.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Manager",
-        "Method":"None"
+        "Tag": "master",
+        "Apptainer_file": "VL_Manager.sif"
     },
     "Cad2Vox": {
         "Docker_url": "ibsim/vl_cad2vox",
-        "Tag": "latest",
-        "Apptainer_file": "Containers/VL_Vox.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Vox.sh",
-        "Method":"Voxelise"
+        "Tag": "master",
+        "Apptainer_file": "VL_Vox.sif"
     },
     "GVXR": {
         "Docker_url": "ibsim/vl_gvxr",
-        "Tag": "latest",
-        "Apptainer_file": "Containers/VL_GVXR.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_GVXR.sh",
-        "Method":"CT_Scan"
+        "Tag": "master",
+        "Apptainer_file": "VL_GVXR.sif"
     },
     "CIL": {
         "Docker_url": "ibsim/vl_cil",
-        "Tag": "latest",
-        "Apptainer_file": "Containers/VL_CIL.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_CIL.sh",
-        "Method":"CT_Recon"
+        "Tag": "master",
+        "Apptainer_file": "VL_CIL.sif"
     },
     "Test_Comms": {
         "Docker_url": "ibsim/vl_coms_test",
-        "Tag": "latest",
-        "Apptainer_file": "Containers/VL_Test.sif",
-        "Startup_cmd": "/home/ibsim/VirtualLab/bin/VL_Test.sh",
-        "Method":"Test"
+        "Tag": "master",
+        "Apptainer_file": "VL_Test.sif"
     },
     "SalomeMeca": {
         "Docker_url": "ibsim/vl_salomemeca",
-        "Tag": "latest",
-        "Apptainer_file": "Containers/VL_Salome.sif"
-    },    
-    "Aster_test": {
-        "Apptainer_file": "Containers/code_aster_v14.sif"
-    }    
+        "Tag": "master",
+        "Apptainer_file": "VL_Salome.sif"
+    }
 }

@@ -149,8 +149,11 @@ if [[ $EUID -ne 0 ]]; then
    echo 'Re-run with "sudo ./Install_VirtualLab.sh {options}".'
    exit_abnormal
 fi
-while getopts "d:AP:S:E:C:G:yh" options; do
+while getopts "b:d:AP:S:E:C:G:yh" options; do
   case "${options}" in
+    b)
+      BRANCH=${OPTARG}
+      ;;  
     d)
       VL_DIR=$(readlink -m ${OPTARG})
       echo " - VirtualLab will be installed in '$VL_DIR'."
@@ -387,18 +390,18 @@ else
 fi
 #END
 
-sudo -u ${SUDO_USER:-$USER} git checkout BT-Container
+sudo -u ${SUDO_USER:-$USER} git checkout $BRANCH
 ### Run initial VirtualLab setup
 echo
 
-source "$VL_DIR/SetupConfig.sh"
+# source "$VL_DIR/SetupConfig.sh"
 #./SetupConfig.sh
 #sudo -u ${SUDO_USER:-$USER} ./SetupConfig.sh
 
 #sudo chown $(basename "${SUDO_USER}") $VL_DIR/VLconfig.py
-sudo chown ${SUDO_USER} $VL_DIR/VLconfig.py
-chmod 0755 $VL_DIR/VLconfig.py
-source "$VL_DIR/VLconfig.py"
+#sudo chown ${SUDO_USER} $VL_DIR/VLconfig.py
+#chmod 0755 $VL_DIR/VLconfig.py
+#source "$VL_DIR/VLconfig.py"
 
 #: <<'END'
 ### Install/configure python/conda if flagged
@@ -412,7 +415,7 @@ else
   banner "Skipping python installation" "blue" "*"
 fi
 
-check_for_conda
+# check_for_conda
 
 ### Install salome if flagged
 if [ "$SALOME_INST" == "y" ]; then
@@ -453,15 +456,15 @@ sudo chown -R ${SUDO_USER:-$USER} $VL_DIR
 echo
 ### Build VirtualLab documentation using sphinx
 echo "Building documentation"
-cd $VL_DIR/docs
-make clean
-make html
-sudo chown ${SUDO_USER} -R $VL_DIR/docs/build
-sudo chgrp ${SUDO_USER} -R $VL_DIR/docs/build
-sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
-cd $VL_DIR
-rm docs.html
-sudo -u ${SUDO_USER:-$USER} ln -s docs/build/html/index.html docs.html
+#cd $VL_DIR/docs
+#make clean
+#make html
+#sudo chown ${SUDO_USER} -R $VL_DIR/docs/build
+#sudo chgrp ${SUDO_USER} -R $VL_DIR/docs/build
+#sudo chmod -R 0755 $USER_HOME/anaconda3/envs/$CONDAENV
+#cd $VL_DIR
+#rm docs.html
+#sudo -u ${SUDO_USER:-$USER} ln -s docs/build/html/index.html docs.html
 END
 
 ### Currently can only run test as SU (therefore output files protected)

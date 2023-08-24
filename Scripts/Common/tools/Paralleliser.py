@@ -21,7 +21,7 @@ def _fn_wrap_kwargs(fn,*args):
     return fn(*args,**kwargs)
 
 
-def Paralleliser(fnc, VL, args_list, kwargs_list=[], method='sequential', nb_parallel=1, **kwargs):
+def Paralleliser(fnc, args_list, kwargs_list=[], method='sequential', nb_parallel=1, **kwargs):
     '''
     Evaluate function 'fnc' for a range of arguments using a chosen method.
     Methods available are:
@@ -39,14 +39,14 @@ def Paralleliser(fnc, VL, args_list, kwargs_list=[], method='sequential', nb_par
     ############################################################
     # checks to see if mpi/pathos is requested but not installed
     if method.lower() in ('mpi','mpi_worker') and not pyina_installed:
-        VL.Logger("********************************************\n",
+        print("********************************************\n",
               "WARNING: pyina is not installed in container\n",
               " Thus mpi can not be used. Runs will be\n",
               " performed sequentially.\n.",
               "********************************************", print=True)
         method = 'sequential'
     elif method.lower() == 'process' and not pathos_installed:
-        VL.Logger("********************************************\n",
+        print("********************************************\n",
               "WARNING: pathos is not installed in container\n",
               " Thus process cannot be used. Runs will be \n",
               "performed sequentially.\n.",

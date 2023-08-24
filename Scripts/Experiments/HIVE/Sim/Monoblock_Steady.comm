@@ -9,7 +9,7 @@ SimDict = AsterFunc.GetSimDict()
 Parameters = SimDict['Parameters']
 
 '''
-Steady state analysis of monoblock component .
+Steady state analysis of monoblock component.
 '''
 
 DEBUT(PAR_LOT = 'NON',LANG='EN')
@@ -17,7 +17,6 @@ DEBUT(PAR_LOT = 'NON',LANG='EN')
 # ==============================================================================
 # Read in the mesh and define model
 mesh = LIRE_MAILLAGE(FORMAT='MED',
-                     NOM_MED="Sample",
                      UNITE=20)
 
 Thermod = AFFE_MODELE(AFFE=_F(MODELISATION=(Parameters.Model),

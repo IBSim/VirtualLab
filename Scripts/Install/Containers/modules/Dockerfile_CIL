@@ -1,0 +1,52 @@
+FROM nvidia/cuda:11.3.1-base-ubuntu20.04
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    sudo \
+    git \
+    bzip2 \
+    libx11-6 \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir /app
+WORKDIR /app
+
+RUN adduser --disabled-password --gecos '' --shell /bin/bash user \
+ && chown -R user:user /app
+RUN echo "user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-user
+USER user
+
+ENV HOME=/home/user
+RUN sudo chmod 777 /home/user
+
+ENV CONDA_AUTO_UPDATE_CONDA=false \
+    PATH=/home/user/miniconda/bin:$PATH
+
+RUN curl -sLo ~/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-py39_4.10.3-Linux-x86_64.sh \
+ && chmod +x ~/miniconda.sh \
+ && ~/miniconda.sh -b -p ~/miniconda \
+ && rm ~/miniconda.sh \
+ && conda clean -ya \
+ && conda init
+
+RUN mkdir -p /home/user/CILworkspace
+WORKDIR /home/user/CILworkspace
+
+RUN sudo apt-get update && sudo apt-get install -y git build-essential && sudo apt-get upgrade -y
+
+RUN git clone --recurse-submodule https://github.com/TomographicImaging/CIL.git && cd CIL
+
+RUN sudo curl -s "https://cmake.org/files/v3.22/cmake-3.22.1-linux-x86_64.tar.gz" | sudo tar --strip-components=1 -xz -C /usr/local
+
+RUN cd CIL && mkdir build && mkdir install && cd build && cmake .. -DCMAKE_INSTALL_PREFIX=/home/user/CILworkspace/CIL/install && cmake --build . --target install
+
+RUN echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/user/CILworkspace/CIL/install/lib' >> ~/.bashrc
+
+RUN conda init bash && . ~/.bashrc
+#cudatoolkit=10.2
+# read from file of exact packages due to issues with newer verison somewhere
+COPY /modules/cil_conda_packages.txt /tmp/cil_conda_packages.txt
+RUN conda create --name VirtualLab --file=/tmp/cil_conda_packages.txt python=3.9 -c simpleitk -c pytorch -c conda-forge -c ccpi -c intel -c astra-toolbox/label/dev
+
+WORKDIR /home/user/
+RUN echo 'install/' >> /home/user/CILworkspace/CIL/.gitignore && echo 'build/' >> /home/user/CILworkspace/CIL/.gitignore

@@ -1,3 +1,4 @@
+import os
 from types import SimpleNamespace as Namespace
 
 import h5py
@@ -198,6 +199,8 @@ def ResultInfo(MEDFile,ResName):
     # Add attributes associated with the result to ResInfo
     # Number of components which make up the result, i.e. X,Y,Z
     ResInfo.NbComponent = ResGroup.attrs['NCO']
+    _res_group = ResGroup.attrs['NOM'].decode('UTF-8')
+    ResInfo.ComponentName = _res_group.split()
 
     # Get names and timesteps for all of the results in ResName
     ResInfo.ResultIDs = list(ResGroup.keys())
@@ -209,7 +212,7 @@ def ResultInfo(MEDFile,ResName):
     g.close()
     return ResInfo
 
-def NodalResult(MEDFile, ResName, GroupName=None):
+def NodalResult(MEDFile, ResName, GroupName=None, ComponentName=None):
     # Get useful information associated with the result ResName
     ResInfo = ResultInfo(MEDFile,ResName)
 
@@ -223,6 +226,14 @@ def NodalResult(MEDFile, ResName, GroupName=None):
         if ResInfo.NbComponent>1:
             shape = (int(_Data.shape[0]/ResInfo.NbComponent),ResInfo.NbComponent)
             _Data = _Data.reshape(shape,order='F')
+
+            if ComponentName in ('Magnitude','magnitude'):
+                _Data = np.linalg.norm(_Data,axis=1)
+
+            elif ComponentName in ResInfo.ComponentName:
+                ix = ResInfo.ComponentName.index(ComponentName)
+                _Data = _Data[:,ix]
+
         Data.append(_Data)
     Data = np.array(Data)
 
@@ -237,20 +248,6 @@ def NodalResult(MEDFile, ResName, GroupName=None):
     # Only resturns timesteps if there are more than 1
     if len(ResInfo.Timesteps) == 1: return Data[0]
     else: return Data,ResInfo.Timesteps
-
-
-
-
-
-
-
-
-
-
-
-
-
-    return Result
 
 def ElementResult(MEDFile, ResName, GroupName=None):
 
@@ -277,3 +274,47 @@ def ASCIIname(names):
         namelist.append(lis)
     res = np.array(namelist)
     return res
+
+def AddResult(MEDfile,array,resname):
+    ''' Creates codeaster style results field in a med file.
+    Result 'resname' is created consisting of 'array'. '''
+
+    h5py_file = h5py.File(MEDfile,'a')
+
+    Formats = h5py.File("{}/MED_Format.med".format(os.path.dirname(__file__)),'r')
+    GrpFormat = Formats['ELEME']
+    h5py_file.copy(GrpFormat,"CHA/{}".format(resname))
+    grp = h5py_file["CHA/{}".format(resname)]
+    Formats.close()
+
+    grp.attrs.create('MAI','Sample',dtype='S8')
+    if array.ndim == 1:
+        NOM,NCO =  'Res'.ljust(16),1
+    else:
+        NOM, NCO = '', array.shape[1]
+        for i in range(NCO):
+            NOM+=('Res{}'.format(i)).ljust(16)
+
+    # ==========================================================================
+    # formats needed for paravis
+    grp.attrs.create('NCO',NCO,dtype='i4')
+    grp.attrs.create('NOM', NOM,dtype='S100')
+    grp.attrs.create('TYP',6,dtype='i4')
+    grp.attrs.create('UNI',''.ljust(len(NOM)),dtype='S100')
+    grp.attrs.create('UNT','',dtype='S1')
+    grp = grp.create_group('0000000000000000000000000000000000000000')
+    grp.attrs.create('NDT',0,dtype='i4')
+    grp.attrs.create('NOR',0,dtype='i4')
+    grp.attrs.create('PDT',0.0,dtype='f8')
+    grp.attrs.create('RDT',-1,dtype='i4')
+    grp.attrs.create('ROR',-1,dtype='i4')
+    grp = grp.create_group('NOE')
+    grp.attrs.create('GAU','',dtype='S1')
+    grp.attrs.create('PFL','MED_NO_PROFILE_INTERNAL',dtype='S100')
+    grp = grp.create_group('MED_NO_PROFILE_INTERNAL')
+    grp.attrs.create('GAU','',dtype='S1'    )
+    grp.attrs.create('NBR', array.shape[0], dtype='i4')
+    grp.attrs.create('NGA',1,dtype='i4')
+    grp.create_dataset("CO",data=array.flatten(order='F'))
+
+    h5py_file.close()

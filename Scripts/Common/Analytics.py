@@ -21,15 +21,19 @@ done in VLconfig.py.
 '''
 
 def Run(Category,Action,Label):
-    tracking_id = 'UA-112907949-3' #tid
+    #tracking_id = 'UA-112907949-3' #tid
+    tracking_id = 'G-M4X1J02VS1' #tid
     clientid_str = str(datetime.now()) #cid
     campaign_name_str = 'UbuntuVM' #cn
     key1 = 'UbuntuVM' #key1
 
-    tracking_url = "https://www.google-analytics.com/collect?v=1&t=event&tid={}&cid={}\
-                    &ec={}&ea={}&el={}&key1={}&aip=0".format(tracking_id,clientid_str,
+#    tracking_url = "https://www.google-analytics.com/collect?v=1&t=event&tid={}&cid={}\
+#                    &ec={}&ea={}&el={}&key1={}&aip=0".format(tracking_id,clientid_str,
+#                                        Category,Action,Label,key1)
 
-                                        Category,Action,Label,key1)
+    tracking_url = "https://www.google-analytics.com/collect?v=2&t=event&tid={}&cid={}\
+                    &ec={}&ea={}&el={}&key1={}&aip=0".format(tracking_id,clientid_str,
+                    Category,Action,Label,key1)
 
     try:
         requests.post(tracking_url)

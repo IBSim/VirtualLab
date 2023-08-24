@@ -1,3 +1,9 @@
+import os
+import sys
+from pathlib import Path
+import json
+import re
+
 def ContainerError(out, err):
     """Custom function to format error message in a pretty way."""
     Errmsg = (
@@ -25,8 +31,7 @@ def load_module_config_yaml(vlab_dir):
 
 def load_module_config(vlab_dir):
     """Function to get the config from a json file"""
-    import json
-    from pathlib import Path
+
 
     vlab_dir = Path(vlab_dir)
     # load module config from file
@@ -75,9 +80,7 @@ def check_file_in_container(vlab_dir, Run_file):
     the virtualLab directory. If not the file is copied to the temporary directory, previously
     created by the tempfile library which is accessible and bound to /tmp in the container.
     """
-    from pathlib import Path
-    import shutil
-    import os, sys, stat
+
 
     # Convert Run_file to a pathlib path
     Run_file = Path(Run_file)
@@ -93,7 +96,6 @@ def check_k_options(option):
     """
     check that the options given to -K are of the form Name=Value
     """
-    import re
 
     # look for a single = sign that is not at the beging or end of the string.
     # Note: this coves a blank string and '='.
@@ -114,3 +116,24 @@ def check_valid_port(tcp_port):
         sys.exit(0)
     else:
         return tcp_port
+        
+        
+def get_pwd():
+    return os.environ["PWD"]
+    
+def filetodict(filepath):
+    with open(filepath,'r') as f:
+        contents = f.readlines()
+
+    info = {}
+    for line in contents:
+        if line.startswith('#'): continue
+        data = line.split('=')
+        if len(data) !=2: continue
+        varname, value = data
+        value = (value.strip()).strip('"')
+        info[varname] = value
+    
+    return info
+
+    

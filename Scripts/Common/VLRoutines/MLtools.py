@@ -19,13 +19,12 @@ def PCA_Sensitivity(VL,DataDict):
 
     U,s,VT = ML.PCA(TrainOut,centre=False)
 
-    train_recon_score, test_recon_score = ML.PCA_sensitivity(VT,TrainOut,TestOut)
-
     thresholds = [0.99,0.999]
     threshold_ix = ML.PCA_threshold(s,thresholds)
-
     # convergence_ix = ML.PCA_recon_convergence(train_recon_score)
     # print(convergence_ix)
+
+    train_recon_score, test_recon_score = ML.PCA_sensitivity(VT,TrainOut,TestOut)
 
     x = list(range(1,len(s)+1))
     fig,ax = plt.subplots()
@@ -38,11 +37,9 @@ def PCA_Sensitivity(VL,DataDict):
 
     ylim = [1e-8,ceil]
     for _threshold_ix,_threshold in zip(threshold_ix,thresholds):
-        plt.plot([_threshold_ix+1]*2,ylim,linestyle='--',c='0.5')
-        v = '{}\n({})'.format(_threshold,_threshold_ix+1)
-        ax.annotate(v,(_threshold_ix+1,ceil/10))
-
-
+        plt.plot([_threshold_ix]*2,ylim,linestyle='--',c='0.5')
+        v = '{}\n({})'.format(_threshold,_threshold_ix)
+        ax.annotate(v,(_threshold_ix,ceil/10))
 
     ax.set_xlabel('No. PC')
     ax.set_ylabel('Reconstruction error')

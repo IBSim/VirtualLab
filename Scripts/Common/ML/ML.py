@@ -340,16 +340,13 @@ def GetPC(Data,metric={},centre=True,check_variance=False):
     _data = np.copy(Data)
     U,s,VT = PCA(Data,centre=centre)
 
-    # get eigenvalues from s. This formula only holds if the data is centred.
-    eigens = s**2/(Data.shape[0] - 1)
-
     if check_variance:
-        PC_var = eigens.sum()
+        PC_var = GetEigenvalues(s).sum()
         Data_var = np.var(_data,axis=0).sum()*Data.shape[0]/(Data.shape[0] - 1)
         print("Original variance in data:{}\nVariance on principal components:{}".format(Data_var,PC_var))
 
     if 'threshold' in metric:
-        threshold_ix = PCA_threshold(eigens,metric['threshold'])
+        threshold_ix = PCA_threshold(s,metric['threshold'])
     else: threshold_ix=0
 
     # number of principal components to keep

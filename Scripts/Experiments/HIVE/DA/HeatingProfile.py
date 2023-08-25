@@ -73,6 +73,7 @@ def _CreateImage(VL,DataDict, model):
     MeshName = Parameters.MeshName
     TestData = Parameters.TestData
     Index = Parameters.Index
+    GUI = getattr(Parameters,'PVGUI',False)
 
     TestIn, TestOut = ML.VLGetDataML(VL,TestData)
 
@@ -102,5 +103,5 @@ def _CreateImage(VL,DataDict, model):
         arg4 = "{}/Ex{}_Error.png".format(DataDict['CALC_DIR'],ix)
         func_evals.append([funcname,(arg1,arg2,arg3,arg4)])
 
-    ParaViS.RunEval(PVFile,func_evals,GUI=True)
+    ParaViS.RunEval(PVFile,func_evals,GUI=GUI)
 

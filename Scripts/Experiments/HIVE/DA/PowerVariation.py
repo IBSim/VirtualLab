@@ -12,7 +12,7 @@ def GPR_compare(VL,DataDict):
     '''
     Parameters = DataDict['Parameters']
 
-    MLModels = Parameters.FixedModels
+    MLModels = Parameters.MLModels
     TestData = Parameters.TestData
 
     TestIn, TestOut = ML.VLGetDataML(VL,TestData)
@@ -54,11 +54,12 @@ def GPR_compare(VL,DataDict):
         x_point.append(i+0.5)
 
     plt.setp(axes, xticks=x_point, xticklabels=kernels)
+    axes[0].set_ylabel('nRMSE')    
     axes[0].set_title('Average')
     axes[1].set_title('Power')
     axes[2].set_title('Variation')
     axes[1].legend([train_scatter,test_scatter], ['Train','Test'])
-    plt.savefig("{}/GPR.png".format(DataDict['CALC_DIR']))
+    plt.savefig("{}/Comparison.png".format(DataDict['CALC_DIR']))
     plt.close()
 
 def MLP_compare(VL,DataDict):
@@ -110,11 +111,12 @@ def MLP_compare(VL,DataDict):
         x_point.append(i+0.5)
 
     plt.setp(axes, xticks=x_point, xticklabels=Architectures)
+    axes[0].set_ylabel('nRMSE')
     axes[0].set_title('Average')
     axes[1].set_title('Power')
     axes[2].set_title('Variation')
     axes[1].legend([train_scatter,test_scatter], ['Train','Test'])
-    plt.savefig("{}/MLP.png".format(DataDict['CALC_DIR']))
+    plt.savefig("{}/Comparison.png".format(DataDict['CALC_DIR']))
     plt.close()
 
 

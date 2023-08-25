@@ -56,14 +56,16 @@ def _AnalysisTemp(VL,DataDict,model):
     resfile_tmp = "{}/compare.med".format(DataDict['TMP_CALC_DIR'])
     meshfile = "{}/{}.med".format(VL.MESH_DIR,MeshName)
     shutil.copy(meshfile,resfile_tmp)
+    DesiredTemp = Parameters.DesiredTemp
+    GUI = getattr(Parameters,'PVGUI',False)
 
     # perform 3 pieces of analysis; comparison with simulation and 2 inverse probems
     pv_evals1 = _SimulationCompare(VL,DataDict,model,resfile_tmp,'TemperatureCompare')
     pv_evals2 = _MaxTemp(model, DataDict, resfile_tmp)
-    pv_evals3 = _ReachTemp(model, DataDict, resfile_tmp)
+    pv_evals3 = _ReachTemp(model, DataDict, resfile_tmp,DesiredTemp)
 
     # add results to file
-    ParaViS.RunEval(PVFile,pv_evals1+pv_evals2+pv_evals3,GUI=True)
+    ParaViS.RunEval(PVFile,pv_evals1+pv_evals2+pv_evals3,GUI=GUI)
 
 def _AnalysisVonMises(VL,DataDict,model_t, model_vm):
     '''
@@ -75,6 +77,7 @@ def _AnalysisVonMises(VL,DataDict,model_t, model_vm):
     resfile_tmp = "{}/compare.med".format(DataDict['TMP_CALC_DIR'])
     meshfile = "{}/{}.med".format(VL.MESH_DIR,MeshName)
     shutil.copy(meshfile,resfile_tmp)
+    GUI = getattr(Parameters,'PVGUI',False)
 
     # perform 3 pieces of analysis; comparison with simulation and 2 inverse probems
     pv_evals1 = _SimulationCompare(VL,DataDict,model_vm,resfile_tmp,'VonMisesCompare')
@@ -82,7 +85,7 @@ def _AnalysisVonMises(VL,DataDict,model_t, model_vm):
     pv_evals3 = _ReachTempMaxVM(model_t,model_vm,DataDict,resfile_tmp)
 
     # add results to file
-    ParaViS.RunEval(PVFile,pv_evals1+pv_evals2+pv_evals3,GUI=True)
+    ParaViS.RunEval(PVFile,pv_evals1+pv_evals2+pv_evals3,GUI=GUI)
 
 def _AddResult(ResFile,**kwargs):
     res_obj = WriteMED(ResFile,append=True)
@@ -206,11 +209,11 @@ def _MaxTemp(model,DataDict, resfile):
     return [[paravis_funcname,[arg1,arg2,arg3]]]
 
     
-def _ReachTemp(model,DataDict,resfile):
+def _ReachTemp(model,DataDict,resfile,DesiredTemp):
     '''
     Identify the inputs which will deliver the temperature specified by DesiredTemp
     '''
-    DesiredTemp = 600
+
     cd,val,val_lse = _ReachMaxValue(model,DesiredTemp)
 
     print('###############################################\n')

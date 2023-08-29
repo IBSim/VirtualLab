@@ -76,7 +76,8 @@ class WriteMED(object):
 
         grp.create_dataset("CO",data=result.flatten(order='F'))
 
-
+    def close(self):
+        self.__root.close()
 
 
     

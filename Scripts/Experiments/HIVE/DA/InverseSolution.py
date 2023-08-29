@@ -77,12 +77,13 @@ def _AnalysisVonMises(VL,DataDict,model_t, model_vm):
     resfile_tmp = "{}/compare.med".format(DataDict['TMP_CALC_DIR'])
     meshfile = "{}/{}.med".format(VL.MESH_DIR,MeshName)
     shutil.copy(meshfile,resfile_tmp)
+    DesiredTemp = Parameters.DesiredTemp
     GUI = getattr(Parameters,'PVGUI',False)
 
     # perform 3 pieces of analysis; comparison with simulation and 2 inverse probems
     pv_evals1 = _SimulationCompare(VL,DataDict,model_vm,resfile_tmp,'VonMisesCompare')
     pv_evals2 = _MaxVM(model_vm,DataDict,resfile_tmp)
-    pv_evals3 = _ReachTempMaxVM(model_t,model_vm,DataDict,resfile_tmp)
+    pv_evals3 = _ReachTempMaxVM(model_t,model_vm,DataDict,resfile_tmp, DesiredTemp)
 
     # add results to file
     ParaViS.RunEval(PVFile,pv_evals1+pv_evals2+pv_evals3,GUI=GUI)
@@ -91,6 +92,7 @@ def _AddResult(ResFile,**kwargs):
     res_obj = WriteMED(ResFile,append=True)
     for ResName,values in kwargs.items():
         res_obj.add_nodal_result(values,ResName)
+    res_obj.close()
 
 def _SimulationCompare(VL,DataDict, model,resfile, paravis_funcname):
     '''
@@ -260,13 +262,12 @@ def _MaxVM(model,DataDict,resfile):
 
     return [[paravis_funcname,[arg1,arg2,arg3]]]
 
-def _ReachTempMaxVM(model_t,model_vm,DataDict,resfile):
+def _ReachTempMaxVM(model_t,model_vm,DataDict,resfile,DesiredTemp):
     '''
     Identify the inputs which will deliver the maximum VonMises stress 
     for a maximum temperature specified by DesiredTemp
     '''
 
-    DesiredTemp = 600
     cd,val= _ReachMaxValueConstraint(model_t,model_vm,DesiredTemp)
     best_cd,best_val = cd[0],val[0]
     best_cd_str = ", ".join(["{:.2e}".format(v) for v in best_cd])

@@ -26,6 +26,7 @@ def _MakeMEDResult(MeshFile,ResFile,FieldResult={}):
         values_full = np.zeros(mesh.NbNodes)
         values_full[NodeIDs-1] = values
         res_obj.add_nodal_result(values_full,ResName)
+    res_obj.close()
 
 def CreateImage_GPR(VL,DataDict):
 

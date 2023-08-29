@@ -31,7 +31,8 @@ if [ $runflag = 't' ] ; then
 	# get port number from tmpfile and kill salome on that port (only needed if GUI hasnt been opened)
 	port=$(cat $tmpfile)
 	$cmd kill $port
+else 
+	sleep 3 #  gives a chance for salome gui to clean up (otherwise errors are printed to screen)
 fi
-
 
 

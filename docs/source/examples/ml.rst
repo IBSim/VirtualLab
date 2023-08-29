@@ -400,7 +400,7 @@ This example shows how a 3D GPR surrogate model can solve one of the most preval
 Example 4: Inverse solutions (Von Mises)
 *******************************************
 
-In this example a surrogate model of the Von Mise stress field is used in conjunction with the temperature field surrogate generated in the previous example to identify more complex inverse solutions. 
+In this example a surrogate model of the Von Mises stress field is used in conjunction with the temperature field surrogate generated in the previous example to identify more complex inverse solutions. 
 
 The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/InverseSolution_VM.py`. At the top of the file are flags to dictate how the analysis will be performed and should look like this ::
 
@@ -410,7 +410,7 @@ The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutori
     CreateModel = True
     InverseAnalysis = True
 
-:numref:`Fig. %s <PyPlot_11>` shows the reconstruction error versus the number of principal components used to compress the Von Mises stress nodal data. Notice that the reconstruction error is higher for the Von Mises tress compared with the temperature data from the previous example. To achieve a reconstruction error of 1E-3 with this data around 100 principal component would be required, which is quite large. Instead 20 principal components ill be used, whih will still ensure that more than 99.9% of the variance is retained. 
+:numref:`Fig. %s <PyPlot_11>` shows the reconstruction error versus the number of principal components used to compress the Von Mises stress nodal data. Notice that the reconstruction error is higher for the Von Mises stress compared with the temperature data from the previous example. To achieve a reconstruction error of 1E-3 with this data around 100 principal component would be required, which is quite large. Instead 20 principal components will be used, which will still ensure that more than 99.9% of the variance is retained. 
 
 .. _PyPlot_11:
 
@@ -421,4 +421,191 @@ The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutori
 .. note::
 
     If youd like to generate this plot for yourself, make sure the PCA_Analysis at the top of the RunFile is set to :code:`True`. This, however, may take a little while.
+
+The parameters for generating the GPR model are identical to those in the previous example, with the only difference the name of the dataset used for the model output is now 'VonMises' ::
+
+    ML.Name = 'VonMises/GPR'
+    ML.File = ('GPR_Models','GPR_PCA_hdf5')
+    ML.TrainingParameters = {'Epochs':1000,'lr':0.05}
+    ML.TrainData = [DataFile, 'Features', 'VonMises',{'group':'Train'}]
+    ML.ModelParameters = {'kernel':'Matern_2.5','min_noise':1e-8,'noise_init':1e-6}
+    ML.Metric = {'nb_components':20} 
+ 
+ Following this you have the parameters to perform analysis with the model. Notice that in this example both the temperature and Von Mises Ml models are used ::
+
+    DA.Name = 'Analysis/{}/InverseSolution_VM/GPR'.format(CoilType)
+    DA.File = ('InverseSolution','AnalysisVM_GPR')
+    DA.MLModel_T = 'Temperature/{}/GPR'.format(CoilType)
+    DA.MLModel_VM = 'VonMises/{}/GPR'.format(CoilType)
+
+The other parameters used in this analysis are the same as the previous example ::
+
+    DA.Index = [2]
+    DA.DesiredTemp = 600
+
+*Index* is the index of the test data which will be used to compare the output of the model with the 'ground truth' simulation, as we did in the previous example. 
+
+.. admonition:: Action
+   :class: Action
+
+    Ensure that *ModelType* is 'GPR' at the top of the RunFile and that *CreateModel* and *InverseAnalysis* are set to :code:`True`. 
+
+    Launch **VirtualLab** with ::
+
+        VirtualLab -f RunFiles/Tutorials/ML/HIVE_Example/InverseSolution_VM.py
+
+    .. note::
+        
+        Generating the model may take a little while, so feel free to grab yourself a coffee. 
+
+
+The inverse analysis performed first is to identify the experimental parameters which will provide the maximum amount of Von Mises stress in the component. You should notice an output like this ::
+
+    Parameter combination which will deliver a maximum Von Mises stress of 965.04 MPa:
+
+    4.12e-03, -1.09e-02, 3.00e-03, -5.00e+00, 7.99e+01, 6.58e-01, 2.00e+03
+
+Many of these are as we'd expect, with the coil displacement in the z direction at 3.00e-03, it's minimum value, along with the coolant temperature at its maximum value (80 C) and the current also at the maximum (2000 A). This combination of parameters will result in a Von Mises stress of 965 MPa. An image of the Von Mises stress field using these parameters can be found at :file:`Analysis/Pancake/InverseSolution_VM/GPR/MaxVonMises.png`.
+
+*DesiredTemp* is again the maximum temperature we want the component to reach, however as we have the von Mises model we would like to go a step further. The previous example showed a variety of different temperature profiles where the maximum temperature of 600 C is delivered, each of which will result in a different stress fields in the component. Therefore, it is desirable to identify the experimental parameters which will maximise the Von Mises stress while ensuring that 600 C is delivered to the component. The output for this should look like this ::
+
+    Parameter combination which delivers 600.00 C and maximises the Von Mises stress, delivering 586.28 MPa:
+
+    4.56e-03, 7.27e-03, 5.51e-03, -5.00e+00, 3.00e+01, 7.22e+00, 1.92e+03
+
+.. note:: 
+    Using two models for the optimisation may be slightly time-consuming. 
+
+An image of the temperature field and Von Mises stress field using these parameters can be found at :file:`T600_T.png`. and :file:`T600_VM.png` in :file:`Analysis/Pancake/InverseSolution_VM/GPR`. 
+
+Alongside these you will find :file:`Ex2_Simulation.png` :file:`Ex2_ML.png` and :file:`Ex2_Error.png` which show a comparison of the model output with the simulation for example 2 (that which was specified using *DA.Index*).
+
+.. note::
+
+    You can perform the same analysis again using an MLP model if youd like.
+
+
+Example 5: Thermocouple optimisation
+**************************************
+
+HIVE currently collects data from an experiment using thermocouples. Thermocouples are probes which are joined to the surface of a component prior to an experiment and provide pointwise temperature data. Unfortunately this data does not provide a huge amoutn of understanding of the components behaviour, especially at locations the thermocouples can't measure, e.g. the inside of the component. Knowledge of the full temperature field throughout the component would greatly improve the understanding of the component and its suitability for a fusion device.
+
+In this example the temperature surrogate models generated in example 3 are used to predict what the temperature field is throughout the component using simulated thermocouple data. Using examples from the test dataset, temperature at thermocouple locations are extracted and it is assumed that this is the only information we have. 
+
+Following this, the sensitivity of the placement of the thermocouples is presented, along with a method of optimising their location.
+
+The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/Thermocouple.py`. At the top of the file are flags to dictate how the analysis will be performed and should look like this ::
+
+    CoilType='Pancake' 
+    ModelType = 'MLP' # this can be GPR or MLP
+    EstimateField = True
+    Sensitivity = False
+    Optimise = False
+
+Notice that *ModelType* in this example is 'MLP', which is chosen as it's evaluation is substantially faster compared with GPR, which is necessary for the optimisation of the thermocouple locations.
+
+.. note::
+
+    The MLP model for the temperature field should have been created in example 3. This will need to be completed before the analysis of this example can take place.
+
+To estimate the field from the thermocouple, firstly the placement of the thermocouples is required. This is specified using the *ThermocoupleConfig* attribute ::
+
+    DA.ThermocoupleConfig = [['TileSideA',0.5,0.5], 
+                            ['TileFront',0.5,0.5], 
+                            ['TileSideB',0.5,0.5], 
+                            ['TileBack',0.5,0.5],
+                            ['BlockFront',0.5,0.5], 
+                            ['BlockBack',0.5,0.5], 
+                            ['BlockBottom',0.5,0.5]]
+
+Here each list represents a thermocouple, with the first value the surface the thermocouple will be attached to, with the next 2 the positioning on the surface (scaled to [0,1] range). This configuration is for 7 thermocouples, with each placed at the centre of the respective surface, see :numref:`Fig. %s <PyPlot_12>` - :numref:`%s <PyPlot_14>`.
+
+.. _PyPlot_12:
+
+.. figure :: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/ML_HIVE/TC_1.png
+
+    Thermocouples at centre of surfaces (viewpoint 1)
+
+.. _PyPlot_13:
+
+.. figure :: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/ML_HIVE/TC_2.png
+
+    Thermocouples at centre of surfaces (viewpoint 2)
+
+.. _PyPlot_14:
+
+.. figure :: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/ML_HIVE/TC_3.png
+
+    Thermocouples at centre of surfaces (viewpoint 3)
+
+These are the 7 thermocouples which will be used, with the temperature data extracted from example 7 of the test dataset (again specified using *Index*). 
+
+.. admonition:: Action
+   :class: Action
+
+    Ensure that *ModelType* is 'MLP' at the top of the RunFile and that *EstimateField* is set to :code:`True`, while *Sensitivity* and *Optimise* are both :code:`False`. 
+
+    Launch **VirtualLab** with ::
+
+        VirtualLab -f RunFiles/Tutorials/ML/HIVE_Example/Thermocouple.py
+
+In the directory :file:`Analysis/Pancake/Thermocouple/MLP/EstimateField` you will find :file:`Ex7_Simulation.png` which shows the temperature field predicted by the simulation, while :file:`Ex7_ML.png` shows the temperature field estimated by the surrogate model using the temperature at the 7 thermocouple locations. An error plot is also provided in :file:`Ex7_Error.png`, highlighting good agreement between the two. This shows that it is possible to estimate a full temperature field using only 7 surface temperature points. 
+
+Adding thermocouples to components is a time-consuming task, therefore it is desirable to use as few of them as possible. Where the thermocouples are placed has a big impact on whether or not the original temperature field can be retrieved. 
+
+The next task will look at 5 random configuraitions of 4 thermocouples to see how many temperature fields fit to them. These are decided using the *NbConfig*  and *NbThermocouple* attributes ::
+
+    DA.CandidateSurfaces = ['TileSideA','TileSideB','TileFront','TileBack','BlockFront','BlockBack','BlockBottom']
+    DA.NbThermocouples = 4
+    DA.NbConfig = 5 
+
+The *CandidateSurfaces* attribute is simply the different surfaces where thermocouples can be placed. 
+
+.. admonition:: Action
+   :class: Action
+
+    Change *EstimateField* is set to :code:`False` and *Sensitivity* to :code:`True`. 
+
+    Launch **VirtualLab** 
+
+In :file:`Analysis/Pancake/Thermocouple/MLP/Sensitivity` you will find :file:`PlacementSensitivity.png`, which is also shown in :numref:`Fig. %s <PyPlot_15>`.
+
+.. _PyPlot_15:
+
+.. figure :: https://gitlab.com/ibsim/media/-/raw/master/images/VirtualLab/ML_HIVE/PlacementSensitivity.png
+
+    Thermocouples at centre of surfaces (viewpoint 3)
+
+This plot provides a score for each configuration. This score is the number of temperature fields which fit the temperature data provided, averaged over 5 test cases. A score of 1 represents a perfect score, since this means that in all 5 cases only a single temperature field fit to the data. 
+
+Configuration 3 provides a very low score, showing that this would be a good choice compared with the others. A visualisation of the thermocouple placements which gave this score can be found in :file:`TC_configs/Config_3`. Visualisation of the other, less impressive, configurations can also be found in the :file:`TC_configs` directory. 
+
+The above raises the question regarding an optimal number and configuration of thermocouples. The next task will look at identifying the optimal configuration of thermocouples. Here, we use the gradient-free genetic algorithm to find an optima, see `here <https://en.wikipedia.org/wiki/Genetic_algorithm>`_ for more details. 
+
+Similar to above, here we define the *CandidateSurfaces* and *NbThermocouples*, but we also define *GeneticAlgorithm* ::
+
+    DA.GeneticAlgorithm = {'NbGen':5,'NbPop':20,'NbExample':5,'seed':100}
+
+*GeneticAlgorithm* is a dictionary containing information for running the genetic algorithm optimisation. 'NbGen' is the maximum number of generations which the optimisation will run for, while 'NbPop' is the population size. 'NbExample' is the number of testcases to average the score over, while 'seed' seeds the initial population for reproducability. Additional parameters can also be passed to the algorithm, see routine 'Optimise_MLP' in :file:`Scripts/Experiments/HIVE/DA/Thermocouple.py`. 
+
+.. admonition:: Action
+   :class: Action
+
+    Change *Sensitivity* is set to :code:`False` and *Optimise* to :code:`True`. 
+
+    Launch **VirtualLab** 
+
+In the terminal information relating to the genetic algorithm will be printed, mainly the current best score and configuration found. 
+
+You should find that with 4 thermocouples it is possible to identify a configuration which will deliver a perfect score of 1. The placement of these thermocouples can be seen in :file:`Analysis/Pancake/Thermocouple/MLP/Optimise_4/OptimalConfig`. 
+
+.. admonition:: Action
+   :class: Action
+
+    Perform the same analysis again but with NbThermocouple = 3.
+
+    Launch **VirtualLab** 
+
+You should notice that when only 3 thermocouples are used the lowest score is well above the optimal score of 1, meaning that 4 thermocouples are required to accurately predict the temperature field throughput the component. 
+
 

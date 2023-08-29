@@ -15,14 +15,14 @@ from Scripts.Common.VirtualLab import VLSetup
 CoilType='Pancake' 
 PCA_Analysis = False
 ModelType = 'GPR' # this can be GPR or MLP
-CreateModel = True
+CreateModel = False
 InverseAnalysis = True
 
 # ====================================================================
 # Setup VirtualLab
 VirtualLab=VLSetup('HIVE','ML_analysis')
 
-VirtualLab.Settings(Launcher='sequential',NbJobs=1)
+VirtualLab.Settings(Launcher='sequential',NbJobs=1,Mode='t')
 
 # check data has been created, if not download
 DataFile = '{}_coil/VMNodal.hdf'.format(CoilType)
@@ -51,12 +51,12 @@ if ModelType=='MLP' and CreateModel:
     ML = Namespace()
     ML.Name = 'VonMises/{}/MLP'.format(CoilType)
     ML.File = ('NN_Models','MLP_PCA_hdf5')
-    ML.TrainingParameters = {'Epochs':1000,'lr':0.005,'Print':50}
+    ML.TrainingParameters = {'Epochs':1000,'lr':0.005}
     ML.TrainData = [DataFile, 'Features', 'VonMises',{'group':'Train'}]
     ML.ValidationData = [DataFile, 'Features', 'VonMises',{'group':'Test'}]
     ML.ModelParameters = {'Architecture':[8,16,8]} 
     ML.Seed = 100 # initial weights of MLP are randomised so this ensures reproducability
-    ML.Metric = {'nb_components':30}
+    ML.Metric = {'nb_components':20}
     main_parameters.ML = ML 
 
     VirtualLab.Parameters(main_parameters)
@@ -72,12 +72,12 @@ elif ModelType=='GPR' and CreateModel:
     main_parameters = Namespace()
 
     ML = Namespace()
-    ML.Name = 'VonMises/GPR'
+    ML.Name = 'VonMises/{}/GPR'.format(CoilType)
     ML.File = ('GPR_Models','GPR_PCA_hdf5')
-    ML.TrainingParameters = {'Epochs':1000,'lr':0.05,'Print':50}
+    ML.TrainingParameters = {'Epochs':1000,'lr':0.05}
     ML.TrainData = [DataFile, 'Features', 'VonMises',{'group':'Train'}]
-    ML.ModelParameters = {'kernel':'Matern_2.5'} #{'min_noise':1e-8,'noise_init':1e-6}
-    ML.Metric = {'nb_components':30}
+    ML.ModelParameters = {'kernel':'Matern_2.5','min_noise':1e-8,'noise_init':1e-6}
+    ML.Metric = {'nb_components':20}
 
     main_parameters = Namespace(ML=ML)
 
@@ -107,6 +107,8 @@ if InverseAnalysis:
     DA.TestData = [DataFile, 'Features', 'VonMises',{'group':'Test'}]
     # create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
     DA.Index = [2]
+    DA.DesiredTemp = 600
+    DA.PVGUI = False
 
     main_parameters.DA = DA 
 

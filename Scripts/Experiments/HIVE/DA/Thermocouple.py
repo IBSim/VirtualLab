@@ -6,7 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from Scripts.Common.ML import ML, GPR, NN
-from Scripts.Common.Optimisation import optimisation, GA_Parallel, GA
+from Scripts.Common.Optimisation import optimisation
+from pygad import GA
 from Scripts.Common.tools.MED4Py import WriteMED
 from Scripts.VLPackages.ParaViS import API as ParaViS
 from Scripts.Common.tools import MEDtools
@@ -61,6 +62,10 @@ def _FullFieldEstimate(VL,DataDict,model):
     estimated_field = model.PredictFull(exp_parameters)
     resfile_tmp = "{}/compare.med".format(DataDict['TMP_CALC_DIR'])
     shutil.copy(meshfile,resfile_tmp)
+    GUI = getattr(Parameters,'PVGUI',False)
+
+    # ===============================================================================
+    # ake comparison of predicted field vs that from the simulation
     paravis_evals = []
     for ml,sim,ix in zip(estimated_field,simulated_temp,Index):
         ml_name,sim_name = "ML_{}".format(ix),"Simulation_{}".format(ix)
@@ -72,8 +77,18 @@ def _FullFieldEstimate(VL,DataDict,model):
         arg4 = "{}/Ex{}_Error.png".format(DataDict['CALC_DIR'],ix)
         paravis_evals.append(['TemperatureCompare',
                               (arg1,arg2,arg3,arg4)])
+        
+    # plot the locations of the thermocouples
+    # define directory to put images in and delete it if it already exists
+    config_dir = "{}/TC_configs".format(DataDict['CALC_DIR'])
+    if os.path.isdir(config_dir): shutil.rmtree(config_dir)
+    # convert the thermocouple locations to actual coordinates and pass to PlotTC paraview function
+    tc_coords = _LocationTC(TC_config,meshfile)
+    os.makedirs(config_dir)
+    args = [meshfile,tc_coords,config_dir]
+    paravis_evals.append(['PlotTC',args])
 
-    ParaViS.RunEval(PVFile,paravis_evals,GUI=True)
+    ParaViS.RunEval(PVFile,paravis_evals,GUI=GUI)
 
 def Sensitivity_GPR(VL,DataDict):
     '''
@@ -134,6 +149,8 @@ def _Sensitivity(VL,DataDict,model):
     # create a plot showing the average number of admissible fields for each configuration
     plt.figure()
     plt.scatter(x,config_score,c='k',marker='x')
+    plt.ylim(bottom=0)
+    plt.plot([x[0],x[-1]],[1,1],c='0.5',linestyle='--')
     x_ticks = ["Config_{}".format(i+1) for i in x]
     plt.xticks(x,x_ticks)
     plt.ylabel("No. admissible fields (avg)")
@@ -157,13 +174,6 @@ def _Sensitivity(VL,DataDict,model):
 
     ParaViS.RunEval(PVFile,paravis_evals,GUI=True)
 
-
-    # resfile_tmp = "{}/compare.med".format(DataDict['TMP_CALC_DIR'])
-    # shutil.copy(meshfile,resfile_tmp)
-    # dict1 = {'sol_{}'.format(i):val for i,val in enumerate(unique_field)}
-    # _AddResult(resfile_tmp,**dict1)
-    # ParaViS.ShowMED(resfile_tmp,GUI=True)
-
 def Optimise_GPR(VL,DataDict):
     '''
     Routine which uses GPR model to optimise the location of thermocouples
@@ -186,32 +196,40 @@ def Optimise_MLP(VL,DataDict):
 
 def _Optimise(VL,DataDict,model):
     Parameters = DataDict['Parameters']
-    GA = GA_Parallel('sequential',1,seed=123)
 
     TestData = Parameters.TestData
     TestIn, TestOut = ML.VLGetDataML(VL,TestData)
-    nbexample = getattr(Parameters,'NbExample',5)
-    TestFields = TestOut[:nbexample]
 
     MeshName = Parameters.MeshName
     meshfile = "{}/{}.med".format(VL.MESH_DIR,MeshName)
 
     CandidateSurfaces = Parameters.CandidateSurfaces
     NbTC = Parameters.NbThermocouples
-
-    GA_func = _nb_field_avg_wrap(model, CandidateSurfaces, meshfile, TestFields)
-    update_func = _update_wrap(CandidateSurfaces)
-    
+  
     # ======================================================================
     # Stopping criterion
     StopCriteria = ['reach_1','saturate_10']
-    NbGen=2
-    NbPop=5
-    MatingProb = 0.2
-    NbMating = max(2,int(NbPop*MatingProb))
-    MutationProb = 0.1
+    GeneticAlgorithm = Parameters.GeneticAlgorithm
+    NbGen = GeneticAlgorithm['NbGen'] 
+    NbPop = GeneticAlgorithm['NbPop']
+    # how many of the population to use for mating
+    MatingProb = GeneticAlgorithm.get('MatingProb',0.3)
+    NbMating = GeneticAlgorithm.get('NbMating',max(2,int(NbPop*MatingProb)))
+    # how many of the parents to keep for the next round (elite)
+    EliteProb = GeneticAlgorithm.get('EliteProb',0.2)
+    NbElite = GeneticAlgorithm.get('NbElite',max(1,int(NbPop*EliteProb)))   
+    # probablity that the solution is mutated 
+    MutationProb = GeneticAlgorithm.get('MutationProb',0.1)
+    seed = GeneticAlgorithm.get('seed',None)
+    NbExample = GeneticAlgorithm['NbExample']
     low,high = 0,1 
     TC_space = [range(len(CandidateSurfaces)), {'low':low,'high':high},{'low':low,'high':high}]
+
+    TestFields = TestOut[:NbExample] # the example cases to average results over
+
+    GA_func = _nb_field_avg_wrap(model, CandidateSurfaces, meshfile, TestFields) # return value which will try to be minimised
+    update_func = _update_wrap(CandidateSurfaces) # functionw hich prints updates on the algorithm
+
     ga_instance = GA(num_generations=NbGen,
                      num_parents_mating=NbMating,
                      gene_space=TC_space*NbTC,
@@ -223,27 +241,38 @@ def _Optimise(VL,DataDict,model):
                      crossover_probability=1,
                      mutation_probability=MutationProb,
                      save_best_solutions=True,
-                     stop_criteria=StopCriteria)
+                     stop_criteria=StopCriteria,
+                     random_seed=seed,
+                     keep_elitism=NbElite)
 
+    # small workaround for bug with pygad with negative function values
+    for i,criteria in enumerate(ga_instance.stop_criteria):
+        if criteria[0]=='reach': break
+    ga_instance.stop_criteria[i][1] = -1
+    # run optimiser
     ga_instance.run()
 
     fitnesses = -1*np.array(ga_instance.best_solutions_fitness)
 
     if (fitnesses==1).any(): 
         # multiple solutions, so we give 5 examples
-        TC_configs = []
+        TC_configs,score = [],1
         for ix in np.where(fitnesses==1)[0]:
             TC_config = _gene2surface(CandidateSurfaces,ga_instance.best_solutions[ix])
             TC_configs.append(TC_config)
             if len(TC_configs)==5:break
     else: 
         # only one configuration gives the best score
-        TC_configs = [ _gene2surface(CandidateSurfaces,ga_instance.best_solutions[np.argmin(fitnesses)])]
+        ix = np.argmin(fitnesses)
+        score = fitnesses[ix]
+        TC_configs = [ _gene2surface(CandidateSurfaces,ga_instance.best_solutions[ix])]
 
-    print("\nOptimal thermocouple configuration\n")
+    print("\nOptimal thermocouple configuration for a score of {:.4f}\n".format(score))
     for TC_config in TC_configs:
         for surf_name,x1,x2 in TC_config:
             print("{}, ({:.4f},{:.4f})".format(surf_name,x1,x2))
+        print()
+    print()
 
         # ======================================================================
     # plot ga performance

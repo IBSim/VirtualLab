@@ -1,0 +1,32 @@
+#!/bin/bash
+USER_HOME=$(eval echo ~${SUDO_USER})
+if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
+BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+VL_DIR="$(dirname $BIN_DIR)"
+
+export PYTHONPATH="$VL_DIR:${PYTHONPATH}"
+
+### Check if Conda is installed
+search_var=anaconda*
+conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+if [[ -f $conda_dir/bin/conda ]]; then
+  eval "$($conda_dir/bin/conda shell.bash hook)"
+else
+  search_var=miniconda*
+  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
+  if [[ -f $conda_dir/bin/conda ]]; then
+    eval "$($conda_dir/bin/conda shell.bash hook)"
+  fi
+fi
+
+### If conda found activate environment
+### If no conda, prerequisites are assumed installed in local python
+if hash conda 2>/dev/null; then
+  CONDAENV="$(basename -- $VL_DIR)"
+  conda activate $CONDAENV
+  #conda info --envs
+fi
+
+python3 $BIN_DIR/RunVirtualLab.py "${@}"
+
+

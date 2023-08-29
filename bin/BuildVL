@@ -1,5 +1,5 @@
 #!/bin/sh
-# File which creates VirtualLab executable from VL_server.py
+# File which creates VirtualLab executable from bin/RunVirtualLab.py
 bindir="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 VLdir=$(dirname $bindir)
 
@@ -7,8 +7,8 @@ VLdir=$(dirname $bindir)
 tmpdir=$(mktemp -d)
 cd $tmpdir
 
-python3 $bindir'/MakeExe.py' -F $VLdir'/VL_server.py' -n VirtualLab # make executable
+python3 $bindir'/MakeExe.py' -F $VLdir'/bin/RunVirtualLab.py' -n VirtualLab # make executable
 
-cp 'dist/VirtualLab' $bindir'/VirtualLab' # only copy what we need
+cp 'dist/VirtualLab' $bindir'/_VirtualLab' # only copy what we need
 rm -r $tmpdir # remove temp directory created
 

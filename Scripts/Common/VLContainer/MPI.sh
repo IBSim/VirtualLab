@@ -14,7 +14,6 @@ shared_dir=$4 # needed when running on multiple nodes
 temp_dir=$(mktemp -d)
 host_file=$temp_dir/host
 VirtualLab hostname $host_file
-# python3 $5/VL_server.py hostname $host_file
 host=`cat $host_file`
 
 if [ $host = $VL_hostname ] ; then
@@ -25,7 +24,7 @@ else
     # task is run on a diffrent node so must set up a new tcp port to run on
     # create server on new node and write port number to port_file
     port_file=$temp_dir/port
-    # python3 $5/VL_server.py server_start $port_file $shared_dir & 
+
     VirtualLab server_start $port_file $shared_dir & # Create server and send to background
     while true ; do
         if [ -f $port_file ] ; then 
@@ -35,7 +34,7 @@ else
         done
     $command $port
     VirtualLab server_kill $port # kill server created on new node
-    # python3 $5/VL_server.py server_kill $port # kill server created on new node
+
 fi
 
 

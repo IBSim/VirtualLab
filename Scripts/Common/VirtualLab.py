@@ -193,6 +193,12 @@ class VLSetup:
             config = json.load(file)
         return config
 
+    def SetprojectDir(self,path):
+        self.PROJECT_DIR = path
+
+    def GetProjectDir(self):
+        return self.PROJECT_DIR
+
     def _Common_init(self, Simulation, Project, DefaultSettings, Cont_id=1):
         """
         init steps that are common between both VLSetup and VLModule.

@@ -6,15 +6,16 @@ the sample and the uniformity of the heating profile.
 
 
 '''
-
+import requests
+import os
 from types import SimpleNamespace as Namespace
 from Scripts.Common.VirtualLab import VLSetup
 
 
 CoilType = 'Pancake' 
 ModelType = 'GPR' # this can be GPR or MLP
-CreateModel = 0
-PVAnalysis = 1
+CreateModel = True
+PVAnalysis = True
 
 # ====================================================================
 # Setup VirtualLab
@@ -22,18 +23,21 @@ VirtualLab=VLSetup('HIVE','ML_analysis')
 
 VirtualLab.Settings(Launcher='sequential',NbJobs=1,Mode='t')
 
-# check data has been created, if not download
+# ====================================================================
+# check data has been created, if not download it
 DataFile = '{}_coil/PowerVariation.hdf'.format(CoilType)
 if not VirtualLab.InProject(DataFile):
-    pass # Download data from somewhere
+    DataFileFull = "{}/{}".format(VirtualLab.GetProjectDir(),DataFile)
+    print("Data doesn't exist, so downloading.")
+    r = requests.get('https://zenodo.org/record/8300663/files/PowerVariation.hdf')
+    os.makedirs(os.path.dirname(DataFileFull),exist_ok=True)
+    with open(DataFileFull,'wb') as f:
+        f.write(r.content)    
 
-
+# ====================================================================
+# Create ML model
 if ModelType=='MLP' and CreateModel:
-    # ====================================================================
-    # Create MLP models and compare their performance
-    # ====================================================================
-
-    # create three MLP models with different arhcitectures
+    # Create three MLP models with different architectures and compare their performance
     main_parameters = Namespace()
     var_parameters = Namespace() 
 
@@ -43,7 +47,6 @@ if ModelType=='MLP' and CreateModel:
     ML.TrainData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Train'}]
     ML.ValidationData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # data used to monitor for overfitting
     ML.Seed = 100 # initial weights of MLP are randomised so this ensures reproducability
-
     main_parameters.ML = ML
 
     Architectures = [[32,32],[16,32,16],[8,16,8,4]] # the hidden layers of the MLP
@@ -52,7 +55,6 @@ if ModelType=='MLP' and CreateModel:
         ML.ModelParameters.append({'Architecture':architecture})
         arch_str = '_'.join(map(str,architecture)) # convert architecture to string and save under that name
         ML.Name.append("PV/{}/MLP/{}".format(CoilType,arch_str))
-
     var_parameters.ML = ML
 
     DA = Namespace()
@@ -60,7 +62,6 @@ if ModelType=='MLP' and CreateModel:
     DA.File = ['PowerVariation','MLP_compare']
     DA.MLModels = var_parameters.ML.Name # use the models defined earlier
     DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # unseen data to analyse performance
-
     main_parameters.DA = DA
 
     VirtualLab.Parameters(main_parameters,var_parameters)
@@ -71,11 +72,7 @@ if ModelType=='MLP' and CreateModel:
     VirtualLab.DA()
 
 elif ModelType=='GPR' and CreateModel:
-    # ====================================================================
-    # Create GPR models and compare their performance
-    # ====================================================================
-    # Create three GPR models each with different kernels to assess their performance
-
+    # Create three GPR models each with different kernels and compare their performance
     main_parameters = Namespace()
     var_parameters = Namespace() 
 
@@ -84,7 +81,6 @@ elif ModelType=='GPR' and CreateModel:
     ML.File = ('GPR_Models','GPR_hdf5')
     ML.TrainingParameters = {'Epochs':1000,'lr':0.05}
     ML.TrainData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Train'}]
-    
     main_parameters.ML = ML
 
     GPR_kernels = ['RBF','Matern_1.5','Matern_2.5']
@@ -92,7 +88,6 @@ elif ModelType=='GPR' and CreateModel:
     for kernel in GPR_kernels:
         ML.ModelParameters.append({'kernel':kernel})
         ML.Name.append("PV/{}/GPR/{}".format(CoilType,kernel))
-
     var_parameters.ML = ML
 
     # parameters used to compare models
@@ -101,7 +96,6 @@ elif ModelType=='GPR' and CreateModel:
     DA.File = ['PowerVariation','GPR_compare']
     DA.MLModels = var_parameters.ML.Name # use the models defined above
     DA.TestData = [DataFile, 'Features', [['Power'],['Variation']],{'group':'Test'}] # unseen data to analyse performance
-
     main_parameters.DA = DA
 
     VirtualLab.Parameters(main_parameters,var_parameters)
@@ -111,10 +105,12 @@ elif ModelType=='GPR' and CreateModel:
     # compare accuracy of the three models
     VirtualLab.DA()
 
-if PVAnalysis:
-    # ====================================================================
-    # create performance envelope of pwower versus variation
+elif CreateModel:
+    raise ValueError("Unknown ModelType '{}'. this must either be 'GPR' or 'MLP".format(ModelType))
 
+# ====================================================================
+# create performance envelope of power versus variation
+if PVAnalysis:
     if ModelType=='GPR':
         DA = Namespace()
         DA.Name = "Analysis/{}/PowerVariation/GPR_Analysis".format(CoilType)

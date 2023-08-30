@@ -8,6 +8,8 @@ This script assumes that temperature surrogate models have already been generate
 InverseSolution_T.py for more details on this.
 '''
 
+import requests
+import os
 from types import SimpleNamespace as Namespace
 from Scripts.Common.VirtualLab import VLSetup
 
@@ -18,17 +20,28 @@ ModelType = 'GPR' # this can be GPR or MLP
 CreateModel = False
 InverseAnalysis = True
 
+GUI = True
+
 # ====================================================================
 # Setup VirtualLab
 VirtualLab=VLSetup('HIVE','ML_analysis')
 
 VirtualLab.Settings(Launcher='sequential',NbJobs=1,Mode='t')
 
-# check data has been created, if not download
+# ====================================================================
+# check data has been created
 DataFile = '{}_coil/VMNodal.hdf'.format(CoilType)
 if not VirtualLab.InProject(DataFile):
-    pass # Download data from somewhere (and possibly mesh)
+    print("Data doesn't exist, so downloading. This may take a while")
+    # download data
+    DataFileFull = "{}/{}".format(VirtualLab.GetProjectDir(),DataFile)
+    r = requests.get('https://zenodo.org/record/8300663/files/VMNodal.hdf')
+    os.makedirs(os.path.dirname(DataFileFull),exist_ok=True)
+    with open(DataFileFull,'wb') as f:
+        f.write(r.content)    
 
+# ====================================================================
+# calculate reconstruction error vs the number of principal components
 if PCA_Analysis:
     DA = Namespace()
     DA.Name = 'Analysis/{}/InverseSolution_VM/PCA_Sensitivity'.format(CoilType)
@@ -42,10 +55,10 @@ if PCA_Analysis:
 
     VirtualLab.DA()
 
+# ====================================================================
+# Create ML model
 if ModelType=='MLP' and CreateModel:
-    # ====================================================================
     # Create MLP model
-    # ====================================================================
     main_parameters = Namespace()
 
     ML = Namespace()
@@ -65,10 +78,7 @@ if ModelType=='MLP' and CreateModel:
     VirtualLab.ML()
 
 elif ModelType=='GPR' and CreateModel:
-    
-    # ====================================================================
     # Create GPR model
-    # ====================================================================    
     main_parameters = Namespace()
 
     ML = Namespace()
@@ -78,7 +88,6 @@ elif ModelType=='GPR' and CreateModel:
     ML.TrainData = [DataFile, 'Features', 'VonMises',{'group':'Train'}]
     ML.ModelParameters = {'kernel':'Matern_2.5','min_noise':1e-8,'noise_init':1e-6}
     ML.Metric = {'nb_components':20}
-
     main_parameters = Namespace(ML=ML)
 
     VirtualLab.Parameters(main_parameters)
@@ -86,12 +95,12 @@ elif ModelType=='GPR' and CreateModel:
     # generate GPR models
     VirtualLab.ML()
 
-
+# ====================================================================
+# Use models (Von Mises and temperature) to perform analysis
 if InverseAnalysis:
-
     main_parameters = Namespace()
-    DA = Namespace()
 
+    DA = Namespace()
     if ModelType=='GPR':
         DA.Name = 'Analysis/{}/InverseSolution_VM/GPR'.format(CoilType)
         DA.File = ('InverseSolution','AnalysisVM_GPR')
@@ -108,8 +117,7 @@ if InverseAnalysis:
     # create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
     DA.Index = [2]
     DA.DesiredTemp = 600
-    DA.PVGUI = False
-
+    DA.PVGUI = GUI
     main_parameters.DA = DA 
 
     VirtualLab.Parameters(main_parameters)

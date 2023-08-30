@@ -4,7 +4,8 @@ This script demonstrates how the data collected in DataCollect.py
 can be used to predict the heating profile on the surface 
 adjacent to the induction coil.
 '''
-
+import requests
+import os
 from types import SimpleNamespace as Namespace
 from Scripts.Common.VirtualLab import VLSetup
 
@@ -14,17 +15,33 @@ ModelType = 'GPR' # this can be GPR or MLP
 CreateModel = True
 CreateImages = True
 
+GUI = True
+
 # ====================================================================
 # Setup VirtualLab
 VirtualLab=VLSetup('HIVE','ML_analysis')
 
 VirtualLab.Settings(Launcher='sequential',NbJobs=1,Mode='t')
 
-# check data has been created, if not download
+# ====================================================================
+# check data has been created
 DataFile = '{}_coil/JouleHeating.hdf'.format(CoilType)
 if not VirtualLab.InProject(DataFile):
-    pass # Download data from somewhere and HIVE component mesh
+    print("Data doesn't exist, so downloading. This may take a while")
+    # download data
+    DataFileFull = "{}/{}".format(VirtualLab.GetProjectDir(),DataFile)
+    r = requests.get('https://zenodo.org/record/8300663/files/JouleHeating.hdf')
+    os.makedirs(os.path.dirname(DataFileFull),exist_ok=True)
+    with open(DataFileFull,'wb') as f:
+        f.write(r.content)    
+    # download mesh
+    r = requests.get('https://zenodo.org/record/8300663/files/HIVE_component.med')
+    os.makedirs(VirtualLab.Mesh.OutputDir,exist_ok=True)
+    with open("{}/HIVE_component.med".format(VirtualLab.Mesh.OutputDir),'wb') as f:
+        f.write(r.content)        
 
+# ====================================================================
+# calculate reconstruction error vs the number of principal components
 if PCA_Analysis:
     DA = Namespace()
     DA.Name = 'Analysis/{}/HeatingProfile/PCA_Sensitivity'.format(CoilType)
@@ -38,12 +55,12 @@ if PCA_Analysis:
 
     VirtualLab.DA()
 
+# ====================================================================
+# Create ML model
 if ModelType=='MLP' and CreateModel:
-    # ====================================================================
     # Create MLP model
-    # ====================================================================
     main_parameters = Namespace()
-
+    
     ML = Namespace()
     ML.Name = 'HeatProfile/{}/MLP'.format(CoilType)
     ML.File = ('NN_Models','MLP_PCA_hdf5')
@@ -61,10 +78,7 @@ if ModelType=='MLP' and CreateModel:
     VirtualLab.ML()
 
 elif ModelType=='GPR' and CreateModel:
-    # ====================================================================
     # Create GPR model
-    # ====================================================================    
-
     main_parameters = Namespace()
 
     ML = Namespace()
@@ -74,7 +88,6 @@ elif ModelType=='GPR' and CreateModel:
     ML.TrainData = [DataFile, 'Features', 'SurfaceJH',{'group':'Train'}]
     ML.ModelParameters = {'kernel':'Matern_2.5','min_noise':1e-8,'noise_init':1e-6}
     ML.Metric = {'threshold':0.99}
-
     main_parameters.ML = ML  
 
     VirtualLab.Parameters(main_parameters)
@@ -82,10 +95,12 @@ elif ModelType=='GPR' and CreateModel:
     # generate GPR models
     VirtualLab.ML()
 
+elif CreateModel:
+    raise ValueError("Unknown ModelType '{}'. this must either be 'GPR' or 'MLP".format(ModelType))
+
+# ====================================================================
+# Create images comparing the model with the simulation
 if CreateImages:
-    # ====================================================================
-    # Create images comparing the model with the simulation
-    # ====================================================================
 
     main_parameters = Namespace()
     DA = Namespace()
@@ -103,7 +118,7 @@ if CreateImages:
     DA.TestData = [DataFile, 'Features', 'SurfaceJH',{'group':'Test'}]
     # create comparison plots for the following indexes of the test dataset. This can be any numbers up to 300 (the size of the test dataset)
     DA.Index = [1]
-    # DA.PVGUI = True
+    DA.PVGUI = GUI
 
     main_parameters = Namespace(DA=DA)
 

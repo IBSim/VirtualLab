@@ -352,9 +352,10 @@ Fistly you will see the loss of the model reduce as the model parameters are upd
 
 Following this the analysis with the model will take place. Printed to the terminal you should see you should see the parameter combination which will deliver the maximum temperature to the component within the defined parameter space. This should look like the following ::
 
-    Parameter combination which will deliver a maximum temperature of 1330.80 C:
+    Parameter combination which will deliver a maximum temperature of 1333.90 C:
 
-    -5.00e-03, 1.49e-02, 3.00e-03, -5.00e+00, 7.99e+01, 2.12e+00, 2.00e+03
+    -5.00e-03, -1.50e-02, 3.00e-03, -5.00e+00, 7.99e+01, 4.17e+00, 2.00e+03
+
 
 Many of these values are intuitive. The third value, displacement in the z direction, is the minmum value possible (coil is as close to the component as possible), with the fourth value - the rotation -  pushing the coil even closer to the component. The fifth value is the coolant temperature, which is at the maximum value of 80 C, while the seventh value is the current, which is also at its maximum value of 2000 A. An image of the temperature field at the maximum temperature can be found at :file:`MaxTemperature.png` in the results directory :file:`Analysis/Pancake/InverseSolution_T/GPR`, and should lok like :numref:`Fig. %s <PyPlot_08>`.
 
@@ -367,10 +368,7 @@ Many of these values are intuitive. The third value, displacement in the z direc
 
 While the above problem is somewhat trivial, often the goal of a HIVE experiment is to reach a certain maximum temperature within a component, or deliver a certain temperature to a specific part of the component. This type of problem is much less intuitive due to the combination of a high number of experimental parameters. There are also, usually, a number of combination of parameters which will deliver the desired result. The next part of the output provides the experimental parameters which will deliver a maximum temperature to the component specified by *DesiredTemp*, which in this case is 600 C. This should look like ::
 
-    4.81e-03, -7.83e-03, 4.01e-03, -3.44e-01, 5.59e+01, 3.21e+00, 1.58e+03
-    -1.66e-03, 9.31e-03, 4.11e-03, -2.87e+00, 4.57e+01, 2.13e+00, 1.48e+03
-    9.43e-04, -1.44e-02, 4.16e-03, -3.03e+00, 4.22e+01, 2.34e+00, 1.48e+03
-    1.74e-03, -4.69e-03, 4.89e-03, -4.83e-01, 7.51e+01, 2.26e+00, 1.73e+03
+
 
 Images for each of the 4 temperature field are saved to the result directory, highlighting the multiple different temperature profiles which will deliver a maximum temperature of 600 C.
 

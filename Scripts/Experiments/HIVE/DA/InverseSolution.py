@@ -152,7 +152,7 @@ def _MaxValue(model,scale=1):
 
     return cd, val
 
-def _ReachMaxValue(model,max_temp,bounds=None,NbInit=10,seed=123):
+def _ReachMaxValue(model,max_temp,bounds=None,NbInit=20,seed=123):
     '''
     Identify inputs which will deliver a certain maximum temperature in the field
     '''

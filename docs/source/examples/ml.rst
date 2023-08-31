@@ -1,3 +1,4 @@
+
 Machine learning (HIVE)
 =====================================
 
@@ -63,12 +64,19 @@ The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutori
 
 The *CoilType* means the coil which has been used in the simulations to generate the data. Next the *ModelType* states the type of supervised learning algorithm which will be used. There are two options available; a multi-layered perceptrion (MLP), which is a vanilla neural network, or Gaussian process regression (GPR). *CreateModel* is a flag to dictate whether or not to train a new model, while the *PVAnalysis* flag is to deicde whether or not to perform the power-variation analysis.
 
-After VirtualLab has been initiated using the experiment 'HIVE' and project name 'ML_analysis', the DataFile is defined, which is the file where the data required to train the model is stored. If DataFile is not available then it is downloaded.
+After VirtualLab has been initiated using the experiment 'HIVE' and project name 'ML_analysis', the DataFile is defined, which is the file where the data required to train the model is stored ::
 
-::
     DataFile = '{}_coil/PowerVariation.hdf'.format(CoilType)
+
+If this file doesn't already exist it is downloaded from Zenodo (DOI: 10.5281/zenodo.8300663) ::
+    
     if not VirtualLab.InProject(DataFile):
-        pass # Download data from somewhere
+        DataFileFull = "{}/{}".format(VirtualLab.GetProjectDir(),DataFile)
+        print("Data doesn't exist, so downloading.")
+        r = requests.get('https://zenodo.org/record/8300663/files/PowerVariation.hdf')
+        os.makedirs(os.path.dirname(DataFileFull),exist_ok=True)
+        with open(DataFileFull,'wb') as f:
+            f.write(r.content)  
 
 To generate ML models  **VirtualLab's** ML method is used. All models generated using the 'ML' method are stored in a sub-directory 'ML' in the project directory. 
 
@@ -350,7 +358,9 @@ Following this you have the parameters to perform analysis with the model. The k
 
 Fistly you will see the loss of the model reduce as the model parameters are updated using the training data, like in the previous examples. This model is saved to :file:`Temperature/Pancake/GPR` in the :file:`ML` directory in the project directory. 
 
-Following this the analysis with the model will take place. Printed to the terminal you should see you should see the parameter combination which will deliver the maximum temperature to the component within the defined parameter space. This should look like the following ::
+Following this the analysis with the model will take place. Printed to the terminal you should see you should see the parameter combination which will deliver the maximum temperature to the component within the defined parameter space. This should look like the following 
+
+.. code-block:: console
 
     Parameter combination which will deliver a maximum temperature of 1333.90 C:
 
@@ -366,9 +376,15 @@ Many of these values are intuitive. The third value, displacement in the z direc
     Temperature profile which delivers the maximum temperature within a defined parameter space. 
 
 
-While the above problem is somewhat trivial, often the goal of a HIVE experiment is to reach a certain maximum temperature within a component, or deliver a certain temperature to a specific part of the component. This type of problem is much less intuitive due to the combination of a high number of experimental parameters. There are also, usually, a number of combination of parameters which will deliver the desired result. The next part of the output provides the experimental parameters which will deliver a maximum temperature to the component specified by *DesiredTemp*, which in this case is 600 C. This should look like ::
+While the above problem is somewhat trivial, often the goal of a HIVE experiment is to reach a certain maximum temperature within a component, or deliver a certain temperature to a specific part of the component. This type of problem is much less intuitive due to the combination of a high number of experimental parameters. There are also, usually, a number of combination of parameters which will deliver the desired result. The next part of the output provides 5 combinations of experimental parameters which will deliver a maximum temperature to the component specified by *DesiredTemp*, which in this case is 600 C. These should look like
 
+.. code-block:: console
 
+    2.02e-04, -7.33e-03, 4.36e-03, -3.30e+00, 4.46e+01, 5.58e+00, 1.63e+03
+    -4.43e-03, -1.81e-04, 5.04e-03, 2.36e+00, 7.19e+01, 4.84e+00, 1.76e+03
+    -3.32e-03, -9.34e-03, 3.82e-03, -3.30e+00, 4.35e+01, 3.78e+00, 1.45e+03
+    2.82e-03, 7.08e-03, 5.33e-03, 8.09e-01, 6.76e+01, 3.17e+00, 1.78e+03
+    -2.57e-03, 6.57e-03, 3.56e-03, -1.67e+00, 5.28e+01, 3.43e+00, 1.48e+03
 
 Images for each of the 4 temperature field are saved to the result directory, highlighting the multiple different temperature profiles which will deliver a maximum temperature of 600 C.
 
@@ -391,9 +407,10 @@ This example shows how a 3D GPR surrogate model can solve one of the most preval
 .. admonition:: Action
    :class: Action
 
-   Change *ModelType* to 'MLP' at the top of the file and re run the analysis.
+    Change *ModelType* to 'MLP' at the top of the file and re run the analysis.
 
-   You should notice that while an MLP trains faster than a GPR model it is less accurate. 
+    You should notice that while an MLP trains faster than a GPR model it is less accurate. 
+   
 
 Example 4: Inverse solutions (Von Mises)
 *******************************************
@@ -457,7 +474,9 @@ The other parameters used in this analysis are the same as the previous example 
         Generating the model may take a little while, so feel free to grab yourself a coffee. 
 
 
-The inverse analysis performed first is to identify the experimental parameters which will provide the maximum amount of Von Mises stress in the component. You should notice an output like this ::
+The inverse analysis performed first is to identify the experimental parameters which will provide the maximum amount of Von Mises stress in the component. You should notice an output like this
+
+.. code-block:: console
 
     Parameter combination which will deliver a maximum Von Mises stress of 965.04 MPa:
 
@@ -465,7 +484,9 @@ The inverse analysis performed first is to identify the experimental parameters 
 
 Many of these are as we'd expect, with the coil displacement in the z direction at 3.00e-03, it's minimum value, along with the coolant temperature at its maximum value (80 C) and the current also at the maximum (2000 A). This combination of parameters will result in a Von Mises stress of 965 MPa. An image of the Von Mises stress field using these parameters can be found at :file:`Analysis/Pancake/InverseSolution_VM/GPR/MaxVonMises.png`.
 
-*DesiredTemp* is again the maximum temperature we want the component to reach, however as we have the von Mises model we would like to go a step further. The previous example showed a variety of different temperature profiles where the maximum temperature of 600 C is delivered, each of which will result in a different stress fields in the component. Therefore, it is desirable to identify the experimental parameters which will maximise the Von Mises stress while ensuring that 600 C is delivered to the component. The output for this should look like this ::
+*DesiredTemp* is again the maximum temperature we want the component to reach, however as we have the von Mises model we would like to go a step further. The previous example showed a variety of different temperature profiles where the maximum temperature of 600 C is delivered, each of which will result in a different stress fields in the component. Therefore, it is desirable to identify the experimental parameters which will maximise the Von Mises stress while ensuring that 600 C is delivered to the component. The output for this should look like this 
+
+.. code-block:: console
 
     Parameter combination which delivers 600.00 C and maximises the Von Mises stress, delivering 586.28 MPa:
 

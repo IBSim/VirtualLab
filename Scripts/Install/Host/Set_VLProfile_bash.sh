@@ -13,22 +13,17 @@
 set -e
 VL_DIR=$1
 USER_HOME=$2
-### Check if VirtualLab is in PATH
-if [[ $PATH =~ $VL_DIR ]]; then
-  echo "VirtualLab is already in PATH."
-else
-  ### If not, add VirtualLab to PATH
-  echo "Adding VirtualLab to PATH."
-  # Add VL_DIR to VLProfile so that different parts of install can be run seperately
-  echo 'export VL_DIR="'$VL_DIR'"' >> $USER_HOME/.VLprofile
 
-  echo 'if [[ ! $PATH =~ "'$VL_DIR'" ]]; then' >> $USER_HOME/.VLprofile
+echo "Creating ${USER_HOME}/.VLprofile "
+# Add VL_DIR to VLProfile so that different parts of install can be run seperately
+echo 'export VL_DIR="'$VL_DIR'"' > $USER_HOME/.VLprofile
 
-  echo '  export PATH="'$VL_DIR'/bin:$PATH"'  >> $USER_HOME/.VLprofile
-  echo 'fi'  >> $USER_HOME/.VLprofile
+echo 'if [[ ! $PATH =~ "'$VL_DIR'" ]]; then' >> $USER_HOME/.VLprofile
 
-  export PATH="$VL_DIR/bin:$PATH"
-fi
+echo '  export PATH="'$VL_DIR'/bin:$PATH"'  >> $USER_HOME/.VLprofile
+echo 'fi'  >> $USER_HOME/.VLprofile
+
+export PATH="$VL_DIR/bin:$PATH"
 
 ### ~/.bashrc doesn't get read by subshells in ubuntu.
 ### Workaround: store additions to env PATH in ~/.VLprofile & source in bashrc.

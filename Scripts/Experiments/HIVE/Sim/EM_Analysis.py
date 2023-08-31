@@ -13,7 +13,7 @@ from Scripts.Common.tools import MEDtools
 from Scripts.VLPackages.Salome.API import Run as SalomeRun
 from Scripts.VLPackages.ERMES.API import Run as ERMESRun
 
-def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, tempdir='/tmp', AddPath=[], LogFile=None):
+def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, tempdir='/tmp', AddPath=[]):
     '''
     MeshIn is used to build a conformal mesh (MeshOut) which is used by ERMES
     to generate the EM loads. A coil is added above the sample along with a
@@ -24,7 +24,7 @@ def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, tempdir='/tmp', AddPath=[], LogF
     EM_GUI = getattr(Parameters,'EM_GUI',False)
     DataDict = {'Parameters':Parameters,'InputFile':MeshIn,'OutputFile':MeshOut}
     err = SalomeRun(script, DataDict=DataDict, AddPath=AddPath,
-                    OutFile=LogFile, tempdir=tempdir, GUI=EM_GUI)
+                    tempdir=tempdir, GUI=EM_GUI)
     return err
 
 def ERMES_Conversion(ERMESResFile,ResFile_MED):

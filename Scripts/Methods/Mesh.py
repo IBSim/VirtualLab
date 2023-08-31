@@ -15,6 +15,7 @@ class Method(Method_base):
         self.MethodName = "Mesh"
         self.Containers_used = ["SalomeMeca"]
         # Add MESH_DIR to VL here as it's used by other methods (Sim,Vox)
+        self.OutputDir = "{}/Meshes".format(VL.PROJECT_DIR)
         VL.MESH_DIR = "{}/Meshes".format(VL.PROJECT_DIR)
 
     def Setup(self, VL, MeshDicts, Import=False):

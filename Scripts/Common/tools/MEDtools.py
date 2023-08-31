@@ -166,11 +166,24 @@ class MeshInfo():
 
         return Groupdata
 
+    def Connectivity(self,GroupName=None):
+        if not GroupName:
+            path = "{}/MAI/{}".format(self.CnctPath,'TE4')
+            dset = self.g["{}/NOD".format(path)]
+            Connect = np.reshape(dset[:], (dset.attrs['NBR'],int(dset.shape[0]/dset.attrs['NBR'])), order='F')
+        else:
+            Connect = self.GroupInfo(GroupName).Connect
+
+        return Connect    
+
+    
 
     def GetNodeXYZ(self,nodes):
         nodelist = self.g["{}/NOE/COO".format(self.CnctPath)][:]
         # If individual node is supplied, i.e. of type int of np.int32/64
-        if isinstance(nodes, (int, np.integer)):
+        if type(nodes)==str and nodes=='all':
+            xyz = np.reshape(nodelist, (len(nodelist)//3, 3), order = 'F')
+        elif isinstance(nodes, (int, np.integer)):
             xyz = nodelist[np.array([nodes, nodes + self.NbNodes, nodes + 2*self.NbNodes]) -1]
         # If an array or list is passed
         else :

@@ -9,11 +9,9 @@ import shutil
 import copy
 from types import SimpleNamespace as Namespace, ModuleType
 import atexit
-import json
 import numpy as np
 import uuid
 import VLconfig
-from .VLContainer import Container_Utils as Utils
 from . import VLFunctions as VLF
 from importlib import import_module
 
@@ -195,6 +193,12 @@ class VLSetup:
             config = json.load(file)
         return config
 
+    def SetprojectDir(self,path):
+        self.PROJECT_DIR = path
+
+    def GetProjectDir(self):
+        return self.PROJECT_DIR
+
     def _Common_init(self, Simulation, Project, DefaultSettings, Cont_id=1):
         """
         init steps that are common between both VLSetup and VLModule.
@@ -220,6 +224,7 @@ class VLSetup:
 
         self.SIM_SCRIPTS = "{}/Experiments/{}".format(self.SCRIPTS_DIR, self.Simulation)
         self.CONF_DIR = "{}/Config".format(VLconfig.VL_DIR_CONT)
+
         if not os.path.isdir(self.SIM_SCRIPTS):
             self.Exit(
                 VLF.ErrorMessage(
@@ -428,6 +433,11 @@ class VLSetup:
                 kw_fnc(kwargs[kw_name])
         self.settings_dict = kwargs
 
+
+
+
+# ==================================================================================
+# functions related to parameters
     @VLF.kwarg_update
     def Parameters(
         self,
@@ -462,19 +472,21 @@ class VLSetup:
             "Parameters_Master", Parameters_Master
         )
 
-        self._SetParams(Parameters_Master, Parameters_Var, ParameterArgs=ParameterArgs)
-        # get the number of runs defined in params for each module
-        self.Num_runs = self._get_Num_Runs(flags, self.Methods)
-        # get a list of all the containers and the runs they will process for each module
-        # self.container_list = self._Spread_over_Containers()
-        # call setup for each method
+        # check the parameter files and set them correctly (flags are also updated here)
+        self._SetParams(Parameters_Master, Parameters_Var, flags, ParameterArgs=ParameterArgs)
+
         for method_name in self.Methods:
-            # get method_name instance
-            method_cls = getattr(self, method_name)
-            # add flag to the instance
-            method_cls.SetFlag(flags["Run{}".format(method_name)])
-            _NS_name = self.method_config[method_name]["Namespace"]
-            method_dicts = self._CreateParameters(_NS_name)
+            method_cls = getattr(self, method_name) # get method_name instance
+            # get associated flag and add to the instance
+            method_flag = flags["Run{}".format(method_name)]
+            method_cls.SetFlag(method_flag)
+            # create the parameters
+            if method_flag:
+                method_ns = self.method_config[method_name]["Namespace"]
+                method_dicts = self._CreateParameters(method_ns)
+            else:
+                method_dicts = {}
+            # run the setup
             method_cls._SetupRun(method_dicts)
 
     def ImportParameters(self, Rel_Parameters, ParameterArgs=None):
@@ -484,8 +496,12 @@ class VLSetup:
         # Strip .py off the end if it's in the name
         if os.path.splitext(Rel_Parameters)[1] == ".py":
             Rel_Parameters = os.path.splitext(Rel_Parameters)[0]
-
         Abs_Parameters = "{}/{}.py".format(self.PARAMETERS_DIR, Rel_Parameters)
+
+        return self._ImportParameters(Abs_Parameters,ParameterArgs=ParameterArgs)
+
+    def _ImportParameters(self, Abs_Parameters, ParameterArgs=None):
+        
         # Check File exists
         if not os.path.exists(Abs_Parameters):
             message = "The following Parameter file does not exist:\n{}".format(
@@ -498,136 +514,110 @@ class VLSetup:
             arg_path = "{}/{}.pkl".format(self.TEMP_DIR, uuid.uuid4())
             VLF.WriteArgs(arg_path, ParameterArgs)
             sys.argv.append("ParameterArgs={}".format(arg_path))
-
-        Parameters = VLF.GetModule(Abs_Parameters)
-
-        if ParameterArgs != None:
+            Parameters = VLF.GetModule(Abs_Parameters)
             sys.argv.pop(-1)
+        else:
+            Parameters = VLF.GetModule(Abs_Parameters)
+
+        Parameters = Namespace(**Parameters.__dict__)            
 
         return Parameters
 
-    def _SetParams(self, Master, Var, ParameterArgs=None):
+    def _SetParams(self, Master, Var, run_flags, ParameterArgs=None):
         """Master & Var can be a module, namespace, string or None.
         A string references a file to import from within the input directory.
         """
-
-        if Master == None and Var == None:
-            message = "Both Parameters_Master or Parameters_Var can't be None"
-            self.Exit(VLF.ErrorMessage(message))
-
         # ======================================================================
         # If string, import files
         if type(Master) == str:
             Master = self.ImportParameters(Master, ParameterArgs)
         if type(Var) == str:
             Var = self.ImportParameters(Var, ParameterArgs)
-        MethodNS = []
-        # extract namespaces for each method
-        for method in self.Methods:
-            MethodNS.append(self.method_config[method]["Namespace"])
+
         # ======================================================================
-        # Perform checks of master and var and assign to self
-        self.Parameters_Master = self._CheckParams(
-            Master, "Parameters_Master", MethodNS
-        )
-        self.Parameters_Var = self._CheckParams(Var, "Parameters_Var", MethodNS)
+        # Perform checks of master and var
 
-    def _CheckParams(self, input, input_name, VLTypes):
-        """Perform checks on the input file and return namespace whose attributes
-        are the VLTypes"""
-        # if the input is None return empty namespace
-        NS = Namespace()
-        if input is None:
-            return NS
+        if Master == None and Var == None:
+            self.Exit(VLF.ErrorMessage("Both Parameters_Master or Parameters_Var can't be None"))
 
-        # check some of the VLTypes are defined in the input
-        if not set(input.__dict__).intersection(VLTypes):
-            message = "{} contains none of the attrbutes {}".format(input_name, VLTypes)
-            self.Exit(VLF.ErrorMessage(message))
+        # check they are in the correct format and have some methods assigned to them
+        MethodNS = [self.method_config[method]["Namespace"] for method in self.Methods]
+        # extract namespaces for each method
+        for input,input_name in [[Master,'Parameters_Master'],[Var,'Parameters_Var']]:
+            if input is None: 
+                continue # nothing to see
+            # check the input is a recognised type
+            if type(input) not in (Namespace, ModuleType):
+                type_err = "The type of {} is not a module or namespace.".format(input_name)
+                self.Exit(VLF.ErrorMessage(type_err))
 
-        for nm in VLTypes:
-            attr_ns = getattr(input, nm, None)  # get attribute nm from input
+            # Check at least one method is defined in the file
+            if not set(Master.__dict__).intersection(MethodNS):
+                input_err = "{} is defined but does not contain any of the attrbutes {}".format(input_name, MethodNS)
+                self.Exit(VLF.ErrorMessage(input_err))
 
-            # ignore if nm not an attribute
-            if attr_ns is None:
-                continue
+        # update run_flags
+        for method,method_ns in zip(self.Methods,MethodNS):
+            M_ns = getattr(Master,method_ns,None)
+            V_ns = getattr(Var,method_ns,None)
+            if (M_ns is None) and (V_ns is None):
+                run_flags['Run{}'.format(method)] = False
 
-            # give warning about it not being a module/namespace
-            if type(attr_ns) not in (Namespace, ModuleType):
-                message = "{} has attribute '{}' but it not a module or namespace.\nThis may lead to unexpected results".format(
-                    input_name, nm
-                )
-                print(VLF.WarningMessage(message))
-                continue
-
-            # check it has a name associated with it
-            if not hasattr(attr_ns, "Name"):
-                message = "'{}' does not have the attribute 'Name' in {}".format(
-                    nm, input_name
-                )
-                self.Exit(VLF.ErrorMessage(message))
-
-            setattr(NS, nm, attr_ns)  # add the info to the namespace
-
-        return NS
+        self.Parameters_Master = Master
+        self.Parameters_Var = Var        
 
     def _CreateParameters(self, method_name):
         """
         Create parameter dictionary of attribute method_name using Parameters_Master and Var.
         """
         # ======================================================================
-        # Get method_name from Parameters_Master and _Parameters_Var (if they are defined)
+        # Get method_name from Parameters_Master and _Parameters_Var (will be defined in one of these)
         Master = getattr(self.Parameters_Master, method_name, None)
         Var = getattr(self.Parameters_Var, method_name, None)
 
-        # Check method_name is an appropriate type
-        if type(Master) not in (type(None), type(Namespace())):
-            print(
-                VLF.WarningMessage(
-                    "Variable '{}' named in Master but is not a namespace. This may lead yo unexpected results".format(
-                        method_name
-                    )
-                )
-            )
-        if type(Var) not in (type(None), type(Namespace())):
-            print(
-                VLF.WarningMessage(
-                    "Variable '{}' named in Var but is not a namespace. This may lead yo unexpected results".format(
-                        method_name
-                    )
-                )
-            )
-
-        # ======================================================================
-        # method_name isn't in Master of Var
-        if Master == None and Var == None:
-            return {}
+        # check that the method is in the expected format. only give a warning as this may be on purpose. 
+        name_err = "Method '{}' does not have the attribute 'Name' in {}" # string which parameters will be added to
+        method_type_err = "Variable '{}' named in {} but it is not a namespace. This may lead to unexpected results"
+        # check that the method is in the expected format. only give a warning as this may be on purpose. 
+        for input,input_name in [[Master,'Parameters_Master'],[Var,'Parameters_Var']]:
+            if input is not None and type(input) not in (Namespace, ModuleType):
+                print(VLF.WarningMessage(method_type_err.format(method_name,input_name)))
 
         # ======================================================================
         # method_name is in Master but not in Var
-        elif Var == None:
+        if Var is None:
             # Check if VLFunctions.Parameters_Var function has been used to create
             # an iterator to vary parameters within master file.
             typelist = [type(val) for val in Master.__dict__.values()]
             if type(iter([])) in typelist:
-                # itertor found so we consider this as a varying parameter
+                # itertor found so we consider this as a varying parameter 
+
+                # change Parameters_Var to namespace if its None
+                if self.Parameters_Var is None:
+                    self.Parameters_Var = Namespace() 
+                
+                # create Var for this method_name
                 Var = Namespace()
                 for key, val in Master.__dict__.items():
                     if type(val) == type(iter([])):
                         setattr(Var, key, list(val))
-                # Check that Name is also an iterator
-                if not hasattr(Var, "Name"):
-                    message = "{}.Name is not an iterable".format(method_name)
-                    self.Exit(VLF.ErrorMessage(message))
+
                 # Assign Var to class. Behaviour is the same as if _Parameters_Var
                 # file had been used.
                 setattr(self.Parameters_Var, method_name, Var)
+
             else:
+                if not hasattr(Master, "Name"):
+                    self.Exit(VLF.ErrorMessage(name_err.format(method_name,'Parameters_Master')))   
+
                 # No iterator, just a single study
                 return {Master.Name: Master.__dict__}
 
         # ======================================================================
         # method_name is in Var
+
+        if not hasattr(Var, "Name"):
+            self.Exit(VLF.ErrorMessage(name_err.format(method_name,'Parameters_Var')))
 
         # Check all entires in Parameters_Var have the same length
         NbNames = len(Var.Name)
@@ -652,7 +642,7 @@ class VLSetup:
         if Master != None and Var != None:
             # Check if there are attributes defined in Var which are not in Master
             dfattrs = set(Var.__dict__.keys()) - set(
-                list(Master.__dict__.keys()) + ["Run"]
+                list(Master.__dict__.keys()) + ["Run","Name"]
             )
             if dfattrs:
                 attstr = "\n".join(["{}.{}".format(method_name, i) for i in dfattrs])
@@ -678,57 +668,62 @@ class VLSetup:
 
         return ParaDict
 
-    def _get_Num_Runs(self, flags, Namespaces):
-        """
-        Function to get the number of runs defined in Params_master/Var for each Namespace.
-        this is used to help calculate how many containers to spawn for parallel runs.
-        Inputs:
-        flags - list of bool's  for namespaces to run
-        Namespaces -  list of namespaces
-        returns:
-        dict of number of runs defined for each namespace or 0 for each that Runbools is set for.
-        """
-        num_runs = {}
-        flags = list(flags.items())
-        for I, module in enumerate(Namespaces):
-            # special case for CIL since it shares the GVXR namespace
-            VLNamespace = self.method_config[module]["Namespace"]
-            TMPDict = self._CreateParameters(VLNamespace)
-            # if Run is False or Dict is empty add 0 to list 0 instead.
-            if not (flags[I][1] and TMPDict):
-                num_runs[module] = 0
-            else:
-                num_runs[module] = len(TMPDict)
-        return num_runs
+# ==================================================================================
+# useful functions
+    def InProject(self,rel_path):
+        return os.path.exists("{}/{}".format(self.PROJECT_DIR,rel_path))
 
-    def _Spread_over_Containers(self):
-        """
-        Function to generate a dict with a key for each VitualLab module.
-        The values of the Dict are tuples the first index designates the
-        container and the second designates which runs are assigned to
-        that container.
-        """
-        from itertools import cycle
+    # def _get_Num_Runs(self, flags, Namespaces):
+    #     """
+    #     Function to get the number of runs defined in Params_master/Var for each Namespace.
+    #     this is used to help calculate how many containers to spawn for parallel runs.
+    #     Inputs:
+    #     flags - list of bool's  for namespaces to run
+    #     Namespaces -  list of namespaces
+    #     returns:
+    #     dict of number of runs defined for each namespace or 0 for each that Runbools is set for.
+    #     """
+    #     num_runs = {}
+    #     flags = list(flags.items())
+    #     for I, module in enumerate(Namespaces):
+    #         # special case for CIL since it shares the GVXR namespace
+    #         VLNamespace = self.method_config[module]["Namespace"]
+    #         TMPDict = self._CreateParameters(VLNamespace)
+    #         # if Run is False or Dict is empty add 0 to list 0 instead.
+    #         if not (flags[I][1] and TMPDict):
+    #             num_runs[module] = 0
+    #         else:
+    #             num_runs[module] = len(TMPDict)
+    #     return num_runs
 
-        containers = {}
+    # def _Spread_over_Containers(self):
+    #     """
+    #     Function to generate a dict with a key for each VitualLab module.
+    #     The values of the Dict are tuples the first index designates the
+    #     container and the second designates which runs are assigned to
+    #     that container.
+    #     """
+    #     from itertools import cycle
 
-        container_ids = [*range(1, self._Max_Containers + 1)]
-        y = cycle(container_ids)
-        for module in self.Num_runs.keys():
-            runs = list(range(0, self.Num_runs[module]))
-            temp = []
-            for i in container_ids:
-                tmp = []
-                for j in runs:
-                    x = next(y)
-                    if x == i:
-                        tmp.append(j)
-                if tmp:
-                    temp.append((i, tmp))
-                y = cycle(container_ids)
-            if temp:
-                containers[module] = temp
-        return containers
+    #     containers = {}
+
+    #     container_ids = [*range(1, self._Max_Containers + 1)]
+    #     y = cycle(container_ids)
+    #     for module in self.Num_runs.keys():
+    #         runs = list(range(0, self.Num_runs[module]))
+    #         temp = []
+    #         for i in container_ids:
+    #             tmp = []
+    #             for j in runs:
+    #                 x = next(y)
+    #                 if x == i:
+    #                     tmp.append(j)
+    #             if tmp:
+    #                 temp.append((i, tmp))
+    #             y = cycle(container_ids)
+    #         if temp:
+    #             containers[module] = temp
+    #     return containers
 
     def Logger(self, Text="", **kwargs):
         Prnt = kwargs.get("Print", False)
@@ -753,6 +748,8 @@ class VLSetup:
             with open(str(self.LogFile), "a") as f:
                 f.write(Text + "\n")
 
+# ==================================================================================
+# functions for cleaning up and exiting
     def Exit(self, mess="", Cleanup=True):
         self._SetCleanup(Cleanup=Cleanup)
         sys.exit(mess)
@@ -793,6 +790,8 @@ class VLSetup:
     def Cleanup(self, KeepDirs=[]):
         print("Cleanup() is depreciated. You can remove this from your script")
 
+# ==================================================================================
+# other
     def do_Analytics(VL, vltype):
         """
         Function to analyse usage of VirtualLab to evidence impact for

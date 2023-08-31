@@ -19,12 +19,10 @@ else
   fi
 fi
 
-### If conda found activate environment
+### If VirtualLab conda environment is found then we activate it
 ### If no conda, prerequisites are assumed installed in local python
-if hash conda 2>/dev/null; then
-  CONDAENV="$(basename -- $VL_DIR)"
-  conda activate $CONDAENV
-  #conda info --envs
+if hash conda activate VirtualLab 2>/dev/null; then
+  conda activate VirtualLab
 fi
 
 python3 $BIN_DIR/RunVirtualLab.py "${@}"

@@ -86,8 +86,15 @@ def parsed_args():
     parser.add_argument(
         "-f",
         "--Run_file",
-        metavar='filename',
-        help="Where 'filename' is the path to the python run file.",
+        metavar='FileName',
+        help="Where FileName is the path to the python run file.",
+        default=None,
+    )
+    parser.add_argument(
+        "-g",
+        "--GUI",
+        metavar='SoftwareName',
+        help="Opens the GUI for SoftwareName if it has been configured.",
         default=None,
     )
     parser.add_argument(
@@ -102,7 +109,7 @@ def parsed_args():
         "-C",
         "--container-build",
         metavar='ContainerName',
-        help="Build 'container name'. Multiple containers can be given by a comma separated list.\
+        help="Build ContainerName. Multiple containers can be given by a comma separated list.\
               'current' will build the latest container of each container which is already installed.\
               'all' will build all available containers.",
         default='',
@@ -221,6 +228,8 @@ def runVL():
     # set flag to run tests instate of the normal run file
     if args.test:
         Run_file = f"{vlab_dir}/RunFiles/Run_ComsTest.py"
+    elif args.GUI:
+        Run_file = f"{vlab_dir}/bin/OpenGUI.py"
     else:
         Run_file = args.Run_file
 
@@ -295,6 +304,9 @@ def _run_file(Run_file,args):
                 kOption_dict[key] = value
     else:
         options = ""
+
+    if args.GUI:
+        options = f"-g {args.GUI}"
 
     ####################################################
     # pass debug and dry_run flags in as k options if set

@@ -12,7 +12,7 @@ while getopts "c:f:p:a:r:" options; do
 	  pypath="${OPTARG}"
 	  ;;  
 	  a)
-	  args="${OPTARG}"
+	  args="args:${OPTARG}"
 	  ;;
 	  r)
 	  runflag="${OPTARG}"
@@ -25,11 +25,14 @@ export PYTHONPATH=/home/ibsim/VirtualLab:$pypath:$PYTHONPATH
 tmpfile=$(mktemp) # make temp file to write port number to
 
 # run salome
-$cmd -$runflag --ns-port-log $tmpfile  $filepath args:$args
+$cmd -$runflag --ns-port-log $tmpfile  $filepath $args
 
-# get port number from tmpfile and kill salome on that port
-port=$(cat $tmpfile)
-$cmd kill $port
-
+if [ $runflag = 't' ] ; then
+	# get port number from tmpfile and kill salome on that port (only needed if GUI hasnt been opened)
+	port=$(cat $tmpfile)
+	$cmd kill $port
+else 
+	sleep 3 #  gives a chance for salome gui to clean up (otherwise errors are printed to screen)
+fi
 
 

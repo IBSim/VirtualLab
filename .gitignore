@@ -27,10 +27,7 @@ docs/build
 Config/*.yaml
 Config/*.py
 !Scripts/
-!Materials/Copper
-!Materials/Copper_NL
-!Materials/Tungsten
-!Materials/Tungsten_NL
+
 # Ensure that only the Example and .dev sub-directory will be included in the whitelist
 !Input/
 Input/*/*
@@ -39,11 +36,20 @@ Input/*/*
 !Input/*/.dev/
 !Input/Unit/*
 !tests/
+
 # Ensure that only some Run files will be included in the RunFiles directory
 !RunFiles/
 # ignore logfiles but not directory
 !.log
 .log/*.log
 !VL_Modules.yaml
+
+# Ensure only certain materials are available
+!Materials/
+Materials/*
+!Materials/Copper/
+!Materials/Copper_NL/
+!Materials/Tungsten/
+!Materials/Tungsten_NL/
 
 

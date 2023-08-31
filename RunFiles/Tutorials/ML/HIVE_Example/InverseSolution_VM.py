@@ -17,7 +17,7 @@ from Scripts.Common.VirtualLab import VLSetup
 CoilType='Pancake' 
 PCA_Analysis = False
 ModelType = 'GPR' # this can be GPR or MLP
-CreateModel = False
+CreateModel = True
 InverseAnalysis = True
 
 GUI = True

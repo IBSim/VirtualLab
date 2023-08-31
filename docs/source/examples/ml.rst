@@ -248,7 +248,7 @@ Next the model will be used to generate images of heating profiles and compare t
 
 .. note::
     
-    These images are generated using **ParaViS**. If you are using a virtual machine the GUI will need to be opened for the creation of images. This can be achieved by uncommenting the line *DA.PVGUI* in the 'CreateImage' section.
+    These images are generated using **ParaViS**. If you are using a virtual machine the GUI will need to be opened for the creation of images. This can be achieved by ensuring that *GUI* is set to :code:`True` at the top of the file.
 
 .. admonition:: Action
    :class: Action
@@ -326,9 +326,8 @@ Clearly more principal components could be used, however increasing to 200 would
 
     If youd like to generate this plot for yourself, make sure the PCA_Analysis at the top of the RunFile is set to :code:`True`. This, however, may take a little while. 
 
-The parameters for generating the GPR model are similar to those in example 2, however notice that *ML.Metric* this time specifies the number of principal components to use, instead of the variance threshold.  
+The parameters for generating the GPR model are similar to those in example 2, however notice that *ML.Metric* this time specifies the number of principal components to use, instead of the variance threshold ::
 
-::
     ML = Namespace()
     ML.Name = 'Temperature/{}/GPR'.format(CoilType)
     ML.File = ('GPR_Models','GPR_PCA_hdf5')
@@ -350,6 +349,10 @@ Following this you have the parameters to perform analysis with the model. The k
     Launch **VirtualLab** with ::
 
         VirtualLab -f RunFiles/Tutorials/ML/HIVE_Example/InverseSolution_T.py
+
+    .. note::
+        
+        This example uses **ParaViS** to generate images. If you are using a virtual machine the GUI will need to be opened for the creation of images. This can be achieved by ensuring that *GUI* is set to :code:`True` at the top of the RunFile.
 
     .. note::
         
@@ -469,6 +472,10 @@ The other parameters used in this analysis are the same as the previous example 
 
         VirtualLab -f RunFiles/Tutorials/ML/HIVE_Example/InverseSolution_VM.py
 
+    .. note::
+        
+        This example uses **ParaViS** to generate images. If you are using a virtual machine the GUI will need to be opened for the creation of images. This can be achieved by ensuring that *GUI* is set to :code:`True` at the top of the RunFile.
+        
     .. note::
         
         Generating the model may take a little while, so feel free to grab yourself a coffee. 

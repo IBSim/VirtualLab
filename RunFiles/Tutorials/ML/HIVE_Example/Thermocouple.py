@@ -15,7 +15,7 @@ EstimateField = True
 Sensitivity = False
 Optimise = False
 
-GUI = False
+GUI = True
 
 # ====================================================================
 # Setup VirtualLab
@@ -78,7 +78,7 @@ if Sensitivity:
 # ====================================================================
 # Optimise the location of the thermocouples
 if Optimise:
-    NbThermocouple = 3
+    NbThermocouple = 4
 
     main_parameters = Namespace()
 

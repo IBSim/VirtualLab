@@ -590,14 +590,22 @@ class VLSetup:
             # an iterator to vary parameters within master file.
             typelist = [type(val) for val in Master.__dict__.values()]
             if type(iter([])) in typelist:
-                # itertor found so we consider this as a varying parameter & create Var
+                # itertor found so we consider this as a varying parameter 
+
+                # change Parameters_Var to namespace if its None
+                if self.Parameters_Var is None:
+                    self.Parameters_Var = Namespace() 
+                
+                # create Var for this method_name
                 Var = Namespace()
                 for key, val in Master.__dict__.items():
                     if type(val) == type(iter([])):
                         setattr(Var, key, list(val))
+
                 # Assign Var to class. Behaviour is the same as if _Parameters_Var
                 # file had been used.
                 setattr(self.Parameters_Var, method_name, Var)
+
             else:
                 if not hasattr(Master, "Name"):
                     self.Exit(VLF.ErrorMessage(name_err.format(method_name,'Parameters_Master')))   

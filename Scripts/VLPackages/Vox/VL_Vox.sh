@@ -10,10 +10,10 @@ while getopts "c:p:" options; do
 
 esac
 done
-cd /home/ibsim/VirtualLab
+
 source /home/ibsim/miniconda/etc/profile.d/conda.sh
 conda activate VirtualLab
-export PYTHONPATH=/home/ibsim/VirtualLab:/home/ibsim/GVXR_Install/gvxrWrapper-1.0.5/python3:$pypaths:$PYTHONPATH
+export PYTHONPATH=/home/ibsim/GVXR_Install/gvxrWrapper-1.0.5/python3:$pypaths:$PYTHONPATH
 conda config --set report_errors false
 
 # check here that command is a string

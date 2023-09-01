@@ -13,8 +13,9 @@ def _tmpfile_pkl(tempdir="/tmp"):
 
 
 def _pyfunctorun(funcfile, funcname, in_path, out_path):
-    return "python3 /home/ibsim/VirtualLab/bin/run_pyfunc.py {} {} {} {}".format(
-        funcfile, funcname, in_path, out_path
+    vlab_dir = get_vlab_dir()
+    return "python3 {}/bin/run_pyfunc.py {} {} {} {}".format(
+        vlab_dir, funcfile, funcname, in_path, out_path
     )
 
 
@@ -258,7 +259,6 @@ def MPI_Container(package_info, command, shared_dir,addpath=[],srun=False):
     return ReturnCode
 
 def _MPIFile(command,addpath):
-    addpath.append('/home/ibsim/VirtualLab')
     addpath_str = ":".join(addpath)
     info_list = ["#!/bin/bash",
                 "export MPLBACKEND='Agg'",
@@ -281,7 +281,7 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
     
     bind_str = bind_list2string(container_info["bind"])  # convert bind list to string
     container_cmd += " --bind {}".format(bind_str)  # update command with bind points
-
+    #container_cmd += " --env PREPEND_PATH=/home/rhydian/VirtualLab/bin"
     _command = command.split()
     # command for running inside the container (to perform parallel evaluation of function)
     command_inside = _command[2:] if srun else _command[3:] # additional argument with srun to ignore
@@ -389,41 +389,6 @@ def receive_data(conn, debug=False, payload_size=2048):
         if debug:
             print(f"received:{payload}")
     return payload
-
-
-def Format_Call_Str(Module, vlab_dir, class_file, pythonpaths, use_Apptainer, cont_id):
-    """Function to format string for bind points and container to call specified tool."""
-    import os
-    import subprocess
-
-    ##### Format cmd argumants #########
-    filepath = "-m " + class_file
-    ID = "-I " + str(cont_id)
-    pypath = "-p " + ":".join(pythonpaths)
-
-    #########################################
-    # Format run string and script to run   #
-    # container based on Module used.       #
-    #########################################
-    if use_Apptainer:
-        import random
-
-        update_container(Module, vlab_dir)
-        call_string = f' -B /run:/run -B /tmp:/tmp --contain -B {str(vlab_dir)}:/home/ibsim/VirtualLab \
-                        {str(vlab_dir)}/{Module["Apptainer_file"]} '
-    else:
-        # docker
-        call_string = f'-v /run:/run -v /tmp:/tmp -v {str(vlab_dir)}:/home/ibsim/VirtualLab {Module["Docker_url"]}:{Module["Tag"]}'
-
-    # get custom command line arguments if specified in config.
-    arguments = Module.get("cmd_args", None)
-    if arguments == None:
-        command = f'{Module["Startup_cmd"]} \
-               {filepath} {ID} {pypath}'
-    else:
-        command = f'{Module["Startup_cmd"]} {arguments}'
-
-    return call_string, command
 
 
 def check_platform():
@@ -584,36 +549,3 @@ def get_vlab_dir(parsed_dir=None):
         )
 
     return vlab_dir
-
-
-def host_to_container_path(filepath):
-    """
-    Function to Convert a path in the virtualLab directory on the host
-    to an equivalent path inside the container. since the vlab _dir is
-    mounted as /home/ibsim/VirtualLab inside the container.
-    Note: The filepath needs to be absolute and  is converted
-    into a string before it is returned.
-    """
-    vlab_dir = get_vlab_dir()
-    # location of vlab inside the container
-    cont_vlab_dir = "/home/ibsim/VirtualLab"
-    # convert path to be relative to container not host
-    filepath = str(filepath).replace(str(vlab_dir), cont_vlab_dir)
-    return filepath
-
-
-def container_to_host_path(filepath):
-    """
-    Function to Convert a path inside the container
-    to an equivalent path on the host. since the vlab _dir is
-    mounted as /home/ibsim/VirtualLab inside the container.
-
-    Note: The filepath needs to be absolute and  is converted
-    into a string before it is returned.
-    """
-    vlab_dir = get_vlab_dir()
-    # location of vlab inside the container
-    cont_vlab_dir = "/home/ibsim/VirtualLab"
-    # convert path to be relative to host not container
-    filepath = str(filepath).replace(cont_vlab_dir, str(vlab_dir))
-    return filepath

@@ -220,11 +220,10 @@ class VLSetup:
         # ======================================================================
         # Define path to scripts
         # check simulation type exists
-        self.SCRIPTS_DIR = "{}/Scripts".format(VLconfig.VL_DIR_CONT)
+        self.SCRIPTS_DIR = "{}/Scripts".format(VLconfig.VL_HOST_DIR)
 
         self.SIM_SCRIPTS = "{}/Experiments/{}".format(self.SCRIPTS_DIR, self.Simulation)
-        self.CONF_DIR = "{}/Config".format(VLconfig.VL_DIR_CONT)
-
+        self.CONF_DIR = "{}/Config".format(VLconfig.VL_HOST_DIR)
         if not os.path.isdir(self.SIM_SCRIPTS):
             self.Exit(
                 VLF.ErrorMessage(

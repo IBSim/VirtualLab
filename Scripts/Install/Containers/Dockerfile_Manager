@@ -7,7 +7,7 @@ ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
     LANGUAGE=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
-    PATH="/home/ibsim/.local/bin:/home/ibsim/VirtualLab/bin:${PATH}" \
+    PATH="/home/ibsim/.local/bin:${PATH}" \
     BASH_ENV=/home/ibsim/patch.sh
 
 # Get Ubuntu updates and basic packages
@@ -34,11 +34,11 @@ ENV TERM=linux
 
 RUN sudo chmod 755 /home/ibsim/patch.sh
 
-ARG branch=dev
+ARG branch=dev # this will need to be changed when merging to master
 # Download and install VirtualLab and its requirements
-RUN wget -O Install_VirtualLab.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_VirtualLab.sh && \
-    chmod 755 Install_VirtualLab.sh && \
-    sudo ./Install_VirtualLab.sh -b ${branch} -P y -y
+RUN wget -O Install_python.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_python.sh && \
+    chmod 755 Install_python.sh && \
+    sudo ./Install_python.sh -P y
 
 ENV PYTHONPATH "/home/ibsim/.local/lib/python3.6/site-packages:${PYTHONPATH}"
 

@@ -1,8 +1,6 @@
 #!/bin/bash
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 
-#export PYTHONPATH=/home/ibsim/VirtualLab/Scripts:/home/ibsim/VirtualLab/Scripts/Common:/home/ibsim/VirtualLab/Scripts/Experiments/HIVE:${PYTHONPATH}
-
 command=$1 
 VL_hostname=$2 # name of the host which VirtualLab was initially launched on
 VL_port=$3 #  the port on which VirtualLab was initially launched

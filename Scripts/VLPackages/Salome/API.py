@@ -29,7 +29,7 @@ def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, GUI=False, temp
        
     # Add paths provided to python path for subprocess
     AddPath = [AddPath] if type(AddPath) == str else AddPath
-    AddPath = AddPath + ['/home/ibsim/VirtualLab',Dir]
+    AddPath.append(Dir)
     PyPath = "-p {}".format(":".join(AddPath))
 
     if DataDict:

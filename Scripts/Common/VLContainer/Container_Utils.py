@@ -258,7 +258,6 @@ def MPI_Container(package_info, command, shared_dir,addpath=[],srun=False):
     return ReturnCode
 
 def _MPIFile(command,addpath):
-    addpath.append('/home/ibsim/VirtualLab')
     addpath_str = ":".join(addpath)
     info_list = ["#!/bin/bash",
                 "export MPLBACKEND='Agg'",
@@ -281,7 +280,7 @@ def MPI_Container_Manager(container_info, package_info, command, shared_dir, por
     
     bind_str = bind_list2string(container_info["bind"])  # convert bind list to string
     container_cmd += " --bind {}".format(bind_str)  # update command with bind points
-
+    #container_cmd += " --env PREPEND_PATH=/home/rhydian/VirtualLab/bin"
     _command = command.split()
     # command for running inside the container (to perform parallel evaluation of function)
     command_inside = _command[2:] if srun else _command[3:] # additional argument with srun to ignore

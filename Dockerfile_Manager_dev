@@ -7,6 +7,7 @@ ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
     LANGUAGE=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
+    PATH="/home/ibsim/.local/bin:${PATH}" \
     BASH_ENV=/home/ibsim/patch.sh
 
 # Get Ubuntu updates and basic packages

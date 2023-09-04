@@ -43,5 +43,4 @@ Simulations are initiated by launching **VirtualLab** in the command line with a
     hive
     ibsim
     Mesh_Voxelisation
-    X-ray_imaging
-    CT_Reconstruction
+    ml

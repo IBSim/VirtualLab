@@ -20,16 +20,7 @@
     "CT_Recon": {
         "Namespace": "GVXR"
     },
-    "CT_Recon2D": {
-        "Namespace": "GVXR"
-    },
-    "ImPreProc": {
-        "Namespace": "ImPreProc"
-    },
-     "VolSeg_Train": {
-        "Namespace": "VolSeg"
-    },
-     "VolSeg_Predict": {
-        "Namespace": "VolSeg"
-    }
+    "ML": {
+        "Namespace": "ML"
+    }    
 }

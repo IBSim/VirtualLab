@@ -20,7 +20,7 @@ while getopts "c:f:p:a:r:" options; do
 esac
 done
 
-export PYTHONPATH=/home/ibsim/VirtualLab:$pypath:$PYTHONPATH
+export PYTHONPATH=$pypath:$PYTHONPATH
 
 tmpfile=$(mktemp) # make temp file to write port number to
 

@@ -258,7 +258,7 @@ def _run_file(Run_file,args):
     bind_points_default = { "/usr/share/glvnd":"/usr/share/glvnd",
                             str(Path.home()):str(Path.home()),
                             str(tmp_dir):"/tmp",
-                            str(vlab_dir):"/home/ibsim/VirtualLab",
+                            str(vlab_dir):str(vlab_dir),
                           }
 
     # bind points defined in VLconfig
@@ -373,8 +373,8 @@ def _run_file(Run_file,args):
 
         proc = subprocess.Popen(
                 f"apptainer exec -H {pwd_dir} --contain --writable-tmpfs \
-                                 --bind {bind_str} {Apptainer_file} "
-                f'/home/ibsim/VirtualLab/bin/VL_Manager {options} -f {Run_file} ',
+                                 --bind {bind_str} --env PREPEND_PATH={vlab_dir}/bin {Apptainer_file} "
+                f'{vlab_dir}/bin/VL_Manager {options} -f {Run_file} ',
                 shell=True,
                                )
     else:

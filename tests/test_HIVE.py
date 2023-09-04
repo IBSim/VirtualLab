@@ -7,7 +7,7 @@ from subprocess import Popen
 
 VLdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,VLdir)
-import VLconfig
+# import VLconfig
 sys.path.pop(0)
 
 TestName='HIVE'

@@ -19,13 +19,13 @@ Project='Tutorials'
 Parameters_Master='TrainingParameters_IBSim'
 Parameters_Var=None
 
-
 # path to IBSim mesh file
 mesh_fname = "{}/Tensile/Tutorials/Meshes/Tensile_IBSim.med".format(VLconfig.OutputDir)
 if not os.path.isfile(mesh_fname):
     # Download file from link
     r = requests.get('https://ibsim.co.uk/VirtualLab/downloads/Tensile_IBSim.med')
     # write to file
+    os.makedirs(os.path.dirname(mesh_fname),exist_ok=True)
     with open(mesh_fname,'wb') as f:
         f.write(r.content)
 
@@ -60,3 +60,4 @@ VirtualLab.Sim(
            )
 
 VirtualLab.DA()
+

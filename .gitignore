@@ -17,6 +17,8 @@ docs/source/_build
 !requirements.txt
 !LICENSE
 !.readthedocs.yml
+!.gitlab-ci.yml
+!.circleci
 
 # Whitelist these directories
 !bin/

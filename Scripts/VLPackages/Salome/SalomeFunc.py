@@ -2,7 +2,6 @@ import os
 import numpy as np
 from salome.geom import geomBuilder
 from salome.smesh import smeshBuilder
-import SMESH
 import salome_version
 import salome
 import sys

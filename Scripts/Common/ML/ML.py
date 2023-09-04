@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 from types import SimpleNamespace as Namespace
 
@@ -9,8 +8,6 @@ import h5py
 from natsort import natsorted
 import pandas as pd
 
-from Scripts.Common.Optimisation import slsqp_multi
-from Scripts.Common import VLFunctions as VLF
 from Scripts.Common.tools import Paralleliser
 
 # ==============================================================================
@@ -112,7 +109,7 @@ def Rsq(Predicted,Target,axis=None):
     MSE_val = ((Predicted - Target)**2).sum(axis=axis)
     return 1-(MSE_val/divisor)
 
-def GetMetrics2(pred,target):
+def GetMetrics(pred,target):
 
     N = 1 if pred.ndim==1 else pred.shape[1]
 
@@ -126,6 +123,8 @@ def GetMetrics2(pred,target):
     pd.options.display.float_format = '{:.3e}'.format
     return df
 
+def GetMetrics2(*args,**kwargs):
+    return GetMetrics(*args,**kwargs)
 
 # ==============================================================================
 # Functions used for reading & writing data
@@ -134,8 +133,7 @@ def Openhdf(File,style,timer=5):
     ''' Repeatedly attemps to open hdf file if it is held by another process for
     the time allocated by timer '''
     if style=='r' and not os.path.isfile(File):
-        print(VLF.ErrorMessage("The following file does not exist:\n{}".format(File)))
-        sys.exit()
+        raise Exception("Cant open file {} as it does not exist".format(File))
     st = time.time()
     while True:
         try:
@@ -143,7 +141,7 @@ def Openhdf(File,style,timer=5):
             return Database
         except OSError:
             if time.time() - st > timer:
-                sys.exit('Timeout on opening hdf file')
+                raise TimeoutError("Could not open file {} after {}s of trying".format(File, timer))
 
 def Writehdf(File, data_path, array, attrs={}, group=None):
     if group: data_path = "{}/{}".format(group,data_path)
@@ -156,33 +154,35 @@ def Writehdf(File, data_path, array, attrs={}, group=None):
         dset.attrs.update(**attrs)
     Database.close()
 
-def Readhdf(File, data_paths,group=None):
+def _Readhdf(File_handle, data_path,group=None):
+    # add prefix to path
+    if group: data_path = "{}/{}".format(group,data_path)
+    # Check data is in file
+
+    if data_path not in File_handle:
+        raise Exception("Dataset '{}' is not in the file {}".format(data_path,File_handle.filename))
+
+    # Get data from file
+    _data = File_handle[data_path][:]
+    # Reshape 1D data to 2D
+    # if _data.ndim==1:
+    #     _data = _data.reshape((_data.size,1))
+    return _data
+
+def Readhdf(File, data_path, group=None):
     Database = Openhdf(File,'r')
-    if type(data_paths)==str: data_paths = [data_paths]
-    data = []
-    for data_path in data_paths:
-        # add prefix to pat
-        if group: data_path = "{}/{}".format(group,data_path)
-        # Check data is in file
-        if data_path not in Database:
-            print(VLF.ErrorMessage("data '{}' is not in file {}".format(data_path,File)))
-            sys.exit()
-        # Get data from file
-        _data = Database[data_path][:]
-        # Reshape 1D data to 2D
-        if _data.ndim==1:
-            _data = _data.reshape((_data.size,1))
-
-        data.append(_data)
-
+    if type(data_path)==str:
+        data = _Readhdf(Database,data_path,group)
+    else:
+        # assume its an iterable
+        data = [_Readhdf(Database,_data_path,group) for _data_path in data_path]
     Database.close()
-
     return data
 
 # ==============================================================================
 # Functions used for ML work
 
-def GetData(DataFile,DataNames,group=None, Nb=-1):
+def _GetData(DataFile,DataNames,group=None, Nb=-1):
     data = Readhdf(DataFile,DataNames,group=group) # read DataNames for DataFile
 
     for i in range(len(data)):
@@ -195,14 +195,43 @@ def GetData(DataFile,DataNames,group=None, Nb=-1):
             l,u = _Nb
             data[i] = data[i][l:u]
 
-    return np.vstack(data)
+    return data
 
-def GetDataML(DataFile,InputNames,OutputNames,options={}):
+def _GetDataStacked(DataFile,DataName,group=None, Nb=-1):
+    data = _GetData(DataFile,DataName,group=group,Nb=Nb)
+    if type(DataName)==list: # get a list back
+        data = np.concatenate(data)
+    return data
+
+def GetData(DataFile,DataName,group=None, Nb=-1):
+    if type(DataName)==list and type(DataName[0])==list:
+        # multiple outputs which need to be stacked side by side
+        data = []
+        for _DataName in DataName:
+            _data = _GetDataStacked(DataFile,_DataName,group=group,Nb=Nb) 
+            if _data.ndim==1: 
+                _data = _data.reshape(-1,1)
+            data.append(_data)
+        data = np.concatenate(data,axis=1)
+    else:
+        # DataName can be string or a list
+        data = _GetDataStacked(DataFile,DataName,group=group,Nb=Nb)
+
+    return data
+
+def GetDataML(DataFile,InputName,OutputName,options={}):
     ''' This function gets inputs and outputs for supervised ML. '''
-    in_data = GetData(DataFile,InputNames,**options)
-    out_data = GetData(DataFile,OutputNames,**options)
+    in_data = GetData(DataFile,InputName,**options)
+    out_data = GetData(DataFile,OutputName,**options)
     return in_data, out_data
 
+def VLGetDataML(VL,Data):
+
+    DataFile_path = "{}/{}".format(VL.PROJECT_DIR, Data[0])
+    return GetDataML(DataFile_path, *Data[1:])
+
+# ==============================================================================
+# Functions used to gather data
 def GetResPaths(ResDir,DirOnly=True,Skip=['_']):
     ''' This returns a naturally sorted list of the directories in ResDir'''
     ResPaths = []
@@ -238,17 +267,6 @@ def ExtractData_Dir(ResDir,functions,args,kwargs, parallel_options={}):
     Res = list(zip(*Res))
     return Res
 
-def GetInputs(Parameters,commands):
-    ''' Using exec allows us to get individual values from dictionaries or lists.
-    i.e. a command of 'DataList[1]' will get the value from index 1 of the lists
-    'DataList'
-    '''
-
-    inputs = []
-    for i,command in enumerate(commands):
-        exec("inputs.append(Parameters.{})".format(command))
-    return inputs
-
 def ModelSummary(NbInput,NbOutput,TrainNb,**kwargs):
     ModelDesc = "Model Summary\n\n"\
                 "Nb.Inputs: {}\nNb.Outputs: {}\n"\
@@ -263,140 +281,6 @@ def ModelSummary(NbInput,NbOutput,TrainNb,**kwargs):
 # ==============================================================================
 # ML model Optima
 
-def GetOptima(model, NbInit, bounds, seed=None, find='max', tol=0.01,
-              order='decreasing', success_only=True, constraints=(),fnc=None,fnc_args=None):
-    if seed!=None: np.random.seed(seed)
-    init_points = np.random.uniform(0,1,size=(NbInit,len(bounds)))
-
-    # go to default function
-    if fnc is None:
-        fnc = _model_opt
-        fnc_args = [model]
-
-    Optima = slsqp_multi(fnc, init_points, bounds=bounds,
-                         constraints=constraints,find=find, tol=tol,
-                         order=order, success_only=success_only,
-                         jac=True, args=fnc_args)
-    Optima_cd, Optima_val = Optima
-    return Optima_cd, Optima_val
-
-def GetExtrema(model,NbInit,bounds,seed=None):
-    # ==========================================================================
-    # Get min and max values for each
-    Extrema_cd, Extrema_val = [], []
-    for tp,order in zip(['min','max'],['increasing','decreasing']):
-        _Extrema_cd, _Extrema_val = GetOptima(model, NbInit, bounds,seed,
-                                              find=tp, order=order)
-        Extrema_cd.append(_Extrema_cd[0])
-        Extrema_val.append(_Extrema_val[0])
-    return np.array(Extrema_val), np.array(Extrema_cd)
-
-def _model_opt(X,model):
-    torch.set_default_dtype(torch.float64)
-    X = torch.tensor(X)
-    output_val,output_grad = model.OptimiseOutput(X)
-    return output_val.detach().numpy(), output_grad.detach().numpy()
-
-def temporary_numpy_seed(fnc,seed=None,args=()):
-    ''' Function which will temporary set the numpy random seed to seed
-        and peform a function evaluation.'''
-    if seed is None:
-        # no seeding performed
-        out = fnc(*args)
-    else:
-        st0 = np.random.get_state() # get current state
-        np.random.seed(seed) # set new random state
-        out = fnc(*args) # make function call
-        np.random.set_state(st0) # reset to original state
-
-    return out
-
-
-
-
-def _init_points(nb_points,bounds):
-    # checks
-    points = [np.random.uniform(*bound,nb_points) for bound in bounds]
-    return np.transpose(points)
-
-
-def GetRandomPoints(nb_points,bounds,seed=None):
-    ''' nb_points number of points are randomly drawn from the
-        hyper space defined by bounds'''
-
-    random_points = temporary_numpy_seed(_init_points,seed=seed,args=(nb_points,bounds))
-    return random_points
-
-def Optimise(fnc, NbInit, bounds, fnc_args=(), seed=None, find='max', tol=0.01,
-              order='decreasing', success_only=True,**kwargs):
-
-    init_points = GetRandomPoints(NbInit,bounds,seed=seed)
-    Optima_cd, Optima_val = slsqp_multi(fnc, init_points,
-                             bounds=bounds, find=find, tol=tol, order=order,
-                             success_only=success_only,jac=True, args=fnc_args,
-                             **kwargs)
-    return Optima_cd, Optima_val
-
-
-def OptimiseLSE(fnc, target, NbInit, bounds, fnc_args=(), filter=True, scale_factor=1,find='min', **kwargs):
-    lse_fnc_args = [target,fnc,fnc_args,scale_factor]
-    cd,val = Optimise(_LSE_func, NbInit, bounds, fnc_args=lse_fnc_args, find=find, **kwargs)
-
-    if filter:
-        pred = fnc(cd,*fnc_args)[0] # no need for gradient
-        keep = LSE_filter(pred,target,err=0.05)
-        return cd[keep], val[keep]
-    else:
-        return cd, val
-
-def _LSE_func(X,target,fnc,fnc_args,scale_factor=1):
-    ''' Function for solving least squares error optimisation.
-        Use scale factor as graidents can be very large, leading to slow convergence time'''
-    pred, grad = fnc(X,*fnc_args) # get the value and gradient from the given function
-    diff = pred - target
-    lse_pred = (diff**2)
-    lse_grad = 2*(diff.T*grad.T).T
-    if lse_pred.ndim==2:
-        lse_pred = lse_pred.mean(axis=1)
-        lse_grad = lse_grad.mean(axis=1)
-    return lse_pred/scale_factor, lse_grad/scale_factor
-
-def LSE_filter(pred,target,err=0.05):
-    abs_err = np.abs(pred - target)/target
-    keep =  (abs_err < err)
-    if pred.ndim==2: keep = keep.all(axis=1)
-    return keep
-
-
-
-# ==============================================================================
-# Constraint for ML model
-def LowerBound(model,bound):
-    constraint_dict = {'fun': _bound, 'jac':_dbound,
-                       'type': 'ineq', 'args':(model,bound)}
-    return constraint_dict
-
-def UpperBound(model,bound):
-    constraint_dict = {'fun': _bound, 'jac':_dbound,
-                       'type': 'ineq', 'args':(model,bound,-1)}
-    return constraint_dict
-
-def FixedBound(model,bound):
-    constraint_dict = {'fun': _bound, 'jac':_dbound,
-                       'type': 'eq', 'args':(model,bound)}
-    return constraint_dict
-
-def _bound(X, model, bound, sign=1):
-    X = torch.tensor(np.atleast_2d(X))
-    # Function value
-    Pred = model(X).mean.detach().numpy()
-    return sign*(Pred - bound)
-
-def _dbound(X, model, bound, sign=1):
-    X = torch.tensor(np.atleast_2d(X))
-    # Gradient
-    Grad = model.Gradient(X)
-    return sign*Grad
 
 def InputQuery(model, NbInput, base=0.5, Ndisc=50):
 
@@ -430,26 +314,39 @@ def PCA(Data,centre=True):
     return U,s,VT
 
 
-def PCA_threshold(eigens,threshold):
+def _PCA_threshold(eigens,threshold):
     eigens_cs = np.cumsum(eigens)
     eigens_cs = eigens_cs/eigens_cs[-1] # scaled cumulative sum
     threshold_ix = np.argmax( eigens_cs >= threshold) + 1
     return threshold_ix
 
+def PCA_threshold_eigen(eigenvalues,threshold):
+    if type(threshold)==list:
+        threshold_ix = [_PCA_threshold(eigenvalues,_threshold) for _threshold in threshold]
+    else:
+        threshold_ix = _PCA_threshold(eigenvalues,threshold)
+    return threshold_ix
+
+def PCA_threshold(s,threshold):
+    eigenvalues = GetEigenvalues(s)
+    return PCA_threshold_eigen(eigenvalues,threshold)
+
+def GetEigenvalues(s):
+    rank = len(s)
+    eigenvalues = s**2
+    return eigenvalues/(rank-1)
+
 def GetPC(Data,metric={},centre=True,check_variance=False):
     _data = np.copy(Data)
     U,s,VT = PCA(Data,centre=centre)
 
-    # get eigenvalues from s. This formula only holds if the data is centred.
-    eigens = s**2/(Data.shape[0] - 1)
-
     if check_variance:
-        PC_var = eigens.sum()
+        PC_var = GetEigenvalues(s).sum()
         Data_var = np.var(_data,axis=0).sum()*Data.shape[0]/(Data.shape[0] - 1)
         print("Original variance in data:{}\nVariance on principal components:{}".format(Data_var,PC_var))
 
     if 'threshold' in metric:
-        threshold_ix = PCA_threshold(eigens,metric['threshold'])
+        threshold_ix = PCA_threshold(s,metric['threshold'])
     else: threshold_ix=0
 
     # number of principal components to keep
@@ -472,36 +369,37 @@ def PCA_track(TrainData,TestData,centre=True):
 
     U,s,VT = PCA(TrainData,centre=False)
 
-    Traindata_compress = TrainData.dot(VT.T)
-    Testdata_compress = TestData.dot(VT.T)
+    return PCA_sensitivity(VT,TrainData,TestData)
 
-    train_recon,test_recon = np.zeros(TrainData.shape),np.zeros(TestData.shape)
-    train_rmse,test_rmse = [],[]
-    for i in range(VT.shape[0]):
-        train_recon += Traindata_compress[:,i:i+1].dot(VT[i:i+1])
-        _train_rmse = RMSE(train_recon,TrainData, axis=0).mean()
-        train_rmse.append(_train_rmse)
+def _PCA_sensitivity(VT,data):
+    data_compress = data.dot(VT.T)
+    recon = np.zeros(data.shape)
+    rmse = []
+    for i,vt in enumerate(VT):
+        recon += np.outer(data_compress[:,i],vt)
+        _rmse = RMSE(recon,data, axis=0).mean()
+        rmse.append(_rmse)
+    return rmse
 
-        test_recon += Testdata_compress[:,i:i+1].dot(VT[i:i+1])
-        _test_rmse = RMSE(test_recon,TestData, axis=0).mean()
-        test_rmse.append(_test_rmse)
-
-    return train_rmse,test_rmse
+def PCA_sensitivity(VT,TrainData,TestData):
+    return _PCA_sensitivity(VT,TrainData), _PCA_sensitivity(VT,TestData)
 
 
-def PCA_check_convergence(loss_data,convergence=0.99,nb_convergence=3):
+def PCA_recon_convergence(loss_data,convergence=0.99,nb_convergence=3):
     loss_data = np.array(loss_data)
     frac = loss_data[1:]/loss_data[:-1]
 
+    ix = len(loss_data)-1
     for j in range(len(frac) - nb_convergence):
         check_conv = frac[j:j+nb_convergence]
         if (np.array(check_conv)>convergence).all():
+            ix = j
             break
-    return j
+    return ix
 
 def PCA_convergence(TrainData,TestData,centre=True):
     train_rmse,test_rmse = PCA_track(TrainData,TestData,centre=centre)
-    convergence_ix = _PCA_check_convergence(test_rmse)
+    convergence_ix = PCA_recon_convergence(test_rmse)
     return convergence_ix
 
 
@@ -576,33 +474,129 @@ class ModelWrapBase():
         self.model = model
         self.Dataspace = Dataspace
 
+    def CheckInput(self,inputs):
+        if type(inputs) ==list:
+            inputs = torch.tensor(inputs)
+        if type(inputs) == np.ndarray:
+            inputs = torch.from_numpy(inputs)
+        # single input provided but needs to be shaped correctly
+        if inputs.ndim==1 and self.Dataspace.NbInput>1 and inputs.shape[0]==self.Dataspace.NbInput:
+            inputs = inputs.reshape((1,-1))
+        return inputs
+
     def _get_dset(self,dset_name):
         if not hasattr(self.Dataspace,dset_name):
             print('Error: {} is not associated with the dataspace'.format(dset_name))
         else:
             return getattr(self.Dataspace,dset_name)
 
-    def GetDatasetInput(self,dset_name,to_numpy=False):
+    def GetTrainData(self,to_numpy=False,scale=True):
+        return self.GetDataset('Train',to_numpy=to_numpy,scale=scale)
+
+    def GetDataset(self,dset_name,to_numpy=False,scale=True):
+        return self.GetDatasetInput(dset_name,to_numpy=to_numpy,scale=scale), self.GetDatasetOutput(dset_name,to_numpy=to_numpy,scale=scale)
+
+    def GetDatasetInput(self,dset_name,to_numpy=False,scale=True):
         input = self._get_dset("{}In_scale".format(dset_name))
         if to_numpy:
             input = input.detach().numpy()
+        if scale:
+            input = self.RescaleInput(input)
         return input
 
-    def GetDatasetOutput(self,dset_name,to_numpy=False):
+    def GetDatasetOutput(self,dset_name,to_numpy=False, scale=True):
         output = self._get_dset("{}Out_scale".format(dset_name))
         if to_numpy:
             output = output.detach().numpy()
+        if scale:
+            output = self.RescaleOutput(output)            
         return output
 
     def AddDataset(self, data, dset_name):
         DataspaceAdd(self.Dataspace,**{dset_name:data})
 
-    def ScaleInput(self,input):
-        return DataScale(input,*self.Dataspace.InputScaler)
+    def ScaleInput(self,input,index=None):
+        if index is None:
+            return DataScale(input,*self.Dataspace.InputScaler)
+        else:
+            return DataScale(input,*self.Dataspace.InputScaler[:,index])
 
-    def ScaleOutput(self,output):
-        return DataScale(output,*self.Dataspace.OutputScaler)
+    def RescaleInput(self,input,index=None):
+        if index is None:
+            return DataRescale(input,*self.Dataspace.InputScaler)
+        else:
+            return DataRescale(input,*self.Dataspace.InputScaler[:,index])
+
+    def ScaleOutput(self,output,index=None):
+        if index is None:
+            return DataScale(output,*self.Dataspace.OutputScaler)
+        else:
+            return DataScale(output,*self.Dataspace.OutputScaler[:,index])
+
+    def RescaleOutput(self,output,index=None):
+        if index is None:
+            return DataRescale(output,*self.Dataspace.OutputScaler)
+        else:
+            return DataRescale(output,*self.Dataspace.OutputScaler[:,index])
 
     def Predict_dset(self,dset_name, scale_outputs=True):
         inputs = self.GetDatasetInput(dset_name)
         return self.Predict(inputs,scale_outputs=scale_outputs)
+
+class ModelWrapPCABase():
+
+    def __init__(self, VT, ScalePCA):
+        self.VT = VT
+        self.ScalePCA = ScalePCA
+
+    def Compress(self,output,scale=True):
+        if scale:
+            output = DataScale(output,*self.ScalePCA)
+        return output.dot(self.VT.T)
+
+    def _Reconstruct(self,PC,VT,ScalePCA, scale=True):
+        recon = PC.dot(VT)
+        if scale:
+            recon = DataRescale(recon,*ScalePCA)
+        return recon
+
+    def Reconstruct(self,PC,scale=True,index=None):
+        if index is None:
+            recon = self._Reconstruct(PC,self.VT,self.ScalePCA,scale=scale)
+        else:
+            VT,ScalePCA = self.VT[:,index],self.ScalePCA[:,index]
+            recon = self._Reconstruct(PC,VT,ScalePCA)
+        return recon
+            
+    def RescaleField(self,field):
+        return DataRescale(field,*self.ScalePCA)
+
+    def PredictFull(self,inputs,scale_inputs=True,rescale_outputs=True):
+        PC_pred = self.Predict(inputs,scale_inputs=scale_inputs, rescale_outputs=True) # get prediction on PCs
+        FullPred = self.Reconstruct(PC_pred,scale=rescale_outputs)
+        return FullPred
+
+    def _ReconstructGradient(self,grad,VT,ScalePCA,scale=True):
+        FullGrad = []
+        for i in range(self.Dataspace.NbInput):
+            _grad = grad[:,:,i].dot(VT)
+            if scale:
+                _grad = DataRescale(_grad,0,ScalePCA[1]) # as its gradient we set the bias term to zero
+            FullGrad.append(_grad)
+        FullGrad = np.moveaxis(FullGrad, 0, -1)
+        return FullGrad
+
+    def ReconstructGradient(self,grad,scale=True,index=None):
+        if index is None:
+            FullGrad= self._ReconstructGradient(grad,self.VT,self.ScalePCA,scale=scale)
+        else:
+            VT,ScalePCA = self.VT[:,index],self.ScalePCA[:,index]
+            FullGrad = self._ReconstructGradient(grad,VT,ScalePCA)
+        return FullGrad
+
+    def GradientFull(self,inputs,scale_inputs=True,rescale_outputs=True,index=None):
+        pred,grad = self.Gradient(inputs,scale_inputs=scale_inputs,rescale_outputs=True)
+        FullPred = self.Reconstruct(pred,scale=rescale_outputs,index=index)
+        FullGrad = self.ReconstructGradient(grad,scale=rescale_outputs,index=index)
+
+        return FullPred,FullGrad

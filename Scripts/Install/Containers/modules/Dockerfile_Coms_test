@@ -1,0 +1,30 @@
+FROM ubuntu:latest
+ENV DEBIAN_FRONTEND=noninteractive
+# Get Ubuntu updates and basic packages
+USER root
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt install -y \
+    nano \
+    curl \
+    git \
+    cowsay \
+    jq \
+    wget && \
+    rm -rf rm -rf /var/lib/apt/lists/* && \
+    wget https://raw.githubusercontent.com/IBSim/VirtualLab/main/common/jokes.sh && \
+    chmod +x jokes.sh && \
+    mv jokes.sh /usr/bin/jokes.sh
+    
+
+# Set locale environment
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    LANGUAGE=C.UTF-8 \ 
+    PATH=${PATH}:/usr/games
+
+# Add a new user
+RUN adduser --disabled-password --gecos "" ibsim
+USER ibsim
+Expose 9000
+

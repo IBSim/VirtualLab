@@ -27,10 +27,13 @@ def Run(Category,Action,Label):
     campaign_name_str = 'UbuntuVM' #cn
     key1 = 'UbuntuVM' #key1
 
-    tracking_url = "https://www.google-analytics.com/collect?v=1&t=event&tid={}&cid={}\
-                    &ec={}&ea={}&el={}&key1={}&aip=0".format(tracking_id,clientid_str,
+#    tracking_url = "https://www.google-analytics.com/collect?v=1&t=event&tid={}&cid={}\
+#                    &ec={}&ea={}&el={}&key1={}&aip=0".format(tracking_id,clientid_str,
+#                                        Category,Action,Label,key1)
 
-                                        Category,Action,Label,key1)
+    tracking_url = "https://www.google-analytics.com/collect?v=2&t=event&tid={}&cid={}\
+                    &ec={}&ea={}&el={}&key1={}&aip=0".format(tracking_id,clientid_str,
+                    Category,Action,Label,key1)
 
     try:
         requests.post(tracking_url)

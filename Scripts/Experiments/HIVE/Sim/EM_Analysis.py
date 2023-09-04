@@ -13,7 +13,7 @@ from Scripts.Common.tools import MEDtools
 from Scripts.VLPackages.Salome.API import Run as SalomeRun
 from Scripts.VLPackages.ERMES.API import Run as ERMESRun
 
-def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, tempdir='/tmp', AddPath=[], LogFile=None):
+def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, tempdir='/tmp', AddPath=[]):
     '''
     MeshIn is used to build a conformal mesh (MeshOut) which is used by ERMES
     to generate the EM loads. A coil is added above the sample along with a
@@ -24,7 +24,7 @@ def ERMES_Mesh(VL, MeshIn, MeshOut, Parameters, tempdir='/tmp', AddPath=[], LogF
     EM_GUI = getattr(Parameters,'EM_GUI',False)
     DataDict = {'Parameters':Parameters,'InputFile':MeshIn,'OutputFile':MeshOut}
     err = SalomeRun(script, DataDict=DataDict, AddPath=AddPath,
-                    OutFile=LogFile, tempdir=tempdir, GUI=EM_GUI)
+                    tempdir=tempdir, GUI=EM_GUI)
     return err
 
 def ERMES_Conversion(ERMESResFile,ResFile_MED):
@@ -64,7 +64,7 @@ def ERMES_Conversion(ERMESResFile,ResFile_MED):
                 Result = np.array(Result)
                 ERMESrmed.copy(GrpFormat,"CHA/{}".format(ResName))
                 grp = ERMESrmed["CHA/{}".format(ResName)]
-                grp.attrs.create('MAI','ERMES',dtype='S8')
+                grp.attrs.create('MAI',ERMESMesh.MeshName,dtype='S{}'.format(len(ERMESMesh.MeshName)))
                 if Result.shape[1] == 1: NOM =  'Res'.ljust(16)
                 elif Result.shape[1] == 3: NOM = 'DX'.ljust(16) + 'DY'.ljust(16) + 'DZ'.ljust(16)
                 grp.attrs.create('NCO',Result.shape[1],dtype='i4')
@@ -96,17 +96,21 @@ def ERMES_Conversion(ERMESResFile,ResFile_MED):
 def Prep(ERMESMeshFile,tmpERMESdir):
     # Get mesh info using the MeshInfo class written using h5py
     ERMESMesh = MEDtools.MeshInfo(ERMESMeshFile)
+    contacts = True
 
     # Define duplicate nodes for contact surfaces, which is on the SampleSurface and CoilSurface
-    CoilSurface = ERMESMesh.GroupInfo('CoilSurface')
-    SampleSurface = ERMESMesh.GroupInfo('SampleSurface')
-    ContactNodes = SampleSurface.Nodes.tolist() + CoilSurface.Nodes.tolist()
-    ContactNodeSt = ERMESMesh.NbNodes + 1
+    if contacts:
+        CoilSurface = ERMESMesh.GroupInfo('CoilSurface')
+        SampleSurface = ERMESMesh.GroupInfo('SampleSurface')
+
+        ContactNodes = SampleSurface.Nodes.tolist() + CoilSurface.Nodes.tolist()
+        ContactNodeSt = ERMESMesh.NbNodes + 1
 
     # ==========================================================================
     # Node information
     print('Nodes')
-    NodeList = list(range(1,ERMESMesh.NbNodes + 1)) + ContactNodes
+    NodeList = list(range(1,ERMESMesh.NbNodes + 1)) 
+    if contacts: NodeList += ContactNodes
     Coords = ERMESMesh.GetNodeXYZ(NodeList)
     strNodes = ["No[{}] = p({:.10f},{:.10f},{:.10f});\n".format(i+1,Crd[0],Crd[1],Crd[2]) for i,Crd in enumerate(Coords)]
     strNodes.insert(0,"// List of nodes\n")
@@ -117,22 +121,23 @@ def Prep(ERMESMeshFile,tmpERMESdir):
 
     # ==========================================================================
     # Element info
-    print('Contacts')
-    Vacuumgrp = ERMESMesh.GroupInfo('Vacuum')
-    VacuumNew = np.copy(Vacuumgrp.Connect)
-    ContactFaceOrig = np.vstack((SampleSurface.Connect,CoilSurface.Connect))
-    ContactFaceNew = np.copy(ContactFaceOrig)
-    for i, nd in enumerate(ContactNodes):
-        NewNode = ContactNodeSt+i
-        VacuumNew[VacuumNew == nd] = NewNode
-        ContactFaceNew[ContactFaceNew == nd] = NewNode
+    if contacts:
+        print('Contacts')
+        Vacuumgrp = ERMESMesh.GroupInfo('Vacuum')
+        VacuumNew = np.copy(Vacuumgrp.Connect)
+        ContactFaceOrig = np.vstack((SampleSurface.Connect,CoilSurface.Connect))
+        ContactFaceNew = np.copy(ContactFaceOrig)
+        for i, nd in enumerate(ContactNodes):
+            NewNode = ContactNodeSt+i
+            VacuumNew[VacuumNew == nd] = NewNode
+            ContactFaceNew[ContactFaceNew == nd] = NewNode
 
     print('Elements')
     # Desribes the connectivity of the mesh. Same for Electrostatic and FullWave
     strMesh = ["// Volume elements\n"]
     EMlist = ['Vacuum','Coil'] + ['Pipe','Block','Tile']
     for i,name in enumerate(EMlist):
-        if i==0: GrpCnct = VacuumNew
+        if contacts and i==0: GrpCnct = VacuumNew
         else: GrpCnct = ERMESMesh.GroupInfo(name).Connect
         for Nodes in GrpCnct:
             strMesh.append("VE({},{},{},{},{});\n".format(Nodes[2],Nodes[1],Nodes[0],Nodes[3],i+1))
@@ -142,8 +147,9 @@ def Prep(ERMESMeshFile,tmpERMESdir):
         f.write(strMesh)
 
     strContact = ["// Contact elements\n"]
-    for OrigNd, NewNd in zip(ContactFaceOrig,ContactFaceNew):
-        strContact.append("CE = n([{},{},{},{},{},{}]);\n".format(OrigNd[2],OrigNd[1],OrigNd[0],NewNd[2],NewNd[1],NewNd[0]))
+    if contacts:
+        for OrigNd, NewNd in zip(ContactFaceOrig,ContactFaceNew):
+            strContact.append("CE = n([{},{},{},{},{},{}]);\n".format(OrigNd[2],OrigNd[1],OrigNd[0],NewNd[2],NewNd[1],NewNd[0]))
     strContact = "".join(strContact)
 
     with open('{}/Contacts.dat'.format(tmpERMESdir),'w+') as f:
@@ -683,3 +689,63 @@ def ERMES_linear(VL,SimDict):
     # Copy files
     shutil.copy2("{}/ERMESLog".format(ERMESdir), os.path.dirname(SimDict['ERMES_ResFile']))
     shutil.copy2(ERMESMeshFile,SimDict['ERMES_ResFile'])
+
+def ERMES_linear_wmesh(VL,SimDict):
+    Parameters = SimDict['Parameters']
+
+    # temp folder for ERMES files
+    ERMESdir = "{}/ERMES".format(SimDict['TMP_CALC_DIR'])
+    os.makedirs(ERMESdir)
+    #==========================================================================
+    # Create Mesh
+    ERMESMeshFile = "{}/Mesh.med".format(ERMESdir)
+    shutil.copy("{}/{}.med".format(VL.MESH_DIR,Parameters.MeshERMES),ERMESMeshFile)
+
+    # ==========================================================================
+    # get mesh information in to ermes format
+    print('Prep')
+    Prep(ERMESMeshFile,ERMESdir)
+
+    # local_ermes = "{}/ermes_dir".format(SimDict['CALC_DIR'])
+    # if os.path.isdir(local_ermes):
+    #     shutil.rmtree(local_ermes)
+        
+    # ==========================================================================
+    # Create static files & run
+    # the static analysis gives the current density in the coil
+    print('Static')
+    static_name = Static(Parameters,ERMESMeshFile,ERMESdir)
+    err = ERMESRun(static_name)
+    static_resfile = "{}.post.res".format(static_name)
+    static_res = ERMES_Conversion(static_resfile, ERMESMeshFile)
+
+    # calculate the current at the input terminal
+    area,coil_current,coil_currentsq = CalculateCurrent(ERMESMeshFile)
+
+    # scale resulting currents to ensure a current of 1 is recorded at input temrinal
+    scale_factor = 1/coil_current
+
+    JSource = np.loadtxt("{}/Exp_J_Sources/ExpJSource-1.dat".format(ERMESdir),skiprows=1)
+    sourcestring = '0\n'
+    for source in JSource:
+        elems = "{}  {}  {}  {}  ".format(*source[:4].astype('int'))
+        vals = "{:.4f}  {:.4f}  {:.4f}\n".format(*source[4:]*scale_factor)
+        newstr = elems+vals
+        sourcestring+=newstr
+
+    with open("{}/Exp_J_Sources/ExpJSource-1.dat".format(ERMESdir),'w+') as f:
+        f.write(sourcestring)
+
+    # ==========================================================================
+    # Create wave files & run
+    print('Wave')
+    wave_name = Wave(VL,Parameters,ERMESMeshFile,ERMESdir)
+    err = ERMESRun(wave_name)
+    wave_resfile = "{}.post.res".format(wave_name)
+    wave_res = ERMES_Conversion(wave_resfile, ERMESMeshFile)
+
+    # ==========================================================================
+    # Copy files
+    shutil.copy2("{}/ERMESLog".format(ERMESdir), os.path.dirname(SimDict['ERMES_ResFile']))
+    shutil.copy2(ERMESMeshFile,SimDict['ERMES_ResFile'])
+    # shutil.copytree(ERMESdir,local_ermes)

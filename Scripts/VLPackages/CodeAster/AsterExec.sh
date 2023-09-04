@@ -14,7 +14,7 @@ while getopts "c:f:p:" options; do
 esac
 done
 
-export PYTHONPATH=/home/ibsim/VirtualLab:$pypath:$PYTHONPATH
+export PYTHONPATH=$pypath:$PYTHONPATH
 
 $cmd $filepath
 

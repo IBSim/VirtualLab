@@ -5,7 +5,7 @@ sys.dont_write_bytecode = True
 from types import SimpleNamespace as Namespace
 import pickle
 
-from Scripts.VLPackages.Salome import API as Salome
+from Scripts.VLPackages.ParaViS import API as ParaViS
 from Scripts.VLPackages.CodeAster import API as Aster
 import Scripts.Common.VLFunctions as VLF
 from Scripts.Common.VLParallel import VLPool
@@ -335,9 +335,8 @@ def _ResView(Dir_dict, tempdir="/tmp"):
         for root, dirs, files in os.walk(Dir):
             for file in files:
                 fname, ext = os.path.splitext(file)
-                if ext in [".rmed"]:
+                if ext in [".rmed",".med"]:
                     ResFiles["{}_{}".format(Name, fname)] = "{}/{}".format(root, file)
     if ResFiles:
         print("\n### Opening results files in ParaVis ###\n")
-        Script = "{}/ShowRes.py".format(Salome.Dir)
-        Salome.Run(Script, GUI=True, DataDict=ResFiles, tempdir=tempdir)
+        ParaViS.ShowMED(ResFiles, GUI=True, tempdir=tempdir)

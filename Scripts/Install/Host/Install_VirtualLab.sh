@@ -78,6 +78,11 @@ if [[ $@ ]]; then
   exit_abnormal
 fi
 
+echo
+echo "Installing VirtualLab"
+echo "~~~~~~~~~~~~~~~~~~~~~"
+echo
+
 # provide information about install (unless its called by main)
 if [ "$MESSAGE" = true ] ; then
   echo
@@ -113,7 +118,7 @@ if [ "$VL_BINARY" = "python" ] ; then
   echo "#############################"
   echo
 
-  pip3 install gitpython pyinstaller
+  pip3 install gitpython #pyinstaller
 
 elif [ "$VL_BINARY" = "conda" ] ; then
   echo
@@ -124,7 +129,7 @@ elif [ "$VL_BINARY" = "conda" ] ; then
   conda create -y -n VirtualLab python=3.9
   conda activate VirtualLab
   conda install -y -c conda-forge gitpython
-  python3 -m pip install pyinstaller
+  #python3 -m pip install pyinstaller
 
 elif [ "$VL_BINARY" = "N" ] ; then
   echo
@@ -192,15 +197,17 @@ else
   python3 $fname -B $BRANCH $INST_DIR $SKIP
   rm $fname
 
-  # build VirtualLab binary
-  echo
-  echo "Building VirtualLab binary"
-  echo "##########################"  
-  echo
-  source .VLprofile # ensures VirtualLab bin directory is in $PATH
-  $VL_DIR"/bin/MakeExe.sh"
+  # # build VirtualLab binary
+  # echo
+  # echo "Building VirtualLab binary"
+  # echo "##########################"  
+  # echo
+  # source .VLprofile # ensures VirtualLab bin directory is in $PATH
+  #$VL_DIR"/bin/BuildVL"
 
 fi
+
+source .VLprofile # ensures VirtualLab is in $PATH
 
 ### Test to check if installation worked
 if hash VirtualLab 2>/dev/null; then
@@ -212,6 +219,7 @@ if hash VirtualLab 2>/dev/null; then
   echo
   echo "##########################################"
   echo
+  VirtualLab
 else
   ### VirtualLab still not installed
   echo

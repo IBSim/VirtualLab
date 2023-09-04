@@ -1,0 +1,28 @@
+FROM ubuntu:20.04
+
+FROM continuumio/miniconda3:4.9.2 as dependencies
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get --allow-releaseinfo-change update
+RUN apt-get update -y && \
+    apt-get upgrade -y
+
+RUN apt-get install -y libgl1-mesa-glx libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libosmesa6 libosmesa6-dev libgles2-mesa-dev curl imagemagick && \
+                       apt-get clean
+
+ENV PATH /opt/conda/bin:$PATH
+
+ENV CONDA_DEFAULT_ENV openmc_env
+RUN conda create --name openmc_env
+ENV PATH /opt/conda/envs/openmc_env/bin:$PATH
+RUN conda init bash \
+    && . /root/.bashrc \
+RUN conda activate openmc_env && \
+    conda install -c conda-forge mamba && \
+    mamba install -c conda-forge openmc && \
+    pip install openmc-mesh-tally-to-vtk && \
+    pip install openmc-dagmc-wrapper && \
+    pip install openmc_data_downloader && \
+    pip install openmc_tally_unit_converter

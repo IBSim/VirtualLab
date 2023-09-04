@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USER_HOME=$(eval echo ~"${SUDO_USER}")
+USER_HOME=$(eval echo ~"${USER}")
 if [ -f "$USER_HOME"/.VLprofile ]; then source "$USER_HOME"/.VLprofile; fi
 
 usage() {
@@ -22,12 +22,6 @@ exit_abnormal() {
   exit 1
 }
 
-if [[ $EUID -ne 0 ]]; then
-   echo "This installation script must be run as root"
-   echo 'Re-run with "sudo ./Install_VLplus.sh {options}".'
-   exit_abnormal
-fi
-
 ### Default values for parsed arguments
 BRANCH=master
 VL_BINARY='python'
@@ -44,6 +38,7 @@ while getopts "B:I:d:yh" options; do
     B)
       BRANCH="${OPTARG}"
       ;;
+     
     I) # how installation and binaries are created
       VL_BINARY="${OPTARG}"
       if ! ([ "$VL_BINARY" = "python" ] || [ "$VL_BINARY" = "conda" ] || [ "$VL_BINARY" = "binary" ]) ; then
@@ -81,7 +76,7 @@ fi
 
 # provide information about install 
 echo
-echo "VirtualLab will be installed from branch $BRANCH using $VL_BINARY."
+echo "Installing VirtualLab from branch $BRANCH using $VL_BINARY."
 echo
 
 if ! ([ "$BRANCH" = "master" ] || [ "$BRANCH" = "dev" ]) ; then
@@ -115,56 +110,49 @@ fi
 #   ### If exists, do nothing
 #   echo "VirtualLab exists in PATH"
 #   echo "Skipping VirtualLab installation"
-if false ;then
-  :
+
+
+cd $USER_HOME
+INST_PATH="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install"
+
+if hash git 2>/dev/null; then
+  ### If exists, do nothing
+  echo
+  echo "Skipping git installation as already installed"
+  echo
 else
-
-  # echo "VirtualLab not found on the system, continuing with installation."
-  ### Standard update
-  sudo apt update -y
-  sudo apt upgrade -y
-  sudo apt install -y build-essential
-
-  cd $USER_HOME
-
   ### Install git
-  echo
-  echo "Installing git"
-  echo "~~~~~~~~~~~~~~"
-  echo
-
   fname=Install_git.sh
-  url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/Host/"$fname
-  wget $url
+  wget "${INST_PATH}/Host/${fname}" 
   chmod 755 $fname
-  ./$fname
+  sudo ./$fname
   rm $fname
-  
-  ### Install Apptainer
-  echo
-  echo "Installing apptainer"
-  echo "~~~~~~~~~~~~~~~~~~~~"
-  echo
-
-  fname=Install_Apptainer-bin.sh
-  url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/Host/"$fname
-  wget $url
-  chmod 755 $fname
-  ./$fname
-  rm $fname
-  
-  ### Download VirtualLab repo and configure it on the system
-  echo
-  echo "Installing VirtualLab"
-  echo "~~~~~~~~~~~~~~~~~~~~~"
-  echo
-
-  fname=Install_VirtualLab.sh
-  url="https://gitlab.com/ibsim/virtuallab/-/raw/"$BRANCH"/Scripts/Install/Host/"$fname
-  wget $url
-  chmod 755 $fname
-  sudo -u ${SUDO_USER:-$USER} ./$fname -B $BRANCH -I $VL_BINARY $INST_DIR $SKIP -Z
-  rm $fname
-
-#END
 fi
+
+if hash apptainer 2>/dev/null; then
+  ### If exists, do nothing
+  echo
+  echo "Skipping apptainer installation as already installed"
+  echo
+else
+  ### Install Apptainer
+  fname=Install_Apptainer-bin.sh
+  wget "${INST_PATH}/Host/${fname}" 
+  chmod 755 $fname
+  sudo ./$fname
+  rm $fname
+fi
+
+### Standard update
+sudo apt update -y
+sudo apt upgrade -y
+sudo apt install -y build-essential
+
+### Download VirtualLab repo and configure it on the system
+fname=Install_VirtualLab.sh
+wget "${INST_PATH}/Host/${fname}" 
+chmod 755 $fname
+./$fname -B $BRANCH -I $VL_BINARY $INST_DIR $SKIP -Z
+rm $fname
+
+

@@ -2,6 +2,7 @@
 USER_HOME=$(eval echo ~${SUDO_USER})
 if [ -f $USER_HOME/.VLprofile ]; then source $USER_HOME/.VLprofile; fi
 BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+VL_DIR="$(dirname $BIN_DIR)"
 
 export MPLBACKEND='Agg' # temporary bug fix
 
@@ -21,19 +22,19 @@ usage() {
   echo "Default behaviour is to exit if no "'$FPATH'" is given"
   echo
 }
+
 exit_abnormal() {
   usage
   exit 1
 }
-if [[ $# == 0 ]]; then
-  echo
-  echo "Error: VirtualLab requires an option."
-  exit_abnormal
-fi
-while getopts ":f:h:k:P:" options; do
+
+while getopts ":f:h:k:P:s:g:" options; do
   case "${options}" in
     k)
       Args="$Args ${OPTARG}"
+      ;;
+    g)
+      Args="${OPTARG}"
       ;;
     f)
       CONFIG_FNAME=${OPTARG}
@@ -47,6 +48,9 @@ while getopts ":f:h:k:P:" options; do
       ;;
     P) # port number
       export VL_TCP_PORT=${OPTARG}
+      ;;
+    s) # server name
+      export VL_HOST_NAME=${OPTARG}
       ;;
     :)  # If expected argument omitted:
       echo "Error: Option -${OPTARG} requires an argument."
@@ -67,29 +71,7 @@ if [[ $@ ]]; then
  exit_abnormal
 fi
 
-### Read in VLconfig which contains $VL_DIR
-source $BIN_DIR/../VLconfig.py
 export PYTHONPATH="$VL_DIR:${PYTHONPATH}"
-### Check if Conda is installed
-search_var=anaconda*
-conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
-if [[ -f $conda_dir/bin/conda ]]; then
-  eval "$($conda_dir/bin/conda shell.bash hook)"
-else
-  search_var=miniconda*
-  conda_dir=$(eval find $USER_HOME -maxdepth 1 -type d -name "$search_var")
-  if [[ -f $conda_dir/bin/conda ]]; then
-    eval "$($conda_dir/bin/conda shell.bash hook)"
-  fi
-fi
-
-### If conda found activate environment
-### If no conda, prerequisites are assumed installed in local python
-if hash conda 2>/dev/null; then
-  CONDAENV="$(basename -- $VL_DIR)"
-  conda activate $CONDAENV
-  #conda info --envs
-fi
 
 ### Prefix program filename with "./" such that it executes
 CONFIG_FNAME_exe=$(dirname $CONFIG_FNAME)"/./"$(basename $CONFIG_FNAME)

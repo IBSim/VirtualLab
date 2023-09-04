@@ -1,0 +1,39 @@
+FROM nvidia/opengl:1.2-glvnd-devel-ubuntu20.04
+USER root
+# Set locale environment
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    LANGUAGE=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install --no-install-recommends -y nano git wget ca-certificates libxrender1 
+
+# Add a new user
+RUN adduser --disabled-password --gecos "" ibsim && \
+    adduser ibsim sudo && \
+    echo "%sudo ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Create a sharable zone
+USER ibsim
+RUN touch /home/ibsim/.sudo_as_admin_successful && \
+    mkdir /home/ibsim/shared
+VOLUME /home/ibsim/shared
+
+WORKDIR /home/ibsim
+
+USER ibsim
+ENV DEBIAN_FRONTEND=noninteractive TERM=linux
+# Install miniconda instead of full anaconda to space space in final image.
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+    bash Miniconda3-latest-Linux-x86_64.sh -b -p /home/ibsim/miniconda && \
+    rm Miniconda3-latest-Linux-x86_64.sh
+
+ENV PATH=/home/ibsim/miniconda/bin:${PATH}
+
+RUN conda update -y conda && conda init
+RUN conda create --name VirtualLab python=3.9 scikit-image pydantic h5py meshio -c conda-forge
+RUN /home/ibsim/miniconda/envs/VirtualLab/bin/pip install numexpr GVXR xpecgen
+# Download and install spekpy
+RUN git clone https://bitbucket.org/spekpy/spekpy_release.git && \
+    cd spekpy_release && /home/ibsim/miniconda/envs/VirtualLab/bin/pip install .
+USER root

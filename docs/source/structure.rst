@@ -69,3 +69,14 @@ This directory will be created when the first **VirtualLab** analysis is perform
 This directory is structured similarly to the `Input`_ directory, where you will find a directory for the *Simulation* type followed by one of the *Project* name.
 
 The 'project directory' (:file:`Output/$SIMULATON/$PROJECT`) will hold all data generated for the *Project*, such as: meshes; simulation results; visualisation images; analysis reports. The structure of the project directory is detailed in `this section <runsim/runfile.html#project>`_.
+
+Containers
+************
+
+This directory will be created when a container is built using **VirtualLab**. This will occur when the first analysis is performed.
+
+Code configuration
+******************
+
+As standard, the code structure is set up for the above directories to be located in the :file:`VirtualLab` directory, however this can be altered using :file:`VLconfig.py` (also in the VirtualLab directory). For example, if you wanted the containers to be saved to an alternative location, then 'ContainerDir' would need to be changed to the desired location.
+

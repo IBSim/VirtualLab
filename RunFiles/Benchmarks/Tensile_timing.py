@@ -12,10 +12,9 @@ import matplotlib.pyplot as plt
 from Scripts.Common.VirtualLab import VLSetup
 import Scripts.Common.VLFunctions as VLF
 
-NbSim = 4
-NbRepeat = 1
-launcher = 'sequential'
-NbJobs = 2
+NbSim = 2
+NbRepeat = 2
+Launcher = 'process'
 MakeMesh = False
 RunSim = True
 CreatePlot = False
@@ -25,24 +24,23 @@ CreatePlot = False
 parsed_kwargs= VLF.parsed_kwargs(sys.argv)
 NbSim = parsed_kwargs.get('NbSim',NbSim)
 NbRepeat = parsed_kwargs.get('NbRepeat',NbRepeat)
-launcher = parsed_kwargs.get('launcher',launcher)
-NbJobs = int(parsed_kwargs.get('NbJobs',NbJobs))
+Launcher = parsed_kwargs.get('Launcher',Launcher)
 MakeMesh = parsed_kwargs.get('MakeMesh',MakeMesh)
 RunSim = parsed_kwargs.get('RunSim',RunSim)
 CreatePlot = parsed_kwargs.get('CreatePlot',CreatePlot)
 
 # ====================================================================
 # Update running parameters with any passed via the command line
-if launcher in ('seq','sequential'):
-    launcher = dirname = 'sequential' ; NbJobs = 1 
-elif launcher == 'process':
-    dirname = "{}_{}".format(launcher,NbJobs)
-elif launcher.startswith('mpi'):
+if Launcher in ('seq','sequential'):
+    Launcher = dirname = 'sequential' ; NbJobs = 1; NbSim = 1
+elif Launcher == 'process':
+    NbJobs = NbSim
+    dirname = "{}_{}".format(Launcher,NbSim)
+elif Launcher.startswith(('mpi','srun')):
+    if Launcher in ('mpi_worker','srun_worker'): NbJobs = NbSim
+    else: NbJobs = NbSim+1
     NbNodes = os.environ.get('SLURM_NNODES',1) # may need to change this for different systems
-    dirname = "{}_{}_{}".format(launcher,NbJobs,NbNodes)
-
-if RunSim:
-    print("{} simulations performed using the {} launcher with {} jobs".format(NbSim,launcher,NbJobs))
+    dirname = "{}_{}_{}".format(Launcher,NbNodes,NbSim)
 
 # ====================================================================
 # Parameters for mesh and simulation
@@ -96,7 +94,7 @@ VirtualLab=VLSetup(
 
 VirtualLab.Settings(
            Mode='h',
-           Launcher=launcher,
+           Launcher=Launcher,
            NbJobs=NbJobs)
 
 VirtualLab.Parameters(Main_parameters,
@@ -112,19 +110,22 @@ VirtualLab.Mesh()
 
 # ====================================================================
 # Perform simulations
-pkl_file = "{}/Tensile_timing_{}.pkl".format(VirtualLab.PROJECT_DIR, NbSim)
+pkl_file = "{}/Tensile_timing.pkl".format(VirtualLab.PROJECT_DIR)
 if RunSim:
+    print("{} simulations performed using the {} launcher".format(NbSim,Launcher))
     times = []
     for _ in range(NbRepeat):
         st = time.time()
         VirtualLab.Sim()
         t = time.time() - st
         times.append(t)
-    print('Avg. time for {} {}: {:.4f} s'.format(launcher,NbJobs,np.mean(times)))
+    print('Avg. time for {} to perform {}: {:.4f} s'.format(Launcher,NbSim,np.mean(times)))
 
     # Add timings to file
+    data = [Launcher,NbSim,times]
+    if Launcher.startswith(('mpi','srun')): data.append(NbNodes)
     with open(pkl_file,'ab') as f:
-        pickle.dump({dirname:[launcher,NbJobs,times]},f)
+        pickle.dump({dirname:data},f)
 
 # ====================================================================
 if CreatePlot:
@@ -139,31 +140,35 @@ if CreatePlot:
                 EOFError
                 break
 
-    print(data_dict)
-
     data = {}
     for key, val in data_dict.items():
-        launcher,NbJobs,times = val
+        Launcher_name = val[0]
+        if Launcher_name.startswith(('mpi','srun')):
+            Launcher_name += f"_{val[3]}" # add number of nodes
+        if Launcher_name not in data: data[Launcher_name] = []
+
+        NbSim,times = val[1],val[2]
         avgtime = np.mean(times)
-        if launcher not in data: data[launcher] = []
-        data[launcher].append([NbJobs,avgtime])
+
+        data[Launcher_name].append([NbSim,avgtime])
 
     seq = data.pop('sequential')
     seq_time = seq[0][1]
-    
-    for key,val in data.items():
-        val.append([1,seq_time])
-        val = np.array(val)
-        val = val[np.argsort(val[:,0])]
-        maxnb = val[-1,0]
 
-        plt.figure()
-        plt.plot([1,maxnb],[seq_time,seq_time/maxnb],linestyle='--',c='k')
-        plt.plot(*val.T,linestyle='-',marker='o',c='k',)
-        plt.xscale('log',basex=2)
-        plt.yscale('log',basey=2)
-        plt.xlabel('Nb parallel jobs')
-        plt.ylabel('Time (s)')
-        plt.savefig("{}/{}.png".format(VirtualLab.PROJECT_DIR,key,format),format='png',dpi=600)
-        plt.close()
+    f, ax = plt.subplots()
+    for key,val in data.items():
+
+        NbSims,times = np.array(list(zip(*val)))
+        speed_up = seq_time*NbSims/times
+        ax.scatter(NbSims,speed_up, label=key)
+
+    ax.legend()
+    xlim_upper = ax.get_xlim()[1]
+    ax.plot([1,xlim_upper],[1,xlim_upper],linestyle='-',c='k',label='Perfect scaling')
+    ax.set_xlim(left=0.5)
+    ax.set_ylim(bottom=0.5)
+    ax.set_xlabel("No. parallel simulations")
+    ax.set_ylabel("Speed up")
+    f.savefig("{}/Timing.png".format(VirtualLab.PROJECT_DIR),format='png',dpi=600)
+
 

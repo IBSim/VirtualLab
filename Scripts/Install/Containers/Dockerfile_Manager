@@ -1,0 +1,47 @@
+FROM ibsim/base:latest
+
+# Build script amended from https://github.com/tianyikillua/code_aster_on_docker
+
+# Set locale environment
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    LANGUAGE=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive \
+    PATH="/home/ibsim/.local/bin:${PATH}" \
+    BASH_ENV=/home/ibsim/patch.sh
+
+# Get Ubuntu updates and basic packages
+USER root
+
+RUN apt-get update && \
+    apt-get upgrade -y --with-new-pkgs -o Dpkg::Options::="--force-confold" && \
+    apt-get install -y \
+    ubuntu-drivers-common \
+    tzdata \
+    unzip \
+    libglu1 \
+    nano \
+    git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+COPY /common/patch.sh /home/ibsim/patch.sh
+
+USER ibsim
+WORKDIR /tmp
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=linux
+
+RUN sudo chmod 755 /home/ibsim/patch.sh
+
+ARG branch=dev # this will need to be changed when merging to master
+# Download and install VirtualLab and its requirements
+RUN wget -O Install_python.sh https://gitlab.com/ibsim/virtuallab/-/raw/${branch}/Scripts/Install/Install_python.sh && \
+    chmod 755 Install_python.sh && \
+    sudo ./Install_python.sh -P y
+
+ENV PYTHONPATH "/home/ibsim/.local/lib/python3.6/site-packages:${PYTHONPATH}"
+
+EXPOSE 9000
+USER root
+# RUN mkdir /home/ibsim/VirtualLab/.log

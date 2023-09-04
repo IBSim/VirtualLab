@@ -14,7 +14,7 @@ This is an API for the VL_Manager container to send information to the server
 to run analysis using the Salome package (which is installed in a different container). 
 '''
 
-def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, OutFile=None, GUI=False, tempdir = '/tmp'):
+def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, GUI=False, tempdir = '/tmp'):
     '''
     AddPath: Additional paths that Salome will be able to import from
     DataDict: a dictionary of the arguments that Salome will get
@@ -27,25 +27,30 @@ def Run(Script, ContainerInfo=None, AddPath = [], DataDict = {}, OutFile=None, G
         # Get default container info
         ContainerInfo = GetInfo('Salome') 
        
-
-
     # Add paths provided to python path for subprocess
     AddPath = [AddPath] if type(AddPath) == str else AddPath
-    PyPath = AddPath + ['/home/ibsim/VirtualLab',Dir]
-    PyPath = ":".join(PyPath)
+    AddPath.append(Dir)
+    PyPath = "-p {}".format(":".join(AddPath))
 
-    _argstr = []
     if DataDict:
         pth = "{}/DataDict_{}.pkl".format(tempdir,uuid.uuid4())
         with open(pth,'wb') as f:
             pickle.dump(DataDict,f)
-        _argstr.append('DataDict={}'.format(pth))
-    argstr = ",".join(_argstr)
+        argstr = "-a DataDict={}".format(pth)
+    else:
+        argstr = ""
 
-    GUIflag = 'g' if GUI else 't'
+    GUIflag = '-r g' if GUI else '-r t'
    
     Wrapscript = "{}/SalomeExec.sh".format(Dir)
-    command = "{} -c {} -f {} -a {} -p {} -r {} ".format(Wrapscript, ContainerInfo['Command'], Script, argstr, PyPath, GUIflag)
-                                                         
+    command = "{} -c {} -f {} {} {} {} ".format(Wrapscript, ContainerInfo['Command'], Script, argstr, GUIflag, PyPath)
+
+    RC = Utils.Exec_Container(ContainerInfo, command)
+    return RC
+
+def OpenGUI():
+    ContainerInfo = GetInfo('Salome') 
+    Wrapscript = "{}/SalomeExec.sh".format(Dir)
+    command = "{} -c {} -r {} ".format(Wrapscript, ContainerInfo['Command'], 'g')
     RC = Utils.Exec_Container(ContainerInfo, command)
     return RC

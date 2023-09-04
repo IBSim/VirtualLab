@@ -34,7 +34,9 @@ VirtualLab.Settings(
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunCT_Scan=True
+           RunMesh=False,
+           RunCT_Scan=True,
+           RunCT_Recon=False
            )
 
 #===============================================================================

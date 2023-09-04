@@ -25,7 +25,8 @@ def Run(funcfile, funcname, fnc_args=(), fnc_kwargs = {}, ContainerInfo = None, 
 
     container_bash = "{}/VL_Preproc.sh".format(Dir) # bash script executed by container to perform setup ect.
     # command passed to container bash (done this way for more flexibility)
-    container_command = "python3 /home/ibsim/VirtualLab/bin/run_pyfunc.py {} {} {}".format(funcfile,funcname,pth)
+    vlab_dir = Utils.get_vlab_dir()
+    container_command = "python3 {}/bin/run_pyfunc.py {} {} {}".format(vlab_dir,funcfile,funcname,pth)
 
     command = "{} -c '{}' ".format(container_bash,container_command)
     RC = Utils.Exec_Container(ContainerInfo, command)

@@ -549,3 +549,7 @@ def get_vlab_dir(parsed_dir=None):
         )
 
     return vlab_dir
+
+def container_to_host_path(file):
+    # This function is no longer required as the host VL install is the same as that in the container
+    return file

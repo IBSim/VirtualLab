@@ -219,7 +219,7 @@ def check_element_or_compound(Material:str):
     import csv
 
 #  Open csv file containing names and symbols for elements 1 to 100 
-    csv_file = open(f'{VLC.VL_DIR_CONT}/Scripts/VLPackages/GVXR/ptable.csv','r')
+    csv_file = open(f'{VLC.VL_HOST_DIR}/Scripts/VLPackages/GVXR/ptable.csv','r')
     z_num = []
     element_names = []
     symbols = []

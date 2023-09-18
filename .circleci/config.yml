@@ -1,16 +1,11 @@
 version: 2.1
 
 jobs:
-  init:
-    docker:
-      - image: cimg/base:2023.08
-    steps:
-      - run: echo "This is working"
-
   install_n_test_vlab:
     machine:
       image: ubuntu-2004:202010-01
     resource_class: medium
+    parallelism: 4 # comment this line to disable parallelism
     steps:
       - run:
           name: Prepare Dependency
@@ -22,27 +17,21 @@ jobs:
             sudo pip3 install pytest
             sudo apt update -y
 
-      - run:
-          name: Download Virtual Lab Script
-          command: |
-            cd
-            wget https://gitlab.com/ibsim/virtuallab/-/raw/dev/Scripts/Install/Host/Install_main.sh
-            chmod 755 Install_main.sh
-
       - checkout
 
       - run: 
-          name: Prepare Paths
-          command: |
-            mv /home/circleci/project /home/circleci/VirtualLab
-            cd ~/VirtualLab
+          name: Move project to VirtualLab Directory
+          command: mv /home/circleci/project /home/circleci/VirtualLab
 
       - run:
-          name: Run Virtual Lab Script
+          name: Download and Run Virtual Lab Script
           command: |
             cd ~/VirtualLab
+            BRANCH=$(git rev-parse --abbrev-ref HEAD)
+            wget https://gitlab.com/ibsim/virtuallab/-/raw/$BRANCH/Scripts/Install/Host/Install_main.sh
+            chmod 755 Install_main.sh
             sudo DEBIAN_FRONTEND=noninteractive apt-get -yq upgrade
-            ~/Install_main.sh -B $(git rev-parse --abbrev-ref HEAD) -y
+            ./Install_main.sh -B $BRANCH -y
 
       - run:
           name: Run Virtual Lab Test
@@ -54,16 +43,28 @@ jobs:
 
       - run:
           name: Run Main Tests
-          no_output_timeout: 30m
+          no_output_timeout: 1h
+          parallel: true # comment this line to disable parallelism
+          when: always
           command: |
             cd ~/VirtualLab
-            pytest -s
+            mkdir -p test-results
+            # The next two lines are only needed if you want to run the basic test.
+            # chmod 755 tests/test_basic.py
+            # chmod 755 RunFiles/Tutorials/basic/Task1_Run.py
+            cp -f .circleci/resources/pytest_build_config.ini pytest.ini
+            # Comment the next lines to disable parallelism
+            TESTFILES=$(circleci tests glob tests/test*.py | circleci tests split --split-by=timings)
+            pytest -o junit_logging=system-err --junitxml=test-results/junit.xml $TESTFILES
+
+      - store_test_results:
+          path: ~/VirtualLab/test-results
+
+      - store_artifacts:
+          path: ~/VirtualLab/test-results
 
 
 workflows:
-  build_test:
+  VirtualLab_test:
     jobs:
-      - init
-      - install_n_test_vlab:
-          requires:
-            - init
+      - install_n_test_vlab

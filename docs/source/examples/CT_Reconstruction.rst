@@ -287,8 +287,8 @@ full mesh does not fit within the detector area.
 
         Simulation='CIL'
         Project='Tutorials'
-        Parameters_Master='TrainingParameters_CIL_Ex1'
-        Parameters_Var=None
+        Parameters_Master='TrainingParameters_CIL_Ex2'
+        Parameters_Var='TrainingParameters_CIL_var'
 
         VirtualLab=VLSetup(
                 Simulation,
@@ -306,11 +306,11 @@ full mesh does not fit within the detector area.
                 Parameters_Var,
                 RunMesh=True,
                 RunCT_Scan=True,
-                RunCT_Recon=True
+                RunCT_Recon2D=True
                 )
         VirtualLab.Mesh()
         VirtualLab.CT_Scan()
-        VirtualLab.CT_Recon2D(Helix=True)
+        VirtualLab.CT_Recon2D(Helical=True)
 
 
 The main change of note to the input file is the use of the new method CT_Recon2D and 

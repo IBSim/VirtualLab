@@ -11,10 +11,10 @@ from Scripts.Common.VirtualLab import VLSetup
 # Definitions
 #===============================================================================
 
-Simulation='GVXR'
+Simulation='CIL'
 Project='Tutorials'
-Parameters_Master='TrainingParameters_GVXR-Draig_Nikon'
-Parameters_Var=None
+Parameters_Master='TrainingParameters_CIL_Ex2'
+Parameters_Var='TrainingParameters_CIL_var'
 
 #===============================================================================
 # Environment
@@ -27,7 +27,7 @@ VirtualLab=VLSetup(
 
 VirtualLab.Settings(
            Mode='Interactive',
-           Launcher='Process',
+           Launcher='Sequential',
            NbJobs=1
            )
 
@@ -36,12 +36,12 @@ VirtualLab.Parameters(
            Parameters_Var,
            RunMesh=False,
            RunCT_Scan=True,
-           RunCT_Recon=False
+           RunCT_Recon2D=False,
            )
 
 #===============================================================================
 # Methods
 #===============================================================================
-
 VirtualLab.Mesh(ShowMesh=False)
 VirtualLab.CT_Scan()
+VirtualLab.CT_Recon2D()

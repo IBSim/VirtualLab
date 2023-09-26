@@ -67,5 +67,3 @@ GVXR.num_projections=1
 GVXR.image_format = 'tiff'
 # Initial rotation of cad model in degrees about the x,y and z axis
 GVXR.rotation = [0,0,90]
-# flat field normalize output image(s)
-GVXR.Im_bitrate='int8'

@@ -135,7 +135,7 @@ class Method(Method_base):
                     raise ValueError(f"Invalid Recon_Method must be one of FBP or FDK")
                 CILdict["backend"] = Parameters.Recon_Method.upper()
             if hasattr(Parameters, "Beam_Type"):
-                if Parameters.Recon_Method.upper() not in ['point','parallel']:
+                if Parameters.Beam_Type.lower() not in ['point','parallel']:
                     raise ValueError(f"Invalid Beam_Type must be one of point or parallel")
                 CILdict["Beam_Type"] = Parameters.Beam_Type
             

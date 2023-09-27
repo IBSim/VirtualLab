@@ -3,9 +3,12 @@
 # Header
 #===============================================================================
 
+import os
 import sys
 sys.dont_write_bytecode=True
+
 from Scripts.Common.VirtualLab import VLSetup
+from Task1_mesh import get_mesh
 
 #===============================================================================
 # Definitions
@@ -25,6 +28,10 @@ VirtualLab=VLSetup(
            Project
            )
 
+mesh_file = "{}/Meshes/welsh-dragon-small.stl".format(VirtualLab.PARAMETERS_DIR)
+if not os.path.isfile(mesh_file):
+    get_mesh(mesh_file)
+
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
@@ -34,7 +41,6 @@ VirtualLab.Settings(
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=False,
            RunCT_Scan=True,
            RunCT_Recon=False
            )
@@ -43,5 +49,4 @@ VirtualLab.Parameters(
 # Methods
 #===============================================================================
 
-VirtualLab.Mesh(ShowMesh=False)
 VirtualLab.CT_Scan()

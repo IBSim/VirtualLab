@@ -3,6 +3,7 @@
 # Header
 #===============================================================================
 
+import os
 import sys
 sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
@@ -25,6 +26,10 @@ VirtualLab=VLSetup(
            Project
            )
 
+if not os.path.isfile("{}/HIVE/Tutorials/Meshes/AMAZE.med".format(VirtualLab._OutputDir)):
+    from Task2_mesh import get_mesh
+    get_mesh() # create mesh which will be used for this analysis
+
 VirtualLab.Settings(
            Mode='Interactive',
            Launcher='Process',
@@ -34,7 +39,6 @@ VirtualLab.Settings(
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=False,
            RunCT_Scan=True,
            RunCT_Recon=False
            )
@@ -42,5 +46,5 @@ VirtualLab.Parameters(
 #===============================================================================
 # Methods
 #===============================================================================
-VirtualLab.Mesh(ShowMesh=False)
+
 VirtualLab.CT_Scan()

@@ -1,35 +1,5 @@
+import VLconfig
 from types import SimpleNamespace as Namespace
-Mesh = Namespace()
-
-##########################
-######## Meshing #########
-##########################
-
-Mesh.Name = 'AMAZE'
-Mesh.File = 'Monoblock' # This file must be in Scripts/$SIMULATION/PreProc
-# Geometrical Dimensions
-Mesh.BlockWidth = 0.03 #x
-Mesh.BlockLength = 0.05 #y
-Mesh.BlockHeight = 0.02 #z
-Mesh.PipeCentre = (0,0) #x,z, relative to centre of block
-Mesh.PipeDiam = 0.01 ###Inner Diameter
-Mesh.PipeThick = 0.001
-Mesh.PipeLength = Mesh.BlockLength
-Mesh.TileCentre = (0,0)
-Mesh.TileWidth = Mesh.BlockWidth
-Mesh.TileLength = 0.03 #y
-Mesh.TileHeight = 0.005 #z
-
-Mesh.Fillet = 0.0005
-
-# Mesh parameters
-Mesh.Length1D = 0.005
-Mesh.Length2D = 0.005
-Mesh.Length3D = 0.005
-
-Mesh.PipeSegmentN = 20 # Number of segments for pipe circumference
-Mesh.SubTile = [0.002, 0.002, 0.002]
-Mesh.Deflection = 0.01
 
 GVXR = Namespace()
 #############
@@ -51,7 +21,7 @@ GVXR = Namespace()
 # name for the GVXR run.
 GVXR.Name = 'AMAZE'
 # name of the mesh(es) you wish to virtually CT scan
-GVXR.mesh = 'AMAZE'
+GVXR.mesh = "{}/HIVE/Tutorials/Meshes/AMAZE.med".format(VLconfig.OutputDir) # full path provided
 # Set tube voltage to generate a beam spectrum
 GVXR.Energy=[0.8]
 GVXR.Intensity = [1000]

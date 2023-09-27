@@ -22,8 +22,6 @@ class Method(Method_base):
         """
         GVXR - Simulation of X-ray CT scans
         """
-        import json
-        import glob
         if not (self.RunFlag):
             return
         elif self.dry_run:
@@ -45,7 +43,7 @@ class Method(Method_base):
         # Call setup inside a GVXR container.
         funcname = "GVXR_Setup" # function to be executed within container
         funcfile = "{}/Setup.py".format(GVXRDir) # python file where 'funcname' is located
-        RC = CT_Scan(funcfile, funcname, fnc_args=(GVXRDicts,VL.PROJECT_DIR,VL.PARAMETERS_DIR,VL.mode))
+        RC,func_return = CT_Scan(funcfile, funcname, fnc_args=(GVXRDicts,VL.PROJECT_DIR,VL.PARAMETERS_DIR,VL.mode))
         if RC!=0:
             VL.Exit(
                VLF.ErrorMessage(
@@ -53,18 +51,15 @@ class Method(Method_base):
                ),
                Cleanup=False,
             )
-        Param_dir = f"{VL.PROJECT_DIR}/run_params/*.json"
-        json_files = glob.glob(Param_dir)
-        run_names = list(GVXRDicts.keys())
-        for i,jsfile in enumerate(json_files):
-            with open(jsfile) as f:
-                self.Data[run_names[i]] = json.load(f)
+
+        for name,_dict in zip(GVXRDicts.keys(),func_return):
+            self.Data[name] = _dict
 
     @staticmethod
     def PoolRun(VL,GVXRDict):
         funcname = "CT_scan" # function to be executed within container
         funcfile = "{}/CT_Scan.py".format(GVXRDir) # python file where 'funcname' is located
-        RC = CT_Scan(funcfile, funcname, fnc_kwargs=GVXRDict)
+        RC, func_return = CT_Scan(funcfile, funcname, fnc_kwargs=GVXRDict)
         return RC
     
 
@@ -72,16 +67,7 @@ class Method(Method_base):
         if not self.Data:
             return
         VL.Logger("\n### Starting GVXR ###\n", Print=True)
-        # for key in self.Data.keys():
-        #     Errorfnc = self.PoolRun(VL,self.Data[key])
-        #     if Errorfnc:
-        #         VL.Exit(
-        #             VLF.ErrorMessage(
-        #                 "The following GVXR routine(s) finished with errors:\n{}".format(
-        #                     Errorfnc
-        #                 )
-        #             )
-        #         )
+
         Errorfnc = VLPool(VL, self.GetPoolRun(), self.Data)
         if Errorfnc:
             VL.Exit(

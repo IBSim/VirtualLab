@@ -313,6 +313,17 @@ def write_image3D(output_dir:str,vox:np.double,im_format:str='tiff',bitrate='flo
 def without_keys(d, keys):
     return {x: d[x] for x in d if x not in keys}
 
+def strip_locals(Python_dict:dict):
+    # Remove all parmas that are Dataclasses as we will deal with them seperatly
+    IO_params = without_keys(Python_dict,["Beam","Detector","Model"])
+    #extract datclasses as seperate dicts
+    Beam = Python_dict["Beam"].__dict__
+    Cad = Python_dict["Model"].__dict__
+    Det = Python_dict["Detector"].__dict__
+
+    params ={**IO_params, **Beam, **Cad,**Det}
+    return params
+
 def dump_to_json(Python_dict:dict,file_name:str):
     import json
     import dataclasses as dc
@@ -324,9 +335,10 @@ def dump_to_json(Python_dict:dict,file_name:str):
     Det = Python_dict["Detector"].__dict__
 
     params ={**IO_params, **Beam, **Cad,**Det}
+
     with open(file_name, 'w') as fp:
         json.dump(params, fp)
-        fp.close()
+
 
 def world_to_model_axis(rotation,global_axis=[0,0,1],threshold=1E-5):
     '''because Rotations in openGL are based around object axes not

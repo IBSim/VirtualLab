@@ -18,7 +18,7 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,PARAMETERS_DIR, mode):
     from Scripts.VLPackages.GVXR.Utils_IO import ReadNikonData
     from Scripts.VLPackages.GVXR.GVXR_utils import (
         Check_Materials,
-        dump_to_json,
+        strip_locals,
         warning_message,
     )
     import VLconfig as VLC
@@ -63,6 +63,7 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,PARAMETERS_DIR, mode):
         "FFNorm",
         "bitrate",
         "Recon_Method",
+        "Run"
     ]
 
     def convert_tets_to_tri(mesh_file):
@@ -242,6 +243,7 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,PARAMETERS_DIR, mode):
     if not os.path.exists(OUT_DIR):
         os.makedirs(OUT_DIR)
 
+    return_list = []
     for GVXRName, GVXRParams in GVXRDicts.items():
         # Perform some checks on the info in GVXRParams
         Parameters = Namespace(**GVXRParams)
@@ -511,15 +513,7 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,PARAMETERS_DIR, mode):
             )
             sys.exit(1)
 
-        Param_dir = "{}/run_params/".format(PROJECT_DIR)
-        if not os.path.exists(Param_dir):
-            os.makedirs(Param_dir)
-        previous_runs = glob.glob(f'{Param_dir}/setup_params_*.json')
+        _GVXRDict = strip_locals(GVXRDict)
 
-        if previous_runs != []:
-            # found params from previous runs so delete them 
-            for f in previous_runs:
-                os.remove(f)
-
-        pth = "{}/setup_params_{}.json".format(Param_dir, GVXRName)
-        dump_to_json(GVXRDict, pth)
+        return_list.append(_GVXRDict)
+    return return_list

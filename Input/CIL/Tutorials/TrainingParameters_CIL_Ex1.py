@@ -21,7 +21,7 @@ GVXR = Namespace()
 # name for the GVXR run.
 GVXR.Name = 'AMAZE'
 # name of the mesh(es) you wish to virtually CT scan
-GVXR.mesh = "{}/HIVE/Tutorials/Meshes/AMAZE_turn.med".format(VLconfig.OutputDir) # full path provided
+GVXR.mesh = "{}/HIVE/Tutorials/Meshes/AMAZE.med".format(VLconfig.OutputDir) # full path provided
 # Set tube voltage to generate a beam spectrum
 GVXR.Energy=[0.8]
 GVXR.Intensity = [1000]
@@ -49,7 +49,7 @@ GVXR.Detect_Pos_units = 'mm'
 # number of pixels in x and y, this defines both the resolution of the 
 # final images and physical size of te detector plane when combined with spacing_in_mm.
 GVXR.Pix_X = 200
-GVXR.Pix_Y = 1
+GVXR.Pix_Y = 250
 # Postion of center of cad model in x,y and z
 GVXR.Model_PosX = 0
 GVXR.Model_PosY = 0

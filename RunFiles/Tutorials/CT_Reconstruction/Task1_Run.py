@@ -13,8 +13,8 @@ from Scripts.Common.VirtualLab import VLSetup
 
 Simulation='CIL'
 Project='Tutorials'
-Parameters_Master='TrainingParameters_CIL_Ex2'
-Parameters_Var='TrainingParameters_CIL_var'
+Parameters_Master='TrainingParameters_CIL_Ex1'
+Parameters_Var=None
 
 #===============================================================================
 # Environment
@@ -27,21 +27,20 @@ VirtualLab=VLSetup(
 
 VirtualLab.Settings(
            Mode='Interactive',
-           Launcher='Sequential',
+           Launcher='Process',
            NbJobs=1
            )
 
 VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
-           RunMesh=False,
            RunCT_Scan=True,
-           RunCT_Recon2D=False,
+           RunCT_Recon=False,
            )
 
 #===============================================================================
 # Methods
 #===============================================================================
-VirtualLab.Mesh(ShowMesh=False)
+
 VirtualLab.CT_Scan()
-VirtualLab.CT_Recon2D()
+VirtualLab.CT_Recon()

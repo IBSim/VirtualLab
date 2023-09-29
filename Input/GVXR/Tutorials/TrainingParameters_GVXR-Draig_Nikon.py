@@ -7,15 +7,15 @@ GVXR = Namespace()
 # Required parameters #
 #######################
 # name for the GVXR run.
-GVXR.Name = 'Dragon'
+GVXR.Name = 'Dragon_Nikon'
 # name of the mesh(es) you wish to vitually CT scan
 GVXR.mesh = 'welsh-dragon-small.stl'
 # chemical element corresponding to the material properties
 # of each region of the model. Can be any of Full name, Symbol
 # or Atomic number (Z). Currently works for every element in the
 # periodic table up to Francium, that is elements 1-100.
-# Note: in this case we only supply one element since .stl 
-# files have only one region. Thus we define one material 
+# Note: in this case we only supply one element since .stl
+# files have only one region. Thus we define one material
 # for the whole dragon model.
 GVXR.Material_list = ["Al"]
 # Beam energy (default units are MeV)
@@ -26,6 +26,6 @@ GVXR.Intensity = [1000]
 GVXR.energy_units = 'MeV'
 # Initial rotation of cad model in degrees about the x,y and z axis
 GVXR.rotation = [0,0,90]
-
+GVXR.bitrate='int8'
 #Name of .xect Nikonfile to read remaining info from
 GVXR.Nikon_file = 'Welsh_Dragon.xtekct'

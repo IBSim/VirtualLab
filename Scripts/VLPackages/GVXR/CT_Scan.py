@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import meshio
+import Scripts.VLPackages.GVXR.GVXR_utils as GVXR_utils
 from Scripts.VLPackages.GVXR.GVXR_utils import *
 
 def CT_scan(**kwargs):
@@ -63,7 +64,7 @@ def CT_scan(**kwargs):
         #no triangle data but trying to use triangles
         raise GVXRError("User asked to use triangles but input file does "
         "not contain Triangle data")
-        
+
         # extract dict of material names and integer tags
     try:
         all_mat_tags=mesh.cell_tags
@@ -73,23 +74,23 @@ def CT_scan(**kwargs):
     if all_mat_tags == {}:
         mat_tag_dict={0:['Un-Defined']}
         all_mat_tags = mat_tag_dict
-        mat_ids = np.zeros(np.shape(triangles)[0],dtype = int) 
+        mat_ids = np.zeros(np.shape(triangles)[0],dtype = int)
         tags = np.unique(mat_ids)
     else:
     # pull the dictionary containing material id's for each element
     # and the np array of ints that label the materials.
         mat_ids = mesh.get_cell_data('cell_tags','triangle')
-        
+
         tags = np.unique(mat_ids)
         if(np.any(mat_ids==0)):
             all_mat_tags['0']=['Un-Defined']
         mat_tag_dict = find_the_key(all_mat_tags, np.unique(mat_ids))
-            
+
     elements = triangles
 
     if len(tags) != len(Material_list):
         Errormsg = (f"Error: The number of Materials read in from Input file is {len(Material_list)} "
-        f"this does not match \nthe {len(mat_tag_dict)} materials in {kwargs['mesh_file']}.\n\n" 
+        f"this does not match \nthe {len(mat_tag_dict)} materials in {kwargs['mesh_file']}.\n\n"
         f"The meshfile contains: \n {mat_tag_dict} \n\n The Input file contains:\n {Material_list}.")
         gvxr.destroyAllWindows();
         raise GVXRError(Errormsg)
@@ -102,7 +103,7 @@ def CT_scan(**kwargs):
         mat_nodes = np.take(elements,nodes,axis=0)
         meshes.append(mat_nodes)
         mesh_names.append(str(all_mat_tags[N]))
-    
+
 
     #define boundray box for mesh
     min_corner = np.array([np.min(points[:,0]), np.min(points[:,1]), np.min(points[:,2])])
@@ -134,7 +135,7 @@ def CT_scan(**kwargs):
             thickness = [Filter_ThicknessMM]
             for mat, thick in zip(materiails,thickness):
                 filters.append([mat,thick])
-        
+
         print(f"generating xray Tube spectrum for {Tube_Voltage} Kv tube.")
         spectrum_filtered, k_filtered, f_filtered, units = loadXpecgenSpectrum(Tube_Voltage,filters=filters)
         plt.plot(k_filtered, f_filtered)
@@ -149,7 +150,7 @@ def CT_scan(**kwargs):
         print("Generating Beam spectrum using supplied values of Energy and Intensity.")
         for energy, count in zip(kwargs['Energy'],kwargs['Intensity']):
             gvxr.addEnergyBinToSpectrum(energy, kwargs['Energy_units'], count);
-    
+
     # Set up the detector
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
@@ -178,7 +179,7 @@ def CT_scan(**kwargs):
             raise GVXRError(f'Invalid material type {Material_Types[i]} must be one of E,M or C')
         # add mesh to scene
         gvxr.addPolygonMeshAsInnerSurface(label)
-        
+
     # set initial rotation
     # note GVXR uses OpenGL which performs rotations with object axes not global.
     # This makes rotations around the global axes very tricky.
@@ -198,11 +199,12 @@ def CT_scan(**kwargs):
             gvxr.rotateNode(label, kwargs['rotation'][2], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Z rotation axis
             total_rotation[2,i] += kwargs['rotation'][2]# track total rotation
     # Update the 3D visualisation
-    gvxr.displayScene();       
+    gvxr.displayScene();
     # Compute an X-ray image
     print("Compute CT aquisition");
 
     theta = [];
+    projections = []
     for i in range(1,num_projections+1):
         # Rotate the model by angular_step degrees
         for n,label in enumerate(mesh_names):
@@ -216,10 +218,18 @@ def CT_scan(**kwargs):
         if FFNorm:
             projection = flat_field_normalize(projection,flat,dark)
         #fill in edge pixels with zeros to reduce reconstruction artifacts
-        projection = fill_edges(projection,fill_percent,fill_value=fill_value)    
-        write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=bitrate);
+        projection = fill_edges(projection,fill_percent,fill_value=fill_value)
+        projections.append(projection)
+        #write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=bitrate);
 
-    
+    if bitrate.startswith('int'):
+        projections = np.array(projections)
+        glob_min,glob_max = projections.min(),projections.max()
+        projections = GVXR_utils.convert_to_int(projections,glob_min,glob_max,bitrate)
+
+    for i,projection in enumerate(projections):
+        GVXR_utils.make_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i+1)
+
     if (not Headless):
         controls_msg = ('### GVXR Window Controls ###\n'
          'You are Running an interactive loop \n'
@@ -236,7 +246,7 @@ def CT_scan(**kwargs):
          'H: display/hide the X-ray detector\n')
         print(controls_msg)
         gvxr.renderLoop()
-    #clear the scene graph ready for the next render in the loop    
+    #clear the scene graph ready for the next render in the loop
     gvxr.removePolygonMeshesFromSceneGraph()
     return
 
@@ -255,13 +265,13 @@ def flat_field_normalize(arr, flat, dark, cutoff=None):
         3D dark field data.
     cutoff : float, optional
         Permitted maximum value for the normalized data.
-    
+
     Returns
     -------
     ndarray
         Normalized 3D tomographic data.
     """
-    import numexpr as ne  
+    import numexpr as ne
     l = np.float32(1e-6)
     flat = np.mean(flat, axis=0, dtype=np.float32)
     dark = np.mean(dark, axis=0, dtype=np.float32)

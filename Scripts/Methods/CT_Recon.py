@@ -83,13 +83,13 @@ class Method(Method_base):
                     Parameters.Beam_PosZ,
                 ]
 
-            if hasattr(Parameters, "Spacing_X"):
-                warn_Nikon(use_Nikon,"Spacing_X")
-                CILdict["Spacing_X"] = Parameters.Spacing_X
+            if hasattr(Parameters, "SpacingX"):
+                warn_Nikon(use_Nikon,"SpacingX")
+                CILdict["Spacing_X"] = Parameters.SpacingX
 
-            if hasattr(Parameters, "Spacing_Y"):
-                warn_Nikon(use_Nikon,"Spacing_Y")
-                CILdict["Spacing_Y"] = Parameters.Spacing_Y
+            if hasattr(Parameters, "SpacingY"):
+                warn_Nikon(use_Nikon,"SpacingY")
+                CILdict["Spacing_Y"] = Parameters.SpacingY
 
             if hasattr(Parameters, "Detect_PosX") and hasattr(Parameters, "Detect_PosY") and hasattr(Parameters, "Detect_PosZ"):
                 warn_Nikon(use_Nikon,"Detect_Pos")
@@ -138,7 +138,7 @@ class Method(Method_base):
                 if Parameters.Beam_Type.lower() not in ['point','parallel']:
                     raise ValueError(f"Invalid Beam_Type must be one of point or parallel")
                 CILdict["Beam_Type"] = Parameters.Beam_Type
-            
+
             self.Data[CILName] = CILdict.copy()
         return
 

@@ -35,7 +35,7 @@ VirtualLab.Parameters(
            Parameters_Master,
            Parameters_Var,
            RunCT_Scan=True,
-           RunCT_Recon=False,
+           RunCT_Recon=True,
            )
 
 #===============================================================================

@@ -136,7 +136,6 @@ class Method(Method_base):
     @staticmethod
     def PoolRun(VL,CilDict,funcname):
         funcfile = "{}/CT_reconstruction.py".format(CilDIR) # python file where 'funcname' is located
-        
         RC = CT_Recon(funcfile, funcname, fnc_kwargs=CilDict)
         return RC
     

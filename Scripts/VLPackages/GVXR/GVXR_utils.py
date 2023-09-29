@@ -245,6 +245,38 @@ def find_the_key(dictionary:dict, target_keys:str):
     """Function to pull out the keys of a dictionary as a list."""
     return {key: dictionary[key] for key in target_keys}
 
+def convert_to_int(vox,glob_min,glob_max,dtype='int16'):
+    if dtype=='int8': scale = 2**8-1
+    elif dtype=='int16': scale = 2**16-1
+    else:
+        print('Unknown dtype for integer conversion. Defaulting to int16')
+        scale = 2**16-1
+
+    vox = (vox - glob_min)/(glob_max - glob_min)*scale
+    vox = vox.astype('u{}'.format(dtype))
+    return vox
+
+def make_image(output_dir,vox,im_format='tiff',angle_index=0):
+    from PIL import Image
+    import tifffile
+    output_name = os.path.basename(os.path.normpath(output_dir))
+    os.makedirs(output_dir, exist_ok=True)
+    if im_format == None:
+        im_format:str='tiff'
+    #calcualte number of digits in max number of images for formating
+    import math
+    if angle_index > 0:
+        digits = int(math.log10(angle_index))+1
+    elif angle_index == 0:
+        digits = 1
+    else:
+        raise ValueError('Angle_index for write image must be a non negative int')
+
+    im = Image.fromarray(vox)
+    im_output=f"{output_dir}/{output_name}_{angle_index:0{digits}d}.{im_format}"
+    im.save(im_output)
+    im.close()
+
 def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate='float32',angle_index=0):
     from PIL import Image, ImageOps
     import os
@@ -262,21 +294,20 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate='float
     else:
         raise ValueError('Angle_index for write image must be a non negative int')
 
-    if bitrate == 'int8':
-        vox = (vox/vox.max())*255
-        convert_opt='L'
+    if bitrate == 'int8':  
+        vox = (vox - vox.min())/(vox.max() - vox.min())*255
+        vox = vox.astype('uint8')
     elif bitrate == 'int16':
-        vox = (vox/vox.max())*65536
-        convert_opt='I;16'
+        vox = (vox - vox.min())/(vox.max() - vox.min())*65535
+        vox = vox.astype('uint16')
     elif bitrate == 'float32':
-        convert_opt='F'
+        vox = vox.astype('float32')
     else:
-        print(f"warning: bitrate {bitrate} not recognized assuming 8-bit grayscale")
-        vox = (vox/vox.max())*255
-        convert_opt='L'
+        print(f"warning: bitrate {bitrate} not recognized assuming 16-bit grayscale")
+        vox = (vox - vox.min())/(vox.max() - vox.min())*65535
+        vox = vox.astype('uint16')
 
     im = Image.fromarray(vox)
-    im = im.convert(convert_opt)
     im_output=f"{output_dir}/{output_name}_{angle_index:0{digits}d}.{im_format}"
     im.save(im_output)
     im.close()

@@ -271,10 +271,10 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,PARAMETERS_DIR, mode):
             "Output_dir": OUT_DIR,
         }
         # Define flag to display visualizations
-        if mode == "Headless":
-            GVXRDict["Headless"] = True
-        else:
+        if mode == "Interactive":
             GVXRDict["Headless"] = False
+        else:
+            GVXRDict["Headless"] = True
 
         # check to material list is valid
         GVXRDict['Material_Types'] = Check_Materials(

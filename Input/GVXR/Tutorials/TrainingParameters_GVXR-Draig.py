@@ -7,8 +7,8 @@ GVXR = Namespace()
 # Required parameters #
 #######################
 ############################################################
-# Note for real space quantites units can be any off: 
-# "um", "micrometre", "micrometer", "mm", "millimetre", 
+# Note for real space quantites units can be any off:
+# "um", "micrometre", "micrometer", "mm", "millimetre",
 # "millimeter", "cm", "centimetre", "centimeter", "dm",
 # "decimetre", "decimeter", "m", "metre", "meter", "dam",
 # "decametre", "decameter", "hm", "hectometre", "hectometer",
@@ -24,8 +24,8 @@ GVXR.mesh = 'welsh-dragon-small.stl'
 # of each region of the model. Can be any of Full name, Symbol
 # or Atomic number (Z). Currently works for every element in the
 # periodic table up to Francium, that is elements 1-100.
-# Note: in this case we only supply one element since .stl 
-# files have only one region. Thus we define one material 
+# Note: in this case we only supply one element since .stl
+# files have only one region. Thus we define one material
 # for the whole dragon model.
 GVXR.Material_list = ["Al"]
 # Beam energy (default units are MeV)
@@ -47,9 +47,9 @@ GVXR.Detect_PosX = 0
 GVXR.Detect_PosY = 110
 GVXR.Detect_PosZ = 0
 GVXR.Detect_Pos_units = 'mm'
-# number of pixels in x and y, this defines both the resolution of the 
+# number of pixels in x and y, this defines both the resolution of the
 # final images and physical size of te detector plane when combined with spacing_in_mm.
-GVXR.Pix_X = 300
+GVXR.Pix_X = 350
 GVXR.Pix_Y = 350
 # Postion of center of cad model in x,y and z
 GVXR.Model_PosX = 0
@@ -58,11 +58,12 @@ GVXR.Model_PosZ = 0
 GVXR.Model_Pos_units = 'mm'
 ###############################################################################
 # spacing between detector pixels, determines the physical size of the detector.
-# default = 0.5 
+# default = 0.5
 GVXR.SpacingX = 0.7
 GVXR.SpacingY = 0.7
 GVXR.Spacing_units='mm'
 GVXR.num_projections=1
+GVXR.bitrate='int8'
 # String for output image format default is tiff
 GVXR.image_format = 'tiff'
 # Initial rotation of cad model in degrees about the x,y and z axis

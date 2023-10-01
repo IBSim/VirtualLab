@@ -237,7 +237,7 @@ def GVXR_Setup(GVXRDicts,PROJECT_DIR,PARAMETERS_DIR, mode):
         Model_Mesh_units: str = Field(default="mm")
 
     OUT_DIR = "{}/GVXR-Images".format(PROJECT_DIR)
-    IN_MESH_DIR = "{}/Meshes".format(PARAMETERS_DIR)
+    IN_MESH_DIR = "{}/Meshes".format(PROJECT_DIR)
     OUT_MESH_DIR = "{}/Meshes".format(PROJECT_DIR)
 
     if not os.path.exists(OUT_DIR):

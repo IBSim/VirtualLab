@@ -1,9 +1,10 @@
 from types import SimpleNamespace as Namespace
+import numpy as np
 
 ###############################
 ##  GVXR Helix scan example  ##
 ###############################
-import numpy as np
+
 GVXR = Namespace()
 run_names = []
 no_slices = 250
@@ -19,3 +20,8 @@ GVXR.Name = run_names
 # Create an array of all z values for all slices 
 
 GVXR.Model_PosZ = np.linspace(bottom,top,num=no_slices)
+
+# GVXR.Run = [0]*no_slices
+# GVXR.Run[0] = 1
+# GVXR.Run[100] = 1
+# GVXR.Run[249] = 1

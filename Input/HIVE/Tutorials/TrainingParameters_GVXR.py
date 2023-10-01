@@ -19,9 +19,9 @@ GVXR = Namespace()
 # However the default is 'mm'
 ############################################################
 # name for the GVXR run.
-GVXR.Name = 'AMAZE'
+GVXR.Name = 'AMAZE_single'
 # name of the mesh(es) you wish to virtually CT scan
-GVXR.mesh = "{}/HIVE/Tutorials/Meshes/AMAZE.med".format(VLconfig.OutputDir) # full path provided
+GVXR.mesh = "AMAZE" # full path provided
 # Set tube voltage to generate a beam spectrum
 GVXR.Energy=[0.8]
 GVXR.Intensity = [1000]

@@ -10,8 +10,8 @@ sys.dont_write_bytecode=True
 from Scripts.Common.VirtualLab import VLSetup
 from Task1_mesh import get_mesh
 
-Simulation='GVXR'
-Project='Tutorials'
+Simulation='Examples'
+Project='CT_Scan'
 Parameters_Master='TrainingParameters_GVXR-Draig'
 Parameters_Var=None
 
@@ -24,7 +24,7 @@ VirtualLab=VLSetup(
         Project
         )
 
-mesh_file = "{}/Meshes/welsh-dragon-small.stl".format(VirtualLab.PARAMETERS_DIR)
+mesh_file = "{}/welsh-dragon-small.stl".format(VirtualLab.Mesh.OutputDir)
 if not os.path.isfile(mesh_file):
     get_mesh(mesh_file)
 

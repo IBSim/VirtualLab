@@ -6,15 +6,17 @@
 import os
 import sys
 sys.dont_write_bytecode=True
+
 from Scripts.Common.VirtualLab import VLSetup
+from Task1_mesh import get_mesh
 
 #===============================================================================
 # Definitions
 #===============================================================================
 
-Simulation='GVXR'
-Project='Tutorials'
-Parameters_Master='TrainingParameters_GVXR'
+Simulation='Examples'
+Project='CT_Scan'
+Parameters_Master='TrainingParameters_GVXR-Draig_Nikon'
 Parameters_Var=None
 
 #===============================================================================
@@ -26,9 +28,9 @@ VirtualLab=VLSetup(
            Project
            )
 
-if not os.path.isfile("{}/HIVE/Tutorials/Meshes/AMAZE.med".format(VirtualLab._OutputDir)):
-    from Task2_mesh import get_mesh
-    get_mesh() # create mesh which will be used for this analysis
+mesh_file = "{}/welsh-dragon-small.stl".format(VirtualLab.Mesh.OutputDir)
+if not os.path.isfile(mesh_file):
+    get_mesh(mesh_file)
 
 VirtualLab.Settings(
            Mode='Interactive',

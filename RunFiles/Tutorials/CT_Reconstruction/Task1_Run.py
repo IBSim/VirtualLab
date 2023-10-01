@@ -11,7 +11,7 @@ from Scripts.Common.VirtualLab import VLSetup
 # Definitions
 #===============================================================================
 
-Simulation='CIL'
+Simulation='HIVE'
 Project='Tutorials'
 Parameters_Master='TrainingParameters_CIL_Ex1'
 Parameters_Var=None

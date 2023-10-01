@@ -4,6 +4,7 @@ import os
 import sys
 sys.dont_write_bytecode=True
 import requests
+from Scripts.Common.VirtualLab import VLSetup
 
 def get_mesh(mesh_file):
     print('Downloading dragon mesh')
@@ -14,3 +15,10 @@ def get_mesh(mesh_file):
     with open(mesh_file,'wb') as f:
         f.write(r.content)
 
+def main():
+    VirtualLab = VLSetup('Examples','CT_Scan')
+    mesh_file = "{}/welsh-dragon-small.stl".format(VirtualLab.Mesh.OutputDir)
+    get_mesh(mesh_file)
+
+if __name__=='__main__':
+    main()

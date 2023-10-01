@@ -15,7 +15,7 @@ from Task1_mesh import get_mesh
 #===============================================================================
 
 Simulation='Examples'
-Project='CT_Scan'
+Project='Dragon'
 Parameters_Master='TrainingParameters_GVXR-Draig_Nikon'
 Parameters_Var=None
 

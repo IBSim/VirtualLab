@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os
 import sys
 sys.dont_write_bytecode=True
@@ -19,6 +17,3 @@ def main():
     VirtualLab = VLSetup('Examples','Dragon')
     mesh_file = "{}/welsh-dragon-small.stl".format(VirtualLab.Mesh.OutputDir)
     get_mesh(mesh_file)
-
-if __name__=='__main__':
-    main()

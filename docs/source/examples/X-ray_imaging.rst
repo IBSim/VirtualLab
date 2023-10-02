@@ -7,18 +7,18 @@ Introduction
 X-ray imaging is a common to method used to to perform detailed analyses
 of the internal structure of an object in non-destructive way. 
 VirtualLab allows users to create realistic simulations of X-Ray images
-using the software package GVXR. GVXR a C++ x-ray simulation library 
-developed by Frank Vidal and Iwan mitchel at Bangor University.
+using the software package GVXR. GVXR is a C++ x-ray simulation library 
+developed by Frank Vidal and Iwan Mitchel at Bangor University.
 
 It uses ray-tracing in OpenGL to track the path and attenuation of X-ray 
 beams through a polygon mesh as they travel from an X-Ray source to 
 a detector. 
 
 This tutorial will not cover the specifics of how to use GVXR, 
-Training material on this in the form of jupiter notebooks
+however training material on this in the form of jupiter notebooks
 can be found `here: <https://github.com/effepivi/gvxr-ibsim-4i-2022>`_
 
-Our goal instead is to show how GVXR can be run as a method inside a 
+The goal here instead is to show how GVXR can be run as a method inside a 
 container within the VirtualLab workflow. As such we will cover similar
 examples to the training material but not the detailed theory behind them.
 
@@ -28,7 +28,9 @@ Prerequisites
 The examples provided here are mostly self-contained. However, in order
 to understand this tutorial, at a minimum you will need to have 
 completed `the first tutorial <tensile.html>`_ to obtain a grounding 
-in how **VirtualLab** is setup. Also, although not strictly necessary, 
+in how **VirtualLab** is setup. 
+
+Also, although not strictly necessary, 
 we also recommend completing `the third tutorial <hive.html>`_ because 
 we will be using the **Salome** mesh generated from the HIVE analysis 
 as part of one of the examples. All the previous tutorials 
@@ -55,8 +57,8 @@ object made from a single element.
    The *RunFile* ``RunTutorials.py`` should be set up as follows 
    to run this simulation::
 
-        Simulation='GVXR'
-        Project='Tutorials'
+        Simulation='Examples'
+        Project='Dragon'
         Parameters_Master='TrainingParameters_GVXR-Draig'
         Parameters_Var=None
 
@@ -78,26 +80,25 @@ object made from a single element.
         VirtualLab.Parameters(
                 Parameters_Master,
                 Parameters_Var,
-                RunCT_Scan=True
+                RunCT_Scan=True,
+                RunCT_Recon=False
                 )
+
+        VirtualLab.CT_Scan()
+
+    A cope of this run file can also be found in :file:`RunFiles/Tutorials/X-ray_imaging/Task1_Run.py`.
 
 
 The mesh we be using For this example is the Welsh Dragon 
 Model which was released by `Bangor university <http://vmg.cs.bangor.ac.uk/downloads>`_, UK, for 
-Eurographics 2011. The model can be downloaded `from here 
-<https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_.
+Eurographics 2011. The mesh can be found `here 
+<https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_. 
 
-by Default VirtualLab will look for the mesh file in ``Input/GVXR/Tutorials/Meshes`` thus you 
-will need to pace the downloaded stl file in that directory, creating it if it does 
-not already exist. 
+This mesh can be downloaded and placed in the directory :file:`Output/Examples/Dragon/Meshes` using the following ::
 
-.. admonition:: Tip
-    :class: Tip
+    VirtualLab -f RunFiles/Tutorials/X-ray_imaging/Task1_mesh.py
 
-    You can alternatively place the mesh file in ``Output/GVXR/Tutorials/Meshes``.
-    This is useful if you have a mesh generated from a previous step in VirtualLab. 
-    You can also use ``GVXR.mesh`` to specify the absolute path to the mesh file if you prefer.
-
+    
 .. admonition:: Action
    :class: Action
 
@@ -109,8 +110,9 @@ Because we have set ``Mode='Interactive'`` in ``VirtualLab.Settings`` you should
 of the dragon model in the path of the X-Ray beam casting a shadow onto the X-Ray detector behind.
 
 You can use the mouse to zoom and rotate the scene to get a better view. Once finished you can close 
-the window or type ``q`` on the keyboard. The X-ray image itself can be found in 
-``Output/GVXR/Tutorials/GVXR_Images/Dragon.png``
+the window or type ``q`` on the keyboard. 
+
+The X-ray image itself can be found in :file:`Output/GVXR/Tutorials/GVXR_Images/Dragon.png`
 
 .. admonition:: Tip
     :class: Tip
@@ -135,7 +137,7 @@ This isn't technically necessary because the inclusion of
 is :code:`True` by default, but explicitly stating this is good 
 practice.
 
-The parameters file we used is ``Input/Tensile/Tutorials/TrainingParameters_GVXR-Draig.py``
+The parameters file we used is ``Input/Examples/Dragon/TrainingParameters_GVXR-Draig.py``
 you will notice this file has a new Namespace ``GVXR``. 
 This contains the parameters used to setup and control the X-Ray Imaging. 
 The file is setup with some sensible default values.
@@ -374,133 +376,15 @@ format supported by Pillow (see the `PILLOW docs <https://pillow.readthedocs.io/
 ``GVXR.bitrate`` sets the bitrate used for output images. Can be 'int8'/'int16' for 8 and 16 bit grayscale or 'float32' 
 for raw intensity values. the default value is "float32".
 
+
+
+
 .. _Xray_Example2:
 
-Example 2: X-Ray CT-Scan with Multiple Materials
-************************************************
-
-In this second example we will Simulate a X-ray CT scan using the `AMAZE <hive.html#sample>`_  
-mesh that was previously used for the `HIVE <../virtual_exp.html#HIVE>`_ analysis in tutorial 3.
-
-An X-Ray Computed Tomography (CT) scan involves taking multiple different X-Ray images of 
-a sample from multiple angles. These are then combined together used to create a 3D image 
-using special reconstruction software. VirtualLab has one such pice of software available, 
-called CIL and we will cover the reconstruction side of this process in a different tutorial.
-
-.. admonition:: Action
-   :class: Action
-
-   The *RunFile* ``RunTutorials.py`` should be setup as follows 
-   to run this simulation::
-
-        Simulation='GVXR'
-        Project='Tutorials'
-        Parameters_Master='TrainingParameters_GVXR'
-        Parameters_Var=None
-
-        VirtualLab=VLSetup(
-                Simulation,
-                Project
-                )
-
-        VirtualLab.Settings(
-                Mode='Interactive',
-                Launcher='Process',
-                NbJobs=1
-                )
-
-        VirtualLab.Parameters(
-                Parameters_Master,
-                Parameters_Var,
-                RunMesh=True,
-                RunSim=False,
-                RunCT_Scan=True
-                )
-        VirtualLab.Mesh()
-        VirtualLab.CT_Scan()
-
-If you have previously completed Tutorial 3 you should already have the mesh 
-in ``Output/HIVE/Tutorials/Meshes/AMAZE_Sample.med``. Therefore you can move
-this file to ``Input/GVXR/Tutorials/Meshes`` and set RunMesh to False in 
-VirtualLab.Parameters to speed up the next step by skipping the mesh 
-generation. Otherwise leaving RunMesh set to True will generate the 
-mesh as defined in the input file as the first step of the analysis.
-
-You will notice that not much has changed with the *Runfile* other 
-than the change of input file and the addition is the call to
-``VirtualLab.Mesh()``. To generate the mesh using salome.
-
-.. admonition:: Action
-   :class: Action
-
-   Launch **VirtualLab** using the following command::
-
-        VirtualLab -f RunFiles/RunTutorials.py
-
-
-Looking at the file ``Input/GVXR/Tutorials/TrainingParameters_GVXR.py``
-you will notice that the ``Namespace`` ``Mesh`` is setup 
-the same as in tutorial 3. That is, to generate the HIVE CAD 
-geometry and mesh using ``Scripts/Experiments/GVXR/Mesh/Monoblock.py``.
-
-You will also notice the Namespace ``GVXR`` has a few new options defined.
-
-Firstly, we are now using a more realistic beam spectrum instead of a 
-monochromatic source. This is achieved by replacing ``GVXR.Energy`` with
-``GVXR.Tube_Voltage``. This tell VirtualLab to generate a beam spectrum 
-from a simulated X-Ray Tube using xspecgen, in this case running at 440 KV. 
-This is a more realistic X-Ray source than a simple monochromatic beam.
-
-A plot of the generated spectrum can be found in 
-``Output/HIVE/Tutorials/beam_spec.png``. VirtualLab also has three other 
-optional parameters related to X-Ray Tube spectrums. which we are not 
-using in this example.
-
-- ``GVXR.Tube_Angle`` common setting used by X-ray tubes default is 12.0
-- ``GVXR.Filter_Material`` material used for beam filter, used to remove certain frequencies  
-- ``GVXR.Filter_ThicknessMM`` Thickness of beam filter
-
-The second change to note here is we are now using a mesh with multiple 
-materials. As mentioned earlier this is only currently implemented for 
-salome med meshes using mesh regions. In our case the mesh has 3 regions
-Pipe, Block, and Tile. 
-
-For GVXR we have to define the corresponding materials using ``GVXR.Material_list``
-in this case the pipe and block are both made from Copper. whilst the tile is
-made from the much denser Tungsten.
-
-.. admonition:: Action
-   :class: Action
-
-    Change the material of the tile region to an alloy of 90% Titanium and 
-    10% Aluminum. Which for reference has an approximate density of 4.3254 
-    g/cm^3.
-
-Our final step for this section is to perform multiple X-ray images at 
-different angles. To achieve this we will use the parameters.
-
-- ``GVXR.num_projections``
-- ``GVXR.angular_step``
-
-These control the number of projections we want to take and the angle 
-in degrees to rotate the mesh between each image. The rotation is 
-clockwise about the Z-axis (up on the detector) although you can pass 
-in -ve values for angular step to go anti-clockwise, should you wish. 
-Hopefully these are somewhat self-explanatory. 
-
-.. admonition:: Challenge
-   :class: Action
-
-    Setup GVXR to produce 180 tiff images over a full rotation of the model 
-    (i.e. 360 degrees).
-
-
-.. _Xray_Example3:
-
-Example 3: Defining scans using a Nikon .xect files.
+Example 2: Defining scans using a Nikon .xect files.
 ****************************************************
 
-May CT scanners use the Nikon .xect format to define scan parameters.
+Many CT scanners use the Nikon .xect format to define scan parameters.
 These are just specially formatted text files ending in the .xect file 
 extension. VirtualLab can read in parameters from these files.
 
@@ -508,7 +392,7 @@ To use these files you need to use ``GVXR.Nikon_file`` which sets the
 name of the nikon file you wish to use. This can either be in the Input 
 directory or the absolute path to the file.
 
-You will also at a minimum you need to define
+You will also at a minimum need to define
 
 - ``GVXR.Name`` 
 - ``GVXR.Mesh`` 
@@ -526,8 +410,8 @@ from the equivalent parameters in the nikon file.
    The of the *RunFile* ``RunTutorials.py`` should be setup as follows 
    to run this simulation::
 
-        Simulation='GVXR'
-        Project='Tutorials'
+        Simulation='Examples'
+        Project='Dragon'
         Parameters_Master='TrainingParameters_GVXR_Nikon'
         Parameters_Var=None
 
@@ -548,7 +432,6 @@ from the equivalent parameters in the nikon file.
                 RunCT_Scan=True
                 )
 
-        VirtualLab.Mesh(ShowMesh=False)
         VirtualLab.CT_Scan()
     
     Launch **VirtualLab** using the following command::
@@ -589,6 +472,90 @@ file, along with comments in square brackets will simply be ignored.
     You can define parameters in the input file that are also 
     defined in the nikon file. If you do the parameters in the 
     input file will override those in the nikon file.  
+
+
+.. _Xray_Example3:
+
+Example 3: X-Ray CT-Scan with Multiple Materials
+************************************************
+
+In this example we will Simulate a X-ray CT scan using the `AMAZE <hive.html#sample>`_  
+mesh that was previously used for the `HIVE <../virtual_exp.html#HIVE>`_ analysis in tutorial 3.
+
+.. note::
+
+    If you haven't completed tutorial 3 you will need to run the following command to generte the mesh ::
+
+        VirtualLab -f RunFiles/Tutorials/X-ray_imaging/Task3_mesh.py
+
+An X-Ray Computed Tomography (CT) scan involves taking multiple different X-Ray images of 
+a sample from multiple angles. These are then combined together used to create a 3D image 
+using special reconstruction software. VirtualLab has one such pice of software available, 
+called CIL and we will cover the reconstruction side of this process in a different tutorial.
+
+.. admonition:: Action
+   :class: Action
+
+   The *RunFile* ``RunTutorials.py`` should be setup as follows 
+   to run this simulation::
+
+        Simulation='HIVE'
+        Project='Tutorials'
+        Parameters_Master='TrainingParameters_GVXR'
+        Parameters_Var=None
+
+        VirtualLab=VLSetup(
+                Simulation,
+                Project
+                )
+
+        VirtualLab.Settings(
+                Mode='Interactive',
+                Launcher='Process',
+                NbJobs=1
+                )
+
+        VirtualLab.Parameters(
+                Parameters_Master,
+                Parameters_Var,
+                RunSim=False,
+                RunCT_Scan=True,
+                RunCT_Recon=False
+                )
+
+        VirtualLab.CT_Scan()
+
+    A copy of this run file can be found in :file:`RunFiles/Tutorials/X-ray_imaging/Task3_Run.py`
+
+
+.. admonition:: Action
+   :class: Action
+
+   Launch **VirtualLab** using the following command::
+
+        VirtualLab -f RunFiles/RunTutorials.py
+
+
+Looking at the file ``Input/HIVE/Tutorials/TrainingParameters_GVXR.py`` you will notice the Namespace ``GVXR`` has a few new options defined. Firstly, we are now using a more realistic beam spectrum instead of a monochromatic source. This is achieved by replacing ``GVXR.Energy`` with
+``GVXR.Tube_Voltage``. This tell VirtualLab to generate a beam spectrum from a simulated X-Ray Tube using xspecgen, in this case running at 440 KV. This is a more realistic X-Ray source than a simple monochromatic beam.
+
+A plot of the generated spectrum can be found in 
+``Output/HIVE/Tutorials/beam_spec.png``. VirtualLab also has three other 
+optional parameters related to X-Ray Tube spectrums. which we are not 
+using in this example.
+
+- ``GVXR.Tube_Angle`` common setting used by X-ray tubes default is 12.0
+- ``GVXR.Filter_Material`` material used for beam filter, used to remove certain frequencies  
+- ``GVXR.Filter_ThicknessMM`` Thickness of beam filter
+
+The second change to note here is we are now using a mesh with multiple 
+materials. As mentioned earlier this is only currently implemented for 
+salome med meshes using mesh regions. In our case the mesh has 3 regions
+Pipe, Block, and Tile. 
+
+For GVXR we have to define the corresponding materials using ``GVXR.Material_list``
+in this case the pipe and block are both made from Copper. whilst the tile is
+made from the much denser Tungsten.
 
 
 .. _App1:

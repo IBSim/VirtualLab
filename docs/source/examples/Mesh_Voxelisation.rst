@@ -234,15 +234,15 @@ There are however, 3 caveats to bear in mind:
 
 With these in mind, using a different mesh format through **VirtualLab** is as simple as setting ``Vox.mesh`` to a string containing the name of the file you wish to use including the file extension. You can then place the mesh in the same default directory as you would for a ``.med`` mesh. Or, as discussed earlier, you can use the absolute path to the file, again including the extension.
 
-For our example we will use the Welsh Dragon Model which was released by `Bangor university <http://vmg.cs.bangor.ac.uk/downloads>`_, UK, for Eurographics 2011. The model can be downloaded `from here <https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_. This file should be placed in ``Output/Dragon/Tutorials/Meshes`` (or again you can set ``Vox.mesh`` inside ``Input/Dragon/Tutorials/TrainingParameters_Dragon.py`` to the path of the mesh file).
+For our example we will use the Welsh Dragon Model which was released by `Bangor university <http://vmg.cs.bangor.ac.uk/downloads>`_, UK, for Eurographics 2011. The model can be downloaded `from here <https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_. This file should be placed in ``Output/Examples/Dragon/Meshes`` .
 
 .. admonition:: Action
    :class: Action
 
    The *RunFile* ``RunTutorials.py`` should be set up as follows to perform the voxelisation::
 
-       Simulation='Dragon'
-       Project='Tutorials'
+       Simulation='Examples'
+       Project='Dragon'
        Parameters_Master='TrainingParameters_Dragon'
        Parameters_Var=None
 
@@ -272,7 +272,7 @@ For our example we will use the Welsh Dragon Model which was released by `Bangor
 
         VirtualLab -f RunFiles/RunTutorials.py
 
-The output is located in ``Output/Dragon/Tutorials/Voxel-Images/Welsh-Dragon.Tiff``. You may notice that, since this mesh only contains triangle data, the resulting voxel image only contains coloured voxels on the surface of the model, see :numref:`Fig. %s <ImageJ_03>`. You will also notice that, much like the dog bone in :ref:`example 1 <Example1>`, the model surface defaults to white (greyscale value of 255). This is because ``.stl`` files contain no information on materials. Therefore, as such, the entire mesh is set to a single greyscale value. Once again you can change this value in ``greyscale_Welsh-Dragon.csv`` if desired.
+The output is located in ``Output/Examples/Dragon/Voxel-Images/Welsh-Dragon.Tiff``. You may notice that, since this mesh only contains triangle data, the resulting voxel image only contains coloured voxels on the surface of the model, see :numref:`Fig. %s <ImageJ_03>`. You will also notice that, much like the dog bone in :ref:`example 1 <Example1>`, the model surface defaults to white (greyscale value of 255). This is because ``.stl`` files contain no information on materials. Therefore, as such, the entire mesh is set to a single greyscale value. Once again you can change this value in ``greyscale_Welsh-Dragon.csv`` if desired.
 
 .. _ImageJ_03:
 

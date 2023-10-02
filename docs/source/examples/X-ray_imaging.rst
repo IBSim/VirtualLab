@@ -16,7 +16,7 @@ a detector.
 
 This tutorial will not cover the specifics of how to use GVXR, 
 however training material on this in the form of jupiter notebooks
-can be found `here: <https://github.com/effepivi/gvxr-ibsim-4i-2022>`_
+can be found `here <https://github.com/effepivi/gvxr-ibsim-4i-2022>`_.
 
 The goal here instead is to show how GVXR can be run as a method inside a 
 container within the VirtualLab workflow. As such we will cover similar
@@ -39,7 +39,7 @@ if your only interest is the X-Ray imaging features.
 
 We also recommend you have at least some understanding of how to use 
 GVXR as a standalone package and have looked through the GVXR 
-`Training material <https://github.com/effepivi/gvxr-ibsim-4i-2022>`_ 
+`training material <https://github.com/effepivi/gvxr-ibsim-4i-2022>`_ 
 as we will be working through very similar examples.
 
 .. _Xray_Example1:
@@ -54,8 +54,8 @@ object made from a single element.
 .. admonition:: Action
    :class: Action
 
-   The *RunFile* ``RunTutorials.py`` should be set up as follows 
-   to run this simulation::
+    The *RunFile* ``RunTutorials.py`` should be set up as follows to run this simulation::
+
 
         Simulation='Examples'
         Project='Dragon'
@@ -86,15 +86,13 @@ object made from a single element.
 
         VirtualLab.CT_Scan()
 
-    A cope of this run file can also be found in :file:`RunFiles/Tutorials/X-ray_imaging/Task1_Run.py`.
+    A copy of this run file can also be found in :file:`RunFiles/Tutorials/X-ray_imaging/Task1_Run.py`.
 
 
 The mesh we be using For this example is the Welsh Dragon 
 Model which was released by `Bangor university <http://vmg.cs.bangor.ac.uk/downloads>`_, UK, for 
-Eurographics 2011. The mesh can be found `here 
-<https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_. 
-
-This mesh can be downloaded and placed in the directory :file:`Output/Examples/Dragon/Meshes` using the following ::
+Eurographics 2011. The mesh, which can be found `here 
+<https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_, can be downloaded and placed in the directory :file:`Output/Examples/Dragon/Meshes` by running the following command ::
 
     VirtualLab -f RunFiles/Tutorials/X-ray_imaging/Task1_mesh.py
 
@@ -102,17 +100,15 @@ This mesh can be downloaded and placed in the directory :file:`Output/Examples/D
 .. admonition:: Action
    :class: Action
 
-    Once you have the mesh Downloaded and in place you can launch **VirtualLab** using the following command::
+    Once you have the mesh downloaded you can launch **VirtualLab** using the following command::
 
         VirtualLab -f RunFiles/RunTutorials.py
 
 Because we have set ``Mode='Interactive'`` in ``VirtualLab.Settings`` you should see a 3D visualization 
-of the dragon model in the path of the X-Ray beam casting a shadow onto the X-Ray detector behind.
+of the dragon model in the path of the X-Ray beam casting a shadow onto the X-Ray detector behind, see :numref:`Fig. %s <Dragon_01>`.
 
 You can use the mouse to zoom and rotate the scene to get a better view. Once finished you can close 
 the window or type ``q`` on the keyboard. 
-
-The X-ray image itself can be found in :file:`Output/GVXR/Tutorials/GVXR_Images/Dragon.png`
 
 .. admonition:: Tip
     :class: Tip
@@ -125,6 +121,15 @@ The X-ray image itself can be found in :file:`Output/GVXR/Tutorials/GVXR_Images/
 .. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/GVXR_Dragon_1.png
 
     Visualization of X-Ray imaging for Dragon model
+
+
+The X-ray image itself can be found in :file:`Output/GVXR/Tutorials/GVXR_Images/Dragon/Dragon_1.tiff`, and should look like :numref:`Fig. %s <Dragon_02>`.
+
+.. _Dragon_02:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/GVXR_Dragon_2.png
+
+    X-Ray Image of Dragon model.
 
 Looking though the *RunFile* The main thing to note is the call to 
 ``VirtualLab.CT_Scan()``. This is the function that initiates X-ray 
@@ -232,12 +237,6 @@ First we need to specify the name of mesh file used. This is done with ``GVXR.me
 This can be any mesh format supported by the python package `meshio <url>`_. You
 only need to specify the filename including file extension.
 
-As mentioned previously, VirtualLab by Default will look for the mesh file in 
-``Input/{SIMULATION}/{PROJECT}/Meshes`` (``{SIMULATION}`` and ``{PROJECT}`` 
-are the names you defined in the RunFile). If the file is not found it will then look in 
-``Output/{SIMULATION}/{PROJECT}/Meshes``. Alternatively you can also use the absolute
-path if you prefer.
-
 To set the position, much like the X-Ray beam we use ``GVXR.Model_PosX``, ``GVXR.Model_PosY``
 and ``GVXR.Model_PosZ`` in this case these define the center of the cad mesh in 3D space.
 
@@ -262,19 +261,6 @@ This is set as a list of 3 floating point numbers to specify the rotation in deg
 about the X,Y and Z axes. The default is [0,0,0] (i.e. no rotation). This is useful 
 if the model is not correctly aligned initially.
 
-.. admonition:: Getting a feel for mesh transformations.
-   :class: Action
-
-    To get a feel for how these parameters work try moving the mesh around the scene 
-    and rotating it to replicate the following figure.
-
-.. _Dragon_02:
-
-.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/GVXR_Dragon_2.png
-
-    X-Ray Image of Dragon model after rotation.
-
-
 .. admonition:: A note about Rotation
     :class: Note
 
@@ -294,7 +280,8 @@ if the model is not correctly aligned initially.
     If that makes no sense to you don't worry to much about it to much. If you are worried
     just leave it at the default [0,0,0] or play with the numbers until it looks right. 
     Hopefully its intuitive enough.
-    
+
+
 Finally we need to set the material of the sample. For this we use three parameters:
 
  - ``GVXR.Material_list`` a list of materials used.
@@ -310,7 +297,7 @@ material. In our case for the sake of simplicity we only have one mesh so we onl
     :class: Note
 
     The current example uses a single mesh made from a single material. The step up to multiple materials 
-    however, is slightly more complicated. We will be covering a multi-material example in the next section.
+    however, is slightly more complicated. We will be covering a multi-material example in the `example 3 <Xray_Example3>`_.
     
     However, due to limited development time/resources. In the current version of VirtualLab 
     the use of multiple materials is only supported by using mesh regions in salome .med mesh files. 
@@ -360,25 +347,6 @@ Thus ``GVXR.Density=[3.152]``
     (which for reference has a density of 3.987 g/cm^3).
 
 
-Misc. Settings:
----------------
-
-For this example we have used three "Miscellaneous" Settings
-
-- ``GVXR.Im_format`` sets the output image format
-- ``GVXR.Im_bitrate`` to set the output image bitrate
-
-
-``GVXR.Im_format`` Allows you to select the image format for the final output. If it is omitted (or set to :code:`None`) 
-the output defaults to a series of tiff images. However, when this option is set the code outputs each projection in any 
-format supported by Pillow (see the `PILLOW docs <https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html>`_).
-
-``GVXR.bitrate`` sets the bitrate used for output images. Can be 'int8'/'int16' for 8 and 16 bit grayscale or 'float32' 
-for raw intensity values. the default value is "float32".
-
-
-
-
 .. _Xray_Example2:
 
 Example 2: Defining scans using a Nikon .xect files.
@@ -405,10 +373,13 @@ from the equivalent parameters in the nikon file.
 .. admonition:: Action
    :class: Action
 
-   As an example we will perform the same simulation as example 2 only 
-   this time we will define the setup with a nikon file. 
-   The of the *RunFile* ``RunTutorials.py`` should be setup as follows 
-   to run this simulation::
+    As an example we will perform the same simulation as the previous example only 
+    this time we will define the setup with a nikon file. 
+
+    This will require changing *Parameters_Master* to 'TrainingParameters_GVXR_Nikon'
+
+    The  *RunFile* ``RunTutorials.py`` should be setup as follows 
+    to run this simulation::
 
         Simulation='Examples'
         Project='Dragon'
@@ -430,6 +401,7 @@ from the equivalent parameters in the nikon file.
                 Parameters_Master,
                 Parameters_Var,
                 RunCT_Scan=True
+                RunCT_Recon=False,
                 )
 
         VirtualLab.CT_Scan()
@@ -437,6 +409,8 @@ from the equivalent parameters in the nikon file.
     Launch **VirtualLab** using the following command::
 
         VirtualLab -f RunFiles/RunTutorials.py
+
+The resulting xray image will be saved to :file:`Output/GVXR/Tutorials/GVXR_Images/Dragon_Nikon/Dragon_Nikon_1.tiff` and will be identical to :numref:`Fig. %s <Dragon_02>`.
 
 The following is a table of parameters in the nikon file and there equivalent
 parameters in VirtualLab.
@@ -484,20 +458,14 @@ mesh that was previously used for the `HIVE <../virtual_exp.html#HIVE>`_ analysi
 
 .. note::
 
-    If you haven't completed tutorial 3 you will need to run the following command to generte the mesh ::
+    If you haven't completed tutorial 3 you will need to run the following command to generate the mesh ::
 
         VirtualLab -f RunFiles/Tutorials/X-ray_imaging/Task3_mesh.py
-
-An X-Ray Computed Tomography (CT) scan involves taking multiple different X-Ray images of 
-a sample from multiple angles. These are then combined together used to create a 3D image 
-using special reconstruction software. VirtualLab has one such pice of software available, 
-called CIL and we will cover the reconstruction side of this process in a different tutorial.
 
 .. admonition:: Action
    :class: Action
 
-   The *RunFile* ``RunTutorials.py`` should be setup as follows 
-   to run this simulation::
+    The *RunFile* ``RunTutorials.py`` should be setup as follows to run this simulation::
 
         Simulation='HIVE'
         Project='Tutorials'
@@ -527,22 +495,11 @@ called CIL and we will cover the reconstruction side of this process in a differ
 
     A copy of this run file can be found in :file:`RunFiles/Tutorials/X-ray_imaging/Task3_Run.py`
 
-
-.. admonition:: Action
-   :class: Action
-
-   Launch **VirtualLab** using the following command::
-
-        VirtualLab -f RunFiles/RunTutorials.py
-
-
 Looking at the file ``Input/HIVE/Tutorials/TrainingParameters_GVXR.py`` you will notice the Namespace ``GVXR`` has a few new options defined. Firstly, we are now using a more realistic beam spectrum instead of a monochromatic source. This is achieved by replacing ``GVXR.Energy`` with
 ``GVXR.Tube_Voltage``. This tell VirtualLab to generate a beam spectrum from a simulated X-Ray Tube using xspecgen, in this case running at 440 KV. This is a more realistic X-Ray source than a simple monochromatic beam.
 
-A plot of the generated spectrum can be found in 
-``Output/HIVE/Tutorials/beam_spec.png``. VirtualLab also has three other 
-optional parameters related to X-Ray Tube spectrums. which we are not 
-using in this example.
+VirtualLab also has three other optional parameters related to X-Ray Tube spectrums which we are not 
+used in this example.
 
 - ``GVXR.Tube_Angle`` common setting used by X-ray tubes default is 12.0
 - ``GVXR.Filter_Material`` material used for beam filter, used to remove certain frequencies  
@@ -556,6 +513,22 @@ Pipe, Block, and Tile.
 For GVXR we have to define the corresponding materials using ``GVXR.Material_list``
 in this case the pipe and block are both made from Copper. whilst the tile is
 made from the much denser Tungsten.
+
+.. admonition:: Action
+   :class: Action
+
+   Launch **VirtualLab** using the following command::
+
+        VirtualLab -f RunFiles/RunTutorials.py
+
+The x-ray image generated for this sample can be found in :file:`Output/HIVE/Tutorials/GVXR-Images/AMAZE_single`, and should look like :numref:`Fig. %s <HIVE_01>`.
+
+.. _HIVE_01:
+
+.. figure:: https://gitlab.com/ibsim/media/-/raw/master/images/docs/screenshots/AMAZE_single_1.png
+
+    X-Ray Image of the AMAZE component.
+
 
 
 .. _App1:

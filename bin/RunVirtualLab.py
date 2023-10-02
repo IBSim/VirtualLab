@@ -16,6 +16,7 @@ import os
 import sys
 from pathlib import Path
 import pickle
+import json
 
 import Scripts.VLServer.Server_utils as SU
 import Scripts.Common.VLContainer.Container_Utils as CU
@@ -25,7 +26,10 @@ vlab_dir = CU.get_vlab_dir()
 config_dict = SU.filetodict("{}/VLconfig.py".format(vlab_dir))
 ContainerDir = config_dict.get('ContainerDir',f"{vlab_dir}/Containers")
 
-VL_MOD = SU.load_module_config(vlab_dir)
+# get information about containers
+ModuleConfig = "{}/Scripts/VLPackages/VL_Modules.json".format(vlab_dir)
+with open(ModuleConfig) as file:
+    VL_MOD = json.load(file)
 
 ##########################################################################################
 ####################  ACTUAL CODE STARTS HERE !!!! #######################################
@@ -356,8 +360,7 @@ def _run_file(Run_file,args):
 
     thread.daemon = True
 
-    Modules = SU.load_module_config(vlab_dir)
-    Manager = Modules["Manager"]
+    Manager = VL_MOD["Manager"]
 
     thread.start()
     # start VirtualLab
@@ -542,7 +545,7 @@ def handle_messages2(client_socket, info):
             container_cmd = f"apptainer exec --contain {gpu_flag} --writable-tmpfs -H {pwd_dir}"
 
             cont_name = rec_dict["Cont_name"]
-            VL_MOD = SU.load_module_config(vlab_dir)
+            # VL_MOD = SU.load_module_config(vlab_dir)
             cont_info = VL_MOD[cont_name]
 
             if cont_info["Apptainer_file"].startswith('/'):

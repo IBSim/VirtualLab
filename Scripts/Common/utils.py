@@ -15,12 +15,12 @@ class Method_base():
     def __call__(self,*args,**kwargs):
         if not self.RunFlag: 
             return
-        elif not self.Data:
-            return
         elif self.dry_run:
             # just build containers
             print(f"Performing dry run of {self.MethodName}")
             return self._DryRun() # dont run method but build containers if needed
+        elif not self.Data:
+            return
         else:
             return self._MethodRun(*args,**kwargs) # run the method
 
@@ -89,7 +89,7 @@ class Method_base():
         else:
             data = {"msg":"Build","Cont_id":1,'Cont_names':self.Containers_used}
             send_data(self.tcp_sock,data,self._debug)
-            # wait here until we receive message to say or there was an error.
+            # wait here until we receive message to say its finished or there was an error.
             while True:
                 message = receive_data(self.tcp_sock,self._debug)
                 if message['msg'] == "Done Building":

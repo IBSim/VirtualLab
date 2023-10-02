@@ -97,6 +97,9 @@ There are also a number of options we have not used in this file. They are liste
 * ``Vox.greyscale_file``: You can use this option to specify a custom name and path for the .csv file that contains materials and associated greyscale values. If the .csv file does not exist, the code will automatically generate a new file and populate it with values read from the mesh file. If this is not set the code defaults to the filename ``greyscale_{Vox.Name}.csv`` and assumes it's in the simulation output directory (again automatically generating the .csv file if it does not exist).
 * ``Vox.Num_Threads``: This sets the Number of OMP Threads to use for voxelisation (only needed for CPU). OpenMP by default automatically detects the number of CPUs on the system and uses the maximum it can. This setting allows you to change the number of threads if desired.
 * ``Vox.image_format``: This option allows you to select the image format for the final output. If it is omitted (or set to :code:`None`) the output defaults to a tiff virtual stack. However, when this option is set the code outputs each slice in z as a separate image in any format supported by Pillow (see the `PILLOW docs <https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html>`_ for the full list). Simply specify the format you require as a string, e.g., ``Vox.image_format="png"``.
+* ``Vox.Orientation``: This option allows you to quickly change the Orientation of the generated output. The default is "XY" but this can be any of "XY, "YZ" or "XZ".
+* ``Vox.Output_Resolution`` : This option allows you to change the size of the final output. By default a bounding box is drawn tightly around the mesh with the exact size calculated using either unit_length or Gridsize. This option allows you to crop or pad with 0's the final output images by specifying a list of 3 ints as [pix_X,pix_Y,number_of_images].
+* ``Vox.Nikon_file``: You can use this option to the read the voxel unit length from a Nikon xtect file. This can either be the name of the file (including the file extension), if it is in the Input directory. or the absolute path to the file (again including the file extension).
 
 .. admonition:: Advanced tip
 
@@ -231,15 +234,15 @@ There are however, 3 caveats to bear in mind:
 
 With these in mind, using a different mesh format through **VirtualLab** is as simple as setting ``Vox.mesh`` to a string containing the name of the file you wish to use including the file extension. You can then place the mesh in the same default directory as you would for a ``.med`` mesh. Or, as discussed earlier, you can use the absolute path to the file, again including the extension.
 
-For our example we will use the Welsh Dragon Model which was released by `Bangor university <http://vmg.cs.bangor.ac.uk/downloads>`_, UK, for Eurographics 2011. The model can be downloaded `from here <https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_. This file should be placed in ``Output/Dragon/Tutorials/Meshes`` (or again you can set ``Vox.mesh`` inside ``Input/Dragon/Tutorials/TrainingParameters_Dragon.py`` to the path of the mesh file).
+For our example we will use the Welsh Dragon Model which was released by `Bangor university <http://vmg.cs.bangor.ac.uk/downloads>`_, UK, for Eurographics 2011. The model can be downloaded `from here <https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl>`_. This file should be placed in ``Output/Examples/Dragon/Meshes`` .
 
 .. admonition:: Action
    :class: Action
 
    The *RunFile* ``RunTutorials.py`` should be set up as follows to perform the voxelisation::
 
-       Simulation='Dragon'
-       Project='Tutorials'
+       Simulation='Examples'
+       Project='Dragon'
        Parameters_Master='TrainingParameters_Dragon'
        Parameters_Var=None
 
@@ -269,7 +272,7 @@ For our example we will use the Welsh Dragon Model which was released by `Bangor
 
         VirtualLab -f RunFiles/RunTutorials.py
 
-The output is located in ``Output/Dragon/Tutorials/Voxel-Images/Welsh-Dragon.Tiff``. You may notice that, since this mesh only contains triangle data, the resulting voxel image only contains coloured voxels on the surface of the model, see :numref:`Fig. %s <ImageJ_03>`. You will also notice that, much like the dog bone in :ref:`example 1 <Example1>`, the model surface defaults to white (greyscale value of 255). This is because ``.stl`` files contain no information on materials. Therefore, as such, the entire mesh is set to a single greyscale value. Once again you can change this value in ``greyscale_Welsh-Dragon.csv`` if desired.
+The output is located in ``Output/Examples/Dragon/Voxel-Images/Welsh-Dragon.Tiff``. You may notice that, since this mesh only contains triangle data, the resulting voxel image only contains coloured voxels on the surface of the model, see :numref:`Fig. %s <ImageJ_03>`. You will also notice that, much like the dog bone in :ref:`example 1 <Example1>`, the model surface defaults to white (greyscale value of 255). This is because ``.stl`` files contain no information on materials. Therefore, as such, the entire mesh is set to a single greyscale value. Once again you can change this value in ``greyscale_Welsh-Dragon.csv`` if desired.
 
 .. _ImageJ_03:
 

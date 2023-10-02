@@ -7,10 +7,7 @@ import os
 import uuid
 
 def _tmpfile_pkl(tempdir="/tmp"):
-    import uuid
-
     return "{}/{}.pkl".format(tempdir, uuid.uuid4())
-
 
 def _pyfunctorun(funcfile, funcname, in_path, out_path):
     vlab_dir = get_vlab_dir()
@@ -18,28 +15,23 @@ def _pyfunctorun(funcfile, funcname, in_path, out_path):
         vlab_dir, funcfile, funcname, in_path, out_path
     )
 
-
 def run_pyfunc_setup(funcfile, funcname, args=(), kwargs={}):
-    arg_path = _tmpfile_pkl()  # temp file for arguments
+    # temp file for arguments
+    arg_path = _tmpfile_pkl()
     with open(arg_path, "wb") as f:
         pickle.dump((args, kwargs), f)
-
-    ret_val_path = _tmpfile_pkl()  # temp file for return of function
-
+    # temp file for return of function
+    ret_val_path = _tmpfile_pkl()  
+    # make executable
     python_exe = _pyfunctorun(funcfile, funcname, arg_path, ret_val_path)
+    return python_exe
 
-    return python_exe, [arg_path, ret_val_path]
-
-
-def run_pyfunc_launch(ContainerInfo, command, pkl_files):
-    RC = Exec_Container(ContainerInfo, command)
-
-    arg_path, ret_val_path = pkl_files
+def run_pyfunc_return(python_exe):
+    exe_list = python_exe.split()
+    ret_val_path = exe_list[-1] # last argument of python_exe is the file where returned values are stored
     with open(ret_val_path, "rb") as f:
         func_results = pickle.load(f)
-
-    return RC, func_results
-
+    return func_results
 
 def get_Vlab_Tcp_Port():
     """
@@ -549,3 +541,7 @@ def get_vlab_dir(parsed_dir=None):
         )
 
     return vlab_dir
+
+def container_to_host_path(file):
+    # This function is no longer required as the host VL install is the same as that in the container
+    return file

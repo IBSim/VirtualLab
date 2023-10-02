@@ -13,20 +13,20 @@ to run analysis using the cad2vox package (which is installed in a different con
 This is called in Methods/Voxelise.py
 '''
 
-def Run(funcfile, funcname, fnc_args=(), fnc_kwargs = {}, ContainerInfo = None, tempdir='/tmp'):
+def Run(funcfile, funcname, fnc_args=(), fnc_kwargs = {}, ContainerInfo = None, return_values = True, tempdir='/tmp'):
     
     if ContainerInfo is None:
         # Get default container info
         ContainerInfo = GetInfo('GVXR') 
 
-    pth = "{}/{}.pkl".format(tempdir,uuid.uuid4())
-    with open(pth,'wb') as f:
-        pickle.dump((fnc_args,fnc_kwargs),f)
+    python_exe = Utils.run_pyfunc_setup(funcfile,funcname,args=fnc_args,kwargs=fnc_kwargs)
 
     container_bash = "{}/VL_GVXR.sh".format(Dir) # bash script executed by container
     # command passed to container bash (done this way for more flexibility)
-    container_command = "python3 /home/ibsim/VirtualLab/bin/run_pyfunc.py {} {} {}".format(funcfile,funcname,pth)
-
-    command = "{} -c '{}' ".format(container_bash,container_command)
+    command = "{} -c '{}' ".format(container_bash,python_exe)
     RC = Utils.Exec_Container(ContainerInfo, command)
-    return RC
+    if return_values:
+        func_return = Utils.run_pyfunc_return(python_exe)
+        return RC, func_return
+    else:
+        return RC

@@ -1,32 +1,38 @@
 #!/usr/bin/env python3
 from pickletools import uint8
 from gvxrPython3 import gvxr
+from gvxrPython3.utils import loadXpecgenSpectrum
+import matplotlib.pyplot as plt
 #import gvxrPython3 as gvxr
 import numpy as np
 import math
 import meshio
+import Scripts.VLPackages.GVXR.GVXR_utils as GVXR_utils
 from Scripts.VLPackages.GVXR.GVXR_utils import *
-
-class GVXRError(Exception):
-    '''Custom error class to format error message in a pretty way.'''
-    def __init__(self, value): 
-        self.value = value
-    def __str__(self):
-        Errmsg = "\n========= Error =========\n\n"\
-        f"{self.value}\n\n"\
-        "=========================\n\n"
-        return Errmsg
 
 def CT_scan(**kwargs):
     ''' Main run function for GVXR'''
     #get kwargs or set defaults
     Material_list = kwargs['Material_list']
+    Material_Types = kwargs["Material_Types"]
+    Amounts = kwargs.get("Amounts",[])
+    Density = kwargs.get("Density",[])
     Headless = kwargs.get('Headless',False)
-    num_projections = kwargs.get('num_projections',180)
-    angular_step = kwargs.get('angular_step',1)
-    im_format = kwargs.get('im_format','tiff')
-    use_tetra = kwargs.get('use_tetra',False)
 
+    Tube_Voltage = kwargs.get("Tube_Voltage",0.0)
+    Tube_Angle = kwargs.get("Tube_Angle",12.0)
+    Filter_Material = kwargs.get("Filter_Material",None)
+    Filter_ThicknessMM = kwargs.get("Filter_ThicknessMM",None)
+
+    num_projections = kwargs.get('num_projections',1)
+    angular_step = kwargs.get('angular_step',0)
+    im_format = kwargs.get('im_format',None)
+    use_tetra = kwargs.get('use_tetra',False)
+    downscale = kwargs.get('downscale',1.0)
+    fill_percent = kwargs.get('fill_percent',None)
+    fill_value = kwargs.get('fill_value',None)
+    FFNorm = kwargs.get('FFNorm',False)
+    bitrate = kwargs.get('bitrate','float32')
     print(gvxr.getVersionOfSimpleGVXR())
     print(gvxr.getVersionOfCoreGVXR())
     # Create an OpenGL context
@@ -39,8 +45,12 @@ def CT_scan(**kwargs):
 
     # Load the data
     print("Loading the data");
-    
-    mesh = meshio.read(kwargs['mesh_file'])
+
+    if use_tetra:
+       mesh_file = convert_tets_to_tri(kwargs['mesh_file'])
+       mesh = meshio.read(mesh_file)
+    else:
+        mesh = meshio.read(kwargs['mesh_file'])
 
     #extract np arrays of mesh data from meshio
     points = mesh.points
@@ -55,49 +65,32 @@ def CT_scan(**kwargs):
         raise GVXRError("User asked to use triangles but input file does "
         "not contain Triangle data")
 
-    if not np.any(tetra) and use_tetra:
-        #no tetra data but trying to use tets
-        raise GVXRError("User asked to use tets but file does not contain Tetrahedron data")
-        
         # extract dict of material names and integer tags
     try:
         all_mat_tags=mesh.cell_tags
     except AttributeError:
         all_mat_tags = {}
 
-    if not all_mat_tags:
-        print ("[WARN] No materials defined in input file so we assume the whole mesh is made of a single material.")
+    if all_mat_tags == {}:
         mat_tag_dict={0:['Un-Defined']}
         all_mat_tags = mat_tag_dict
-        if use_tetra:
-            mat_ids = np.zeros(np.shape(tetra)[0],dtype = int)
-        else:
-            mat_ids = np.zeros(np.shape(triangles)[0],dtype = int) 
+        mat_ids = np.zeros(np.shape(triangles)[0],dtype = int)
         tags = np.unique(mat_ids)
     else:
     # pull the dictionary containing material id's for each element
     # and the np array of ints that label the materials.
-        if use_tetra:
-            mat_ids = mesh.get_cell_data('cell_tags','tetra')
-        else:
-            mat_ids = mesh.get_cell_data('cell_tags','triangle')
-        
+        mat_ids = mesh.get_cell_data('cell_tags','triangle')
+
         tags = np.unique(mat_ids)
         if(np.any(mat_ids==0)):
             all_mat_tags['0']=['Un-Defined']
         mat_tag_dict = find_the_key(all_mat_tags, np.unique(mat_ids))
-            
-# switch element type based on flag, this prevents us having to keep checking
-#  if using tets or tri.
-    if use_tetra:
-        #extract surface triangles from volume tetrahedron mesh
-        elements, mat_ids  = tets2tri(tetra,points,mat_ids)
-    else:
-        elements = triangles
+
+    elements = triangles
 
     if len(tags) != len(Material_list):
         Errormsg = (f"Error: The number of Materials read in from Input file is {len(Material_list)} "
-        f"this does not match \nthe {len(mat_tag_dict)} materials in {kwargs['mesh_file']}.\n\n" 
+        f"this does not match \nthe {len(mat_tag_dict)} materials in {kwargs['mesh_file']}.\n\n"
         f"The meshfile contains: \n {mat_tag_dict} \n\n The Input file contains:\n {Material_list}.")
         gvxr.destroyAllWindows();
         raise GVXRError(Errormsg)
@@ -110,7 +103,7 @@ def CT_scan(**kwargs):
         mat_nodes = np.take(elements,nodes,axis=0)
         meshes.append(mat_nodes)
         mesh_names.append(str(all_mat_tags[N]))
-    
+
 
     #define boundray box for mesh
     min_corner = np.array([np.min(points[:,0]), np.min(points[:,1]), np.min(points[:,2])])
@@ -134,26 +127,59 @@ def CT_scan(**kwargs):
         raise GVXRError(f"Invalid beam type {kwargs['Beam_Type']} defined in Input File, must be either point or parallel")
 
     gvxr.resetBeamSpectrum()
-    for energy, count in zip(kwargs['Energy'],kwargs['Intensity']):
-        gvxr.addEnergyBinToSpectrum(energy, kwargs['Energy_units'], count);
+    if kwargs["Tube_Voltage"] != 0.0:
+        #generate an xray tube spectrum
+        filters = []
+        if Filter_Material != None and Filter_ThicknessMM != None:
+            materiails = [Filter_Material]
+            thickness = [Filter_ThicknessMM]
+            for mat, thick in zip(materiails,thickness):
+                filters.append([mat,thick])
+
+        print(f"generating xray Tube spectrum for {Tube_Voltage} Kv tube.")
+        spectrum_filtered, k_filtered, f_filtered, units = loadXpecgenSpectrum(Tube_Voltage,filters=filters)
+        plt.plot(k_filtered, f_filtered)
+        # Display the labels
+        plt.xlabel('Energy [KeV]')
+        plt.ylabel('Number of Photons')
+        plt.title(f'X-Rray Tube spectrum for {Tube_Voltage} Kv tube')
+        plt.savefig(Kwargs['Output_dir']+'/beam_spec.png')
+
+    else:
+    # generate spectrum from given energy and intensity values
+        print("Generating Beam spectrum using supplied values of Energy and Intensity.")
+        for energy, count in zip(kwargs['Energy'],kwargs['Intensity']):
+            gvxr.addEnergyBinToSpectrum(energy, kwargs['Energy_units'], count);
+
     # Set up the detector
     print("Set up the detector");
     #gvxr.setDetectorPosition(15.0, 80.0, 12.5, "mm");
     gvxr.setDetectorPosition(kwargs['Det_PosX'],kwargs['Det_PosY'], kwargs['Det_PosZ'], kwargs['Det_Pos_units']);
     gvxr.setDetectorUpVector(0, 0, -1);
     gvxr.setDetectorNumberOfPixels(kwargs['Pix_X'], kwargs['Pix_Y']);
-    gvxr.setDetectorPixelSize(kwargs['Spacing_X'], kwargs['Spacing_Y'], kwargs['Spacing_units']);
+    gvxr.setDetectorPixelSize(kwargs['Spacing_X']*downscale, kwargs['Spacing_Y']*downscale, kwargs['Spacing_units']);
     for i,mesh in enumerate(meshes):
         label = mesh_names[i];
     ### BLOCK #####
-        gvxr.makeTriangularMesh(label,points.flatten(),mesh.flatten(),str(kwargs['Model_Pos_units']));
+        gvxr.makeTriangularMesh(label,points.flatten(),mesh.flatten(),str(kwargs['Model_Mesh_units']));
         # place mesh at the origin then translate it according to the defined offset
         gvxr.moveToCentre(label);
         gvxr.translateNode(label,kwargs['Model_PosX'],kwargs['Model_PosY'],kwargs['Model_PosZ'],kwargs['Model_Pos_units'])
         gvxr.scaleNode(label, kwargs['Model_ScaleX'], kwargs['Model_ScaleY'], kwargs['Model_ScaleZ'])
-        gvxr.setElement(label, Material_list[i]);
+        # set materials based on type
+        if Material_Types[i] == 'E':
+            gvxr.setElement(label, Material_list[i]);
+        elif Material_Types[i] == 'M':
+            gvxr.setMixture(label,Material_list[i],Amounts[i])
+            gvxr.setDensity(label,Density[i],"g/cm3")
+        elif Material_Types[i] == 'C':
+            gvxr.setCompound(label, Material_list[i])
+            gvxr.setDensity(label,Density[i],"g/cm3")
+        else:
+            raise GVXRError(f'Invalid material type {Material_Types[i]} must be one of E,M or C')
+        # add mesh to scene
         gvxr.addPolygonMeshAsInnerSurface(label)
-        
+
     # set initial rotation
     # note GVXR uses OpenGL which performs rotations with object axes not global.
     # This makes rotations around the global axes very tricky.
@@ -173,51 +199,37 @@ def CT_scan(**kwargs):
             gvxr.rotateNode(label, kwargs['rotation'][2], global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]); # perfom Z rotation axis
             total_rotation[2,i] += kwargs['rotation'][2]# track total rotation
     # Update the 3D visualisation
-    gvxr.displayScene();       
+    gvxr.displayScene();
     # Compute an X-ray image
     print("Compute CT aquisition");
 
-    projections = [];
     theta = [];
-    # Compute the intial X-ray image (zeroth angle) and add it to the list of projections
-    projections.append(gvxr.computeXRayImage());
-    # Update the 3D visualisation
-    gvxr.displayScene();
-    theta.append(0.0);
+    projections = []
     for i in range(1,num_projections+1):
         # Rotate the model by angular_step degrees
         for n,label in enumerate(mesh_names):
             gvxr.rotateNode(label, -1*angular_step, global_axis_vec[0], global_axis_vec[1], global_axis_vec[2]);
             total_rotation[2,n]+=angular_step
         # Compute an X-ray image and add it to the list of projections
-        projections.append(gvxr.computeXRayImage());
+        projection = np.array(gvxr.computeXRayImage());
         # Update the 3D visualisation
         gvxr.displayScene();
         theta.append(i * angular_step * math.pi / 180);
-      
-    file = open("GVXR_angles.txt", "w")
-    file.write(f"angles = {theta} \n")
-    file.close()
-       
-    # Convert the projections as a Numpy array
-    projections = np.array(projections)
-    
-    # Perform the flat-Field correction of raw data
-    dark = np.zeros(projections.shape);
+        if FFNorm:
+            projection = flat_field_normalize(projection,flat,dark)
+        #fill in edge pixels with zeros to reduce reconstruction artifacts
+        projection = fill_edges(projection,fill_percent,fill_value=fill_value)
+        projections.append(projection)
+        #write_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i,bitrate=bitrate);
 
-    # Retrieve the total energy
-    energy_bins = gvxr.getEnergyBins("MeV") 
-    photon_count_per_bin = gvxr.getPhotonCountEnergyBins();
-    total_energy = 0.0;
-    for energy, count in zip(energy_bins, photon_count_per_bin):
-        total_energy += energy * count;
-    flat = np.ones(projections.shape) * total_energy;
-    projections = flat_field_normalize(projections,flat,dark)
-    #convert from transmission to absorbsion data.
-    #projections = - np.log(projections)
-    #projections = normalise_uint(projections)
-    write_image(kwargs['output_file'],projections,im_format=im_format);
-    
+    if bitrate.startswith('int'):
+        projections = np.array(projections)
+        glob_min,glob_max = projections.min(),projections.max()
+        projections = GVXR_utils.convert_to_int(projections,glob_min,glob_max,bitrate)
+
+    for i,projection in enumerate(projections):
+        GVXR_utils.make_image(kwargs['output_file'],projection,im_format=im_format,angle_index=i+1)
+
     if (not Headless):
         controls_msg = ('### GVXR Window Controls ###\n'
          'You are Running an interactive loop \n'
@@ -234,7 +246,7 @@ def CT_scan(**kwargs):
          'H: display/hide the X-ray detector\n')
         print(controls_msg)
         gvxr.renderLoop()
-    #clear the scene graph ready for the next render in the loop    
+    #clear the scene graph ready for the next render in the loop
     gvxr.removePolygonMeshesFromSceneGraph()
     return
 
@@ -253,13 +265,13 @@ def flat_field_normalize(arr, flat, dark, cutoff=None):
         3D dark field data.
     cutoff : float, optional
         Permitted maximum value for the normalized data.
-    
+
     Returns
     -------
     ndarray
         Normalized 3D tomographic data.
     """
-    import numexpr as ne  
+    import numexpr as ne
     l = np.float32(1e-6)
     flat = np.mean(flat, axis=0, dtype=np.float32)
     dark = np.mean(dark, axis=0, dtype=np.float32)

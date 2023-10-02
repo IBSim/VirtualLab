@@ -14,21 +14,11 @@ import VLconfig
 # Definitions
 #===============================================================================
 
-Simulation='Dragon'
-Project='Tutorials'
+Simulation='Examples'
+Project='Dragon'
 Parameters_Master='TrainingParameters_Dragon'
 Parameters_Var=None
 
-
-# path to IBSim mesh file
-stl_fname = "{}/Dragon/Tutorials/Meshes/welsh-dragon-small.stl".format(VLconfig.OutputDir)
-if not os.path.isfile(stl_fname):
-    os.makedirs(os.path.dirname(stl_fname),exist_ok=True)
-    # Download file from link
-    r = requests.get('https://sourceforge.net/p/gvirtualxray/code/HEAD/tree/trunk/SimpleGVXR-examples/WelshDragon/welsh-dragon-small.stl?format=raw')
-    # write to file
-    with open(stl_fname,'wb') as f:
-        f.write(r.content)
 
 #===============================================================================
 # Environment
@@ -38,6 +28,13 @@ VirtualLab=VLSetup(
            Simulation,
            Project
            )
+
+mesh_file = "{}/welsh-dragon-small.stl".format(VirtualLab.Mesh.OutputDir)
+if not os.path.isfile(mesh_file):
+    sys.path.insert(0,VirtualLab.PARAMETERS_DIR)
+    from DragonMesh import get_mesh
+    get_mesh(mesh_file)
+    sys.path.pop(0)
 
 VirtualLab.Settings(
            Mode='Interactive',

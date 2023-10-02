@@ -1,0 +1,39 @@
+{
+    "Mesh": {
+        "Namespace": "Mesh"
+    },
+    "Sim": {
+        "Namespace": "Sim"
+    },
+    "DA": {
+        "Namespace": "DA"
+    },
+    "Test": {
+        "Namespace": "Test"
+    },
+    "Voxelise": {
+        "Namespace": "Vox"
+    },
+    "CT_Scan": {
+        "Namespace": "GVXR"
+    },
+    "CT_Recon": {
+        "Namespace": "GVXR"
+    },
+    "ML": {
+        "Namespace": "ML"
+    },
+    "CT_Recon2D": {
+        "Namespace": "GVXR"
+    },
+    "ImPreProc": {
+        "Namespace": "ImPreProc"
+    },
+     "VolSeg_Train": {
+        "Namespace": "VolSeg"
+    },
+     "VolSeg_Predict": {
+        "Namespace": "VolSeg"
+    }
+
+}

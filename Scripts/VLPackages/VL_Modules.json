@@ -1,0 +1,45 @@
+{
+    "Manager": {
+        "Docker_url": "ibsim/virtuallab",
+        "Tag": "dev",
+        "Apptainer_file": "VL_Manager.sif"
+    },
+    "Cad2Vox": {
+        "Docker_url": "ibsim/vl_cad2vox",
+        "Tag": "dev",
+        "Apptainer_file": "VL_Vox.sif"
+    },
+    "GVXR": {
+        "Docker_url": "ibsim/vl_gvxr",
+        "Tag": "dev",
+        "Apptainer_file": "VL_GVXR.sif"
+    },
+    "CIL": {
+        "Docker_url": "ibsim/vl_cil",
+        "Tag": "dev",
+        "Apptainer_file": "VL_CIL.sif"
+    },
+    "Test_Comms": {
+        "Docker_url": "ibsim/vl_coms_test",
+        "Tag": "dev",
+        "Apptainer_file": "VL_Test.sif"
+    },
+    "SalomeMeca": {
+        "Docker_url": "ibsim/vl_salomemeca",
+        "Tag": "dev",
+        "Apptainer_file": "VL_Salome.sif"
+    },
+    "ImPreProc": {
+        "Docker_url": "ibsim/vl_impreproc",
+        "Tag": "latest",
+        "Apptainer_file": "VL_ImPreProc.sif",
+        "Method":"ImPreProc" 
+        },
+    "VolSeg": {
+        "Docker_url":"localhost:5000/vl_survos ",
+        "Tag": "latest",
+        "Apptainer_file": "VL_VolSeg.sif",
+        "Method":"VolSeg" 
+        }  
+
+}

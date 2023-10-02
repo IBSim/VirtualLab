@@ -2,6 +2,40 @@ import os
 import csv
 import errno
 import numpy as np
+from operator import xor as xor_
+from functools import reduce
+import itertools
+import time
+import VLconfig as VLC
+import math
+
+class GVXRError(Exception):
+    '''Custom error class to format error message in a pretty way.'''
+    def __init__(self, value): 
+        self.value = value
+    def __str__(self):
+        Errmsg = "\n========= Error =========\n\n"\
+        f"{self.value}\n\n"\
+        "=========================\n\n"
+        return Errmsg
+
+def warning_message(msg:str,line_length:int=50):
+    ''' 
+    Function to take in a long string and format it in a pretty
+    way for printing to screen.
+    '''
+    from textwrap import fill
+    header = " WARNING: ".center(line_length,'*')
+    footer = ''.center(line_length,'*')
+    msg = fill(msg,width=line_length,initial_indent=' ', subsequent_indent=' ')
+    print(header)
+    print(msg)
+    print(footer)
+    return
+
+
+def xor(*args):
+    return reduce(xor_, map(bool, args))
 
 def FlipNormal(triangle_index_set):
     ''' Function to swap index order of triangles to flip the surface normal.'''
@@ -20,7 +54,7 @@ def correct_normal(tri_ind,extra,points):
     A = points[tri_ind[0]]
     B = points[tri_ind[1]]
     C = points[tri_ind[2]]
-    D = points[extra[0]]
+    D = points[extra]
     #edge vectors 
     E0 = B - A
     E1 = C - B
@@ -38,9 +72,24 @@ def extract_unique_triangles(t):
     tri = t[index[counts==1]]
     return tri, index[counts==1]
 
+def fix_normals_full(tet,points):
+    '''
+    Function to check and fix if necessary the 4 surface normals of a given tetrahedron
+    Note we use functools.partail when calling this function to prevent us having to 
+    copy the points array for each call given it never changes.
+    '''
+    Nodes = list(itertools.combinations(tet,3))
+    surface= np.empty([len(Nodes),3])
+    for I, face in enumerate(Nodes):
+        face = np.array(face)
+        extra = int(np.setdiff1d(tet,face,assume_unique=True))
+        face = correct_normal(face,extra,points)
+        surface[I,:] = np.array([face[0],face[1],face[2]])
+    return surface
+
 def tets2tri(tetra,points,mat_ids):
-    import itertools
-    import time
+    import functools
+    import multiprocessing
     start = time.time()
     # each tet has been broken dwon into 4 triangles 
     # so we must expand mat_ids by 4 times to get the
@@ -48,20 +97,22 @@ def tets2tri(tetra,points,mat_ids):
     #mat_ids = np.repeat(mat_ids,4)
     vol_mat_ids = np.empty(len(tetra)*4,'int')
     surface = []
+    # tri=np.empty(3,dtype='int32')
     surf_mat_ids=[]
+    items=[]
     j = 0
-    for i,tet in enumerate(tetra,start=0):
-        Nodes = tuple(itertools.combinations(tet,3))
-        for face in Nodes:
-            vol_mat_ids[j] = mat_ids[i]
-            extra = list(set(tetra[i]).difference(face))
-            face = correct_normal(face,extra,points)
-            surface.append([face[0], face[1], face[2]])
-            j+=1
-            
-    tri = np.array(list(surface),'int32')
+    # we use functools.partail here to prevent us having to copy the points array for each call to fix_normals
+    fix_normals = functools.partial(fix_normals_full,points=points)
+
+    with multiprocessing.Pool() as pool:
+	# call the function for each item in parallel
+	    for result in pool.map(fix_normals, tetra):
+               surface.append(result)
+    tri = np.concatenate(surface,axis=0).astype('int32')
+    vol_mat_ids = np.repeat(mat_ids,4)     
     # extract triangles on the surface of the mesh and there id's
     tri_surf, ind = extract_unique_triangles(tri)
+    
     surf_mat_ids = np.take(vol_mat_ids,ind)
     stop = time.time()
     print(f"Tet to Tri conversion took: {stop-start} seconds")
@@ -93,7 +144,7 @@ def Read_Material_File(Material_file,mat_tags):
     Material_file = os.path.abspath(Material_file)
     num_mats = len(mat_tags)
     if not os.path.exists(Material_file):
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), Material_file)
+        raise GVXRError(errno.ENOENT, os.strerror(errno.ENOENT), Material_file)
 
     print("Reading Materials from " + Material_file)
     df = pd.read_csv(Material_file)
@@ -105,24 +156,164 @@ def Read_Material_File(Material_file,mat_tags):
 
     return list(Materials_list)
 
-def Check_Materials(Mat_list):
-    """ Function to check the element name or number is one that GVXR recognises.
-        This is done by passing the string to the gvxr.getElementAtomicNumber(string).
-        This already has error handling functions so if the name is valid it will return
-        the atomic number (which we are not actually using) and if not it will 
-        throw an exception and print. "ERROR: Element (name:string) not found."
- """
-    from gvxrPython3 import gvxr
-    #import gvxrPython3 as gvxr
-    for Mat_value in Mat_list:
-        atomic_number = gvxr.getElementAtomicNumber(Mat_value)
+def Check_Materials(Mat_list,Amounts,Density):
+    """ 
+    Function to check the element name or number is one that GVXR recognizes.
+    Then create a list of strings for each materials corresponding type with 
+    E for element, M for mixture, and C for compound. This will then tell 
+    GVXR what to do with each material.
+    """
+    Mixture = True
+    mat_types = []        
+    for Material in Mat_list:
+    # Check mat_list for list of lists, This indicates that the user has defined a mixture
+    # as such we then need to check they have defined both amounts and Density
+    # otherwise Assume they have defined either elements or compounds
+        if isinstance(Material, list):
+            if not all(isinstance(x, int) for x in Material):
+                raise ValueError(f'Invalid mixture {Material}. When using a mixture of elements they must be all be ints.')
+            elif Amounts == []:
+                raise ValueError(f'When using a mixture of elements you must define GVXR.Amounts')
+            elif len(Mat_list) != len(Amounts):
+               raise ValueError(f'You have defined {len(Mat_list)} mixtures but {len(Amounts)} corresponding amounts. These must match')
+            else:
+                mat_types.append('M')
+
+        elif isinstance(Material, int):
+            check_element_num(Material)
+            mat_types.append('E')
+        elif isinstance(Material, str):
+            mtype = check_element_or_compound(Material)
+            mat_types.append(mtype)
+        else:
+           raise ValueError(f'Invalid material {Materail} of type {type(Materail)} must be an int or a string.')
+
+    # if mixture or compound have been used we need to check that the Density was defined for each
+    if any(s in mat_types for s in ('M','C')):
+        if Density == []:
+            raise ValueError(f'When using a mixture of elements or Compounds you must define GVXR.Density')
+        elif len(Mat_list) != len(Density):
+            raise ValueError(f'You have defined {len(Mat_list)} mixtures/compunds but {len(Density)} corresponding Densities. These must match')
+    
+    return mat_types
+
+def check_element_num(number:int):
+    '''.
+    Simple function to check if given element number is valid
+    Valid elements are ints between 1 and 100.  
+    '''
+    if  number < 0:
+        raise ValueError(f'Invalid Atomic number {number} must not be negative.')
+    elif number > 100:
+        raise ValueError(f'Invalid Atomic number {number} must be less than 100.')
+
     return
+
+def check_element_or_compound(Material:str):
+    '''
+    function to check if string is a element name, symbol or a compound.
+    Note: we have no good way of checking if the string is a valid compound.
+    As such we assume that if it is not an element name or symbol it must 
+    be a compound. in which case we are relying on GVXR to check if its valid.  
+    '''
+    import csv
+
+#  Open csv file containing names and symbols for elements 1 to 100 
+    csv_file = open(f'{VLC.VL_HOST_DIR}/Scripts/VLPackages/GVXR/ptable.csv','r')
+    z_num = []
+    element_names = []
+    symbols = []
+
+    # Read off and discard first line, to skip headers
+    csv_file.readline()
+
+# Split columns while reading
+    for a, b, c in csv.reader(csv_file, delimiter=','):
+    # Append each variable to a separate list
+        z_num.append(a)
+        element_names.append(b)
+        symbols.append(c)
+    
+    if Material in element_names or Material in symbols:
+        mtype = 'E'
+    else:
+        mtype = 'C'
+
+    return mtype
 
 def find_the_key(dictionary:dict, target_keys:str):
     """Function to pull out the keys of a dictionary as a list."""
     return {key: dictionary[key] for key in target_keys}
 
-def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
+def convert_to_int(vox,glob_min,glob_max,dtype='int16'):
+    if dtype=='int8': scale = 2**8-1
+    elif dtype=='int16': scale = 2**16-1
+    else:
+        print('Unknown dtype for integer conversion. Defaulting to int16')
+        scale = 2**16-1
+
+    vox = (vox - glob_min)/(glob_max - glob_min)*scale
+    vox = vox.astype('u{}'.format(dtype))
+    return vox
+
+def make_image(output_dir,vox,im_format='tiff',angle_index=0):
+    from PIL import Image
+    import tifffile
+    output_name = os.path.basename(os.path.normpath(output_dir))
+    os.makedirs(output_dir, exist_ok=True)
+    if im_format == None:
+        im_format:str='tiff'
+    #calcualte number of digits in max number of images for formating
+    import math
+    if angle_index > 0:
+        digits = int(math.log10(angle_index))+1
+    elif angle_index == 0:
+        digits = 1
+    else:
+        raise ValueError('Angle_index for write image must be a non negative int')
+
+    im = Image.fromarray(vox)
+    im_output=f"{output_dir}/{output_name}_{angle_index:0{digits}d}.{im_format}"
+    im.save(im_output)
+    im.close()
+
+def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate='float32',angle_index=0):
+    from PIL import Image, ImageOps
+    import os
+    import tifffile
+    output_name = os.path.basename(os.path.normpath(output_dir))
+    os.makedirs(output_dir, exist_ok=True)
+    if im_format == None:
+        im_format:str='tiff'
+    #calcualte number of digits in max number of images for formating
+    import math
+    if angle_index > 0:
+        digits = int(math.log10(angle_index))+1
+    elif angle_index == 0:
+        digits = 1
+    else:
+        raise ValueError('Angle_index for write image must be a non negative int')
+
+    if bitrate == 'int8':  
+        vox = (vox - vox.min())/(vox.max() - vox.min())*255
+        vox = vox.astype('uint8')
+    elif bitrate == 'int16':
+        vox = (vox - vox.min())/(vox.max() - vox.min())*65535
+        vox = vox.astype('uint16')
+    elif bitrate == 'float32':
+        vox = vox.astype('float32')
+    else:
+        print(f"warning: bitrate {bitrate} not recognized assuming 16-bit grayscale")
+        vox = (vox - vox.min())/(vox.max() - vox.min())*65535
+        vox = vox.astype('uint16')
+
+    im = Image.fromarray(vox)
+    im_output=f"{output_dir}/{output_name}_{angle_index:0{digits}d}.{im_format}"
+    im.save(im_output)
+    im.close()
+
+
+def write_image3D(output_dir:str,vox:np.double,im_format:str='tiff',bitrate='float32'):
     from PIL import Image, ImageOps
     import os
     output_name = os.path.basename(os.path.normpath(output_dir))
@@ -130,108 +321,39 @@ def write_image(output_dir:str,vox:np.double,im_format:str='tiff',bitrate=8):
     #calcualte number of digits in max number of images for formating
     import math
     digits = int(math.log10(np.shape(vox)[0]))+1
-    if bitrate == 8:
+    if bitrate == 'int8':
+        vox *= 255.0/vox.max()
         convert_opt='L'
-    elif bitrate == 16:
+    elif bitrate == 'int16':
+        vox *= 65536/vox.max()
         convert_opt='I;16'
+    elif bitrate == 'float32':
+        convert_opt='F'
     else:
         print("warning: bitrate not recognised assuming 8-bit greyscale")
+        vox *= 255.0/vox.max()
         convert_opt='L'
 
     for I in range(0,np.shape(vox)[0]):
         im = Image.fromarray(vox[I,:,:])
-        #im = im.convert(convert_opt)
+        im = im.convert(convert_opt)
         im_output=f"{output_dir}/{output_name}_{I:0{digits}d}.{im_format}"
         im.save(im_output)
-
-def normalise_uint(projections,bitrate=8):
-    ''' 
-    Normalise data as unsigned integer for image output
-    '''
-    import numpy as np
-    if bitrate == 8:
-        maxint = 255
-    elif bitrate == 16:
-        maxint = 65535
-    else:
-        raise(ValueError("Unknown bitrate for image output, must be 8 or 16"))
-    projections = np.array(projections)
-    data = projections / np.max(projections) # normalize the data to 0 - 1
-    data = projections*maxint  # Now scale by max int
-    return(data)
-
-def InitSpectrum(Beam,Verbose:bool=True,Headless:bool=False):
-    ''' Function to create x-ray beam from spectrum generated by spekpy.
-    ====================================================================
-    Input Pratmeters:
-    -----------------
-    Beam: Xray_Beam - dataclass to hold data related to xray beam.
-    Verbose: bool - flag to set if we want aditional output to terminal.
-    Headless: bool - flag to set if we want turn on/off matplot lib plots of spectrum data.
-    '''
-    
-    import spekpy as sp
-    if (Beam.Tube_Voltage is None):
-        raise ValueError('When using Spekpy you must define a Tube Voltage')
-    if (Beam.Tube_Angle is None):
-        raise ValueError('When using Spekpy you must define a Tube Angle')
-    if Verbose:
-        print("Generating Beam Spectrum:" )
-        print("Tube Voltage (kV):", Beam.Tube_Voltage)
-        print("Tube Angle (degrees):", Beam.Tube_Angle)
-
-    s = sp.Spek(kvp=Beam.Tube_Voltage, th=Beam.Tube_Angle) # Generate a spectrum (80 kV, 12 degree tube angle)
-
-    if (Beam.Filters is not None):
-        for beam_filter in Beam.Filters:
-            filter_material = beam_filter[0]
-            filter_thickness_in_mm = beam_filter[1]
-
-        if Verbose:
-            print("Applying ", filter_thickness_in_mm, "mm thick Filter of ", filter_material)
-        s.filter(filter_material, filter_thickness_in_mm)
-
-
-
-    #units = "keV"
-    k, f = s.get_spectrum(edges=True) # Get the spectrum
-
-    if not Headless:
-        import matplotlib.pyplot as plt # Import library for plotting
-        plt.plot(k, f) # Plot the spectrum",
-        plt.xlabel('Energy [keV]')
-        plt.ylabel('Fluence per mAs per unit energy [photons/cm2/mAs/keV]')
-        plt.show()
-
-    max_energy = 0
-    min_energy = 0
-    spectrum={}
-    for energy, count in zip(k, f):
-        count = round(count)
-        if count > 0:
-            max_energy = max(max_energy, energy)
-            min_energy = min(min_energy, energy)
-            if energy in spectrum.keys():
-                spectrum[energy] += count
-            else:
-                spectrum[energy] = count
-
-    if Verbose:
-        print("Minimum Energy:", min_energy, "keV")
-        print("Maximum Energy:", max_energy, "keV")
-    
-    if (Beam.Energy is not None) or (Beam.Intensity is not None):
-        import warnings
-        warnings.warn('You have defined Energies or Intensity'
-         'whist also using Spekpy. These will be ignored and'
-         'replaced with the Spekpy Values.') 
-    Beam.Energy = list(spectrum.keys())
-    Beam.Intensity = list(spectrum.values())
-    Beam.Energy_units = 'keV'
-    return Beam;
+        im.close()
 
 def without_keys(d, keys):
     return {x: d[x] for x in d if x not in keys}
+
+def strip_locals(Python_dict:dict):
+    # Remove all parmas that are Dataclasses as we will deal with them seperatly
+    IO_params = without_keys(Python_dict,["Beam","Detector","Model"])
+    #extract datclasses as seperate dicts
+    Beam = Python_dict["Beam"].__dict__
+    Cad = Python_dict["Model"].__dict__
+    Det = Python_dict["Detector"].__dict__
+
+    params ={**IO_params, **Beam, **Cad,**Det}
+    return params
 
 def dump_to_json(Python_dict:dict,file_name:str):
     import json
@@ -244,13 +366,14 @@ def dump_to_json(Python_dict:dict,file_name:str):
     Det = Python_dict["Detector"].__dict__
 
     params ={**IO_params, **Beam, **Cad,**Det}
+
     with open(file_name, 'w') as fp:
         json.dump(params, fp)
-        fp.close()
+
 
 def world_to_model_axis(rotation,global_axis=[0,0,1],threshold=1E-5):
     '''because Rotations in openGL are based around object axes not
-     global axes we need to calcualte the unit vector that points 
+     global axes we need to calculate the unit vector that points 
      along the global x,y or z axis in the model co-ordinates order 
      to rotate around it for the CT scan.
 
@@ -268,3 +391,83 @@ def world_to_model_axis(rotation,global_axis=[0,0,1],threshold=1E-5):
 # apply rotaion to axis
     model_axis = r_inv.apply(global_axis)
     return model_axis
+
+def convert_tets_to_tri(mesh_file):
+    '''
+    Function to read in a tetrahedron based 
+    volume mesh with meshio and convert it 
+    into surface triangle mesh for use with 
+    GVXR.
+    '''
+    import numpy as np
+    import meshio
+    import os
+    root, ext = os.path.splitext(mesh_file)
+    new_mesh_file = f"{root}_triangles{ext}"
+    # This check helps us avoid having to repeat the conversion from tri to tet 
+    # for each run when using one mesh file for multiple GVXR runs.
+    if os.path.exists(new_mesh_file):
+        print(f"Found {new_mesh_file} so assuming conversion has already been done previously.")
+        return new_mesh_file
+    
+    print("Converting tetrahedron mesh into triangles for GVXR")
+    mesh = meshio.read(mesh_file)
+    #extract np arrays of mesh data from meshio
+    points = mesh.points
+    tetra = mesh.get_cells_type('tetra')
+    if not np.any(tetra):
+        #no tetra data but trying to use tets
+        raise ValueError("User asked to use tets but mesh file does not contain Tetrahedron data")
+    mat_ids_tet = mesh.get_cell_data('cell_tags','tetra')
+    #extract surface triangles from volume tetrahedron mesh
+    elements, mat_ids  = tets2tri(tetra,points,mat_ids_tet)
+    cells = [('triangle',elements)]
+
+    # convert extracted triangles into new meshio object and write out to file
+    tri_mesh = meshio.Mesh(
+        points,
+        cells,
+        # Each item in cell data must match the cells array
+        cell_data={"cell_tags":[mat_ids]},
+    )
+    tri_mesh.cell_tags = find_the_key(mesh.cell_tags, np.unique(mat_ids))
+    print(f"Saving new triangle mesh as {new_mesh_file}")
+    tri_mesh.write(new_mesh_file)
+
+    return new_mesh_file
+
+def fill_edges(projection:'np.ndarray[np.float32]',fill_percent:float=0.0,fill_value:float=None, nbins:int = 256):
+    '''
+    Function to fill in the edges of an xray projection with fill_value (default is 1.0 i.e. background).
+    This is done to reduce ring/halo artifacts during reconstruction with CIL.
+    param: projection - 2D numpy array representing the image
+    param:  fill_percent -  float representing the percentage of pixes y ou want to fill 
+                            in from each edge.
+    param: fill_value - value to replace pixels with, default is to calcuate background value using image histogram.
+    '''
+    if fill_percent == None or fill_percent == 0.0:
+        return projection
+    
+    pix_y,pix_x = np.shape(projection)
+
+    # calculate the number of pixes to remove from each side in x and y
+    # Note: we use floor here since we dont want any chance that nx or ny
+    # are bigger then half of pix_x or pix_y.
+    nx = int(math.floor((pix_x * fill_percent)/ 2))
+    ny = int(math.floor((pix_y * fill_percent)/ 2))
+    if fill_value == None:
+        # use a histgram of the image to pick out the highest peak to obtain background intensity
+        bins, vals = np.histogram(projection,nbins)
+        peak_ind = np.argmax(bins)
+        fill_value = vals[peak_ind]
+    projection[:ny,:] = fill_value
+    projection[:,:nx] = fill_value
+    # this stops you nuking every value in the array instead of filling 0 
+    # pixels because we are using -ve indexing and as such -0 is treat as 0.
+    if ny > 0:
+        projection[-ny:,:] = fill_value 
+    if nx > 0:
+        projection[:,-nx:] = fill_value
+
+    return projection
+

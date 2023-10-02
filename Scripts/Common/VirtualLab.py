@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-
 sys.dont_write_bytecode = True
 import datetime
 import os
@@ -37,7 +36,6 @@ DefaultSettings = {
 
 class VLSetup:
     def __init__(self, Simulation, Project, Cont_id=1):
-#        import VLconfig
         self._parsed_kwargs = VLF.parsed_kwargs(
             sys.argv[1:]
         )  # may need to be more robust than sys.argv
@@ -58,7 +56,7 @@ class VLSetup:
         #Check that VL_config is indeed set correctly
         if VLconfig.VL_HOST_DIR=="":
             self.Exit(VLF.ErrorMessage("Something went wrong. The VirtualLab directory \n"
-            "does not appear to be set correctly in VL_Config.py."
+            "does not appear to be set correctly in VL_Config.py.\n"
             "Please edit VL_HOST_DIR to point to the VirtualLab directory."))
 
     def __getstate__(self):
@@ -71,7 +69,7 @@ class VLSetup:
         This dundder method thus provides a workaround since __getstate__ gets called before pickling.
         Thus we can remove the offending attributes since they are not needed by the mpi processes.
 
-        Note: we do  not directly modify self.__dict__ but instead copy it and serialise the copy. This is
+        Note: we do  not directly modify self.__dict__ but instead copy it and serialize the copy. This is
         because we dont want to modify the object itself but instead send a modified version to each mpi process.
 
         """
@@ -91,7 +89,7 @@ class VLSetup:
         """Add in the methods defined in Scripts/Methods to the VirtualLab class."""
         MethodsDir = "{}/Methods".format(self.SCRIPTS_DIR)
         self.Methods = []
-        self.method_config = self.load_config(self.CONF_DIR, "VL_Methods.json")
+        self.method_config = self.load_config(MethodsDir, "VL_Methods.json")
         # Loop through directory contents
         for method_name in self.method_config.keys():
             # skip directiories, files that start with '_' and those that aren't python

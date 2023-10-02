@@ -1,0 +1,18 @@
+[XTekCT]
+Name=Welsh Dragon
+Units=mm
+Projections=1
+InitialAngle=0
+AngularStep=0
+DetectorPixelsX=350
+DetectorPixelSizeX=0.7
+DetectorPixelsY=350
+DetectorPixelSizeY=0.7
+SrcToObject=250
+SrcToDetector=360
+DetectorOffsetX=0.0
+DetectorOffsetY=0.0
+RegionStartX=0
+RegionPixelsX=1432
+RegionStartY=0
+RegionPixelsY=1432

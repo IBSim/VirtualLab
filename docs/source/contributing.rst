@@ -214,7 +214,7 @@ The final step is to use the form to create the merge request:
 
 * First give your merge request a title and a brief description of what features you have added or what changes have been made.
 * For **Assignees** select "Assign to me".
-* For **Reviewers** select one of either Ben Thorpe, Llion Evans or Rhydian Lewis.
+* For **Reviewers** select one of either Ben Thorpe or Rhydian Lewis.
 * For **milestone** select no Milestone.
 * For **Labels** select one if appropriate.
 * For **Merge options** select "Delete source branch when merge request is accepted".

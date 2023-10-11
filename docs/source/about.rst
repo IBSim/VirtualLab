@@ -1,7 +1,7 @@
 About
 =====
 
-**VirtualLab** is the ouput of a collaboration between the `Image-Based Simulation <https://ibsim.co.uk>`_ (IBSim) Group at `Swansea University <https://www.swansea.ac.uk>`_ and `UK Atomic Energy Authority <https://ccfe.ukaea.uk/>`_ led by Llion Evans. The majority of the initial work was carried out by Rhydian Lewis, during his PhD on *"Simulation driven machine-learning methods to optimise design of physical experiment and enhance data analysis for testing of fusion energy heat exchanger components"*, and Benjamin Thorpe, as Research Software Engineer on the EPSRC project *"Inline virtual qualification from 3D X-ray imaging for high-value manufacturing"* (EP/R012091/1).
+**VirtualLab** is the ouput of a collaboration between the `Image-Based Simulation <https://ibsim.co.uk>`_ (IBSim) Group at `Swansea University <https://www.swansea.ac.uk>`_ and `UK Atomic Energy Authority <https://ccfe.ukaea.uk/>`_. The majority of the initial work was carried out by Rhydian Lewis, during his PhD on *"Simulation driven machine-learning methods to optimise design of physical experiment and enhance data analysis for testing of fusion energy heat exchanger components"*, and Benjamin Thorpe, as Research Software Engineer on the EPSRC project *"Inline virtual qualification from 3D X-ray imaging for high-value manufacturing"* (EP/R012091/1).
 
 Support
 *******
@@ -45,7 +45,7 @@ License
 
 .. |date| date:: %Y
 
-Copyright 2020-|date| IBSim Group (c/o Llion Marc Evans).
+Copyright 2020-|date| IBSim Group.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

@@ -15,7 +15,7 @@ Due to the modularity of the platform, by nature, **VirtualLab** is continually 
 
 For installation instructions please see the [documentation pages](https://virtuallab.readthedocs.io/).
 
-   Copyright 2020 IBSim Group (c/o Llion Marc Evans)
+   Copyright 2020 IBSim Group.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.

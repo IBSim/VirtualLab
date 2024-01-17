@@ -1,0 +1,415 @@
+DEBUT(PAR_LOT = 'NON',LANG='EN')
+import sys
+import os
+import aster
+import aster_core
+from Utilitai import partition
+import string
+import numpy as N
+import AsterFunc
+
+SimDict = AsterFunc.GetSimDict()
+Parameters = SimDict['Parameters']
+
+# This file converts the damage energy loads derived from the neutronics simulation to finite element mesh 
+
+
+mono = LIRE_MAILLAGE(FORMAT='MED')
+
+mono=DEFI_GROUP (
+reuse =mono,
+MAILLAGE=mono,
+CREA_GROUP_NO=(
+_F(GROUP_MA = 'copper_inter',),
+_F(GROUP_MA = 'cucrzr_pipe',),
+_F(GROUP_MA = 'pipe_ext',),
+_F(GROUP_MA = 'tungsten_arm',),),)
+
+mono = DEFI_GROUP (reuse = mono, MAILLAGE= mono,
+CREA_GROUP_MA= (_F(NOM= 'vol',UNION=('cucrzr_pipe','pipe_ext')),),)
+
+mono=DEFI_GROUP (
+reuse =mono ,
+MAILLAGE=mono ,
+CREA_GROUP_NO =(          
+_F(GROUP_MA = 'copper_inter',),
+_F(GROUP_MA = 'tungsten_arm',),_F(GROUP_MA = 'vol',),),)
+
+
+path61=os.path.join('{}'+'/'+ 'damage_energy_openmc'+'.vtk')
+path71=os.path.join('{}'+'/'+ 'points1'+str({})+'.vtk')
+path81=os.path.join('{}'+'/'+ 'damage'+str({})+'.vtk')
+path91=os.path.join('{}'+'/'+ 'damagecur')
+infile=open(path61.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'w')
+h1=(getattr(Parameters,'width_mesh',None))
+w1=(getattr(Parameters,'height_mesh',None))
+t1=(getattr(Parameters,'thic_mesh',None))
+hwt=int(h1*w1*t1)
+copy = False
+
+
+
+
+term = "POINTS"
+term1='damage-energy_on_mesh'
+for line in infile:
+    line.strip().split('/n')
+    if term in line:
+        copy = True
+    elif line.strip() == "METADATA":
+        copy = False
+    elif copy:
+        outfile.write(line)
+infile=open(path61.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile1=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'w')
+copy = False
+for line in infile:
+    line.strip().split('/n')
+    if term1 in line:
+        copy = True
+    elif line.strip() == "METADATA":
+        copy = False
+    elif copy:
+        outfile1.write(line)
+outfile1=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+file=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+flat_list=[float(word) for line in file for word in line.split()] 
+x2=0
+x21=[]
+x=[]
+for i in range(int(len(flat_list)/3)):
+    x2=x2+1
+    x.append((flat_list[i*3]))
+    x21.append(x2)
+y2=0
+y21=[]
+y=[]
+for i in range(int(len(flat_list)/3)):
+    y2=y2+1
+    y.append((flat_list[i*3+1]))
+    y21.append(y2)
+z2=0
+z21=[]
+z=[]
+for i in range(int(len(flat_list)/3)):
+    z2=z2+1
+    z.append((flat_list[i*3+2]))
+    z21.append(z2)
+file=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+flat_list=[float(word) for line in file for word in line.split()] 
+
+x1=[]
+for i in range(int(len(flat_list))):
+    x1.append((flat_list[i]))
+ 
+mesh1 = partition.MAIL_PY ( )
+mesh1.FromAster ( 'mono' )
+xcoor = [ None ]*( 8 ) ;
+ycoor = [ None ]*( 8 ) ;
+zcoor = [ None ]*(8 ) ;
+heating = [ None ]*(1 ) ;
+filecur=open(path91.format(SimDict['CALC_DIR']),'w')
+filecur.close()
+beamgm=mesh1.gma.get('vol')
+totlong = 0 ;
+lgth=len (beamgm)
+heating = [ None ]*(lgth )
+curz=[]
+curx=[]
+cury=[]
+fi=[]
+for j in range (0,lgth):
+    heating[j]=0
+    max1=[]
+    
+    beamid=beamgm [j]
+ 
+    n1=0
+    for k in range (0,8):
+        nodeid= mesh1.co[beamid][k]
+        
+        nodecoord= mesh1.cn[nodeid]
+        xcoor[k] = ( mesh1.cn [nodeid,0])
+        ycoor[k] = ( mesh1.cn [nodeid,1])
+        zcoor[k] = ( mesh1.cn [nodeid,2]) 
+    maxx=max(xcoor[0],xcoor[1],xcoor[2],xcoor[3],xcoor[4],xcoor[5],xcoor[6],xcoor[7])
+    maxy=max(ycoor[0],ycoor[1],ycoor[2],ycoor[3],ycoor[4],ycoor[5],ycoor[6],ycoor[7])
+    maxz=max(zcoor[0],zcoor[1],zcoor[2],zcoor[3],zcoor[4],zcoor[5],zcoor[6],zcoor[7])
+
+    minx=min(xcoor[0],xcoor[1],xcoor[2],xcoor[3],xcoor[4],xcoor[5],xcoor[6],xcoor[7])
+    miny=min(ycoor[0],ycoor[1],ycoor[2],ycoor[3],ycoor[4],ycoor[5],ycoor[6],ycoor[7])
+    minz=min(zcoor[0],zcoor[1],zcoor[2],zcoor[3],zcoor[4],zcoor[5],zcoor[6],zcoor[7])
+
+    
+    for i in range(int(len(x1))): 
+        if x[i]>=minx and x[i]<=maxx and  y[i]>=miny and y[i]<=maxy and z[i]>=minz and z[i]<=maxz:
+      
+           max1.append(x1[i])
+	   		
+           n1=n1+1
+           curx.append(x21[i])
+           cury.append(y21[i])
+           curz.append(z21[i])
+      
+  
+       
+    if n1!=0:
+      
+       filecur=open(path91.format(SimDict['CALC_DIR']),'a')
+       filecur.write(str(beamid) +' '+ str(max(max1))+' '+ str(n1)+"\n")
+
+    if n1==0:
+ 
+       filecur=open(path91.format(SimDict['CALC_DIR']),'a')
+       filecur.write(str(beamid) +' '+ str(0)+' '+ str(n1)+"\n")
+
+
+mono = DEFI_GROUP (reuse = mono, MAILLAGE= mono,
+
+CREA_GROUP_MA= (_F(NOM= 'vol1',UNION=('copper_inter')),),)
+
+mono=DEFI_GROUP (
+reuse =mono ,
+MAILLAGE=mono ,
+CREA_GROUP_NO =(
+_F(GROUP_MA = 'tungsten_arm',),
+_F(GROUP_MA = 'vol1',),_F(GROUP_MA = 'vol',),),)
+
+path61=os.path.join('{}'+'/'+ 'damage_energy_openmc'+'.vtk')
+path71=os.path.join('{}'+'/'+ 'points1'+str({})+'.vtk')
+path81=os.path.join('{}'+'/'+ 'damage'+str({})+'.vtk')
+path91=os.path.join('{}'+'/'+ 'damagecu')
+infile=open(path61.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'w')
+copy = False
+for line in infile:
+    line.strip().split('/n')
+    if term in line:
+        copy = True
+    elif line.strip() == "METADATA":
+        copy = False
+    elif copy:
+        outfile.write(line)
+infile=open(path61.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile1=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'w')
+copy = False
+for line in infile:
+    line.strip().split('/n')
+    if term1 in line:
+        copy = True
+    elif line.strip() == "METADATA":
+        copy = False
+    elif copy:
+        outfile1.write(line)
+outfile1=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+file=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+flat_list=[float(word) for line in file for word in line.split()] 
+
+x=[]
+for i in range(int(len(flat_list)/3)):
+    x.append((flat_list[i*3]))
+    
+y=[]
+for i in range(int(len(flat_list)/3)):
+    y.append((flat_list[i*3+1]))
+   
+z=[]
+for i in range(int(len(flat_list)/3)):
+    z.append((flat_list[i*3+2]))
+file=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+flat_list=[float(word) for line in file for word in line.split()] 
+
+x1=[]
+for i in range(int(len(flat_list))):
+    x1.append((flat_list[i]))
+ 
+mesh1 = partition.MAIL_PY ( )
+mesh1.FromAster ( 'mono' )
+xcoor = [ None ]*( 8 ) ;
+ycoor = [ None ]*( 8 ) ;
+zcoor = [ None ]*(8 ) ;
+heating = [ None ]*(1 ) ;
+filecur=open(path91.format(SimDict['CALC_DIR']),'w')
+beamgm=mesh1.gma.get('vol1')
+totlong = 0 ;
+lgth=len (beamgm)
+heating = [ None ]*(lgth );
+
+for j in range (0,lgth):
+    heating[j]=0
+    max1=[]
+    
+    beamid=beamgm [j]
+
+    n1=0
+    for k in range (0,8):
+        nodeid= mesh1.co[beamid][k]
+        
+        nodecoord= mesh1.cn[nodeid]
+        xcoor[k] = ( mesh1.cn [nodeid,0])
+        ycoor[k] = ( mesh1.cn [nodeid,1])
+        zcoor[k] = ( mesh1.cn [nodeid,2]) 
+    maxx=max(xcoor[0],xcoor[1],xcoor[2],xcoor[3],xcoor[4],xcoor[5],xcoor[6],xcoor[7])
+    maxy=max(ycoor[0],ycoor[1],ycoor[2],ycoor[3],ycoor[4],ycoor[5],ycoor[6],ycoor[7])
+    maxz=max(zcoor[0],zcoor[1],zcoor[2],zcoor[3],zcoor[4],zcoor[5],zcoor[6],zcoor[7])
+
+    minx=min(xcoor[0],xcoor[1],xcoor[2],xcoor[3],xcoor[4],xcoor[5],xcoor[6],xcoor[7])
+    miny=min(ycoor[0],ycoor[1],ycoor[2],ycoor[3],ycoor[4],ycoor[5],ycoor[6],ycoor[7])
+    minz=min(zcoor[0],zcoor[1],zcoor[2],zcoor[3],zcoor[4],zcoor[5],zcoor[6],zcoor[7])
+
+    
+    for i in range(int(len(x1))): 
+        if x[i]>=minx and x[i]<=maxx and  y[i]>=miny and y[i]<=maxy and z[i]>=minz and z[i]<=maxz:
+      
+           max1.append(x1[i])
+           curx.append(x21[i])
+           cury.append(y21[i])
+           curz.append(z21[i])	
+           n1=n1+1
+         
+      
+  
+       
+    if n1!=0:
+      
+       filecur=open(path91.format(SimDict['CALC_DIR']),'a')
+       filecur.write(str(beamid) +' '+ str(max(max1))+' '+ str(n1)+"\n")
+
+    if n1==0:
+ 
+       filecur=open(path91.format(SimDict['CALC_DIR']),'a')
+       filecur.write(str(beamid) +' '+ str(0)+' '+ str(n1)+"\n")
+
+
+
+Out = list(set(x21)^set(curx))
+Out1 = list(set(y21)^set(cury))
+Out2 = list(set(z21)^set(curz))
+       
+mono = DEFI_GROUP (reuse = mono, MAILLAGE= mono,
+
+CREA_GROUP_MA= (_F(NOM= 'vol2',UNION=('tungsten_arm')),
+),)
+
+mono=DEFI_GROUP (
+reuse =mono ,
+MAILLAGE=mono ,
+CREA_GROUP_NO =(
+_F(GROUP_MA = 'vol2',),
+_F(GROUP_MA = 'vol1',),_F(GROUP_MA = 'vol',),),)
+
+path61=os.path.join('{}'+'/'+ 'damage_energy_openmc'+'.vtk')
+path71=os.path.join('{}'+'/'+ 'points1'+str({})+'.vtk')
+path81=os.path.join('{}'+'/'+ 'damage'+str({})+'.vtk')
+path91=os.path.join('{}'+'/'+ 'damagetu')
+infile=open(path61.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'w')
+
+copy = False
+for line in infile:
+    line.strip().split('/n')
+    if term in line:
+        copy = True
+    elif line.strip() == "METADATA":
+        copy = False
+    elif copy:
+        outfile.write(line)
+infile=open(path61.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile1=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'w')
+copy = False
+for line in infile:
+    line.strip().split('/n')
+    if term1 in line:
+        copy = True
+    elif line.strip() == "METADATA":
+        copy = False
+    elif copy:
+        outfile1.write(line)
+outfile1=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+file=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+flat_list=[float(word) for line in file for word in line.split()] 
+
+x=[]
+for i in range(int(len(flat_list)/3)):
+    x.append((flat_list[i*3]))
+    
+y=[]
+for i in range(int(len(flat_list)/3)):
+    y.append((flat_list[i*3+1]))
+   
+z=[]
+for i in range(int(len(flat_list)/3)):
+    z.append((flat_list[i*3+2]))
+file=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+flat_list=[float(word) for line in file for word in line.split()] 
+
+x1=[]
+for i in range(int(len(flat_list))):
+    x1.append((flat_list[i]))
+ 
+mesh1 = partition.MAIL_PY ( )
+mesh1.FromAster ( 'mono' )
+xcoor = [ None ]*( 8 ) ;
+ycoor = [ None ]*( 8 ) ;
+zcoor = [ None ]*(8 ) ;
+heating = [ None ]*(1 ) ;
+filecur=open(path91.format(SimDict['CALC_DIR']),'w')
+beamgm=mesh1.gma.get('vol2')
+totlong = 0 ;
+lgth=len (beamgm)
+heating = [ None ]*(lgth );
+
+for j in range (0,lgth):
+    heating[j]=0
+    max1=[]
+    
+    beamid=beamgm [j]
+   
+    n1=0
+    for k in range (0,8):
+        nodeid= mesh1.co[beamid][k]
+        
+        nodecoord= mesh1.cn[nodeid]
+        xcoor[k] = ( mesh1.cn [nodeid,0])
+        ycoor[k] = ( mesh1.cn [nodeid,1])
+        zcoor[k] = ( mesh1.cn [nodeid,2]) 
+    maxx=max(xcoor[0],xcoor[1],xcoor[2],xcoor[3],xcoor[4],xcoor[5],xcoor[6],xcoor[7])
+    maxy=max(ycoor[0],ycoor[1],ycoor[2],ycoor[3],ycoor[4],ycoor[5],ycoor[6],ycoor[7])
+    maxz=max(zcoor[0],zcoor[1],zcoor[2],zcoor[3],zcoor[4],zcoor[5],zcoor[6],zcoor[7])
+
+    minx=min(xcoor[0],xcoor[1],xcoor[2],xcoor[3],xcoor[4],xcoor[5],xcoor[6],xcoor[7])
+    miny=min(ycoor[0],ycoor[1],ycoor[2],ycoor[3],ycoor[4],ycoor[5],ycoor[6],ycoor[7])
+    minz=min(zcoor[0],zcoor[1],zcoor[2],zcoor[3],zcoor[4],zcoor[5],zcoor[6],zcoor[7])
+
+    
+    for i in range(int(len(Out))):
+        if x[Out[i]-1]>=minx and x[Out[i]-1]<=maxx and  y[Out1[i]-1]>=miny and y[Out1[i]-1]<=maxy and z[Out2[i]-1]>=minz and z[Out2[i]-1]<=maxz:
+         
+	       
+      
+           max1.append(x1[Out[i]-1])
+          
+           n1=n1+1
+       
+      
+  
+       
+    if n1!=0:
+      
+       filecur=open(path91.format(SimDict['CALC_DIR']),'a')
+       filecur.write(str(beamid) +' '+ str(max(max1))+' '+ str(n1)+"\n")
+
+    if n1==0:
+ 
+       filecur=open(path91.format(SimDict['CALC_DIR']),'a')
+       filecur.write(str(beamid) +' '+ str(0)+' '+ str(n1)+"\n")
+FIN()
+
+
+
+
+

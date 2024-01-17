@@ -3,7 +3,7 @@
 /*
 # Ignore readthedocs HTML builds
 docs/source/_build
-
+ 
 # Blacklist all .pyc files
 *.pyc
 
@@ -54,5 +54,9 @@ Materials/*
 !Materials/Copper_NL/
 !Materials/Tungsten/
 !Materials/Tungsten_NL/
+!Materials/Tungsten_Irrad/
+!Materials/Copper_Irrad/
+!Materials/cucrzr_Irrad/
+
 
 

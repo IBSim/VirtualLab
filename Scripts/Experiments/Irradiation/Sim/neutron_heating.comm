@@ -1,0 +1,159 @@
+DEBUT(PAR_LOT = 'NON',LANG='EN')
+import sys
+import os
+import aster
+import aster_core
+from Utilitai import partition
+import string
+import numpy as N
+import AsterFunc
+
+# This file converts the neutron thermal loads derived from the neutronics simulation to finite element mesh 
+
+
+SimDict = AsterFunc.GetSimDict()
+Parameters = SimDict['Parameters']
+
+mono = LIRE_MAILLAGE(FORMAT='MED',UNITE=20)
+
+mono=DEFI_GROUP (
+reuse =mono,
+MAILLAGE=mono,
+CREA_GROUP_NO=(
+_F(GROUP_MA = 'copper_inter'),
+_F(GROUP_MA = 'cucrzr_pipe'),
+_F(GROUP_MA = 'pipe_ext'),
+_F(GROUP_MA = 'tungsten_arm'),                  
+),)
+
+
+mono = DEFI_GROUP (reuse = mono, MAILLAGE= mono,
+CREA_GROUP_MA= (_F(NOM= 'vol',UNION=('copper_inter','cucrzr_pipe','tungsten_arm','pipe_ext')),),)
+
+# Open the VTK file obtained from neutronics simulation
+
+term1='POINTS'
+term2='made%20with%20openmc_mesh_tally_to_vtk'
+path61=os.path.join('{}'+'/'+ 'heating_openmc'+'.vtk')
+path71=os.path.join('{}'+'/'+ 'points'+'.vtk')
+path81=os.path.join('{}'+'/'+ 'heating'+'.vtk')
+
+# The neutron thermal loads from neutronics simulation are assigned to the finite element mesh and stored in file 'heatingneu.dat' 
+
+path91=os.path.join('{}'+'/'+ 'heatingneu'+'.dat')
+infile=open(path61.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'w')
+copy = False
+h1=(getattr(Parameters,'width_mesh',None))
+w1=(getattr(Parameters,'height_mesh',None))
+t1=(getattr(Parameters,'thic_mesh',None))
+hwt=h1*w1*t1
+for line in infile:
+    line.strip().split('/n')
+    if term1 in line:
+       copy = True
+    elif line.strip() == "METADATA":
+        copy = False
+    elif copy:
+        outfile.write(line)
+
+outfile=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+infile=open(path61.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+outfile1=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'w')
+copy = False
+for line in infile:
+    line.strip().split('/n')
+    if term2 in line:
+       copy = True
+    elif line.strip() == "METADATA":
+        copy = False
+    elif copy:
+        outfile1.write(line)
+outfile1=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+file=open(path71.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+
+flat_list=[float(word) for line in file for word in line.split()] 
+
+x=[]
+for i in range(int(len(flat_list)/3)):
+    x.append((flat_list[i*3]))
+   
+y=[]
+for i in range(int(len(flat_list)/3)):
+    y.append((flat_list[i*3+1]))
+    
+z=[]
+for i in range(int(len(flat_list)/3)):
+    z.append((flat_list[i*3+2]))
+   
+file=open(path81.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'r')
+
+flat_list=[float(word) for line in file for word in line.split()] 
+
+x1=[]
+for i in range(int(len(flat_list))):
+    x1.append((flat_list[i]))
+   
+mesh1 = partition.MAIL_PY ( )
+mesh1.FromAster ( 'mono' )
+xcoor = [ None ]*( 8 ) ;
+ycoor = [ None ]*( 8 ) ;
+zcoor = [ None ]*(8 ) ;
+heating = [ None ]*(1 ) ;
+
+
+file=open(path91.format(SimDict['CALC_DIR'],getattr(Parameters,'vtk',None)),'w')
+beamgm=mesh1.gma.get('vol')
+totlong = 0 ;
+lgth=len (beamgm)
+heating = [ None ]*(lgth );
+
+for j in range (0,lgth):
+    heating[j]=0
+    max1=[]
+    
+    beamid=beamgm [j]
+    # print(max1)
+    n1=0
+    for k in range (0,8):
+        nodeid= mesh1.co[beamid][k]
+        
+        nodecoord= mesh1.cn[nodeid]
+        xcoor[k] = ( mesh1.cn [nodeid,0])
+        ycoor[k] = ( mesh1.cn [nodeid,1])
+        zcoor[k] = ( mesh1.cn [nodeid,2]) 
+    maxx=max(xcoor[0],xcoor[1],xcoor[2],xcoor[3],xcoor[4],xcoor[5],xcoor[6],xcoor[7])
+    maxy=max(ycoor[0],ycoor[1],ycoor[2],ycoor[3],ycoor[4],ycoor[5],ycoor[6],ycoor[7])
+    maxz=max(zcoor[0],zcoor[1],zcoor[2],zcoor[3],zcoor[4],zcoor[5],zcoor[6],zcoor[7])
+
+    minx=min(xcoor[0],xcoor[1],xcoor[2],xcoor[3],xcoor[4],xcoor[5],xcoor[6],xcoor[7])
+    miny=min(ycoor[0],ycoor[1],ycoor[2],ycoor[3],ycoor[4],ycoor[5],ycoor[6],ycoor[7])
+    minz=min(zcoor[0],zcoor[1],zcoor[2],zcoor[3],zcoor[4],zcoor[5],zcoor[6],zcoor[7])
+
+    
+    for i in range(int(len(x1))): 
+        if x[i]>=minx and x[i]<=maxx and  y[i]>=miny and y[i]<=maxy and z[i]>=minz and z[i]<=maxz:
+      
+           max1.append((x1[i]))
+          
+           n1=n1+1
+        #    print(n1)
+           
+    
+    if n1!=0:
+      
+       with open(path91.format(SimDict['CALC_DIR']),'a') as file:
+             file.write(str(beamid) +' '+ str(max(max1))+' '+ str(n1)+"\n")
+
+    if n1==0:
+ 
+       with open(path91.format(SimDict['CALC_DIR']),'a') as file:
+             file.write(str(beamid) +' '+ str((0))+' '+ str(n1)+"\n")
+
+   
+FIN()
+
+
+
+
+

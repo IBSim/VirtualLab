@@ -8,6 +8,9 @@
     "DA": {
         "Namespace": "DA"
     },
+    "DPA": {
+        "Namespace": "DPA"
+    },
     "Test": {
         "Namespace": "Test"
     },
@@ -34,6 +37,20 @@
     },
      "VolSeg_Predict": {
         "Namespace": "VolSeg"
+    },
+     "Paramak":  { 
+        "Namespace": "Paramak"
+    },
+    "Openmc":  { 
+        "Namespace": "Openmc"
+    },
+    "modelib":  { 
+        "Namespace": "modelib"
+    },
+    "lifecycle":  { 
+        "Namespace": "lifecycle"
+    },
+    "paraview":  { 
+        "Namespace": "paraview"
     }
-
 }

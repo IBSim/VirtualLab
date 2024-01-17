@@ -40,6 +40,37 @@
         "Tag": "latest",
         "Apptainer_file": "VL_VolSeg.sif",
         "Method":"VolSeg" 
-        }  
+        },  
+   "Paramak": {
+        "Docker_url": "ibsim/vl_paramak",
+        "Tag": "latest",
+        "Apptainer_file": "VL_Paramak.sif"},
+   "Openmc": {
+        "Docker_url": "ibsim/vl_openmc",
+        "Tag": "latest",
+        "Apptainer_file": "VL_Openmc.sif"
+          },   
+   "modelib": {
+        "Docker_url": "ibsim/vl_modelib_v1",
+        "Tag": "latest",
+        "Apptainer_file": "VL_modelib.sif"
+              }, 
+   "paraview": {
+        "Docker_url": "ibsim/vl_paraview",
+        "Tag": "latest",
+        "Apptainer_file": "VL_paraview.sif"
+                },
+   "DPA": {
+        "Docker_url": "ibsim/vl_salomemeca",
+        "Tag": "latest",
+        "Apptainer_file": "VL_Salome.sif"
+      
+    },
+    "lifecycle": {
+        "Docker_url": "ibsim/vl_paraview",
+        "Tag": "latest",
+        "Apptainer_file": "VL_paraview.sif"
+      
+    }
 
 }

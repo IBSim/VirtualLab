@@ -1,0 +1,1042 @@
+DEBUT(PAR_LOT = 'NON',LANG='EN')
+import sys
+import os
+import aster
+import aster_core
+from Utilitai import partition
+import string
+import numpy as N
+
+import AsterFunc
+
+
+
+
+SimDict = AsterFunc.GetSimDict()
+Parameters = SimDict['Parameters']
+
+
+Mesh_1 = LIRE_MAILLAGE(FORMAT='MED',
+                      UNITE=20)
+
+
+
+Mesh_1=DEFI_GROUP (
+reuse =Mesh_1 ,
+MAILLAGE=Mesh_1 ,
+CREA_GROUP_NO =(
+                 _F(GROUP_MA = 'fix1s',),
+                 _F(GROUP_MA = 'rhe',),
+		  _F(GROUP_MA = 'os',),
+		  _F(GROUP_MA = 'vol',),_F(GROUP_MA='vol1'),
+				       ),)
+
+
+
+
+mod1=AFFE_MODELE (
+MAILLAGE=Mesh_1 ,
+AFFE=_F ( TOUT='OUI' , PHENOMENE='THERMIQUE' , MODELISATION='3D' , ) ,
+)
+
+
+   
+cond1=[]
+pathm = os.path.join('{}'+'/'+'specific_heat_tungsten.txt')
+f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+lines=f.readlines()
+tempm = [(line.strip().split())for line in lines]
+f.close()
+    
+    
+for k1 in range(int(len(tempm))):
+    for k2 in range(2):
+        
+        cond1.append(float(tempm[k1][k2]))
+             
+         
+SHT=DEFI_FONCTION(NOM_PARA='TEMP',
+                                 VALE=( cond1 ),
+                                        PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+                        
+CONDF=DEFI_FONCTION(NOM_PARA='TEMP',
+                                 VALE=(   float(getattr(Parameters,'temp',None)),    float(getattr(Parameters,'condTungsten',None)),
+                                          ),
+                                        PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+
+CONDF1=DEFI_FONCTION( NOM_PARA='TEMP',
+                                 VALE=(   float(getattr(Parameters,'temp',None)),    float(getattr(Parameters,'condRhenium',None)),
+                                          ),
+                                        PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+CONDF2=DEFI_FONCTION(NOM_PARA='TEMP',
+                                 VALE=(   float(getattr(Parameters,'temp',None)),    float(getattr(Parameters,'condOsmium',None)),
+                                          ),
+                                        PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+
+RHOCPF1=DEFI_FONCTION(       NOM_PARA='TEMP',
+                                 VALE=(   20.0, .00243,
+                                        ),
+                                       PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+
+RHOCPF2=DEFI_FONCTION(       NOM_PARA='TEMP',
+                                 VALE=(   20.0, .00287,
+                                        ),
+                                       PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+
+
+RHOCPF3=DEFI_FONCTION(       NOM_PARA='TEMP',
+                                 VALE=(   20.0, .00297,
+                                        ),
+                                       PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+Alum1 = DEFI_MATERIAU(
+                     THER_NL=_F(LAMBDA=CONDF,
+                             RHO_CP=SHT))
+
+re = DEFI_MATERIAU(
+                     THER_NL=_F(LAMBDA=CONDF1,
+                             RHO_CP=RHOCPF2))
+
+os = DEFI_MATERIAU(
+                     THER_NL=_F(LAMBDA=CONDF2,
+                             RHO_CP=RHOCPF3))
+
+
+field = AFFE_MATERIAU(
+                       
+                       AFFE=(
+
+_F(GROUP_MA=('vol', ),
+                                  MATER=(Alum1, )),
+
+_F(GROUP_MA=('rhe', ),
+                                  MATER=(re, )),
+
+_F(GROUP_MA=('os', ),
+                                  MATER=(os, )),
+                             ),
+                         MODELE=mod1)
+
+
+
+
+
+l1=float(getattr(Parameters,'temp_gradientx',None))
+m44=float(getattr(Parameters,'temp_gradienty',None))
+n1=float(getattr(Parameters,'temp_gradientz',None))
+ 
+f=float(getattr(Parameters,'temp',None))
+
+if l1!=0 and m44!=0 and n1!=0:      
+   fm = FORMULE(NOM_PARA=('X','Y','Z'), VALE='(f+(l1)*X+(m44)*Y+(n1)*Z)',l1=l1,m44=m44,n1=n1,f=f)
+             
+   bc01=AFFE_CHAR_THER_F(MODELE=mod1,
+                     TEMP_IMPO=_F(GROUP_MA='fix1s',
+                                  TEMP=fm),);
+	   
+
+   mal = DEFI_LIST_REEL(  DEBUT=0.0,
+                        INTERVALLE=(
+                        _F( PAS = .1,       JUSQU_A = 1),),)
+    
+
+   FOFO = DEFI_FONCTION(NOM_PARA='INST', VALE=(0.0, 0.0, .1, .1,.2,.2,.3,.3,.4,.4,.5,.5,.6,.6,.7,.7,.8,.8,.9,.9,1,1), 
+              INTERPOL='LIN' ,
+                 PROL_DROITE='LINEAIRE' ,
+               PROL_GAUCHE='LINEAIRE' ,);
+
+
+   rm1=THER_NON_LINE(MODELE=mod1,
+                       CHAM_MATER=field,
+                       EXCIT=(_F(CHARGE=bc01,FONC_MULT=FOFO),
+                            ),INCREMENT=_F ( LIST_INST=mal , ) ,
+                              CONVERGENCE=_F(
+                                     
+                              ITER_GLOB_MAXI=100,),
+                             );
+
+  
+
+         
+   rm1 = CALC_CHAMP(
+                     reuse=rm1,
+                     RESULTAT=rm1,INST=1,
+                     THERMIQUE=('FLUX_NOEU'))
+
+         
+   DEFI_FICHIER(FICHIER='./REPE_OUT/results.rmed', UNITE=71)
+        
+   IMPR_RESU(FORMAT='MED',
+		RESU=_F(MAILLAGE=Mesh_1,
+		RESULTAT=rm1,
+		NOM_CHAM=('TEMP','FLUX_NOEU'),
+		),UNITE=71
+);             
+           
+      
+   DNR1= CREA_CHAMP (TYPE_CHAM = 'NOEU_GEOM_R', OPERATION='NORMALE', MODELE=mod1, GROUP_MA= 'fix1s'   );
+   DNOR = CREA_CHAMP(TYPE_CHAM ='NOEU_GEOM_R',
+		      OPERATION= 'ASSE', MODELE = mod1 ,
+		      ASSE = (_F( CHAM_GD = DNR1, GROUP_MA= 'fix1s', 
+		                  CUMUL='OUI', COEF_R = 1.),))
+   CH =CREA_CHAMP (OPERATION='EXTR',TYPE_CHAM='NOEU_TEMP_R',NOM_CHAM='TEMP', RESULTAT  =  rm1,NUME_ORDRE =10,)
+        
+
+
+   TN=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+                   ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD = CH,          
+                    NOM_CMP = ('TEMP',),  NOM_CMP_RESU = ('X1',)),  )
+    
+
+   TN2=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1, ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD = DNOR,              
+                          
+                    NOM_CMP = ('X','Y','Z'),  NOM_CMP_RESU = ('X2','X3','X4')),  )
+
+         
+         
+   Fu= FORMULE (NOM_PARA = ('X1','X2' ), VALE = 'X1*X2')
+   FLT1= FORMULE (NOM_PARA = ('X1','X3' ), VALE = 'X1*X3')
+   FLT2 = FORMULE (NOM_PARA = ('X1','X4' ), VALE = 'X1*X4')
+   
+   CM1=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X6', VALE_F = FLT1))
+   CM2=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X7', VALE_F = FLT2))
+
+         
+
+   CM3=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X5', VALE_F = Fu))
+    
+   CN=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CM3, CHAM_PARA= (TN, TN2,))
+
+
+   CN1=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CM1, CHAM_PARA= (TN, TN2,))
+
+
+   CN2=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CM2, CHAM_PARA= (TN, TN2,))
+
+
+   Cl=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_TEMP_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CN,           
+		       NOM_CMP = ('X5',),  NOM_CMP_RESU = ('TEMP',)),  )
+
+         
+   Cl1=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_TEMP_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CN1,           
+		       NOM_CMP = ('X6',),  NOM_CMP_RESU = ('TEMP',)),  )
+        
+
+   Cl2=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_TEMP_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CN2,           
+		       NOM_CMP = ('X7',),  NOM_CMP_RESU = ('TEMP',),),  )
+      
+         
+         
+
+
+
+   rr = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'TEMP',
+		    AFFE = _F(
+			CHAM_GD = Cl,
+			INST = 100
+		    )
+		)
+
+
+   rr2 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'TEMP',
+		    AFFE = _F(
+			CHAM_GD = Cl1,
+			INST = 100
+		    )
+		)
+   rr3 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'TEMP',
+		    AFFE = _F(
+			CHAM_GD = Cl2,
+			INST = 100
+		    )
+		)                                
+   tt2 = POST_ELEM(RESULTAT=rr,
+			    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'fix1s',
+		    NOM_CHAM = 'TEMP',
+		    NOM_CMP = ('TEMP',),
+		    TYPE_MAILLE='2D',
+		    
+		  
+		       ),)
+
+   tr1= tt2.EXTR_TABLE();
+   tx = tr1.values()['INTE_TEMP']
+   tt3 = POST_ELEM(RESULTAT=rr2,
+			    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'fix1s',
+		    NOM_CHAM = 'TEMP',
+		    NOM_CMP = ('TEMP',),
+		    TYPE_MAILLE='2D',
+		    
+		  
+		       ),)
+   tr2= tt3.EXTR_TABLE();
+   ty = tr2.values()['INTE_TEMP']
+   tt4 = POST_ELEM(RESULTAT=rr3,
+		    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'fix1s',
+		    NOM_CHAM = 'TEMP',
+		    NOM_CMP = ('TEMP',),
+		    TYPE_MAILLE='2D',
+		    
+		  
+		       ),)
+   tr3= tt4.EXTR_TABLE();
+   tz = tr3.values()['INTE_TEMP']
+   CY =CREA_CHAMP (OPERATION='EXTR', TYPE_CHAM='NOEU_FLUX_R',NOM_CHAM='FLUX_NOEU', RESULTAT=rm1,NUME_ORDRE=10)
+   CX = CREA_CHAMP(TYPE_CHAM ='NOEU_FLUX_R',
+		      OPERATION= 'ASSE', MODELE = mod1 ,
+		      ASSE = (_F( CHAM_GD =CY, GROUP_MA= 'fix1s', 
+		                  CUMUL='OUI', COEF_R = 1.),))
+
+   NOR = CREA_CHAMP(
+                      GROUP_MA=('fix1s', ),
+                      MODELE=mod1,
+                      OPERATION='NORMALE',
+                      TYPE_CHAM='NOEU_GEOM_R')
+
+          
+         
+
+   FLU = FORMULE(
+		           NOM_PARA=('FLUX', 'FLUY', 'FLUZ', 'X', 'Y', 'Z'),
+		           VALE='FLUX*X+FLUY*Y+FLUZ*Z')
+
+
+   FLUF = CREA_CHAMP(
+		           AFFE=_F(GROUP_MA=('fix1s', ),
+		                   NOM_CMP=('X1', ),
+		                   VALE_F=(FLU, )),
+		           MODELE=mod1,
+		           OPERATION='AFFE',
+		           TYPE_CHAM='NOEU_NEUT_F')
+
+   FLU1 = CREA_CHAMP(
+                  CHAM_F=FLUF,
+                  CHAM_PARA=(CX, NOR),
+                  OPERATION='EVAL',
+                  TYPE_CHAM='NOEU_NEUT_R')
+
+
+
+   FLU5=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CX,           
+		       NOM_CMP = ('FLUX',),  NOM_CMP_RESU = ('X1',),),) 
+   FLU6=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  FLU5,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),) 
+
+   FLU7=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CX,           
+		       NOM_CMP = ('FLUZ',),  NOM_CMP_RESU = ('X1',),),) 
+   FLU8=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  FLU7,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),) 
+   FLU2=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  FLU1,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),)  
+
+   NO = CREA_CHAMP(
+                      MAILLAGE =Mesh_1,
+                      OPERATION='EXTR',
+                      NOM_CHAM = 'GEOMETRIE',
+                      TYPE_CHAM='NOEU_GEOM_R')
+    
+
+     
+
+
+   TL=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+                   ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  FLU2,          
+                    NOM_CMP = ('FLUX',),  NOM_CMP_RESU = ('X1',)),  )
+    
+
+    
+   TL1=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1, ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD = NO,              
+                          
+                    NOM_CMP = ('X','Y','Z'),  NOM_CMP_RESU = ('X2','X3','X4')),  )
+
+
+
+
+
+   
+   FMU1 = FORMULE (NOM_PARA = ('X1','X3' ), VALE = 'X1*X3')
+   FMU2 = FORMULE (NOM_PARA = ('X1','X4' ), VALE = 'X1*X4')
+   FMU=FORMULE (NOM_PARA = ('X1','X2' ), VALE = 'X1*X2')
+
+   CZ=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X5', VALE_F = FMU))
+   CZ1=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X6', VALE_F = FMU1))
+   CZ2=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X7', VALE_F = FMU2))
+
+    
+   CL=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CZ, CHAM_PARA= (TL, TL1,))
+
+   CL1=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CZ1, CHAM_PARA= (TL, TL1,))
+
+   CL2=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CZ2, CHAM_PARA= (TL, TL1,))
+
+
+   CW=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CL,           
+		       NOM_CMP = ('X5',),  NOM_CMP_RESU = ('FLUX',)),  )
+
+
+   CW1=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CL1,           
+		       NOM_CMP = ('X6',),  NOM_CMP_RESU = ('FLUX',)),  )
+
+   CW2=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CL2,           
+		       NOM_CMP = ('X7',),  NOM_CMP_RESU = ('FLUX',),),  )
+
+
+   FLU51=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'vol1', CHAM_GD =  CY,           
+		       NOM_CMP = ('FLUY',),  NOM_CMP_RESU = ('X1',),),) 
+
+   CW21=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'vol1', CHAM_GD =  FLU51,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),  )
+
+
+   FLU52=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'vol1', CHAM_GD =  CY,           
+		       NOM_CMP = ('FLUZ',),  NOM_CMP_RESU = ('X1',),),) 
+
+   CW22=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'vol1', CHAM_GD =  FLU52,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),  )
+
+
+
+
+
+   vol2=1.73554e-10
+   vol11=1/vol2
+
+   ss1 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    AFFE = _F(
+			CHAM_GD = CW,
+			INST =.1
+		    )
+		)
+
+
+   ss2 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    AFFE = _F(
+			CHAM_GD = CW1,
+			INST = .1
+		    )
+		)
+   ss3 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    AFFE = _F(
+			CHAM_GD = CW2,
+				INST = .1
+		    )
+		)
+
+
+   ww1 = POST_ELEM(CHAM_GD=CY,
+		    CHAM_MATER=field,
+		     MODELE=mod1,
+		    
+		    INTEGRALE =_F (
+		    GROUP_MA = ('vol1',),
+		    NOM_CHAM = 'FLUX_NOEU',
+		    NOM_CMP = ('FLUX',),
+		    TYPE_MAILLE='3D',
+	    
+	  
+	       ),)
+           
+
+   fr= ww1.EXTR_TABLE();
+   qx = fr.values()['INTE_FLUX']
+
+   ww2 = POST_ELEM(CHAM_GD=CW21,
+		    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'vol1',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    NOM_CMP = ('FLUX',),
+		    TYPE_MAILLE='3D',
+	    
+	  
+	       ),)
+
+            
+
+   fr1= ww2.EXTR_TABLE();
+   qy = fr1.values()['INTE_FLUX']
+   ww3 = POST_ELEM(CHAM_GD=CW22,
+		    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'vol1',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    NOM_CMP = ('FLUX',),
+		    TYPE_MAILLE='3D',
+	    
+	  
+	       ),)
+
+    
+
+          
+
+   
+   
+   fr2= ww3.EXTR_TABLE();
+   qz = fr2.values()['INTE_FLUX']  
+   
+   fx2=N.array(qx)
+
+         
+
+   fy2=N.array(qy)
+
+        
+
+   fz2=N.array(qz)
+ 
+ 
+  
+   tx2=N.array(tx)
+
+        
+
+   ty2=N.array(ty)
+
+       
+
+   tz2=N.array(tz)
+ 
+   lam1=fx2[0]*vol11/(l1)
+   lam2=fy2[0]*vol11/m44  
+   lam3=fz2[0]*vol11/n1
+            
+		
+    
+   
+   lam11=abs(lam1)
+   lam12=abs(lam2)
+   lam13=abs(lam3)
+   list1 = [lam11, lam12,lam13]
+else:
+   
+   fm = FORMULE(NOM_PARA=('X','Y','Z'), VALE='(f+(l1)*X+(m44)*Y+(n1)*Z)',l1=l1,m44=m44,n1=n1,f=f)
+             
+   bc01=AFFE_CHAR_THER_F(MODELE=mod1,
+                     TEMP_IMPO=_F(GROUP_MA='fix1s',
+                                  TEMP=fm),);
+	   
+
+   mal = DEFI_LIST_REEL(  DEBUT=0.0,
+                        INTERVALLE=(
+                        _F( PAS = .1,       JUSQU_A = 1),),)
+    
+
+   FOFO = DEFI_FONCTION(NOM_PARA='INST', VALE=(0.0, 0.0, .1, .1,.2,.2,.3,.3,.4,.4,.5,.5,.6,.6,.7,.7,.8,.8,.9,.9,1,1), 
+              INTERPOL='LIN' ,
+                 PROL_DROITE='LINEAIRE' ,
+               PROL_GAUCHE='CONSTANT' ,);
+
+
+
+
+
+
+
+
+
+   rm1=THER_NON_LINE(MODELE=mod1,
+                       CHAM_MATER=field,
+                       EXCIT=(_F(CHARGE=bc01,FONC_MULT=FOFO),
+                            ),INCREMENT=_F ( LIST_INST=mal , ) ,NEWTON=_F (
+    
+
+    REAC_ITER=1 ,
+    ),ETAT_INIT=_F(VALE=20),
+                       CONVERGENCE=_F(
+                                     
+                                      ITER_GLOB_MAXI=100,),
+                      );
+
+ 
+         
+   DEFI_FICHIER(FICHIER='./REPE_OUT/results.rmed', UNITE=71)
+        
+   IMPR_RESU(FORMAT='MED',
+		RESU=_F(MAILLAGE=Mesh_1,
+		RESULTAT=rm1,
+		NOM_CHAM=('TEMP'),
+		),UNITE=71
+);             
+           
+      
+   DNR1= CREA_CHAMP (TYPE_CHAM = 'NOEU_GEOM_R', OPERATION='NORMALE', MODELE=mod1, GROUP_MA= 'fix1s'   );
+   DNOR = CREA_CHAMP(TYPE_CHAM ='NOEU_GEOM_R',
+		      OPERATION= 'ASSE', MODELE = mod1 ,
+		      ASSE = (_F( CHAM_GD = DNR1, GROUP_MA= 'fix1s', 
+		                  CUMUL='OUI', COEF_R = 1.),))
+   CH =CREA_CHAMP (OPERATION='EXTR',TYPE_CHAM='NOEU_TEMP_R',NOM_CHAM='TEMP', RESULTAT  =  rm1,NUME_ORDRE =10,)
+        
+
+
+   TN=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+                   ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD = CH,          
+                    NOM_CMP = ('TEMP',),  NOM_CMP_RESU = ('X1',)),  )
+    
+
+   TN2=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1, ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD = DNOR,              
+                          
+                    NOM_CMP = ('X','Y','Z'),  NOM_CMP_RESU = ('X2','X3','X4')),  )
+
+         
+         
+   Fu= FORMULE (NOM_PARA = ('X1','X2' ), VALE = 'X1*X2')
+   FLT1= FORMULE (NOM_PARA = ('X1','X3' ), VALE = 'X1*X3')
+   FLT2 = FORMULE (NOM_PARA = ('X1','X4' ), VALE = 'X1*X4')
+   
+   CM1=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X6', VALE_F = FLT1))
+   CM2=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X7', VALE_F = FLT2))
+
+         
+
+   CM3=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X5', VALE_F = Fu))
+    
+   CN=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CM3, CHAM_PARA= (TN, TN2,))
+
+
+   CN1=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CM1, CHAM_PARA= (TN, TN2,))
+
+
+   CN2=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CM2, CHAM_PARA= (TN, TN2,))
+
+
+   Cl=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_TEMP_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CN,           
+		       NOM_CMP = ('X5',),  NOM_CMP_RESU = ('TEMP',)),  )
+
+         
+   Cl1=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_TEMP_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CN1,           
+		       NOM_CMP = ('X6',),  NOM_CMP_RESU = ('TEMP',)),  )
+        
+
+   Cl2=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_TEMP_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CN2,           
+		       NOM_CMP = ('X7',),  NOM_CMP_RESU = ('TEMP',),),  )
+      
+         
+         
+
+
+
+   rr = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'TEMP',
+		    AFFE = _F(
+			CHAM_GD = Cl,
+			INST = 100
+		    )
+		)
+
+
+   rr2 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'TEMP',
+		    AFFE = _F(
+			CHAM_GD = Cl1,
+			INST = 100
+		    )
+		)
+   rr3 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'TEMP',
+		    AFFE = _F(
+			CHAM_GD = Cl2,
+			INST = 100
+		    )
+		)                                
+   tt2 = POST_ELEM(RESULTAT=rr,
+			    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'fix1s',
+		    NOM_CHAM = 'TEMP',
+		    NOM_CMP = ('TEMP',),
+		    TYPE_MAILLE='2D',
+		    
+		  
+		       ),)
+
+   tr1= tt2.EXTR_TABLE();
+   tx = tr1.values()['INTE_TEMP']
+   tt3 = POST_ELEM(RESULTAT=rr2,
+			    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'fix1s',
+		    NOM_CHAM = 'TEMP',
+		    NOM_CMP = ('TEMP',),
+		    TYPE_MAILLE='2D',
+		    
+		  
+		       ),)
+   tr2= tt3.EXTR_TABLE();
+   ty = tr2.values()['INTE_TEMP']
+   tt4 = POST_ELEM(RESULTAT=rr3,
+		    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'fix1s',
+		    NOM_CHAM = 'TEMP',
+		    NOM_CMP = ('TEMP',),
+		    TYPE_MAILLE='2D',
+		    
+		  
+		       ),)
+   tr3= tt4.EXTR_TABLE();
+   tz = tr3.values()['INTE_TEMP']
+   CY =CREA_CHAMP (OPERATION='EXTR', TYPE_CHAM='NOEU_FLUX_R',NOM_CHAM='FLUX_NOEU', RESULTAT=rm1,NUME_ORDRE=10)
+   CX = CREA_CHAMP(TYPE_CHAM ='NOEU_FLUX_R',
+		      OPERATION= 'ASSE', MODELE = mod1 ,
+		      ASSE = (_F( CHAM_GD =CY, GROUP_MA= 'fix1s', 
+		                  CUMUL='OUI', COEF_R = 1.),))
+
+   NOR = CREA_CHAMP(
+                      GROUP_MA=('fix1s', ),
+                      MODELE=mod1,
+                      OPERATION='NORMALE',
+                      TYPE_CHAM='NOEU_GEOM_R')
+
+          
+         
+
+   FLU = FORMULE(
+		           NOM_PARA=('FLUX', 'FLUY', 'FLUZ', 'X', 'Y', 'Z'),
+		           VALE='FLUX*X+FLUY*Y+FLUZ*Z')
+
+
+   FLUF = CREA_CHAMP(
+		           AFFE=_F(GROUP_MA=('fix1s', ),
+		                   NOM_CMP=('X1', ),
+		                   VALE_F=(FLU, )),
+		           MODELE=mod1,
+		           OPERATION='AFFE',
+		           TYPE_CHAM='NOEU_NEUT_F')
+
+   FLU1 = CREA_CHAMP(
+                  CHAM_F=FLUF,
+                  CHAM_PARA=(CX, NOR),
+                  OPERATION='EVAL',
+                  TYPE_CHAM='NOEU_NEUT_R')
+
+
+
+   FLU5=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CX,           
+		       NOM_CMP = ('FLUX',),  NOM_CMP_RESU = ('X1',),),) 
+   FLU6=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  FLU5,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),) 
+
+   FLU7=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CX,           
+		       NOM_CMP = ('FLUZ',),  NOM_CMP_RESU = ('X1',),),) 
+   FLU8=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  FLU7,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),) 
+   FLU2=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  FLU1,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),)  
+
+   NO = CREA_CHAMP(
+                      MAILLAGE =Mesh_1,
+                      OPERATION='EXTR',
+                      NOM_CHAM = 'GEOMETRIE',
+                      TYPE_CHAM='NOEU_GEOM_R')
+    
+
+     
+
+
+   TL=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+                   ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  FLU2,          
+                    NOM_CMP = ('FLUX',),  NOM_CMP_RESU = ('X1',)),  )
+    
+
+    
+   TL1=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1, ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD = NO,              
+                          
+                    NOM_CMP = ('X','Y','Z'),  NOM_CMP_RESU = ('X2','X3','X4')),  )
+
+
+
+
+
+   
+   FMU1 = FORMULE (NOM_PARA = ('X1','X3' ), VALE = 'X1*X3')
+   FMU2 = FORMULE (NOM_PARA = ('X1','X4' ), VALE = 'X1*X4')
+   FMU=FORMULE (NOM_PARA = ('X1','X2' ), VALE = 'X1*X2')
+
+   CZ=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X5', VALE_F = FMU))
+   CZ1=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X6', VALE_F = FMU1))
+   CZ2=CREA_CHAMP (OPERATION='AFFE',  TYPE_CHAM='NOEU_NEUT_F', MAILLAGE=Mesh_1,                   
+              AFFE=_F (GROUP_MA='fix1s', NOM_CMP = 'X7', VALE_F = FMU2))
+
+    
+   CL=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CZ, CHAM_PARA= (TL, TL1,))
+
+   CL1=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CZ1, CHAM_PARA= (TL, TL1,))
+
+   CL2=CREA_CHAMP (OPERATION='EVAL', TYPE_CHAM='NOEU_NEUT_R',                
+                   CHAM_F=CZ2, CHAM_PARA= (TL, TL1,))
+
+
+   CW=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CL,           
+		       NOM_CMP = ('X5',),  NOM_CMP_RESU = ('FLUX',)),  )
+
+
+   CW1=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CL1,           
+		       NOM_CMP = ('X6',),  NOM_CMP_RESU = ('FLUX',)),  )
+
+   CW2=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'fix1s', CHAM_GD =  CL2,           
+		       NOM_CMP = ('X7',),  NOM_CMP_RESU = ('FLUX',),),  )
+
+
+   FLU51=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'vol1', CHAM_GD =  CY,           
+		       NOM_CMP = ('FLUY',),  NOM_CMP_RESU = ('X1',),),) 
+
+   CW21=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'vol1', CHAM_GD =  FLU51,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),  )
+
+
+   FLU52=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'vol1', CHAM_GD =  CY,           
+		       NOM_CMP = ('FLUZ',),  NOM_CMP_RESU = ('X1',),),) 
+
+   CW22=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_FLUX_R', MAILLAGE=Mesh_1,           
+		    ASSE=_F (GROUP_MA= 'vol1', CHAM_GD =  FLU52,           
+		       NOM_CMP = ('X1',),  NOM_CMP_RESU = ('FLUX',),),  )
+
+
+
+
+
+   vol2=1.73554e-10
+   vol11=1/vol2
+
+   ss1 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    AFFE = _F(
+			CHAM_GD = CW,
+			INST =.1
+		    )
+		)
+
+
+   ss2 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    AFFE = _F(
+			CHAM_GD = CW1,
+			INST = .1
+		    )
+		)
+   ss3 = CREA_RESU(
+		    OPERATION = 'AFFE',
+		    TYPE_RESU = 'EVOL_THER',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    AFFE = _F(
+			CHAM_GD = CW2,
+				INST = .1
+		    )
+		)
+
+
+   ww1 = POST_ELEM(CHAM_GD=CY,
+		    CHAM_MATER=field,
+		     MODELE=mod1,
+		    
+		    INTEGRALE =_F (
+		    GROUP_MA = ('vol1',),
+		    NOM_CHAM = 'FLUX_NOEU',
+		    NOM_CMP = ('FLUX',),
+		    TYPE_MAILLE='3D',
+	    
+	  
+	       ),)
+           
+
+   fr= ww1.EXTR_TABLE();
+   qx = fr.values()['INTE_FLUX']
+
+   ww2 = POST_ELEM(CHAM_GD=CW21,
+		    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'vol1',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    NOM_CMP = ('FLUX',),
+		    TYPE_MAILLE='3D',
+	    
+	  
+	       ),)
+
+            
+
+   fr1= ww2.EXTR_TABLE();
+   qy = fr1.values()['INTE_FLUX']
+   ww3 = POST_ELEM(CHAM_GD=CW22,
+		    CHAM_MATER=field,
+		     MODELE=mod1,
+		    INTEGRALE =_F (
+		    GROUP_MA = 'vol1',
+		    NOM_CHAM = 'FLUX_NOEU',
+		    NOM_CMP = ('FLUX',),
+		    TYPE_MAILLE='3D',
+	    
+	  
+	       ),)
+
+    
+
+          
+
+   
+   
+   fr2= ww3.EXTR_TABLE();
+   qz = fr2.values()['INTE_FLUX']  
+   
+   fx2=N.array(qx)
+
+         
+
+   fy2=N.array(qy)
+
+        
+
+   fz2=N.array(qz)
+ 
+ 
+  
+   tx2=N.array(tx)
+
+        
+
+   ty2=N.array(ty)
+
+       
+
+   tz2=N.array(tz)
+ 
+  
+            
+		
+    
+   
+   lam11=0.17
+   lam12=0.17
+   lam13=0.17 
+   
+
+           
+
+
+
+fx2[0]=vol11*fx2[0]
+fy2[0]=vol11*fy2[0]
+fz2[0]=vol11*fz2[0]
+lx1=2.00e-14
+ft=open('{}/thermal_conductivity_dpa'.format(SimDict['CALC_DIR']),"w")
+ft.write(str((getattr(Parameters,'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 dpa',None)))+" "+str((getattr(Parameters,'temp',None)))+" "+str(lam11) +" "+str(lam12)  +" "+str(lam13)+" "+str(lx1*vol11)+" "+"\n")
+
+ft.close()
+
+
+
+
+FIN()
+
+
+
+
+

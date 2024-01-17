@@ -1,0 +1,1690 @@
+DEBUT(PAR_LOT = 'NON',LANG='EN')
+import sys
+import os
+import aster
+import aster_core
+from Utilitai import partition
+import string
+import numpy as N
+import AsterFunc
+
+
+
+SimDict = AsterFunc.GetSimDict()
+Parameters = SimDict['Parameters']
+
+mono = LIRE_MAILLAGE(FORMAT='MED')
+
+
+mono=DEFI_GROUP (
+reuse =mono,
+MAILLAGE=mono,
+CREA_GROUP_NO =(
+_F(GROUP_MA = 'pipe_end_face',), 
+_F(GROUP_MA = 'pipe_ext',),
+_F(GROUP_MA = 'tungsten_arm',),
+_F(GROUP_MA = 'copper_inter',),
+_F(GROUP_MA = 'cucrzr_pipe',),
+_F(GROUP_MA = 'top_face_armour',),    
+_F(GROUP_MA = 'bottom_face_armour',),
+_F(GROUP_MA = 'pipe_inner_surface',),   
+),)
+
+
+mono = DEFI_GROUP (reuse = mono, MAILLAGE= mono,
+CREA_GROUP_MA= (_F(NOM= 'CuCrZr_pipe',UNION=('cucrzr_pipe', 'pipe_ext')),),)
+
+
+mono=DEFI_GROUP(
+reuse=mono,
+MAILLAGE=mono,
+CREA_GROUP_NO =(
+_F(GROUP_MA = 'pipe_end_face',), 
+_F(GROUP_MA = 'copper_inter',),      
+_F(GROUP_MA = 'cucrzr_pipe',),            
+_F(GROUP_MA = 'pipe_ext',),
+_F(GROUP_MA = 'tungsten_arm',),
+_F(GROUP_MA = 'CuCrZr_pipe',),
+_F(GROUP_MA = 'bottom_face_armour',),
+_F(GROUP_MA = 'top_face_armour',),  
+_F(GROUP_MA = 'pipe_inner_surface',),     
+),)
+
+
+macmod1=AFFE_MODELE (
+MAILLAGE=mono ,
+AFFE=_F ( TOUT='OUI' , PHENOMENE='THERMIQUE' , MODELISATION='3D' , ) ,)
+
+# Specific heat of tungsten
+
+SHT=[None]*15
+for i in range(15):
+   
+    cond1=[]
+    pathm = os.path.join('{}'+'/Tungsten_Irrad/specific_heat.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(len(tempm))):
+        for k2 in range(2):
+        
+            cond1.append(float(tempm[k1][k2]))
+             
+         
+    SHT[i]=DEFI_FONCTION(NOM_PARA='TEMP',
+                                 VALE=( cond1 ),
+                                        PROL_DROITE='LINEAIRE',
+                                        PROL_GAUCHE='LINEAIRE',)
+    
+
+
+# Thermal conductivity of tungsten
+
+TC=[None]*15
+TC1=[None]*15
+MAT=[]
+
+for i in range(15):
+    meshg=[]
+    cond1=[]
+    path1 = os.path.join('{}'+'/'+'dpatu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Tungsten_Irrad/thermcond')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        cond1.append(float(tempm[0][2*k1+1]))
+        cond1.append(float(pn))    
+         
+    TC[i]=DEFI_FONCTION(       NOM_PARA='TEMP',
+                                 VALE=( cond1 ),
+                                        PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+    TC1[i] = DEFI_MATERIAU (THER_NL=_F(LAMBDA=TC[i]	,
+                             RHO_CP=SHT[i]))
+
+    path1 = os.path.join('{}'+'/'+'damagetu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    for kk in range(len(tempg)):
+        meshg.append('M'+str(int(tempg[kk][2])))
+    
+    
+    MAT.append({'MAILLE':meshg, 'MATER': TC1[i]})
+
+# Specific heat of copper interlayer
+
+SHC=[None]*10
+SHC1=[None]*10
+
+for i in range(10):
+   
+    cond1=[]
+   
+    pathm = os.path.join('{}'+'/Copper_Irrad/specific_heat.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(len(tempm))):
+        for k2 in range(2):
+        
+            cond1.append(float(tempm[k1][k2]))  
+         
+    SHC[i]=DEFI_FONCTION(NOM_PARA='TEMP',
+                                 VALE=( cond1 ),
+                                        PROL_DROITE='LINEAIRE',
+                                        PROL_GAUCHE='LINEAIRE',)
+
+
+# Thermal conductivity of copper interlayer
+
+ZU=[None]*10
+ZU1=[None]*10
+
+for i in range(10):
+    meshg=[]
+    cond1=[]
+    path1 = os.path.join('{}'+'/'+'dpacu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Copper_Irrad/thermcond')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        cond1.append(float(tempm[0][2*k1+1]))
+        cond1.append(float(pn))    
+    ZU[i]=DEFI_FONCTION(       NOM_PARA='TEMP',
+                                 VALE=(cond1 ),
+                                        PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+    ZU1[i] = DEFI_MATERIAU ( THER_NL=_F(LAMBDA=ZU[i],
+                             RHO_CP=SHC[i]))
+    path1 = os.path.join('{}'+'/'+'damagecu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    for kk in range(len(tempg)):
+        meshg.append('M'+str(int(tempg[kk][2])))
+    MAT.append({'MAILLE':meshg, 'MATER': ZU1[i]})
+
+   
+# Specific heat of CuCrZr pipe
+
+SCR=[None]*10
+SCR1=[None]*10
+
+for i in range(10):
+    
+    cond1=[]
+   
+    pathm = os.path.join('{}'+'/cucrzr_Irrad/specific_heat.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(len(tempm))):
+        for k2 in range(2):
+        
+            cond1.append(float(tempm[k1][k2])) 
+         
+    SCR[i]=DEFI_FONCTION(NOM_PARA='TEMP',
+                                 VALE=( cond1 ),
+                                        PROL_DROITE='LINEAIRE',
+                                        PROL_GAUCHE='LINEAIRE',)
+
+
+
+# Thermal conductivity of CuCrZr pipe
+
+ZC=[None]*10
+ZC1=[None]*10
+
+
+for i in range(10):
+    meshg=[]
+    cond1=[]
+    path1 = os.path.join('{}'+'/'+'dpacucr'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/cucrzr_Irrad/thermcond')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        cond1.append(float(tempm[0][2*k1+1]))
+        cond1.append(float(pn))    
+    ZC[i]=DEFI_FONCTION(       NOM_PARA='TEMP',
+                                 VALE=(cond1 ),
+                                        PROL_DROITE='CONSTANT',
+                                        PROL_GAUCHE='CONSTANT',)
+
+    ZC1[i] = DEFI_MATERIAU ( THER_NL=_F(LAMBDA=ZC[i],
+                             RHO_CP=SCR[i]))
+    path1 = os.path.join('{}'+'/'+'damagecucr'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    for kk in range(len(tempg)):
+        meshg.append('M'+str(int(tempg[kk][2])))
+    MAT.append({'MAILLE':meshg, 'MATER': ZC1[i]})
+
+
+mac = AFFE_MATERIAU(MAILLAGE = mono, AFFE=MAT)
+                                 
+maclreel=DEFI_LIST_REEL( DEBUT=0,INTERVALLE=
+(_F( PAS = 0.04, JUSQU_A = 10), ),)
+
+
+HTdata = N.fromfile(SimDict['HTData'],dtype=float,count=-1,sep=" ")
+# Change flux to negative for energy to leave sample
+HTdata[1::2] = -HTdata[1::2]/1000000
+PipeFlux = DEFI_FONCTION(NOM_PARA='TEMP',
+                            PROL_DROITE='LINEAIRE',
+                            PROL_GAUCHE='LINEAIRE',
+                            VALE=HTdata)
+
+# Heat flux at the inner surface of CuCrZr coolant pipe
+Conv= AFFE_CHAR_THER_F(FLUX_NL=_F(FLUN=PipeFlux,GROUP_MA='pipe_inner_surface'),MODELE=macmod1)
+
+# Plasma heat load the top face of the armour
+Plasma= AFFE_CHAR_THER(MODELE=macmod1,     
+FLUX_REP = (_F(GROUP_MA=('top_face_armour',),FLUN = 10,),),);
+
+# Neutron heat loads are applied as volumetric heat sources
+path1 = os.path.join('{}'+'/'+'heatingneu'+'.dat')
+f=open(path1.format(SimDict['CALC_DIR']),"r")
+lines=f.readlines()
+noden1 = [(line.strip().split())for line in lines]
+e=len(noden1)
+
+TT45=[]
+TT42=[]
+TT22=[]
+TT12=[]
+TT32=[]
+for j in range(0,e):
+    TT42.append('M'+ str(int(noden1[j][0])+int(1))) 
+    TT42.append('M'+ str(int(noden1[j][0])+int(1))) 
+    TT42.append('M'+ str(int(noden1[j][0])+int(1))) 
+    TT42.append('M'+ str(int(noden1[j][0])+int(1))) 
+    TT42.append('M'+ str(int(noden1[j][0])+int(1))) 
+    TT42.append('M'+ str(int(noden1[j][0])+int(1))) 
+    TT42.append('M'+ str(int(noden1[j][0])+int(1))) 
+    TT42.append('M'+ str(int(noden1[j][0])+int(1))) 
+ 
+    TT45.append((float(noden1[j][2])))
+    max1=max(TT45)
+    TT12.append((float(noden1[j][1])/8e9)) 
+    TT12.append((float(noden1[j][1])/8e9)) 
+    TT12.append((float(noden1[j][1])/8e9)) 
+    TT12.append((float(noden1[j][1])/8e9)) 
+    TT12.append((float(noden1[j][1])/8e9)) 
+    TT12.append((float(noden1[j][1])/8e9)) 
+    TT12.append((float(noden1[j][1])/8e9)) 
+    TT12.append((float(noden1[j][1])/8e9))
+    TT22.append((int(1))) 
+    TT22.append((int(2))) 
+    TT22.append((int(3))) 
+    TT22.append((int(4))) 
+    TT22.append((int(5))) 
+    TT22.append((int(6))) 
+    TT22.append((int(7))) 
+    TT22.append((int(8)))
+ 
+     
+  
+    TT32.append((int(1))) 
+    TT32.append((int(1))) 
+    TT32.append((int(1))) 
+    TT32.append((int(1)))
+    TT32.append((int(1))) 
+    TT32.append((int(1))) 
+    TT32.append((int(1))) 
+    TT32.append((int(1)))
+    
+ 
+TAB12=CREA_TABLE (LISTE= (_F (PARA='MAILLE',LISTE_K= TT42,TYPE_K='K8',),_F (PARA='POINT',LISTE_I= ((TT22) ),),_F (PARA='SOUS_POINT',LISTE_I= ((TT32) ),),
+		           
+		              _F (PARA='SOUR',LISTE_R= ((TT12) ),), ),) 
+
+IMPR_TABLE (UNITE=81,TABLE=TAB12,FORMAT='ASTER')
+         
+TT6=LIRE_TABLE (UNITE=81,FORMAT='ASTER', )
+
+DE5=CREA_CHAMP(MODELE=macmod1,MAILLAGE=mono, OPERATION='EXTR',OPTION='SOUR_ELGA',PROL_ZERO='OUI',TABLE=TT6, TYPE_CHAM='ELGA_SOUR_R') 
+
+CH_THER=AFFE_CHAR_THER(MODELE=macmod1,
+SOURCE=_F(SOUR_CALCULEE=DE5,), 
+);
+
+#Reference temperature
+TEMPI=150
+
+# Perfrom thermal simulation    
+rth=THER_NON_LINE(MODELE=macmod1,
+CHAM_MATER=mac,
+EXCIT=(
+
+_F(CHARGE=Plasma),_F(CHARGE=Conv),_F(CHARGE=CH_THER),),
+INCREMENT=_F( LIST_INST=maclreel,),
+ETAT_INIT=_F(VALE=80),
+SOLVEUR=_F(RENUM='PORD',METHODE='MUMPS'), 
+CONVERGENCE=_F(ITER_GLOB_MAXI=100,),);
+     
+      
+S22=CREA_CHAMP(TYPE_CHAM='NOEU_TEMP_R',
+OPERATION='EXTR',
+RESULTAT=rth,
+NOM_CHAM=('TEMP',),
+NUME_ORDRE=250,)
+
+resultsth='thermal'+'.rmed'
+
+
+path12 ='./REPE_OUT/'
+pathy1=os.path.join(path12,resultsth) 
+    
+DEFI_FICHIER(FICHIER=pathy1, UNITE=82)
+
+
+
+
+
+IMPR_RESU (
+FORMAT='MED' ,
+RESU = (_F (
+RESULTAT=rth,INST=10,
+NOM_CHAM = ( 'TEMP') ,),),
+UNITE=82);
+
+
+   
+CH1N=CREA_CHAMP (OPERATION='ASSE', TYPE_CHAM='NOEU_NEUT_R', MAILLAGE=mono,           
+ASSE=_F (TOUT='OUI', CHAM_GD = S22,NOM_CMP = ('TEMP',),  NOM_CMP_RESU = ('X1',)),)
+
+CHXG= CREA_CHAMP (OPERATION='DISC', TYPE_CHAM='ELNO_NEUT_R',PROL_ZERO='OUI',MODELE=macmod1, CHAM_GD= CH1N)
+CHXY= CREA_CHAMP (OPERATION='DISC', TYPE_CHAM='ELGA_NEUT_R',PROL_ZERO='OUI',MODELE=macmod1, CHAM_GD= CHXG)
+TEM1=CHXY.EXTR_COMP('X1',['tungsten_arm'],1).valeurs
+
+TEM2=CHXY.EXTR_COMP('X1',['tungsten_arm'],1).maille
+TEM3=CHXY.EXTR_COMP('X1',['tungsten_arm'],1).point
+N.savetxt('{}/tem1.txt'.format(SimDict['CALC_DIR']), TEM1, delimiter = '\t')  
+N.savetxt('{}/tem2.txt'.format(SimDict['CALC_DIR']), TEM2, fmt="%d")  
+N.savetxt('{}/tem3.txt'.format(SimDict['CALC_DIR']), TEM3, fmt="%d")  
+TEM1cu=CHXY.EXTR_COMP('X1',['copper_inter'],1).valeurs
+TEM2cu=CHXY.EXTR_COMP('X1',['copper_inter'],1).maille
+N.savetxt('{}/tem1cu.txt'.format(SimDict['CALC_DIR']), TEM1cu, delimiter = '\t')  
+N.savetxt('{}/tem2cu.txt'.format(SimDict['CALC_DIR']), TEM2cu, fmt="%d")  
+
+TEM1cur=CHXY.EXTR_COMP('X1',['CuCrZr_pipe'],1).valeurs
+TEM2cur=CHXY.EXTR_COMP('X1',['CuCrZr_pipe'],1).maille
+N.savetxt('{}/tem1cur.txt'.format(SimDict['CALC_DIR']), TEM1cur, delimiter = '\t')  
+N.savetxt('{}/tem2cur.txt'.format(SimDict['CALC_DIR']), TEM2cur, fmt="%d")  
+
+# Thermal fields are extracted as med files after finite element thermal simulation
+#resultsth='resultmec'+'.rmed'
+#path11 ='./REPE_OUT/'
+#pathy1=os.path.join(path11,resultsth) 
+    
+#DEFI_FICHIER(FICHIER=pathy1, UNITE=72)
+#IMPR_RESU (
+#FORMAT='MED' ,
+#RESU = (_F (
+#RESULTAT=rth,INST=10,
+#NOM_CHAM = ( 'TEMP') ,),),
+#UNITE=72);
+
+
+# Thermal conductivity distribution as function of dpa and temperature are plotted across the monoblock
+
+pathte = os.path.join('{}'+'/'+'tm1.txt'+ str(int(getattr(Parameters,'dpa',None))))
+fm=open(pathte.format(SimDict['CALC_DIR']),"w")
+fm.close()
+for i in range(15):
+    meshg=[]
+    condte=[]
+    cond1=[]
+    path1 = os.path.join('{}'+'/'+'dpatu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Tungsten_Irrad/thermcond')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        condte.append(float(tempm[0][2*k1+1]))
+        cond1.append(float(pn))     
+
+    pathtem2 = os.path.join('{}'+'/'+'tem2.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1.txt')
+    path1 = os.path.join('{}'+'/'+'damagetu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+
+               pn=N.interp(ty, condte,cond1)
+
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()               
+for i in range(10):
+    meshg=[]
+    condte=[]
+    cond1=[]
+    path1 = os.path.join('{}'+'/'+'dpacu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Copper_Irrad/thermcond')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        condte.append(float(tempm[0][2*k1+1]))
+        cond1.append(float(pn))     
+
+       
+     
+    pathtem2 = os.path.join('{}'+'/'+'tem2cu.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1cu.txt')
+    path1 = os.path.join('{}'+'/'+'damagecu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+
+               pn=N.interp(ty, condte,cond1)
+
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()       
+for i in range(10):
+    meshg=[]
+    condte=[]
+    cond1=[]
+    path1 = os.path.join('{}'+'/'+'dpacucr'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/cucrzr_Irrad/thermcond')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        condte.append(float(tempm[0][2*k1+1]))
+        cond1.append(float(pn))     
+
+       
+     
+    pathtem2 = os.path.join('{}'+'/'+'tem2cur.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1cur.txt')
+    path1 = os.path.join('{}'+'/'+'damagecucr'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+
+               pn=N.interp(ty, condte,cond1)
+
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()
+epma=[]
+f1=open(pathte.format(SimDict['CALC_DIR']),"r")
+lines=f1.readlines()
+tempe = [(line.strip().split())for line in lines]
+for i in range(len(tempe)):   
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+epg=[]
+epp=[]
+eps=[]
+for i in range(len(tempe)):   
+    epg.append(int(1))
+    epg.append(int(2))
+    epg.append(int(3))
+    epg.append(int(4))
+    epg.append(int(5))
+    epg.append(int(6))
+    epg.append(int(7))
+    epg.append(int(8))
+
+for i in range(len(tempe)):   
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+epv=[]
+for i in range(len(tempe)):   
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+
+for i in range(len(tempe)):   
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+
+
+TAB1234=CREA_TABLE (LISTE= (_F (PARA='MAILLE',LISTE_K= epma,TYPE_K='K8',),_F (PARA='POINT',LISTE_I= ((epg) ),),_F (PARA='SOUS_POINT',LISTE_I= ((epp) ),),
+_F (PARA='FLUX',LISTE_R= ((eps) ),), _F (PARA='FLUY',LISTE_R= ((epv) ),), _F (PARA='FLUZ',LISTE_R= ((epv) ),),     ),) 
+
+IMPR_TABLE (UNITE=86,TABLE=TAB1234,FORMAT='ASTER')
+         
+TT654=LIRE_TABLE (UNITE=86,FORMAT='ASTER', )
+
+
+DE564=CREA_CHAMP(INFO=2,MODELE=macmod1,MAILLAGE=mono, OPERATION='EXTR',OPTION='FLUX_ELGA',TABLE=TT654, TYPE_CHAM='ELGA_FLUX_R')
+
+CHXG4= CREA_CHAMP (OPERATION='DISC', TYPE_CHAM='NOEU_FLUX_R',MODELE=macmod1, CHAM_GD= DE564)
+
+
+
+pathte = os.path.join('{}'+'/'+'tm1.txt'+ str(int(getattr(Parameters,'dpa',None))))
+fm=open(pathte.format(SimDict['CALC_DIR']),"w")
+fm.close()
+for i in range(15):
+    meshg=[]
+    condte=[]
+    cond1=[]
+    path1 = os.path.join('{}'+'/'+'dpatu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Tungsten_Irrad/relativecond.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        condte.append(float(tempm[0][2*k1+1]))
+        cond1.append(float(pn))     
+
+    pathtem2 = os.path.join('{}'+'/'+'tem2.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1.txt')
+    path1 = os.path.join('{}'+'/'+'damagetu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+
+               pn=N.interp(ty, condte,cond1)
+
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()               
+for i in range(10):
+    meshg=[]
+    condte=[]
+    cond1=[]
+    path1 = os.path.join('{}'+'/'+'dpacu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Copper_Irrad/relativecond.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        condte.append(float(tempm[0][2*k1+1]))
+        cond1.append(float(pn))     
+
+       
+     
+    pathtem2 = os.path.join('{}'+'/'+'tem2cu.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1cu.txt')
+    path1 = os.path.join('{}'+'/'+'damagecu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+
+               pn=N.interp(ty, condte,cond1)
+
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()       
+for i in range(10):
+    meshg=[]
+    condte=[]
+    cond1=[]
+    path1 = os.path.join('{}'+'/'+'dpacucr'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/cucrzr_Irrad/relativecond.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        condte.append(float(tempm[0][2*k1+1]))
+        cond1.append(float(pn))     
+
+       
+     
+    pathtem2 = os.path.join('{}'+'/'+'tem2cur.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1cur.txt')
+    path1 = os.path.join('{}'+'/'+'damagecucr'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+
+               pn=N.interp(ty, condte,cond1)
+
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()
+epma=[]
+f1=open(pathte.format(SimDict['CALC_DIR']),"r")
+lines=f1.readlines()
+tempe = [(line.strip().split())for line in lines]
+for i in range(len(tempe)):   
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+epg=[]
+epp=[]
+eps=[]
+for i in range(len(tempe)):   
+    epg.append(int(1))
+    epg.append(int(2))
+    epg.append(int(3))
+    epg.append(int(4))
+    epg.append(int(5))
+    epg.append(int(6))
+    epg.append(int(7))
+    epg.append(int(8))
+
+for i in range(len(tempe)):   
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+epv=[]
+for i in range(len(tempe)):   
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+
+for i in range(len(tempe)):   
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+
+
+CAB1234=CREA_TABLE (LISTE= (_F (PARA='MAILLE',LISTE_K= epma,TYPE_K='K8',),_F (PARA='POINT',LISTE_I= ((epg) ),),_F (PARA='SOUS_POINT',LISTE_I= ((epp) ),),
+_F (PARA='FLUX',LISTE_R= ((eps) ),), _F (PARA='FLUY',LISTE_R= ((epv) ),), _F (PARA='FLUZ',LISTE_R= ((epv) ),),     ),) 
+
+IMPR_TABLE (UNITE=88,TABLE=CAB1234,FORMAT='ASTER')
+         
+TT655=LIRE_TABLE (UNITE=88,FORMAT='ASTER', )
+
+
+DE565=CREA_CHAMP(INFO=2,MODELE=macmod1,MAILLAGE=mono, OPERATION='EXTR',OPTION='FLUX_ELGA',TABLE=TT655, TYPE_CHAM='ELGA_FLUX_R')
+
+CHXG5= CREA_CHAMP (OPERATION='DISC', TYPE_CHAM='NOEU_FLUX_R',MODELE=macmod1, CHAM_GD= DE565)
+
+rth4 = CREA_RESU(
+OPERATION = 'AFFE',
+TYPE_RESU = 'EVOL_THER',
+NOM_CHAM = 'FLUX_NOEU',
+AFFE = _F(CHAM_GD =CHXG4,INST = .1),) 
+
+rth4e = CREA_RESU(
+OPERATION = 'AFFE',
+TYPE_RESU = 'EVOL_THER',
+NOM_CHAM = 'FLUX_ELGA',
+AFFE = _F(CHAM_GD =DE564,INST = .1),) 
+
+rth5 = CREA_RESU(
+OPERATION = 'AFFE',
+TYPE_RESU = 'EVOL_THER',
+NOM_CHAM = 'FLUX_NOEU',
+AFFE = _F(CHAM_GD =CHXG5,INST = .1),)                        
+     
+rth5e = CREA_RESU(
+OPERATION = 'AFFE',
+TYPE_RESU = 'EVOL_THER',
+NOM_CHAM = 'FLUX_ELGA',
+AFFE = _F(CHAM_GD =DE565,INST = .1),)   
+# Thermal conductivity distributions are plotted across monoblock
+
+resultsth='thermacond'+'.rmed'
+
+path11 ='./REPE_OUT/'
+pathy1=os.path.join(path11,resultsth) 
+    
+DEFI_FICHIER(FICHIER=pathy1, UNITE=73)
+
+IMPR_RESU (
+FORMAT='MED' ,
+RESU = (
+_F (
+RESULTAT=rth4 ,
+NOM_CHAM = ( 'FLUX_NOEU'),
+),_F (
+RESULTAT=rth5 ,
+NOM_CHAM = ( 'FLUX_NOEU'),
+),
+_F (
+RESULTAT=rth4e ,
+NOM_CHAM = ( 'FLUX_ELGA'),
+),_F (
+RESULTAT=rth5e ,
+NOM_CHAM = ( 'FLUX_ELGA'),
+),),
+UNITE=73
+);
+
+# Yield stress distribution are plotted as a function of dpa and temperature across monoblock
+
+YC=[None]*15
+YC1=[None]*15
+
+MAT=[]
+GAT=[]
+for i in range(15):
+    meshg=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpatu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Tungsten_Irrad/yield_stress.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yield1.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))    
+         
+    YC[i]=DEFI_FONCTION(       NOM_PARA='TEMP',
+                                 VALE=( yield1 ),
+                                        PROL_DROITE='LINEAIRE',
+                                        PROL_GAUCHE='LINEAIRE',)
+  
+pathte = os.path.join('{}'+'/'+'tm1.txt'+ str(int(getattr(Parameters,'dpa',None))))
+fm=open(pathte.format(SimDict['CALC_DIR']),"w")
+fm.close()
+for i in range(15):
+    meshg=[]
+    yieldte=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpatu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Tungsten_Irrad/yield_stress.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yieldte.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))     
+
+    pathtem2 = os.path.join('{}'+'/'+'tem2.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1.txt')
+    path1 = os.path.join('{}'+'/'+'damagetu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+               pn=N.interp(ty, yieldte,yield1)
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()                       
+for i in range(10):
+    meshg=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpacu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Copper_Irrad/yield_stress.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yield1.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))    
+                  
+
+for i in range(10):
+    meshg=[]
+    yieldte=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpacu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Copper_Irrad/yield_stress.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yieldte.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))     
+
+       
+     
+    pathtem2 = os.path.join('{}'+'/'+'tem2cu.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1cu.txt')
+    path1 = os.path.join('{}'+'/'+'damagecu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+               
+             
+               
+   
+
+               pn=N.interp(ty, yieldte,yield1)
+
+               
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()                   
+for i in range(10):
+    meshg=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpacucr'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/cucrzr_Irrad/yield_stress.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yield1.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))    
+                  
+
+for i in range(10):
+    meshg=[]
+    yieldte=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpacucr'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/cucrzr_Irrad/yield_stress.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yieldte.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))     
+
+       
+     
+    pathtem2 = os.path.join('{}'+'/'+'tem2cur.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1cur.txt')
+    path1 = os.path.join('{}'+'/'+'damagecucr'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+               
+             
+               
+   
+
+               pn=N.interp(ty, yieldte,yield1)
+
+               
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()
+epma=[]
+f1=open(pathte.format(SimDict['CALC_DIR']),"r")
+lines=f1.readlines()
+tempe = [(line.strip().split())for line in lines]
+for i in range(len(tempe)):   
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+epg=[]
+epp=[]
+eps=[]
+for i in range(len(tempe)):   
+    epg.append(int(1))
+    epg.append(int(2))
+    epg.append(int(3))
+    epg.append(int(4))
+    epg.append(int(5))
+    epg.append(int(6))
+    epg.append(int(7))
+    epg.append(int(8))
+
+for i in range(len(tempe)):   
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+epv=[]
+for i in range(len(tempe)):   
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+
+for i in range(len(tempe)):   
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+
+
+TAB123=CREA_TABLE (LISTE= (_F (PARA='MAILLE',LISTE_K= epma,TYPE_K='K8',),_F (PARA='POINT',LISTE_I= ((epg) ),),_F (PARA='SOUS_POINT',LISTE_I= ((epp) ),),
+		           
+_F (PARA='FLUX',LISTE_R= ((eps) ),), _F (PARA='FLUY',LISTE_R= ((epv) ),), _F (PARA='FLUZ',LISTE_R= ((epv) ),), ),) 
+
+IMPR_TABLE (UNITE=87,TABLE=TAB123,FORMAT='ASTER')
+         
+TT65=LIRE_TABLE (UNITE=87,                  
+                 FORMAT='ASTER', )
+
+
+DE5645=CREA_CHAMP(INFO=2,MODELE=macmod1,MAILLAGE=mono, OPERATION='EXTR',OPTION='FLUX_ELGA',TABLE=TT65, TYPE_CHAM='ELGA_FLUX_R') 
+CHXG45= CREA_CHAMP (OPERATION='DISC', TYPE_CHAM='NOEU_FLUX_R',MODELE=macmod1, CHAM_GD= DE5645)
+
+pathte = os.path.join('{}'+'/'+'tm1.txt'+ str(int(getattr(Parameters,'dpa',None))))
+fm=open(pathte.format(SimDict['CALC_DIR']),"w")
+fm.close()
+for i in range(15):
+    meshg=[]
+    yieldte=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpatu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Tungsten_Irrad/yield_stress_rel_dpa.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yieldte.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))     
+
+    pathtem2 = os.path.join('{}'+'/'+'tem2.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1.txt')
+    path1 = os.path.join('{}'+'/'+'damagetu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+               pn=N.interp(ty, yieldte,yield1)
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()                       
+for i in range(10):
+    meshg=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpacu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Copper_Irrad/yield_stress_rel_dpa.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yield1.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))    
+                  
+
+for i in range(10):
+    meshg=[]
+    yieldte=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpacu'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/Copper_Irrad/yield_stress_rel_dpa.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yieldte.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))     
+
+       
+     
+    pathtem2 = os.path.join('{}'+'/'+'tem2cu.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1cu.txt')
+    path1 = os.path.join('{}'+'/'+'damagecu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+               
+             
+               
+   
+
+               pn=N.interp(ty, yieldte,yield1)
+
+               
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()                   
+for i in range(10):
+    meshg=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpacucr'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/cucrzr_Irrad/yield_stress_rel_dpa.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    
+    
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yield1.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))    
+                  
+
+for i in range(10):
+    meshg=[]
+    yieldte=[]
+    yield1=[]
+    path1 = os.path.join('{}'+'/'+'dpacucr'+ str(int(getattr(Parameters,'dpa',None))))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    temp1 = [(line.strip().split())for line in lines]
+    f.close()
+    pathm = os.path.join('{}'+'/cucrzr_Irrad/yield_stress_rel_dpa.txt')
+    f=open(pathm.format(SimDict['MATERIAL_DIR']),"r")
+    lines=f.readlines()
+    tempm = [(line.strip().split())for line in lines]
+    f.close()
+    for k1 in range(int(((len(tempm[0])-1)/2))):
+        dpa=[]
+        dpa1=[]
+        for k in range(len(tempm)):
+            dpa.append(float(tempm[k][0]))
+            dpa1.append(float(tempm[k][2*k1+2]))
+        pn=N.interp(temp1[i][0], dpa,dpa1)
+        
+        yieldte.append(float(tempm[0][2*k1+1]))
+        yield1.append(float(pn))     
+
+       
+     
+    pathtem2 = os.path.join('{}'+'/'+'tem2cur.txt')
+    pathtem1 = os.path.join('{}'+'/'+'tem1cur.txt')
+    path1 = os.path.join('{}'+'/'+'damagecucr'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i))
+    f=open(path1.format(SimDict['CALC_DIR']),"r")
+    lines=f.readlines()
+    tempg = [(line.strip().split())for line in lines]
+    f.close()
+    e=open(pathtem1.format(SimDict['CALC_DIR']),"r")
+    lines=e.readlines()
+    tempe = [(line.strip().split())for line in lines]
+    e.close()
+    e1=open(pathtem2.format(SimDict['CALC_DIR']),"r")
+    lines=e1.readlines()
+    tempe1 = [(line.strip().split())for line in lines]
+    e1.close()
+    fm2=open(pathte.format(SimDict['CALC_DIR']),"a")
+    io=0
+    for kk1 in range(len(tempg)):
+        for kk in range(int(len(tempe1)/8)):
+            if (int(tempg[kk1][2])==int(tempe1[8*kk][0])):
+              
+               ty=(float(tempe[8*kk][0])+float(tempe[8*kk+1][0])+float(tempe[8*kk+2][0])+float(tempe[8*kk+3][0])+float(tempe[8*kk+4][0])+float(tempe[8*kk+5][0])+float(tempe[8*kk+6][0])+float(tempe[8*kk+7][0]))/8
+               
+             
+               
+   
+
+               pn=N.interp(ty, yieldte,yield1)
+
+               
+               fm2.write(str(int(tempg[kk1][2])) +" "+str(float(pn)) +" "+"\n")
+    fm2.close()
+epma=[]
+f1=open(pathte.format(SimDict['CALC_DIR']),"r")
+lines=f1.readlines()
+tempe = [(line.strip().split())for line in lines]
+for i in range(len(tempe)):   
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+    epma.append('M'+ str(int(tempe[i][0])))
+epg=[]
+epp=[]
+eps=[]
+for i in range(len(tempe)):   
+    epg.append(int(1))
+    epg.append(int(2))
+    epg.append(int(3))
+    epg.append(int(4))
+    epg.append(int(5))
+    epg.append(int(6))
+    epg.append(int(7))
+    epg.append(int(8))
+
+for i in range(len(tempe)):   
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+    epp.append(int(1))
+epv=[]
+for i in range(len(tempe)):   
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+    epv.append(int(0))
+
+for i in range(len(tempe)):   
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+    eps.append(float(tempe[i][1]))
+
+
+TAB124=CREA_TABLE (LISTE= (_F (PARA='MAILLE',LISTE_K= epma,TYPE_K='K8',),_F (PARA='POINT',LISTE_I= ((epg) ),),_F (PARA='SOUS_POINT',LISTE_I= ((epp) ),),
+		           
+_F (PARA='FLUX',LISTE_R= ((eps) ),), _F (PARA='FLUY',LISTE_R= ((epv) ),), _F (PARA='FLUZ',LISTE_R= ((epv) ),), ),) 
+
+IMPR_TABLE (UNITE=89,TABLE=TAB124,FORMAT='ASTER')
+         
+TT64=LIRE_TABLE (UNITE=89,                  
+                 FORMAT='ASTER', )
+
+
+DE5644=CREA_CHAMP(INFO=2,MODELE=macmod1,MAILLAGE=mono, OPERATION='EXTR',OPTION='FLUX_ELGA',TABLE=TT64, TYPE_CHAM='ELGA_FLUX_R') 
+CHXG44= CREA_CHAMP (OPERATION='DISC', TYPE_CHAM='NOEU_FLUX_R',MODELE=macmod1, CHAM_GD= DE5644)
+
+rth41 = CREA_RESU(OPERATION = 'AFFE',
+TYPE_RESU = 'EVOL_THER',
+NOM_CHAM = 'FLUX_NOEU',
+AFFE = _F(CHAM_GD =CHXG45,INST = .1))                        
+
+rth51 = CREA_RESU(OPERATION = 'AFFE',
+TYPE_RESU = 'EVOL_THER',
+NOM_CHAM = 'FLUX_NOEU',
+AFFE = _F(CHAM_GD =CHXG44,INST = .1)) 
+rth41e = CREA_RESU(OPERATION = 'AFFE',
+TYPE_RESU = 'EVOL_THER',
+NOM_CHAM = 'FLUX_ELGA',
+AFFE = _F(CHAM_GD =DE5645,INST = .1))                        
+
+rth51e = CREA_RESU(OPERATION = 'AFFE',
+TYPE_RESU = 'EVOL_THER',
+NOM_CHAM = 'FLUX_ELGA',
+AFFE = _F(CHAM_GD =DE5644,INST = .1)) 
+
+# Yield stress as a function of dpa and temperature is extracted as med file      
+resultsth='yieldstrength'+'.rmed'
+
+path11 ='./REPE_OUT/'
+pathy1=os.path.join(path11,resultsth) 
+    
+DEFI_FICHIER(FICHIER=pathy1, UNITE=74)
+
+IMPR_RESU (
+FORMAT='MED' ,
+RESU = (
+#the result for 3D is from the-projected results
+_F (
+RESULTAT=rth41 ,
+NOM_CHAM = ( 'FLUX_NOEU') ,
+NOM_CMP = ( 'FLUX') ,
+),_F (
+RESULTAT=rth41e ,
+NOM_CHAM = ( 'FLUX_ELGA') ,
+NOM_CMP = ( 'FLUX') ,
+),_F (
+RESULTAT=rth51 ,
+NOM_CHAM = ( 'FLUX_NOEU') ,
+NOM_CMP = ( 'FLUX') ,
+),_F (
+RESULTAT=rth51e ,
+NOM_CHAM = ( 'FLUX_ELGA') ,
+NOM_CMP = ( 'FLUX') ,
+),
+),
+UNITE=74
+);
+
+
+# Yield stress as a function of dpa and temperature is extracted as med file      
+resultsthCuCrZr='yieldstrength_cucrzr'+'.rmed'
+
+path11 ='./REPE_OUT/'
+pathy1=os.path.join(path11,resultsthCuCrZr) 
+    
+DEFI_FICHIER(FICHIER=pathy1, UNITE=75)
+
+IMPR_RESU (
+FORMAT='MED' ,
+RESU = (
+#the result for 3D is from the-projected results
+_F (
+RESULTAT=rth41 ,
+GROUP_MA='CuCrZr_pipe',
+NOM_CHAM = ( 'FLUX_NOEU') ,
+NOM_CMP = ( 'FLUX') ,
+),
+),
+UNITE=75
+);
+
+
+FIN()
+
+
+

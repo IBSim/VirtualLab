@@ -1,0 +1,245 @@
+DEBUT(PAR_LOT = 'NON',LANG='EN')
+import sys
+import os
+import aster
+import aster_core
+from Utilitai import partition
+import string
+import numpy as N
+import AsterFunc
+
+# DPA distribution is plotted across the monoblock
+
+
+SimDict = AsterFunc.GetSimDict()
+Parameters = SimDict['Parameters']
+
+mono = LIRE_MAILLAGE(FORMAT='MED')
+
+mono=DEFI_GROUP(
+reuse =mono ,
+MAILLAGE=mono ,
+CREA_GROUP_NO =(
+_F(GROUP_MA = 'copper_inter',),
+_F(GROUP_MA = 'cucrzr_pipe',),
+_F(GROUP_MA = 'pipe_ext',),
+_F(GROUP_MA = 'tungsten_arm',),                  
+),)
+ 
+macmod1=AFFE_MODELE (
+MAILLAGE=mono ,
+AFFE=_F ( TOUT='OUI', PHENOMENE='THERMIQUE', MODELISATION='3D',),)
+
+
+TT42=[]
+TT22=[]
+TT12=[]
+TT32=[]
+TT52=[]
+
+for i in range(10):
+    pathcucr='damagecucr'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i)
+    path6 = os.path.join('{}'+'/'+ pathcucr)
+    f=open(path6.format(SimDict['CALC_DIR']),'r')
+    lines=f.readlines()
+    noden1 = [(line.strip().split())for line in lines]
+    e=len(noden1)
+    f.close()
+   
+    for j in range(0,e):
+
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+ 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1])))
+
+        TT22.append((int(1))) 
+        TT22.append((int(2))) 
+        TT22.append((int(3))) 
+        TT22.append((int(4))) 
+        TT22.append((int(5))) 
+        TT22.append((int(6))) 
+        TT22.append((int(7))) 
+        TT22.append((int(8)))
+     
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1)))
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1)))
+
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+
+for i in range(10):
+    pathcu='damagecu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i)
+    path6 = os.path.join('{}'+'/'+ pathcu)
+    f=open(path6.format(SimDict['CALC_DIR']),'r')
+    lines=f.readlines()
+    noden1 = [(line.strip().split())for line in lines]
+    e=len(noden1)
+    f.close()
+   
+    for j in range(0,e):
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+ 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1])))
+        TT22.append((int(1))) 
+        TT22.append((int(2))) 
+        TT22.append((int(3))) 
+        TT22.append((int(4))) 
+        TT22.append((int(5))) 
+        TT22.append((int(6))) 
+        TT22.append((int(7))) 
+        TT22.append((int(8)))
+ 
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1)))
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1)))
+        
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+     
+
+for i in range(15):
+    pathtu='damagetu'+ str(int(getattr(Parameters,'dpa',None)))+'_dpa'+str(i)
+    path6 = os.path.join('{}'+'/'+ pathtu)
+    f=open(path6.format(SimDict['CALC_DIR']),'r')
+    lines=f.readlines()
+    noden1 = [(line.strip().split())for line in lines]
+    e=len(noden1)
+    f.close()
+   
+    for j in range(0,e):
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+        TT42.append('M'+ str(int(noden1[j][2]))) 
+ 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1]))) 
+        TT12.append((float(noden1[j][1])))
+        TT22.append((int(1))) 
+        TT22.append((int(2))) 
+        TT22.append((int(3))) 
+        TT22.append((int(4))) 
+        TT22.append((int(5))) 
+        TT22.append((int(6))) 
+        TT22.append((int(7))) 
+        TT22.append((int(8)))
+ 
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1)))
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1))) 
+        TT32.append((int(1)))
+
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+        TT52.append(0)
+
+
+TAB123=CREA_TABLE (LISTE= (_F (PARA='MAILLE',LISTE_K= TT42,TYPE_K='K8',),_F (PARA='POINT',LISTE_I= ((TT22) ),),_F (PARA='SOUS_POINT',LISTE_I= ((TT32) ),),
+_F (PARA='FLUX',LISTE_R= ((TT12) ),), _F (PARA='FLUY',LISTE_R= ((TT52) ),), _F (PARA='FLUZ',LISTE_R= ((TT52) ),),     ),) 
+
+IMPR_TABLE (UNITE=84,TABLE=TAB123,FORMAT='ASTER')
+         
+TT65=LIRE_TABLE (UNITE=84,                  
+                 FORMAT='ASTER', )
+
+DE56=CREA_CHAMP(INFO=2,MODELE=macmod1,MAILLAGE=mono, OPERATION='EXTR',OPTION='FLUX_ELGA',TABLE=TT65, TYPE_CHAM='ELGA_FLUX_R') 
+
+CHXG= CREA_CHAMP (OPERATION='DISC', TYPE_CHAM='NOEU_FLUX_R',MODELE=macmod1, CHAM_GD= DE56)
+
+rth = CREA_RESU(OPERATION = 'AFFE',
+TYPE_RESU = 'EVOL_THER',
+NOM_CHAM = 'FLUX_NOEU',
+AFFE = _F(CHAM_GD =CHXG, INST = .1))                        
+
+# DPA is plotted across in med file across monoblock
+    
+resultsth='dpa'+'.rmed'
+
+path11 ='./REPE_OUT/'
+pathy1=os.path.join(path11,resultsth)     
+DEFI_FICHIER(FICHIER=pathy1, UNITE=72)
+
+IMPR_RESU (
+FORMAT='MED' ,
+RESU = (
+_F (
+RESULTAT=rth ,
+NOM_CHAM = ( 'FLUX_NOEU') ,
+),
+),
+UNITE=72
+);
+
+FIN()
+
+
+

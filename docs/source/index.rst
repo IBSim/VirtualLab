@@ -43,6 +43,10 @@ The pre and post processing is carried out using various software, for example:
 * `iso2mesh <http://iso2mesh.sourceforge.net/>`_: Image-based meshing
 * `PyTorch <https://pytorch.org/>`_: Data analytics
 * `ParaVis <https://docs.salome-platform.org/latest/dev/PARAVIS/>`_: Data visualisation
+* `Paramak <https://paramak.readthedocs.io/en/main/>`_: Neutronics cad developement
+* `OpenMC <https://docs.openmc.org/en/stable/>`_: Neutronics simulation
+* `MoDELib <https://github.com/giacomo-po/MoDELib>`_: Dislocation dynamics simulation
+
   
 While this platform has been written for use from the command line, some capabilities have been included to use GUIs offered by the various software for debugging and training.
 

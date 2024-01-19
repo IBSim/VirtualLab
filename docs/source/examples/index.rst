@@ -44,6 +44,6 @@ Simulations are initiated by launching **VirtualLab** in the command line with a
     ibsim
     Mesh_Voxelisation
     ml
-    irradiation
+    Irradiation_damage
     X-ray_imaging
     CT_Reconstruction

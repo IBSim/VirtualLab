@@ -202,9 +202,11 @@ This method enables HIVE's operators to identify configurations for the coil whi
 Example 2: Heating profile prediction
 **************************************
 
-Often the operators of HIVE will want to be able to visualise the heating profile a component is subjected to on the coil adjacent surface. Although the previous example showed a method for identifying desirable coil configurations, these would need to be used in a simulation to provide a visualisation of the heating profile. This examples shows how it is possible to use ML models to predict the temperature on a 2D surface.
+Often the operators of HIVE will want to be able to visualise the heating profile which a component is subjected to on the coil adjacent surface. Although the previous example showed a method for identifying desirable coil configurations, these would need to be used as inputs to a FEA simulation to first generate data for creating a visualisation of the heating profile. This example shows how it is possible to use ML models to predict and visualise the temperature on a 2D surface.
 
-The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/HeatingProfile.py`. At the top of the file are flags to dictate how the analysis will be performed and should look like this ::
+The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/HeatingProfile.py`.
+
+At the top of the file are flags to dictate how the analysis will be performed and should look like this::
 
     CoilType='Pancake' 
     PCA_Analysis = False
@@ -212,7 +214,7 @@ The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutori
     CreateModel = True
     CreateImages = True
 
-The coil adjacent surface consists of 10,093 nodes, the values for each of which we would like to predict. Creating a ML model which directly predicts that many outputs is at best impractical, and often unfeasible. This large number of outputs is compressed using the princial component analysis (PCA), which projects high dimensional data on to k-lower dimensional sub spaces. 
+The coil adjacent surface consists of 10,093 finite element nodes, the values for each of which we would like to predict. Creating a ML model which directly predicts that many outputs is at best impractical, and often unfeasible. This large number of outputs is compressed using the princial component analysis (PCA), which projects high dimensional data on to k-lower dimensional sub spaces. 
 
 PCA is a lossy compression algorithm, meaning that compressing the data and then reconstructing it will not return the original data. :numref:`Fig. %s <PyPlot_04>` shows the error between the original data and the reconstructed data against the number of principal components used to compress the data for the train and test data. 
 
@@ -227,13 +229,13 @@ This plot also highlights the number of princial components needed to ensure tha
 
     Plot of reconstruction error using principal component analysis for Joule heating field on coil adjacent surface.
 
-For this example 11 principal components will be used as there is only a very small improvement in the reconstruction loss for a x4 increase in the number of principal components. 
+For this example, 11 principal components will be used because there is only a very small improvement in the reconstruction loss for a x4 increase in the number of principal components. 
 
 .. note::
 
-    If youd like to generate this plot for yourself, make sure the PCA_Analysis at the top of the RunFile is set to :code:`True`
+    If you'd like to generate this plot for yourself, make sure the PCA_Analysis at the top of the RunFile is set to :code:`True`
 
-Below are the parameters which are used to generate the GPR ML model ::
+Below are the parameters which are used to generate the GPR ML model::
 
     ML.Name = 'HeatProfile/{}/GPR'.format(CoilType)
     ML.File = ('GPR_Models','GPR_PCA_hdf5')
@@ -244,7 +246,7 @@ Below are the parameters which are used to generate the GPR ML model ::
 
 The *File* attribute is similar to that from example 1, however this time we use a routine which will specifically compresses down the output using PCA. The *TrainData* attribute is also similar, with a dataset known as 'SurfaceJH' used for the output. The number of principal components to use is specified using *Metric*, where threshold will ensure at least 0.99 of the variance is retained. *ModelParameters* is again used to define the kernel used, which in this case is 'Matern_2.5'. Along with this additional parameters relating to the noise of the model are set. This reduces the minimum bound of the noise parameter from 1E-3 set by GPyTorch to 1E-8, along with initialising its value at a smaller value. Again, *TrainingParameters* specifies the parameters used to train the model. 
 
-Next the model will be used to generate images of heating profiles and compare them with simulations (on the test dataset). The simulations to compare are references using *DA.Index* in the 'CreateImage' section of the script. This is currently set to [1], meaning that a comparison for simulation number 1 will be performed.
+Next, the model will be used to generate images of heating profiles and compare them with simulations (on the test dataset). The simulations to compare are references using *DA.Index* in the 'CreateImage' section of the script. This is currently set to [1], meaning that a comparison for simulation number 1 will be performed.
 
 .. note::
     
@@ -278,7 +280,7 @@ You should first notice that a model named 'HeatProfile/Pancake/GPR' is being ge
 
     Joule heating profile on coil adjacent surface from GPR model (example 1)
 
-These plots shows there is good agreement between the simulation and GPR model for predicting the Joule heating profile on the coil adjacent surface.
+These plots show that there is sufficiently accurate agreement between the simulation and GPR model for predicting the Joule heating profile on the coil adjacent surface.
 
 
 .. admonition:: Action
@@ -302,9 +304,9 @@ This example shows how it would be possible for the operators of HIVE to visuali
 Example 3: Inverse solutions (temperature)
 *******************************************
 
-This example demonstrates how 3D surrogate models can be used to solve a variety of different inverse problem posed by HIVE. The work here builds on the previous example, showing how a 3D surrogate model of the temperature field can be generated. This will then be used to identify the experimental parameters which will deliver the maximum temperature to the component, along with those that deliver a certain desired temperature
+This example demonstrates how 3D surrogate models can be used to solve a variety of different inverse problem posed by HIVE. The work here builds on the previous example, showing how a 3D surrogate model of the temperature field can be generated. This will then be used to identify the experimental parameters which will deliver the maximum temperature to the component, along with those that deliver a certain desired temperature.
 
-The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/InverseSolution_T.py`. At the top of the file are flags to dictate how the analysis will be performed and should look like this ::
+The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/InverseSolution_T.py`. At the top of the file are flags to dictate how the analysis will be performed and should look like this::
 
     CoilType='Pancake' 
     PCA_Analysis = False
@@ -312,7 +314,7 @@ The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutori
     CreateModel = True
     InverseAnalysis = True
 
-:numref:`Fig. %s <PyPlot_07>` shows the reconstruction error versus the number of principal components used to compress the data. The first thing to note is that much smaller errors are possible with this dataset compared with that in example 2. If 20 princial components are used then the reconstruction error is less than 1E-3 for both the test and train data, which shows that the compression is good. 
+:numref:`Fig. %s <PyPlot_07>` shows the reconstruction error versus the number of principal components used to compress the data. The first thing to note is that much smaller errors are possible with this dataset compared with that in example 2. If 20 princial components are used then the reconstruction error is less than 1E-3 for both the test and train data, which shows that the compression is appropriate for this application. 
 
 Clearly more principal components could be used, however increasing to 200 would reduce the reconsturction error to around 1E-4, which is a large computational increase for only a small improvement in the ovrall accuracy. As a result, 20 principal components will be used for this analysis. 
 
@@ -324,9 +326,9 @@ Clearly more principal components could be used, however increasing to 200 would
 
 .. note::
 
-    If youd like to generate this plot for yourself, make sure the PCA_Analysis at the top of the RunFile is set to :code:`True`. This, however, may take a little while. 
+    If you'd like to generate this plot for yourself, make sure the PCA_Analysis at the top of the RunFile is set to :code:`True`. This, however, may take a little while. 
 
-The parameters for generating the GPR model are similar to those in example 2, however notice that *ML.Metric* this time specifies the number of principal components to use, instead of the variance threshold ::
+The parameters for generating the GPR model are similar to those in example 2. However, notice that this time *ML.Metric* specifies the number of principal components to use, instead of the variance threshold::
 
     ML = Namespace()
     ML.Name = 'Temperature/{}/GPR'.format(CoilType)
@@ -336,7 +338,7 @@ The parameters for generating the GPR model are similar to those in example 2, h
     ML.ModelParameters = {'kernel':'Matern_2.5','min_noise':1e-8,'noise_init':1e-6}
     ML.Metric = {'nb_components':20}
 
-Following this you have the parameters to perform analysis with the model. The key parameters here are *Index*, which indicates the index for which to generate comparison images like in the previous example, and *DesiredTemp*, which is the maximum temperature we would like the component to reach for us to identify the experimental parameters. These are currently  ::
+Following this you have the parameters to perform analyses with the model. The key parameters here are *Index*, which indicates the index for which to generate comparison images like in the previous example, and *DesiredTemp*, which is the maximum temperature we would like the component to reach for us to identify the experimental parameters. These are currently::
 
     DA.Index = [2]
     DA.DesiredTemp = 600
@@ -361,7 +363,7 @@ Following this you have the parameters to perform analysis with the model. The k
 
 Fistly you will see the loss of the model reduce as the model parameters are updated using the training data, like in the previous examples. This model is saved to :file:`Temperature/Pancake/GPR` in the :file:`ML` directory in the project directory. 
 
-Following this the analysis with the model will take place. Printed to the terminal you should see you should see the parameter combination which will deliver the maximum temperature to the component within the defined parameter space. This should look like the following 
+Following this the analysis with the model will take place. Printed to the terminal you should see the parameter combination which will deliver the maximum temperature to the component within the defined parameter space. This should look like the following: 
 
 .. code-block:: console
 
@@ -370,7 +372,7 @@ Following this the analysis with the model will take place. Printed to the termi
     -5.00e-03, -1.50e-02, 3.00e-03, -5.00e+00, 7.99e+01, 4.17e+00, 2.00e+03
 
 
-Many of these values are intuitive. The third value, displacement in the z direction, is the minmum value possible (coil is as close to the component as possible), with the fourth value - the rotation -  pushing the coil even closer to the component. The fifth value is the coolant temperature, which is at the maximum value of 80 C, while the seventh value is the current, which is also at its maximum value of 2000 A. An image of the temperature field at the maximum temperature can be found at :file:`MaxTemperature.png` in the results directory :file:`Analysis/Pancake/InverseSolution_T/GPR`, and should lok like :numref:`Fig. %s <PyPlot_08>`.
+Many of these values are intuitive. The third value, displacement in the z direction, is the minmum value possible (coil is as close to the component as possible), with the fourth value - the rotation -  pushing the coil even closer to the component. The fifth value is the coolant temperature, which is at the maximum value of 80 °C, while the seventh value is the current, which is also at its maximum value of 2000 A. An image of the temperature field at the maximum temperature can be found at :file:`MaxTemperature.png` in the results directory :file:`Analysis/Pancake/InverseSolution_T/GPR`, and should look like :numref:`Fig. %s <PyPlot_08>`.
 
 .. _PyPlot_08:
 
@@ -379,7 +381,7 @@ Many of these values are intuitive. The third value, displacement in the z direc
     Temperature profile which delivers the maximum temperature within a defined parameter space. 
 
 
-While the above problem is somewhat trivial, often the goal of a HIVE experiment is to reach a certain maximum temperature within a component, or deliver a certain temperature to a specific part of the component. This type of problem is much less intuitive due to the combination of a high number of experimental parameters. There are also, usually, a number of combination of parameters which will deliver the desired result. The next part of the output provides 5 combinations of experimental parameters which will deliver a maximum temperature to the component specified by *DesiredTemp*, which in this case is 600 C. These should look like
+While the above problem is somewhat trivial, often the goal of a HIVE experiment is to reach a certain maximum temperature within a component, or deliver a certain temperature to a specific part of the component. This type of problem is much less intuitive due to the combination of a high number of experimental parameters. There are also, usually, a number of combination of parameters which will deliver the desired result. The next part of the output provides 5 combinations of experimental parameters which will deliver a maximum temperature to the component specified by *DesiredTemp*, which in this case is 600 °C. These should look like:
 
 .. code-block:: console
 
@@ -389,9 +391,9 @@ While the above problem is somewhat trivial, often the goal of a HIVE experiment
     2.82e-03, 7.08e-03, 5.33e-03, 8.09e-01, 6.76e+01, 3.17e+00, 1.78e+03
     -2.57e-03, 6.57e-03, 3.56e-03, -1.67e+00, 5.28e+01, 3.43e+00, 1.48e+03
 
-Images for each of the 4 temperature field are saved to the result directory, highlighting the multiple different temperature profiles which will deliver a maximum temperature of 600 C.
+Images for each of the 4 temperature field are saved to the result directory, highlighting the multiple different temperature profiles which will deliver a maximum temperature of 600 °C.
 
-Alongside these images you will find a comparison of the temperature profile generated by the GPR model with the simulation for the example specified by *Da.Index*, which in this case was example number 2. The temperature profile from the simulation and GPR model are shown in :numref:`Fig. %s <PyPlot_09>`. and :numref:`Fig. %s <PyPlot_10>`. respectively.
+Alongside these images you will find a comparison for the example specified by *Da.Index* between the temperature profile generated by the GPR model and by the simulation. In this case, this was example number 2. The temperature profile from the simulation and GPR model are shown in :numref:`Fig. %s <PyPlot_09>`. and :numref:`Fig. %s <PyPlot_10>`. respectively.
 
 .. _PyPlot_09:
 
@@ -420,7 +422,7 @@ Example 4: Inverse solutions (Von Mises)
 
 In this example a surrogate model of the Von Mises stress field is used in conjunction with the temperature field surrogate generated in the previous example to identify more complex inverse solutions. 
 
-The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/InverseSolution_VM.py`. At the top of the file are flags to dictate how the analysis will be performed and should look like this ::
+The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/InverseSolution_VM.py`. At the top of the file are flags to dictate how the analysis will be performed and should look like this::
 
     CoilType='Pancake' 
     PCA_Analysis = False
@@ -428,7 +430,7 @@ The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutori
     CreateModel = True
     InverseAnalysis = True
 
-:numref:`Fig. %s <PyPlot_11>` shows the reconstruction error versus the number of principal components used to compress the Von Mises stress nodal data. Notice that the reconstruction error is higher for the Von Mises stress compared with the temperature data from the previous example. To achieve a reconstruction error of 1E-3 with this data around 100 principal component would be required, which is quite large. Instead 20 principal components will be used, which will still ensure that more than 99.9% of the variance is retained. 
+:numref:`Fig. %s <PyPlot_11>` shows the reconstruction error versus the number of principal components used to compress the Von Mises stress nodal data. Notice that the reconstruction error is higher for the Von Mises stress compared with the temperature data from the previous example. To achieve a reconstruction error of 1E-3 with this data around 100 principal component would be required, which is relatively large. Instead 20 principal components will be used, which will still ensure that more than 99.9% of the variance is retained. 
 
 .. _PyPlot_11:
 
@@ -438,9 +440,9 @@ The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutori
 
 .. note::
 
-    If youd like to generate this plot for yourself, make sure the PCA_Analysis at the top of the RunFile is set to :code:`True`. This, however, may take a little while.
+    If you'd like to generate this plot for yourself, make sure the PCA_Analysis at the top of the RunFile is set to :code:`True`. This, however, may take a little while.
 
-The parameters for generating the GPR model are identical to those in the previous example, with the only difference the name of the dataset used for the model output is now 'VonMises' ::
+The parameters for generating the GPR model are identical to those in the previous example, with the only difference being that the name of the dataset used for the model output is now 'VonMises'::
 
     ML.Name = 'VonMises/GPR'
     ML.File = ('GPR_Models','GPR_PCA_hdf5')
@@ -449,14 +451,14 @@ The parameters for generating the GPR model are identical to those in the previo
     ML.ModelParameters = {'kernel':'Matern_2.5','min_noise':1e-8,'noise_init':1e-6}
     ML.Metric = {'nb_components':20} 
  
- Following this you have the parameters to perform analysis with the model. Notice that in this example both the temperature and Von Mises Ml models are used ::
+Following this you have the parameters to perform analysis with the model. Notice that in this example both the temperature and Von Mises ML models are used::
 
     DA.Name = 'Analysis/{}/InverseSolution_VM/GPR'.format(CoilType)
     DA.File = ('InverseSolution','AnalysisVM_GPR')
     DA.MLModel_T = 'Temperature/{}/GPR'.format(CoilType)
     DA.MLModel_VM = 'VonMises/{}/GPR'.format(CoilType)
 
-The other parameters used in this analysis are the same as the previous example ::
+The other parameters used in this analysis are the same as the previous example::
 
     DA.Index = [2]
     DA.DesiredTemp = 600
@@ -481,7 +483,7 @@ The other parameters used in this analysis are the same as the previous example 
         Generating the model may take a little while, so feel free to grab yourself a coffee. 
 
 
-The inverse analysis performed first is to identify the experimental parameters which will provide the maximum amount of Von Mises stress in the component. You should notice an output like this
+The inverse analysis performed first is to identify the experimental parameters which will provide the maximum amount of Von Mises stress in the component. You should notice an output like this:
 
 .. code-block:: console
 
@@ -489,9 +491,9 @@ The inverse analysis performed first is to identify the experimental parameters 
 
     4.12e-03, -1.09e-02, 3.00e-03, -5.00e+00, 7.99e+01, 6.58e-01, 2.00e+03
 
-Many of these are as we'd expect, with the coil displacement in the z direction at 3.00e-03, it's minimum value, along with the coolant temperature at its maximum value (80 C) and the current also at the maximum (2000 A). This combination of parameters will result in a Von Mises stress of 965 MPa. An image of the Von Mises stress field using these parameters can be found at :file:`Analysis/Pancake/InverseSolution_VM/GPR/MaxVonMises.png`.
+Many of these are as we'd expect, with the coil displacement in the z direction at 3.00e-03, it's minimum value, along with the coolant temperature at its maximum value (80 °C) and the current also at the maximum (2000 A). This combination of parameters will result in a Von Mises stress of 965 MPa. An image of the Von Mises stress field using these parameters can be found at :file:`Analysis/Pancake/InverseSolution_VM/GPR/MaxVonMises.png`.
 
-*DesiredTemp* is again the maximum temperature we want the component to reach, however as we have the von Mises model we would like to go a step further. The previous example showed a variety of different temperature profiles where the maximum temperature of 600 C is delivered, each of which will result in a different stress fields in the component. Therefore, it is desirable to identify the experimental parameters which will maximise the Von Mises stress while ensuring that 600 C is delivered to the component. The output for this should look like this 
+*DesiredTemp* is again the maximum temperature we want the component to reach, however as we have the von Mises model we would like to go a step further. The previous example showed a variety of different temperature profiles where the maximum temperature of 600 °C is delivered, each of which will result in a different stress fields in the component. Therefore, it is desirable to identify the experimental parameters which will maximise the Von Mises stress while ensuring that 600 °C is delivered to the component. The output for this should look like this:
 
 .. code-block:: console
 
@@ -508,19 +510,19 @@ Alongside these you will find :file:`Ex2_Simulation.png` :file:`Ex2_ML.png` and 
 
 .. note::
 
-    You can perform the same analysis again using an MLP model if youd like.
+    You can perform the same analysis again using an MLP model if you'd like.
 
 
 Example 5: Thermocouple optimisation
 **************************************
 
-HIVE currently collects data from an experiment using thermocouples. Thermocouples are probes which are joined to the surface of a component prior to an experiment and provide pointwise temperature data. Unfortunately this data does not provide a huge amoutn of understanding of the components behaviour, especially at locations the thermocouples can't measure, e.g. the inside of the component. Knowledge of the full temperature field throughout the component would greatly improve the understanding of the component and its suitability for a fusion device.
+One of the instruments used to collects data from an experiment on HIVE is by using thermocouples. Thermocouples are probes which are joined to the surface of a component prior to an experiment and provide pointwise temperature data. Unfortunately this data does not provide a huge amount of understanding about the component's behaviour, especially at locations the thermocouples can't measure, e.g. the inside of the component. Knowledge of the full temperature field throughout the component would greatly improve the understanding of the component and its suitability for a fusion device.
 
-In this example the temperature surrogate models generated in example 3 are used to predict what the temperature field is throughout the component using simulated thermocouple data. Using examples from the test dataset, temperature at thermocouple locations are extracted and it is assumed that this is the only information we have. 
+In this example, the temperature surrogate models generated in example 3 are used to predict what the temperature field is throughout the component by using simulated thermocouple data. Using examples from the test dataset, temperature at thermocouple locations are extracted and it is assumed that this is the only information we have. 
 
 Following this, the sensitivity of the placement of the thermocouples is presented, along with a method of optimising their location.
 
-The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/Thermocouple.py`. At the top of the file are flags to dictate how the analysis will be performed and should look like this ::
+The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutorials/ML/HIVE_Example/Thermocouple.py`. At the top of the file are flags to dictate how the analysis will be performed and should look like this::
 
     CoilType='Pancake' 
     ModelType = 'MLP' # this can be GPR or MLP
@@ -528,7 +530,7 @@ The RunFile used to perform this analysis can be found at :file:`RunFiles/Tutori
     Sensitivity = False
     Optimise = False
 
-Notice that *ModelType* in this example is 'MLP', which is chosen as it's evaluation is substantially faster compared with GPR, which is necessary for the optimisation of the thermocouple locations.
+Notice that *ModelType* in this example is 'MLP', which is chosen because it's evaluation is substantially faster compared with GPR, which is useful for the optimisation of the thermocouple locations.
 
 .. note::
 
@@ -544,7 +546,7 @@ To estimate the field from the thermocouple, firstly the placement of the thermo
                             ['BlockBack',0.5,0.5], 
                             ['BlockBottom',0.5,0.5]]
 
-Here each list represents a thermocouple, with the first value the surface the thermocouple will be attached to, with the next 2 the positioning on the surface (scaled to [0,1] range). This configuration is for 7 thermocouples, with each placed at the centre of the respective surface, see :numref:`Fig. %s <PyPlot_12>` - :numref:`%s <PyPlot_14>`.
+Here each list represents a thermocouple, with the first value being the surface which the thermocouple is attached to, with the next 2 the positioning on the surface (scaled to [0,1] range). This configuration is for 7 thermocouples, with each placed at the centre of the respective surface, see :numref:`Fig. %s <PyPlot_12>` - :numref:`%s <PyPlot_14>`.
 
 .. _PyPlot_12:
 
@@ -577,7 +579,7 @@ These are the 7 thermocouples which will be used, with the temperature data extr
 
 In the directory :file:`Analysis/Pancake/Thermocouple/MLP/EstimateField` you will find :file:`Ex7_Simulation.png` which shows the temperature field predicted by the simulation, while :file:`Ex7_ML.png` shows the temperature field estimated by the surrogate model using the temperature at the 7 thermocouple locations. An error plot is also provided in :file:`Ex7_Error.png`, highlighting good agreement between the two. This shows that it is possible to estimate a full temperature field using only 7 surface temperature points. 
 
-Adding thermocouples to components is a time-consuming task, therefore it is desirable to use as few of them as possible. Where the thermocouples are placed has a big impact on whether or not the original temperature field can be retrieved. 
+Adding thermocouples to components is a time-consuming task, therefore it is desirable to use as few of them as possible. Where the thermocouples are placed has a big impact on whether or not the original temperature field can be reconstructed. 
 
 The next task will look at 5 random configuraitions of 4 thermocouples to see how many temperature fields fit to them. These are decided using the *NbConfig*  and *NbThermocouple* attributes ::
 
